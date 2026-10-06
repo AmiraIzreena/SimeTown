@@ -1,0 +1,273 @@
+@import 'tailwindcss';
+
+/*
+ * KITA+ design tokens. The palette is our own, inspired by the deep teal and
+ * warm red of Sime Darby's corporate identity: teal carries structure and
+ * trust, red is kept for emphasis and danger, gold marks points.
+ */
+@theme {
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Plus Jakarta Sans Variable', 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+
+  /* Primary: deep teal */
+  --color-brand-50: #eef7f6;
+  --color-brand-100: #d6ecea;
+  --color-brand-200: #acd9d5;
+  --color-brand-300: #77bfba;
+  --color-brand-400: #429e99;
+  --color-brand-500: #23817d;
+  --color-brand-600: #166865;
+  --color-brand-700: #0f5351;
+  --color-brand-800: #0b4241;
+  --color-brand-900: #083433;
+  --color-brand-950: #041f1f;
+
+  /* Accent: warm crimson. Emphasis, destructive actions, danger alerts. */
+  --color-accent-50: #fdf1f2;
+  --color-accent-100: #fbdfe1;
+  --color-accent-200: #f6bcc1;
+  --color-accent-500: #d91a32;
+  --color-accent-600: #b91229;
+  --color-accent-700: #970f21;
+  --color-accent-900: #5c0914;
+
+  /* Points */
+  --color-gold-50: #fdf8ea;
+  --color-gold-100: #faedc6;
+  --color-gold-300: #eccb6a;
+  --color-gold-500: #c68a12;
+  --color-gold-700: #86590a;
+
+  /* Neutrals with a hint of teal, so greys sit well beside the brand colour. */
+  --color-ink-25: #fbfcfc;
+  --color-ink-50: #f5f7f7;
+  --color-ink-100: #ebeeee;
+  --color-ink-200: #dbe0e0;
+  --color-ink-300: #c2c9c9;
+  --color-ink-400: #929d9d;
+  --color-ink-500: #677373;
+  --color-ink-600: #4c5757;
+  --color-ink-700: #374040;
+  --color-ink-800: #232a2a;
+  --color-ink-900: #131818;
+
+  /* Status */
+  --color-success-50: #ebf7f0;
+  --color-success-600: #1a7f52;
+  --color-success-700: #14643f;
+  --color-warning-50: #fdf5e6;
+  --color-warning-600: #a8650c;
+  --color-warning-700: #865008;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-2xl: 28px;
+
+  --shadow-xs: 0 1px 2px rgb(8 52 51 / 0.06);
+  --shadow-sm: 0 1px 2px rgb(8 52 51 / 0.05), 0 2px 6px rgb(8 52 51 / 0.05);
+  --shadow-md: 0 2px 4px rgb(8 52 51 / 0.05), 0 8px 20px rgb(8 52 51 / 0.08);
+  --shadow-lg: 0 4px 8px rgb(8 52 51 / 0.06), 0 20px 44px rgb(8 52 51 / 0.14);
+
+  /* Motion: one easing curve, three speeds. */
+  --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast: 180ms;
+  --duration-base: 300ms;
+  --duration-slow: 520ms;
+
+  --animate-fade-in: fade-in var(--duration-base) var(--ease-soft) both;
+  --animate-rise: rise var(--duration-base) var(--ease-soft) both;
+  --animate-pop: pop var(--duration-base) var(--ease-soft) both;
+  --animate-sheet: sheet var(--duration-base) var(--ease-soft) both;
+  --animate-slide-left: slide-left var(--duration-base) var(--ease-soft) both;
+  --animate-slide-right: slide-right var(--duration-base) var(--ease-soft) both;
+  --animate-shimmer: shimmer 1.6s linear infinite;
+  --animate-grow: grow var(--duration-slow) var(--ease-soft) both;
+
+  @keyframes fade-in {
+    from { opacity: 0; }
+  }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(8px); }
+  }
+  @keyframes pop {
+    from { opacity: 0; transform: scale(0.97); }
+  }
+  @keyframes sheet {
+    from { transform: translateY(100%); }
+  }
+  @keyframes slide-left {
+    from { transform: translateX(-100%); }
+  }
+  @keyframes slide-right {
+    from { transform: translateX(100%); }
+  }
+  @keyframes shimmer {
+    to { background-position: -200% 0; }
+  }
+  @keyframes grow {
+    from { transform: scaleY(0); }
+  }
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-ink-50 font-sans text-ink-800 antialiased;
+    font-feature-settings: 'cv11', 'ss01';
+  }
+  h1, h2, h3 {
+    @apply font-display text-ink-900;
+    letter-spacing: -0.02em;
+  }
+  /* One visible focus style everywhere, for keyboard users only. */
+  :focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+  ::selection {
+    background: var(--color-brand-200);
+  }
+  button, a, input, select, textarea, summary {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@layer components {
+  /* Shared control surface for inputs, selects and textareas. */
+  .control {
+    @apply w-full rounded-md border border-ink-200 bg-white px-3.5 text-[15px] text-ink-900 shadow-xs
+      transition-[border-color,box-shadow] duration-(--duration-fast) ease-(--ease-soft)
+      placeholder:text-ink-500 hover:border-ink-300
+      focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/15
+      disabled:cursor-not-allowed disabled:bg-ink-50 disabled:text-ink-500
+      aria-[invalid=true]:border-accent-500 aria-[invalid=true]:focus:ring-accent-500/15;
+    min-height: 44px;
+  }
+
+  /* Cards that can be clicked lift slightly; the rest stay still. */
+  .lift {
+    @apply transition-[transform,box-shadow,border-color] duration-(--duration-fast) ease-(--ease-soft)
+      hover:-translate-y-0.5 hover:border-ink-300 hover:shadow-md;
+  }
+
+  .skeleton {
+    @apply animate-shimmer rounded-md;
+    background: linear-gradient(90deg, var(--color-ink-100) 25%, var(--color-ink-50) 50%, var(--color-ink-100) 75%);
+    background-size: 200% 100%;
+  }
+
+  /* Scroll reveal: set by the <Reveal> component when the element enters the viewport. */
+  .reveal {
+    transition:
+      opacity var(--duration-slow) var(--ease-soft),
+      transform var(--duration-slow) var(--ease-soft);
+    transition-delay: calc(var(--i, 0) * 70ms);
+  }
+  .reveal[data-visible='false'] {
+    opacity: 0;
+    transform: translateY(18px);
+    transition: none;
+  }
+
+  /* Dialogs use the native <dialog> element: focus trapping, Escape and the top layer come free. */
+  dialog.modal {
+    @apply m-auto w-[min(100%-2rem,34rem)] rounded-xl border border-ink-200 bg-white p-0 text-ink-800 shadow-lg;
+    max-height: min(100dvh - 2rem, 46rem);
+  }
+  dialog.modal[open] {
+    animation: var(--animate-pop);
+  }
+  dialog.modal.wide {
+    width: min(100% - 2rem, 46rem);
+  }
+  dialog.drawer {
+    @apply m-0 h-dvh max-h-none w-[min(88vw,22rem)] max-w-none border-0 bg-white p-0 text-ink-800 shadow-lg;
+  }
+  dialog.drawer.left[open] {
+    animation: var(--animate-slide-left);
+  }
+  dialog.drawer.right {
+    margin-left: auto;
+  }
+  dialog.drawer.right[open] {
+    animation: var(--animate-slide-right);
+  }
+  dialog::backdrop {
+    background: rgb(4 31 31 / 0.5);
+    animation: var(--animate-fade-in);
+  }
+  /* On phones a modal becomes a bottom sheet, within thumb reach. */
+  @media (max-width: 639px) {
+    dialog.modal {
+      @apply mb-0 w-full max-w-none rounded-b-none border-x-0 border-b-0;
+      max-height: 92dvh;
+    }
+    dialog.modal[open] {
+      animation: var(--animate-sheet);
+    }
+  }
+
+  /* Tables turn into stacked cards on small screens; each cell carries its column name. */
+  @media (max-width: 767px) {
+    .rtable thead {
+      @apply sr-only;
+    }
+    .rtable tr {
+      @apply block border-b border-ink-100 px-4 py-3;
+    }
+    .rtable td {
+      @apply flex items-baseline justify-between gap-4 px-0 py-1 text-right;
+    }
+    .rtable td::before {
+      content: attr(data-label);
+      @apply shrink-0 text-left text-xs font-medium text-ink-500;
+    }
+    .rtable td[data-label='']::before {
+      content: none;
+    }
+  }
+}
+
+/* Very gentle parallax on the landing hero only, driven by the browser's own scroll timeline (no scroll listener). */
+@supports (animation-timeline: scroll()) {
+  .parallax {
+    animation: parallax linear both;
+    animation-timeline: scroll(root);
+    animation-range: 0 60vh;
+  }
+  @keyframes parallax {
+    to { transform: translateY(28px); }
+  }
+}
+
+/* People who ask for less motion get none that is not essential. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .reveal[data-visible='false'] {
+    opacity: 1;
+    transform: none;
+  }
+  .parallax {
+    animation: none;
+  }
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: white;
+  }
+}

@@ -1,0 +1,66 @@
+# Security
+
+What is protected, how, and what is still open. Priority throughout: correctness of the points
+ledger first, then access control, then everything else.
+
+## Controls in place
+
+| Risk | Control | Where |
+| --- | --- | --- |
+| **Broken access control** | Every endpoint declares who may call it; the router refuses everyone else before the handler runs. The browser's own checks only decide what to show. | `modules/*/routes.ts`, `http/router.ts` |
+| **Reading or changing someone else's record (IDOR)** | Services look records up *together with* their owner: a resident's own sale, a shop's own sale, a sponsor's own campaign, staff's own township. Someone else's record answers "not found". | services; tests "does not let one shop…", "keeps one township's staff out…" |
+| **Broken authentication** | Passwords hashed with scrypt (N=2¹⁵, per-password salt). One error message for any sign-in failure, with the same work done whether or not the account exists. Sign-in limited per address and per account. Minimum 10 characters. | `auth/password.ts`, `identity/routes.ts` |
+| **Session theft** | Random 256-bit token in an `HttpOnly`, `SameSite=Lax` cookie, `Secure` and `__Host-` prefixed over HTTPS. Only its SHA-256 hash is stored. Sign-out and password change delete sessions at once. Role and status are re-read on every request. | `auth/session.ts` |
+| **CSRF** | Every state-changing request must carry an `Origin` header equal to `APP_URL`, plus `SameSite=Lax`. | `http/router.ts → assertSameOrigin` |
+| **Injection** | Every query is parameterised. The only SQL built from strings uses fixed, in-code column lists. Request bodies and queries are validated by Zod schemas before any handler runs. | services, `http/router.ts` |
+| **XSS** | React escapes all output; there is no `dangerouslySetInnerHTML`. A strict Content-Security-Policy with a per-request nonce blocks injected scripts. | `src/proxy.ts` |
+| **Clickjacking, sniffing, downgrade** | `frame-ancestors 'none'` and `X-Frame-Options: DENY`; `X-Content-Type-Options: nosniff`; HSTS; `Referrer-Policy`; `Permissions-Policy`. | `next.config.ts`, `src/proxy.ts` |
+| **Unsafe uploads** | Photos only. The type is read from the file's first bytes, not from its name or stated type; JPEG, PNG and WebP only; 1.5 MB limit checked before reading; stored in the database, never on a web-served path; served only to the reporter and that township's staff, with `nosniff`. The browser re-encodes photos first, which drops embedded location data. | `http/uploads.ts`, `reports/service.ts`, `lib/image.ts` |
+| **API abuse** | A database-backed rate limit on every write (120 a minute per person by default), tighter on sign-in, registration, flagging, scanning and reporting. JSON bodies capped at 64 KB. Lists are paginated with a maximum page size. | `http/router.ts` |
+| **Double spending and overdrawing** | Row locks inside one transaction per money operation; the database refuses any negative balance and any unbalanced transaction; sales are idempotent on a client key. | `ledger/*`, `001_init.sql`, `tests/concurrency.test.ts` |
+| **Insider fraud** | The ledger is append-only (database triggers). Balance corrections need a second admin, enforced in code and by a constraint. Deposits need a unique bank reference. An audit trail records approvals, money, corrections of AI suggestions and settings changes. | `ledger/finance.ts`, `modules/audit.ts` |
+| **Reward farming** | Verified homes only; XP and points capped per person per day and per home per month; each verified thing counts once; kiosk and checkpoint codes are random and shown only to staff; reports earn XP only after staff confirm them. | `rewards.ts`, `ledger/points.ts` |
+| **Credential exposure** | No secret is in the repository. Configuration is read once, validated, and fails fast with a clear message. Demo passwords come from the environment or are generated at seed time. Forms post by default and submit buttons stay disabled until the page is interactive, so a password can never land in the address bar. Invitation links are single-use, expire in 7 days and are stored hashed. | `server/config.ts`, `.env.example`, `scripts/seed.ts`, `components/ui/button.tsx` |
+| **Information leakage** | Unknown errors become a generic message with a request id; details go to the server log only. Shops see a customer's first name and initial. Sponsors see totals only, and nothing below the minimum group size. | `http/router.ts → errorResponse`, `merchant/service.ts`, `campaigns/service.ts` |
+| **Machine endpoints** | Scheduled jobs and sensor readings need a bearer token from the environment, compared in constant time. Without the token configured the endpoint does not exist. | `http/router.ts` |
+| **Prompt injection through reports** | The resident's text is passed to the optional AI service as quoted data; the reply is accepted only if it parses to one of the fixed categories; staff can always override it. | `ai/classifier.ts` |
+| **Personal data (PDPA)** | Download-my-data and delete-my-account for every user; deletion wipes personal fields and photos and anonymises the rest. Solar contact details are shared with staff only after the resident asks. | `identity/service.ts`, `jimat/service.ts` |
+
+## Known limits
+
+Be honest about these with judges and mentors.
+
+- **No independent review.** There has been no penetration test and no security audit.
+- **Sign-in is e-mail and password.** The proposal's phone one-time code and any second factor for
+  admins are not built. Admin accounts should get a second factor before a pilot.
+- **No self-service password reset** (there is no e-mail or SMS). An admin issues a new set-password
+  link. For an account that is already in use, and for any admin account, a second admin must
+  approve it and only the approver sees the link; the owner gets an urgent notice. New admin
+  accounts likewise need a second HQ admin. Whoever holds a link can still set the password, so
+  the pilot needs delivery straight to the person (e-mail or SMS).
+- **Registration says when an e-mail is already used.** Signing in gives one answer for every
+  failure, but registering (and applying as a shop) cannot hide that an e-mail is taken without
+  sending mail. Per-address limits slow anyone checking many addresses; the full fix is e-mail
+  verification ("if this address can be used, we have sent a link") once e-mail delivery exists.
+- **Rate limits need the real client address.** Outside development the app refuses to start with
+  `TRUST_PROXY=none`. With `forwarded`, only the right-most `TRUSTED_PROXY_HOPS` entries of
+  X-Forwarded-For are trusted, because anything to their left was written by the client. A wrong
+  hop count either merges visitors or lets them pick their own address, so check it on the host.
+  Volumetric attacks should be handled at the edge (see DEPLOYMENT.md).
+- **Inline style attributes are allowed** by the policy (`style-src-attr 'unsafe-inline'`), for
+  computed widths in charts and progress bars. Scripts are not relaxed.
+- **Kiosk weights and meter readings are self-reported.** Caps limit the damage; a pilot needs
+  weighing kiosks or staff checks before they earn points.
+- **Printed codes can be photographed and shared.** Daily caps apply; a pilot should rotate codes or
+  add a location check.
+- **Photos are not scanned** for malware or unsuitable content, only type- and size-checked.
+- **The ledger's "bank" is a number.** Real money needs reconciliation against real bank statements
+  and a regulated holder for the float; the float check accepts a statement figure for this reason.
+- **Audit entries are append-only by convention** (no endpoint edits them), not by a database trigger
+  like the ledger.
+- **Whether KITA Points fall under Bank Negara Malaysia's e-money rules** is a legal question for
+  SDP's counsel. This build assumes the closed-loop, no-cash-out design in the proposal.
+
+## Reporting a problem
+
+Tell the team lead privately. Do not open a public issue for anything that could expose residents' data.

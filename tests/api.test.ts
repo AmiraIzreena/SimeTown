@@ -1,0 +1,477 @@
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import type { Actor } from '@/server/auth/actor';
+import { hashPassword } from '@/server/auth/password';
+import { createSession } from '@/server/auth/session';
+import type { Db } from '@/server/db/client';
+import { one } from '@/server/db/client';
+import { routes } from '@/server/http/api';
+import { createRouter } from '@/server/http/router';
+import { createKiosk } from '@/server/modules/kitar/service';
+import { createLoop, listLoopsForStaff } from '@/server/modules/gerak/service';
+import { T0, expectFloatBalanced, freshDb, makeCampaign, makeHome, makeMerchant, makeResident, makeSponsorUser, makeWorld, sell, walletOf, type World } from './helpers';
+
+/** These tests go through the real router: sign-in, roles, the origin check, validation and each feature's rules. */
+
+let db: Db;
+let w: World;
+const clock = { now: T0 };
+const ORIGIN = 'http://kita.test';
+let handle: (req: Request) => Promise<Response>;
+
+interface CallOptions {
+  as?: Actor | string; // an actor (a session is made for them) or a raw cookie
+  body?: unknown;
+  form?: FormData;
+  origin?: string | null;
+  bearer?: string;
+}
+
+const sessions = new Map<string, string>();
+async function cookieFor(actor: Actor): Promise<string> {
+  if (!sessions.has(actor.id)) sessions.set(actor.id, `kita_session=${await createSession(db, actor.id, clock.now)}`);
+  return sessions.get(actor.id)!;
+}
+
+async function call(method: string, path: string, opts: CallOptions = {}) {
+  const headers = new Headers();
+  if (opts.as) headers.set('cookie', typeof opts.as === 'string' ? opts.as : await cookieFor(opts.as));
+  if (opts.origin !== null && method !== 'GET') headers.set('origin', opts.origin ?? ORIGIN);
+  if (opts.bearer) headers.set('authorization', `Bearer ${opts.bearer}`);
+  let body: BodyInit | undefined;
+  if (opts.form) body = opts.form;
+  else if (opts.body !== undefined) {
+    headers.set('content-type', 'application/json');
+    body = JSON.stringify(opts.body);
+  }
+  const res = await handle(new Request(`${ORIGIN}/api/v1${path}`, { method, headers, body }));
+  const isJson = res.headers.get('content-type')?.includes('json');
+  const payload = isJson ? ((await res.json()) as { data?: any; error?: { code: string; message: string; details?: any } }) : undefined; // eslint-disable-line @typescript-eslint/no-explicit-any
+  return { status: res.status, data: payload?.data, error: payload?.error, headers: res.headers, json: payload as any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+}
+
+// A valid 1×1 PNG.
+const PNG = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='), (c) => c.charCodeAt(0));
+
+beforeAll(async () => {
+  db = await freshDb();
+  w = await makeWorld(db);
+  handle = createRouter(routes, { prefix: '/api/v1', db: async () => db, now: () => clock.now }).handle;
+});
+afterAll(() => db.close());
+
+describe('signing in (KITA ID)', () => {
+  it('registers a resident as unverified, and staff verification unlocks earning (BR1)', async () => {
+    const homeId = await makeHome(w);
+    const reg = await call('POST', '/auth/register', {
+      body: {
+        email: 'aisyah@kita.test', password: 'correct-horse-battery', fullName: 'Aisyah Rahman', phone: '012-345 6789',
+        townshipId: w.townshipId, homeId, occupancy: 'OWNER', acceptTerms: true,
+      },
+    });
+    expect(reg.status).toBe(200);
+    const cookie = reg.headers.get('set-cookie')!;
+    expect(cookie).toMatch(/HttpOnly/);
+    expect(cookie).toMatch(/SameSite=Lax/);
+    const session = cookie.split(';')[0]!;
+    expect(reg.data.residencyStatus).toBe('PENDING');
+
+    await createKiosk(db, w.staff, { name: 'Kiosk Reg', location: 'Hall' });
+    const kiosk = await one<{ code: string }>(db, `SELECT code FROM kitar_kiosks WHERE name = 'Kiosk Reg'`);
+    const dropBody = { kioskCode: kiosk!.code, material: 'PAPER', weightG: 500 };
+    expect((await call('POST', '/kitar/dropoffs', { as: session, body: dropBody })).status).toBe(403);
+
+    const verify = await call('POST', `/admin/residents/${reg.data.id}/verify`, { as: w.staff, body: { approve: true } });
+    expect(verify.status).toBe(200);
+    const drop = await call('POST', '/kitar/dropoffs', { as: session, body: dropBody });
+    expect(drop.status).toBe(200);
+    expect(drop.data.reward.xp).toBe(20);
+  });
+
+  it('signs in with the right password only, and gives the same answer for any failure', async () => {
+    const wrongPassword = await call('POST', '/auth/login', { body: { email: 'aisyah@kita.test', password: 'wrong-password-here' } });
+    const noSuchUser = await call('POST', '/auth/login', { body: { email: 'nobody@kita.test', password: 'wrong-password-here' } });
+    expect(wrongPassword.status).toBe(401);
+    expect(noSuchUser.status).toBe(401);
+    expect(noSuchUser.error!.message).toBe(wrongPassword.error!.message);
+
+    const ok = await call('POST', '/auth/login', { body: { email: 'AISYAH@kita.test', password: 'correct-horse-battery' } });
+    expect(ok.status).toBe(200);
+    const session = ok.headers.get('set-cookie')!.split(';')[0]!;
+    expect((await call('GET', '/me', { as: session })).data.email).toBe('aisyah@kita.test');
+
+    await call('POST', '/auth/logout', { as: session, body: {} });
+    expect((await call('GET', '/me', { as: session })).status).toBe(401);
+  });
+
+  it('slows down password guessing against one account', async () => {
+    const statuses: number[] = [];
+    for (let i = 0; i < 12; i++) {
+      statuses.push((await call('POST', '/auth/login', { body: { email: 'target@kita.test', password: `guess-number-${i}` } })).status);
+    }
+    expect(statuses.slice(0, 10).every((s) => s === 401)).toBe(true);
+    expect(statuses[11]).toBe(429);
+  });
+
+  it('lets an owner confirm their own tenant, and nobody else’s (BR1)', async () => {
+    const homeId = await makeHome(w);
+    const owner = await makeResident(w, { homeId });
+    const tenant = await makeResident(w, { homeId, occupancy: 'TENANT', status: 'PENDING' });
+    const otherOwner = await makeResident(w);
+
+    expect((await call('POST', `/household/requests/${tenant.id}`, { as: otherOwner, body: { approve: true } })).status).toBe(404);
+    expect((await call('GET', '/household/requests', { as: owner })).data).toHaveLength(1);
+    expect((await call('POST', `/household/requests/${tenant.id}`, { as: owner, body: { approve: true } })).status).toBe(200);
+    const row = await one<{ residency_status: string }>(db, 'SELECT residency_status FROM users WHERE id = $1', [tenant.id]);
+    expect(row!.residency_status).toBe('VERIFIED');
+  });
+
+  it('creates staff accounts by one-time invitation link', async () => {
+    const created = await call('POST', '/admin/accounts', { as: w.admin, body: { email: 'new.staff@kita.test', fullName: 'New Staff', role: 'TOWNSHIP_STAFF' } });
+    expect(created.status).toBe(200);
+    // A township admin cannot mint an HQ admin.
+    expect((await call('POST', '/admin/accounts', { as: w.admin, body: { email: 'x@kita.test', fullName: 'Not Allowed', role: 'HQ_ADMIN' } })).status).toBe(403);
+
+    const accept = await call('POST', '/auth/accept-invite', { body: { token: created.data.inviteToken, password: 'a-brand-new-password', acceptTerms: true } });
+    expect(accept.status).toBe(200);
+    expect(accept.data.role).toBe('TOWNSHIP_STAFF');
+    const again = await call('POST', '/auth/accept-invite', { body: { token: created.data.inviteToken, password: 'another-password-1', acceptTerms: true } });
+    expect(again.error!.code).toBe('INVITE_INVALID');
+  });
+});
+
+describe('access control', () => {
+  it('requires a session', async () => {
+    expect((await call('GET', '/wallet')).status).toBe(401);
+    expect((await call('GET', '/insights', { as: 'kita_session=made-up-token' })).status).toBe(401);
+  });
+
+  it('enforces roles on the server (BR2)', async () => {
+    const resident = await makeResident(w);
+    const shop = await makeMerchant(w);
+    const sponsor = await makeSponsorUser(w);
+    expect((await call('GET', '/insights', { as: resident })).status).toBe(403);
+    expect((await call('GET', '/admin/audit', { as: w.staff })).status).toBe(403);
+    expect((await call('GET', '/finance/float', { as: shop })).status).toBe(403);
+    expect((await call('GET', '/admin/merchants', { as: sponsor })).status).toBe(403);
+    expect((await call('POST', '/campaigns', { as: shop, body: {} })).status).toBe(403);
+    expect((await call('PATCH', '/admin/settings', { as: w.admin, body: { issuance_fee_bps: 0 } })).status).toBe(403); // HQ only
+    expect((await call('PATCH', '/admin/settings', { as: w.hq, body: { min_group_size: 10 } })).status).toBe(200);
+  });
+
+  it('refuses state-changing requests from another origin (CSRF)', async () => {
+    const resident = await makeResident(w);
+    expect((await call('POST', '/notifications/read', { as: resident, body: {}, origin: 'https://evil.example' })).status).toBe(403);
+    expect((await call('POST', '/notifications/read', { as: resident, body: {}, origin: null })).status).toBe(403);
+    expect((await call('POST', '/notifications/read', { as: resident, body: {} })).status).toBe(200);
+  });
+
+  it('keeps one township’s staff out of another township', async () => {
+    const other = await makeWorld(db);
+    const resident = await makeResident(w, { status: 'PENDING' });
+    expect((await call('POST', `/admin/residents/${resident.id}/verify`, { as: other.staff, body: { approve: true } })).status).toBe(403);
+    expect((await call('POST', `/admin/banjir/zones/${w.zoneId}/level`, { as: other.staff, body: { levelPct: 95 } })).status).toBe(404);
+    // An HQ admin may act anywhere.
+    expect((await call('POST', `/admin/residents/${resident.id}/verify`, { as: w.hq, body: { approve: true } })).status).toBe(200);
+  });
+
+  it('validates input and names the fields that are wrong', async () => {
+    const shop = await makeMerchant(w, 10_000);
+    const bad = await call('POST', '/merchant/sales', { as: shop, body: { memberCode: 'ABCDEFGH', billSen: -5, idempotencyKey: 'nope' } });
+    expect(bad.status).toBe(400);
+    expect(bad.error!.code).toBe('VALIDATION_FAILED');
+    expect(Object.keys(bad.error!.details.fields)).toEqual(expect.arrayContaining(['billSen', 'idempotencyKey']));
+    expect((await call('GET', '/merchant/sales/not-a-uuid', { as: shop })).status).toBe(404);
+  });
+
+  it('answers unknown paths and wrong methods cleanly', async () => {
+    expect((await call('GET', '/nope')).status).toBe(404);
+    expect((await call('DELETE', '/wallet')).status).toBe(405);
+    expect((await call('GET', '/health')).data.status).toBe('ok');
+    expect((await call('GET', '/ready')).data.status).toBe('ready');
+  });
+});
+
+describe('KITA Merchant through the API', () => {
+  it('keeps a new shop from trading until an admin approves it (BR3)', async () => {
+    const apply = await call('POST', '/merchants/apply', {
+      body: {
+        townshipId: w.townshipId, businessName: 'Kafe Baharu', registrationNo: '202601012345', category: 'Food & drink',
+        addressLine: 'Lot G-02, Jalan Satu', postcode: '41050', city: 'Klang', state: 'Selangor',
+        contactName: 'Encik Lim', email: 'kafe@kita.test', phone: '+60 12-222 3333', password: 'kafe-password-123', acceptTerms: true,
+      },
+    });
+    expect(apply.status).toBe(200);
+    const login = await call('POST', '/auth/login', { body: { email: 'kafe@kita.test', password: 'kafe-password-123' } });
+    const session = login.headers.get('set-cookie')!.split(';')[0]!;
+    const resident = await makeResident(w);
+    const saleBody = { memberCode: resident.memberCode, billSen: 2_000, idempotencyKey: crypto.randomUUID() };
+
+    expect((await call('POST', '/merchant/sales', { as: session, body: saleBody })).status).toBe(403);
+    await call('POST', `/admin/merchants/${apply.data.merchantId}/status`, { as: w.admin, body: { status: 'ACTIVE' } });
+    await call('POST', `/admin/merchants/${apply.data.merchantId}/deposits`, { as: w.admin, body: { amountSen: 5_000, bankRef: 'TRF-KAFE-1' } });
+    const sale = await call('POST', '/merchant/sales', { as: session, body: saleBody });
+    expect(sale.data).toMatchObject({ status: 'COMPLETED', pointsEarned: 20 });
+    // The same bank reference cannot be recorded twice.
+    const dup = await call('POST', `/admin/merchants/${apply.data.merchantId}/deposits`, { as: w.admin, body: { amountSen: 5_000, bankRef: 'TRF-KAFE-1' } });
+    expect(dup.error!.code).toBe('DUPLICATE_BANK_REF');
+  });
+
+  it('does not let one shop read or refund another shop’s sale', async () => {
+    const shopA = await makeMerchant(w, 10_000);
+    const shopB = await makeMerchant(w, 10_000);
+    const resident = await makeResident(w);
+    const sale = await sell(w, shopA, resident, 2_000);
+    expect((await call('GET', `/merchant/sales/${sale.id}`, { as: shopB })).status).toBe(404);
+    expect((await call('POST', `/merchant/sales/${sale.id}/refund`, { as: shopB, body: {} })).status).toBe(404);
+    expect((await call('GET', `/merchant/sales/${sale.id}`, { as: shopA })).data.memberName).not.toContain('RESIDENT'); // first name and initial only
+  });
+
+  it('shows the resident the pending request and who funded each point (BR8, BR12)', async () => {
+    const shop = await makeMerchant(w, 100_000);
+    const resident = await makeResident(w);
+    await sell(w, shop, resident, 50_000);
+    const pending = await call('POST', '/merchant/sales', { as: shop, body: { memberCode: resident.memberCode, billSen: 2_000, redeemPoints: 300, idempotencyKey: crypto.randomUUID() } });
+    expect(pending.data.status).toBe('PENDING');
+
+    const wallet = await call('GET', '/wallet', { as: resident });
+    expect(wallet.data.points).toBe(500);
+    expect(wallet.data.pending).toHaveLength(1);
+
+    const confirm = await call('POST', `/wallet/sales/${pending.data.id}/decision`, { as: resident, body: { accept: true } });
+    expect(confirm.data).toMatchObject({ status: 'COMPLETED', redeemPoints: 300, pointsEarned: 17 });
+    const history = await call('GET', '/wallet/history', { as: resident });
+    expect(history.data.items.map((h: { points: number }) => h.points)).toEqual([17, -300, 500]);
+    expect(history.data.items[0].label).toMatch(/funded by the shop/);
+  });
+});
+
+describe('Lapor', () => {
+  it('suggests type and urgency, lets staff correct it with a log entry, and rewards a confirmed report (BR21)', async () => {
+    const reporter = await makeResident(w);
+    const stranger = await makeResident(w);
+    const form = new FormData();
+    form.set('description', 'Lampu jalan rosak di depan taman permainan');
+    form.set('locationText', 'Jalan Satu, near the playground');
+    form.set('photo', new File([PNG], 'lamp.png', { type: 'image/png' }));
+    const created = await call('POST', '/reports', { as: reporter, form });
+    expect(created.status).toBe(200);
+    expect(created.data).toMatchObject({ category: 'LIGHTING', urgency: 'MEDIUM', suggestion: { source: 'RULES' } });
+    const id = created.data.id;
+
+    // Only the reporter and township staff can see the report or its photo.
+    expect((await call('GET', `/reports/${id}`, { as: stranger })).status).toBe(404);
+    expect((await call('GET', `/reports/${id}/photo`, { as: stranger })).status).toBe(404);
+    const photo = await call('GET', `/reports/${id}/photo`, { as: reporter });
+    expect(photo.headers.get('content-type')).toBe('image/png');
+    expect(photo.headers.get('x-content-type-options')).toBe('nosniff');
+    expect((await call('GET', '/reports', { as: w.staff })).data.items.some((r: { id: string }) => r.id === id)).toBe(true);
+    expect((await call('PATCH', `/reports/${id}`, { as: reporter, body: { status: 'RESOLVED' } })).status).toBe(403);
+
+    const fix = await call('PATCH', `/reports/${id}`, { as: w.staff, body: { category: 'SAFETY', urgency: 'HIGH', status: 'IN_PROGRESS', staffNote: 'Exposed wiring found.' } });
+    expect(fix.status).toBe(200);
+    const override = await one<{ detail: { suggested: { category: string } } }>(db, `SELECT detail FROM audit_log WHERE action = 'AI_OVERRIDE' AND entity_id = $1`, [id]);
+    expect(override!.detail.suggested.category).toBe('LIGHTING');
+    const xp = await one<{ xp_total: number }>(db, 'SELECT xp_total FROM users WHERE id = $1', [reporter.id]);
+    expect(xp!.xp_total).toBe(25);
+  });
+
+  it('rejects a file that only pretends to be an image', async () => {
+    const reporter = await makeResident(w);
+    const form = new FormData();
+    form.set('description', 'Rubbish dumped beside the bin store');
+    form.set('locationText', 'Block C');
+    form.set('photo', new File(['<script>alert(1)</script>'], 'photo.png', { type: 'image/png' }));
+    const res = await call('POST', '/reports', { as: reporter, form });
+    expect(res.status).toBe(400);
+  });
+
+  it('pushes an urgent safety report to staff as URGENT (BR19)', async () => {
+    const reporter = await makeResident(w);
+    const form = new FormData();
+    form.set('description', 'Pokok tumbang across the road, live wire on the ground');
+    form.set('locationText', 'Jalan Dua');
+    const created = await call('POST', '/reports', { as: reporter, form });
+    expect(created.data).toMatchObject({ category: 'SAFETY', urgency: 'URGENT' });
+    const inbox = await call('GET', '/notifications', { as: w.staff });
+    expect(inbox.data.items[0]).toMatchObject({ priority: 'URGENT', title: 'Urgent safety report' });
+  });
+});
+
+describe('Jiran and Kongsi', () => {
+  it('gives XP to the helper only when the person who asked confirms', async () => {
+    const asker = await makeResident(w);
+    const helper = await makeResident(w);
+    const post = await call('POST', '/posts', { as: asker, body: { type: 'HELP', title: 'Help carrying a cupboard', body: 'Two flights of stairs, ten minutes.' } });
+    await call('POST', `/posts/${post.data.id}/respond`, { as: helper, body: {} });
+
+    expect((await call('POST', `/posts/${post.data.id}/responses/${helper.id}/confirm`, { as: helper, body: {} })).status).toBe(403);
+    const confirm = await call('POST', `/posts/${post.data.id}/responses/${helper.id}/confirm`, { as: asker, body: {} });
+    expect(confirm.data.reward.xp).toBe(40);
+    expect((await call('POST', `/posts/${post.data.id}/respond`, { as: await makeResident(w), body: {} })).error!.code).toBe('POST_CLOSED');
+  });
+
+  it('rewards the giver when a Kongsi item is handed over', async () => {
+    const giver = await makeResident(w);
+    const taker = await makeResident(w);
+    const post = await call('POST', '/posts', { as: giver, body: { type: 'GIVE', title: "Child's chair", body: 'Good condition, collect from Jalan Tiga.' } });
+    await call('POST', `/posts/${post.data.id}/respond`, { as: taker, body: {} });
+    await call('POST', `/posts/${post.data.id}/responses/${taker.id}/confirm`, { as: giver, body: {} });
+    const xp = await one<{ xp_total: number }>(db, 'SELECT xp_total FROM users WHERE id = $1', [giver.id]);
+    expect(xp!.xp_total).toBe(30);
+  });
+
+  it('hides a post after three different residents flag it, until a moderator decides (BR20)', async () => {
+    const author = await makeResident(w);
+    const post = await call('POST', '/posts', { as: author, body: { type: 'LEND', title: 'Totally legit offer', body: 'Send me your bank details.' } });
+    const listed = async () => (await call('GET', '/posts?type=LEND', { as: w.staff })).data.items.some((p: { id: string }) => p.id === post.data.id);
+
+    for (let i = 0; i < 2; i++) await call('POST', `/posts/${post.data.id}/flag`, { as: await makeResident(w), body: { reason: 'Looks like a scam' } });
+    expect(await listed()).toBe(true);
+    const third = await call('POST', `/posts/${post.data.id}/flag`, { as: await makeResident(w), body: { reason: 'Scam' } });
+    expect(third.data.hidden).toBe(true);
+    expect(await listed()).toBe(false);
+
+    expect((await call('GET', '/moderation/posts', { as: w.staff })).data).toHaveLength(1);
+    await call('POST', `/moderation/posts/${post.data.id}`, { as: w.staff, body: { action: 'REMOVE' } });
+    expect((await call('GET', '/moderation/posts', { as: w.staff })).data).toHaveLength(0);
+  });
+});
+
+describe('Gerak, Kitar and Jimat', () => {
+  it('completes a loop when every checkpoint is scanned on the same day', async () => {
+    await createLoop(db, w.staff, { name: 'Park Loop', description: 'Around the lake', mode: 'CYCLE', distanceM: 3_200, checkpoints: ['Lake gate', 'Boathouse'] });
+    const loop = (await listLoopsForStaff(db, w.staff)).find((l) => (l as unknown as { name: string }).name === 'Park Loop') as unknown as { checkpoints: { code: string }[] };
+    const [first, second] = loop.checkpoints.map((c) => c.code);
+    const rider = await makeResident(w);
+
+    const a = await call('POST', '/gerak/checkins', { as: rider, body: { code: first } });
+    expect(a.data).toMatchObject({ loopCompleted: false, remaining: 1, reward: { xp: 5 } });
+    expect((await call('POST', '/gerak/checkins', { as: rider, body: { code: first } })).error!.code).toBe('ALREADY_SCANNED');
+    const b = await call('POST', '/gerak/checkins', { as: rider, body: { code: second } });
+    expect(b.data).toMatchObject({ loopCompleted: true, reward: { xp: 45 } });
+    expect((await call('GET', '/gerak', { as: rider })).data).toMatchObject({ monthMetres: 3_200, monthLoops: 1 });
+    // Residents never see the codes.
+    expect(JSON.stringify((await call('GET', '/gerak', { as: rider })).data)).not.toContain(first);
+  });
+
+  it('gives XP and sponsor-funded points for a kiosk drop-off, within the daily limit (BR6)', async () => {
+    const sponsor = await makeSponsorUser(w);
+    await makeCampaign(w, { sponsorId: sponsor.sponsorId, activity: 'KITAR_DROPOFF', rewardPoints: 300 });
+    await createKiosk(db, w.staff, { name: 'Kiosk Central', location: 'Community hall' });
+    const kiosk = await one<{ code: string }>(db, `SELECT code FROM kitar_kiosks WHERE name = 'Kiosk Central'`);
+    const resident = await makeResident(w);
+    const body = { kioskCode: kiosk!.code, material: 'PLASTIC_PET', weightG: 250 };
+
+    const first = await call('POST', '/kitar/dropoffs', { as: resident, body });
+    expect(first.data.reward).toMatchObject({ xp: 20, points: 300 });
+    expect(first.data.reward.fundedBy[0]).toMatch(/^Sponsor/);
+    await call('POST', '/kitar/dropoffs', { as: resident, body });
+    const third = await call('POST', '/kitar/dropoffs', { as: resident, body });
+    expect(third.error!.code).toBe('DAILY_LIMIT');
+    expect((await call('GET', '/kitar', { as: resident })).data).toMatchObject({ monthGrams: 500, dropOffs: 2 });
+    expect((await call('POST', '/kitar/dropoffs', { as: resident, body: { ...body, kioskCode: 'KWRONGCODE' } })).status).toBe(404);
+    await expectFloatBalanced(db);
+  });
+
+  it('compares this month’s readings with last month’s and shares solar interest only on request (BR16)', async () => {
+    const resident = await makeResident(w);
+    clock.now = new Date('2026-10-28T04:00:00Z');
+    await call('POST', '/jimat/readings', { as: resident, body: { month: '2026-10', electricityKwh: 400, waterLitres: 20_000 } });
+    clock.now = new Date('2026-11-28T04:00:00Z');
+    const nov = await call('POST', '/jimat/readings', { as: resident, body: { month: '2026-11', electricityKwh: 360, waterLitres: 19_000 } });
+    expect(nov.data).toMatchObject({ saved: true, reward: { xp: 65 } });
+    expect((await call('POST', '/jimat/readings', { as: resident, body: { month: '2026-11', electricityKwh: 1, waterLitres: 1 } })).error!.code).toBe('READING_EXISTS');
+    expect((await call('POST', '/jimat/readings', { as: resident, body: { month: '2026-05', electricityKwh: 1, waterLitres: 1 } })).error!.code).toBe('MONTH_NOT_OPEN');
+    expect((await call('GET', '/jimat', { as: resident })).data).toMatchObject({ electricityPct: -10, waterPct: -5 });
+
+    const leads = async () => (await call('GET', '/admin/solar-leads', { as: w.staff })).data.length;
+    expect(await leads()).toBe(0);
+    await call('POST', '/jimat/solar-interest', { as: resident, body: { interested: true } });
+    expect(await leads()).toBe(1);
+    await call('POST', '/jimat/solar-interest', { as: resident, body: { interested: false } });
+    expect(await leads()).toBe(0);
+    clock.now = T0;
+  });
+});
+
+describe('Banjir', () => {
+  it('raises a warning at 75%, a danger alert at 90%, and puts the danger alert first (BR19)', async () => {
+    const inZone = await makeResident(w);
+    const zoneB = await one<{ id: string }>(db, `INSERT INTO flood_zones (township_id, name, safe_route, assembly_point) VALUES ($1, 'Zone B', 'Go east', 'School') RETURNING id`, [w.townshipId]);
+    const homeB = await one<{ id: string }>(db, `INSERT INTO homes (township_id, zone_id, unit_code, street) VALUES ($1, $2, 'B-1', 'Jalan B') RETURNING id`, [w.townshipId, zoneB!.id]);
+    const elsewhere = await makeResident(w, { homeId: homeB!.id });
+    const setLevel = (levelPct: number) => call('POST', `/admin/banjir/zones/${w.zoneId}/level`, { as: w.staff, body: { levelPct } });
+
+    expect((await call('POST', `/admin/banjir/zones/${w.zoneId}/level`, { as: inZone, body: { levelPct: 99 } })).status).toBe(403);
+    expect((await setLevel(74)).data.status).toBe('NORMAL');
+    expect((await setLevel(75)).data.status).toBe('WARNING');
+    expect((await setLevel(89)).data).toMatchObject({ status: 'WARNING', changed: false });
+    expect((await setLevel(90)).data).toMatchObject({ status: 'DANGER', changed: true });
+
+    const alerts = await call('GET', '/alerts/active', { as: inZone });
+    expect(alerts.data[0]).toMatchObject({ level: 'DANGER', zone_name: 'Zone A', safe_route: 'Take Jalan 1 north' });
+    expect((await call('GET', '/alerts/active', { as: elsewhere })).data).toHaveLength(0);
+    const inbox = await call('GET', '/notifications', { as: inZone });
+    expect(inbox.data.items[0]).toMatchObject({ priority: 'URGENT', title: 'Flood danger in Zone A' });
+
+    expect((await setLevel(40)).data.status).toBe('NORMAL');
+    expect((await call('GET', '/alerts/active', { as: inZone })).data).toHaveLength(0);
+  });
+
+  it('accepts sensor readings only with the ingest token', async () => {
+    const body = { zoneId: w.zoneId, levelPct: 10 };
+    expect((await call('POST', '/ingest/flood', { body, origin: null })).status).toBe(401);
+    expect((await call('POST', '/ingest/flood', { body, origin: null, bearer: 'wrong-token-wrong-token-wrong-token-000' })).status).toBe(401);
+    expect((await call('POST', '/ingest/flood', { body, origin: null, bearer: process.env.SENSOR_INGEST_TOKEN })).status).toBe(200);
+  });
+});
+
+describe('insights, jobs and personal data', () => {
+  it('shows staff township totals with the float matched to the sen (BR9)', async () => {
+    const res = await call('GET', '/insights', { as: w.staff });
+    expect(res.status).toBe(200);
+    const f = res.data.float;
+    expect(f.trustSen).toBe(f.walletsSen + f.payablesSen + f.poolsSen + f.communitySen);
+    expect(res.data.planet.recycled_g).toBeGreaterThan(0);
+    expect(res.data.daily).toHaveLength(14);
+  });
+
+  it('runs scheduled jobs only with the cron token', async () => {
+    expect((await call('POST', '/internal/jobs/float-check', { origin: null })).status).toBe(401);
+    const ok = await call('POST', '/internal/jobs/float-check', { origin: null, bearer: process.env.CRON_SECRET });
+    expect(ok.data).toEqual({ ok: true, issues: [] });
+    expect((await call('POST', '/internal/jobs/settle', { origin: null, bearer: process.env.CRON_SECRET })).status).toBe(200);
+    expect((await call('POST', '/internal/jobs/cleanup', { origin: null, bearer: process.env.CRON_SECRET })).status).toBe(200);
+    expect((await call('POST', '/internal/jobs/expire-points', { origin: null, bearer: process.env.CRON_SECRET })).status).toBe(200);
+    expect((await call('POST', '/internal/jobs/unknown', { origin: null, bearer: process.env.CRON_SECRET })).status).toBe(404);
+  });
+
+  it('lets a resident download their data and delete their account (BR18)', async () => {
+    const shop = await makeMerchant(w, 10_000);
+    const resident = await makeResident(w);
+    await db.query('UPDATE users SET password_hash = $2, email = $3 WHERE id = $1', [resident.id, await hashPassword('leaving-kita-plus-1'), 'leaver@kita.test']);
+    await sell(w, shop, resident, 5_000);
+
+    const exported = await call('GET', '/me/export', { as: resident });
+    expect(exported.status).toBe(200);
+    expect(exported.headers.get('content-disposition')).toMatch(/attachment/);
+    expect(exported.json.account.email).toBe('leaver@kita.test');
+    expect(exported.json.sales).toHaveLength(1);
+
+    expect((await call('POST', '/me/delete', { as: resident, body: { password: 'not-my-password' } })).error!.code).toBe('WRONG_PASSWORD');
+    expect((await call('POST', '/me/delete', { as: resident, body: { password: 'leaving-kita-plus-1' } })).status).toBe(200);
+    expect((await call('GET', '/me', { as: resident })).status).toBe(401);
+    expect((await call('POST', '/auth/login', { body: { email: 'leaver@kita.test', password: 'leaving-kita-plus-1' } })).status).toBe(401);
+
+    const row = await one<{ full_name: string; email: string }>(db, 'SELECT full_name, email FROM users WHERE id = $1', [resident.id]);
+    expect(row).toMatchObject({ full_name: 'Deleted user' });
+    expect(row!.email).not.toContain('leaver');
+    expect(await walletOf(db, resident)).toBe(0); // unused points went back to the shop that funded them
+    await expectFloatBalanced(db);
+  });
+
+  it('expires nothing early when the daily job runs', async () => {
+    const res = await call('POST', '/internal/jobs/expire-points', { origin: null, bearer: process.env.CRON_SECRET });
+    expect(res.data.points).toBe(0);
+  });
+});
