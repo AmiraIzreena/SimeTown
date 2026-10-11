@@ -3,6 +3,7 @@ import { one, type Db } from '../../db/client';
 import { townshipOf, type Actor } from '../../auth/actor';
 import { decodeCursor, toPage, type PageQuery } from '../../http/pagination';
 import { pendingForResident } from '../merchant/service';
+import { offerBalance } from '../offers/service';
 import { getSettings, startOf } from '../settings';
 
 /** Points & XP: the resident's balance, history, level, badges and street league. */
@@ -16,11 +17,45 @@ const BADGES: { id: string; label: string; hint: string; activity?: Activity; ne
   { id: 'sharer', label: 'Sharer', hint: 'Give or lend 3 items', activity: 'KONGSI_SHARE', need: 3 },
   { id: 'watchful-eye', label: 'Watchful Eye', hint: '3 reports confirmed by staff', activity: 'LAPOR_REPORT', need: 3 },
   { id: 'saver', label: 'Saver', hint: 'Use less energy or water than last month', activity: 'JIMAT_SAVER', need: 1 },
+  { id: 'explorer', label: 'Explorer', hint: '3 tracked walks, runs or rides', activity: 'GERAK_TRIP', need: 3 },
+  { id: 'gardener', label: 'Gardener', hint: 'Water a community garden 3 times', activity: 'TAMAN_WATERING', need: 3 },
+  { id: 'naturalist', label: 'Naturalist', hint: '3 wildlife sightings confirmed', activity: 'TAMAN_SIGHTING', need: 3 },
 ];
+
+/**
+ * "You saved" (proposal section 8): points and Shop Offers used at township
+ * shops, plus the fall in the home's utility bills measured by Jimat from read
+ * bills. Everything is in sen, so it shows as ringgit.
+ */
+async function savedSoFar(db: Db, actor: Actor) {
+  const [shops, bills] = await Promise.all([
+    one<{ points: number; offers: number }>(
+      db,
+      `SELECT coalesce(sum(redeem_points), 0)::int AS points, coalesce(sum(offer_points), 0)::int AS offers
+         FROM sales WHERE user_id = $1 AND status = 'COMPLETED'`,
+      [actor.id],
+    ),
+    actor.homeId
+      ? one<{ sen: number }>(
+          db,
+          `SELECT coalesce(sum(GREATEST(0, prev_e - electricity_sen)) FILTER (WHERE prev_e IS NOT NULL AND electricity_sen IS NOT NULL), 0)::int
+                + coalesce(sum(GREATEST(0, prev_w - water_sen)) FILTER (WHERE prev_w IS NOT NULL AND water_sen IS NOT NULL), 0)::int AS sen
+             FROM (SELECT electricity_sen, water_sen,
+                          lag(electricity_sen) OVER (ORDER BY month) AS prev_e, lag(water_sen) OVER (ORDER BY month) AS prev_w
+                     FROM jimat_readings WHERE home_id = $1) r`,
+          [actor.homeId],
+        )
+      : Promise.resolve({ sen: 0 }),
+  ]);
+  const pointsSen = shops!.points;
+  const offersSen = shops!.offers;
+  const billsSen = bills!.sen;
+  return { pointsSen, offersSen, billsSen, totalSen: pointsSen + offersSen + billsSen };
+}
 
 export async function walletOverview(db: Db, actor: Actor, now: Date) {
   const s = await getSettings(db);
-  const [account, user, counts, used, expiring, pending] = await Promise.all([
+  const [account, user, counts, used, expiring, pending, offerPoints, saved] = await Promise.all([
     one<{ balance: number }>(db, `SELECT balance FROM ledger_accounts WHERE user_id = $1 AND kind = 'WALLET'`, [actor.id]),
     one<{ xp_total: number; last_points_activity_at: Date | null }>(db, 'SELECT xp_total, last_points_activity_at FROM users WHERE id = $1', [actor.id]),
     db.query<{ activity: Activity; n: number }>('SELECT activity, count(*)::int AS n FROM xp_events WHERE user_id = $1 GROUP BY activity', [actor.id]),
@@ -40,11 +75,17 @@ export async function walletOverview(db: Db, actor: Actor, now: Date) {
       [actor.id, now, s.expiry_inactive_months],
     ),
     pendingForResident(db, actor.id, now),
+    offerBalance(db, actor.id),
+    savedSoFar(db, actor),
   ]);
   const total = counts.reduce((sum, c) => sum + c.n, 0);
   const countOf = (activity?: Activity) => (activity ? (counts.find((c) => c.activity === activity)?.n ?? 0) : total);
   return {
+    // The resident sees one balance with both kinds of backing beside it (proposal section 8).
     points: account?.balance ?? 0,
+    offerPoints,
+    totalPoints: (account?.balance ?? 0) + offerPoints,
+    saved,
     xp: user!.xp_total,
     level: levelFor(user!.xp_total),
     memberCode: actor.memberCode,

@@ -1,5 +1,7 @@
 'use client';
 
+import { Text } from '@/components/ui/localized-text';
+
 import { Building2 } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -46,9 +48,7 @@ export default function ShopsPage() {
       <Async state={shops}>
         {(list) =>
           list.length === 0 ? (
-            <EmptyState icon={Building2} title="No shops yet">
-              Shops apply from the “Join as a shop” page.
-            </EmptyState>
+            <EmptyState icon={Building2} title="No shops yet"><Text>Shops apply from the “Join as a shop” page.</Text></EmptyState>
           ) : (
             <DataTable
               caption="Shops"
@@ -58,7 +58,7 @@ export default function ShopsPage() {
                 { header: 'Shop', cell: (s) => <span className="font-medium text-ink-900">{s.name}</span> },
                 { header: 'Registration', desktopOnly: true, cell: (s) => s.registration_no },
                 { header: 'Type', desktopOnly: true, cell: (s) => s.category },
-                { header: 'Status', cell: (s) => <Badge tone={STATUS[s.status][1]}>{STATUS[s.status][0]}</Badge> },
+                { header: 'Status', cell: (s) => <Badge tone={STATUS[s.status][1]}><Text>{STATUS[s.status][0]}</Text></Badge> },
                 { header: 'Reward pool', align: 'right', cell: (s) => formatRM(s.pool_sen) },
                 { header: 'Owed this week', align: 'right', cell: (s) => formatRM(s.owed_sen) },
                 {
@@ -67,19 +67,15 @@ export default function ShopsPage() {
                   cell: (s) => (
                     <span className="inline-flex flex-wrap justify-end gap-1">
                       {s.status === 'ACTIVE' && (
-                        <Button size="sm" variant="secondary" onClick={() => setDeposit(s)}>
-                          Record deposit
-                        </Button>
+                        <Button size="sm" variant="secondary" onClick={() => setDeposit(s)}><Text>Record deposit</Text></Button>
                       )}
                       {s.status !== 'ACTIVE' && (
                         <Button size="sm" onClick={() => setStatus.run(s.id, 'ACTIVE')} disabled={setStatus.pending}>
-                          {s.status === 'PENDING' ? 'Approve' : 'Restore'}
+                          <Text>{s.status === 'PENDING' ? 'Approve' : 'Restore'}</Text>
                         </Button>
                       )}
                       {s.status === 'ACTIVE' && (
-                        <Button size="sm" variant="ghost" onClick={() => setStatus.run(s.id, 'SUSPENDED')} disabled={setStatus.pending}>
-                          Suspend
-                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => setStatus.run(s.id, 'SUSPENDED')} disabled={setStatus.pending}><Text>Suspend</Text></Button>
                       )}
                     </span>
                   ),
@@ -97,12 +93,8 @@ export default function ShopsPage() {
         description={deposit ? `${deposit.name} · pool now ${formatRM(deposit.pool_sen)}` : undefined}
         footer={
           <>
-            <Button variant="secondary" onClick={() => setDeposit(null)}>
-              Cancel
-            </Button>
-            <Button type="submit" form="record-deposit" pending={record.pending} disabled={!parseRM(amount)}>
-              Record deposit
-            </Button>
+            <Button variant="secondary" onClick={() => setDeposit(null)}><Text>Cancel</Text></Button>
+            <Button type="submit" form="record-deposit" pending={record.pending} disabled={!parseRM(amount)}><Text>Record deposit</Text></Button>
           </>
         }
       >
@@ -114,7 +106,7 @@ export default function ShopsPage() {
             void record.run(deposit!.id, String(new FormData(event.currentTarget).get('bankRef')));
           }}
         >
-          <p className="text-[15px] text-ink-700">Record this only after the transfer shows in the trust account. The money goes into the float and can only be used for this shop’s points and their service fee.</p>
+          <p className="text-[15px] text-ink-700"><Text>Record this only after the transfer shows in the trust account. The money goes into the float and can only be used for this shop’s points and their service fee.</Text></p>
           <Input label="Amount received (RM)" value={amount} onChange={(event) => setAmount(event.target.value)} inputMode="decimal" required error={record.fields.amountSen} />
           <Input label="Bank reference" name="bankRef" maxLength={60} required error={record.fields.bankRef} hint="Each reference can be used once." />
         </form>

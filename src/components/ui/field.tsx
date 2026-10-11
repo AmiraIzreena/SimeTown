@@ -1,3 +1,6 @@
+
+import { Text } from '@/components/ui/localized-text';
+import { LocalizedInput, LocalizedSelect, LocalizedTextarea } from '@/components/ui/localized-elements';
 import { useId, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react';
 import { cn } from '@/lib/cn';
 
@@ -13,17 +16,17 @@ function Shell({ label, hint, error, className, id, children }: FieldProps & { i
   return (
     <div className={cn('space-y-1.5', className)}>
       <label htmlFor={id} className="block text-sm font-medium text-ink-700">
-        {label}
+        <Text>{label}</Text>
       </label>
-      {children}
+      <Text>{children}</Text>
       {error ? (
         <p id={`${id}-note`} role="alert" className="text-sm font-medium text-accent-600">
-          {error}
+          <Text>{error}</Text>
         </p>
       ) : (
         hint && (
           <p id={`${id}-note`} className="text-sm text-ink-500">
-            {hint}
+            <Text>{hint}</Text>
           </p>
         )
       )}
@@ -41,7 +44,7 @@ export function Input({ label, hint, error, className, ...rest }: FieldProps & I
   const id = useId();
   return (
     <Shell {...{ label, hint, error, className, id }}>
-      <input className="control" {...noteProps(id, hint, error)} {...rest} />
+      <LocalizedInput className="control" {...noteProps(id, hint, error)} {...rest} />
     </Shell>
   );
 }
@@ -50,9 +53,9 @@ export function Select({ label, hint, error, className, children, ...rest }: Fie
   const id = useId();
   return (
     <Shell {...{ label, hint, error, className, id }}>
-      <select className="control pr-9" {...noteProps(id, hint, error)} {...rest}>
-        {children}
-      </select>
+      <LocalizedSelect className="control pr-9" {...noteProps(id, hint, error)} {...rest}>
+        <Text>{children}</Text>
+      </LocalizedSelect>
     </Shell>
   );
 }
@@ -63,14 +66,14 @@ export function Checkbox({ label, error, className, ...rest }: { label: ReactNod
   return (
     <div className={cn('space-y-1.5', className)}>
       <div className="flex items-start gap-3">
-        <input type="checkbox" className="mt-0.5 size-5 shrink-0 cursor-pointer accent-brand-700" {...noteProps(id, undefined, error)} {...rest} />
+        <LocalizedInput type="checkbox" className="mt-0.5 size-5 shrink-0 cursor-pointer accent-brand-700" {...noteProps(id, undefined, error)} {...rest} />
         <label htmlFor={id} className="text-sm leading-relaxed text-ink-700">
-          {label}
+          <Text>{label}</Text>
         </label>
       </div>
       {error && (
         <p id={`${id}-note`} role="alert" className="text-sm font-medium text-accent-600">
-          {error}
+          <Text>{error}</Text>
         </p>
       )}
     </div>
@@ -81,7 +84,7 @@ export function Textarea({ label, hint, error, className, ...rest }: FieldProps 
   const id = useId();
   return (
     <Shell {...{ label, hint, error, className, id }}>
-      <textarea className="control min-h-24 py-2.5" rows={3} {...noteProps(id, hint, error)} {...rest} />
+      <LocalizedTextarea className="control min-h-24 py-2.5" rows={3} {...noteProps(id, hint, error)} {...rest} />
     </Shell>
   );
 }

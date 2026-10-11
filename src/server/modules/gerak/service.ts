@@ -82,6 +82,7 @@ export async function checkIn(db: Db, actor: Actor, code: string, now: Date) {
       reward: {
         xp: rewards.reduce((sum, r) => sum + r.xp, 0),
         points: rewards.reduce((sum, r) => sum + r.points, 0),
+        offerPoints: rewards.reduce((sum, r) => sum + r.offerPoints, 0),
         fundedBy: rewards.flatMap((r) => r.fundedBy),
       },
     };

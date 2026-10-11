@@ -1,6 +1,9 @@
 'use client';
 
-import Link from 'next/link';
+import { Text } from '@/components/ui/localized-text';
+import { LocalizedButton } from '@/components/ui/localized-elements';
+
+import { LocalizedLink as Link } from '@/components/ui/localized-elements';
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 import { useHydrated } from '@/lib/use-hydrated';
@@ -45,14 +48,14 @@ export function Button({ variant = 'primary', size = 'md', pending, href, classN
   if (href) {
     return (
       <Link href={href} className={classes}>
-        {children}
+        <Text>{children}</Text>
       </Link>
     );
   }
   return (
-    <button type="button" className={classes} disabled={disabled || pending || notReady} aria-busy={pending || undefined} {...rest}>
+    <LocalizedButton type="button" className={classes} disabled={disabled || pending || notReady} aria-busy={pending || undefined} {...rest}>
       {pending && <span aria-hidden className="size-4 animate-spin rounded-full border-2 border-current border-r-transparent" />}
-      {children}
-    </button>
+      <Text>{children}</Text>
+    </LocalizedButton>
   );
 }

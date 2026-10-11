@@ -1,5 +1,7 @@
 'use client';
 
+import { Text } from '@/components/ui/localized-text';
+
 import { useEffect, useRef, useState } from 'react';
 
 /** Counts up to a number once, when first shown. Later changes, and reduced-motion users, get the value at once. */
@@ -23,5 +25,5 @@ export function CountUp({ value, format = (n) => n.toLocaleString('en-MY') }: { 
     return () => cancelAnimationFrame(frame);
   }, [value]);
 
-  return <>{format(shown)}</>;
+  return <><Text>{format(shown)}</Text></>;
 }

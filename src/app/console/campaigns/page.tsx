@@ -1,10 +1,12 @@
 'use client';
 
-import { BarChart3, Plus } from 'lucide-react';
+import { Text } from '@/components/ui/localized-text';
+
+import { Award, BarChart3, Plus } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { BudgetSplit, CampaignReport, CampaignStatus } from '@/components/features/campaign-admin';
 import { Button } from '@/components/ui/button';
-import { Card, PageHeader } from '@/components/ui/card';
+import { Badge, Card, CardHeader, PageHeader } from '@/components/ui/card';
 import { ConfirmDialog, Modal } from '@/components/ui/dialog';
 import { Async, EmptyState } from '@/components/ui/feedback';
 import { Input, Select, Textarea } from '@/components/ui/field';
@@ -12,7 +14,7 @@ import { api } from '@/lib/api';
 import { formatDate, parseRM } from '@/lib/format';
 import { useAction, useApi } from '@/lib/hooks';
 import type { Campaign, Me } from '@/lib/types';
-import { ADMINS, formatPoints, formatRM } from '@/shared/domain';
+import { ADMINS, formatPoints, formatRM, SPONSOR_TIERS, SPONSOR_TIER_INFO, type SponsorTier } from '@/shared/domain';
 
 /** What a campaign can reward, in words staff recognise. `unit` is set where a milestone total makes sense. */
 const GOALS: { value: string; label: string; activity: string; metric: 'COUNT' | 'QUANTITY'; unit?: string; per?: number }[] = [
@@ -24,7 +26,115 @@ const GOALS: { value: string; label: string; activity: string; metric: 'COUNT' |
   { value: 'jiran-event', label: 'Jiran: events attended', activity: 'JIRAN_EVENT', metric: 'COUNT' },
   { value: 'kongsi', label: 'Kongsi: items given or lent', activity: 'KONGSI_SHARE', metric: 'COUNT' },
   { value: 'jimat', label: 'Jimat: months using less', activity: 'JIMAT_SAVER', metric: 'COUNT' },
+  { value: 'trip-km', label: 'Gerak: kilometres on tracked trips', activity: 'GERAK_TRIP', metric: 'QUANTITY', unit: 'km', per: 1000 },
+  { value: 'taman', label: 'Taman: days watering a community garden', activity: 'TAMAN_WATERING', metric: 'COUNT' },
 ];
+
+interface SponsorRow {
+  id: string;
+  name: string;
+  tier: SponsorTier | 'NONE';
+  tier_until: string | null;
+  category: string | null;
+  tagline: string | null;
+  campaigns: number;
+}
+
+/** Sponsors and their tiers. Only SDP HQ records a tier payment; the fee is income and never touches the float. */
+function SponsorTiers({ isHq }: { isHq: boolean }) {
+  const sponsors = useApi<SponsorRow[]>('/sponsors');
+  const [editing, setEditing] = useState<SponsorRow | null>(null);
+  const [tier, setTier] = useState<SponsorTier>('COMMUNITY_FRIEND');
+  const save = useAction((body: Record<string, string>) => api.post<{ feeSen: number }>(`/admin/sponsors/${editing!.id}/tier`, body), {
+    onSuccess: () => {
+      setEditing(null);
+      void sponsors.mutate();
+    },
+    success: (r) => `Tier recorded: ${formatRM(r.feeSen)} for the year.`,
+  });
+  const today = new Date().toISOString().slice(0, 10);
+  return (
+    <Card className="mt-8">
+      <CardHeader title="Sponsors and tiers" description="Sponsors join in four tiers. Tier names and fees are placeholders to test with real brands in the pilot." />
+      <Async state={sponsors}>
+        {(list) => (
+          <ul className="divide-y divide-ink-100">
+            {list.map((sp) => {
+              const active = sp.tier !== 'NONE' && sp.tier_until !== null && sp.tier_until >= today;
+              return (
+                <li key={sp.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
+                  <span className="min-w-0">
+                    <span className="block text-[15px] font-semibold text-ink-900">{sp.name}</span>
+                    <span className="block text-sm text-ink-500">
+                      <Text>{sp.campaigns}</Text><Text> campaign</Text><Text>{sp.campaigns === 1 ? '' : 's'}</Text>
+                      <Text>{sp.category && ` · ${sp.category}`}</Text>
+                      <Text>{active && sp.tier_until && ` · until ${formatDate(sp.tier_until)}`}</Text>
+                    </span>
+                  </span>
+                  <span className="flex items-center gap-2">
+                    {active ? (
+                      <Badge tone="gold">
+                        <Award className="size-3.5" aria-hidden />
+                        <Text>{SPONSOR_TIER_INFO[sp.tier as SponsorTier].label}</Text>
+                      </Badge>
+                    ) : (
+                      <Badge><Text>No tier</Text></Badge>
+                    )}
+                    {isHq && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => {
+                          setTier(active ? (sp.tier as SponsorTier) : 'COMMUNITY_FRIEND');
+                          setEditing(sp);
+                        }}
+                      ><Text>Record tier</Text></Button>
+                    )}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </Async>
+      <Modal
+        open={editing !== null}
+        onClose={() => setEditing(null)}
+        title={`Tier for ${editing?.name ?? ''}`}
+        description={`Records the yearly fee of ${formatRM(SPONSOR_TIER_INFO[tier].feeSen)} as received.`}
+        footer={
+          <Button type="submit" form="tier-form" pending={save.pending}><Text>Record payment</Text></Button>
+        }
+      >
+        <form
+          id="tier-form"
+          method="post"
+          className="space-y-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const f = Object.fromEntries(new FormData(event.currentTarget)) as Record<string, string>;
+            void save.run({ tier, bankRef: f.bankRef ?? '', ...(f.category ? { category: f.category } : {}), ...(f.tagline ? { tagline: f.tagline } : {}) });
+          }}
+        >
+          <Select label="Tier" value={tier} onChange={(event) => setTier(event.target.value as SponsorTier)}>
+            {SPONSOR_TIERS.map((t) => (
+              <option key={t} value={t}>
+                <Text>{SPONSOR_TIER_INFO[t].label}</Text> · <Text>{formatRM(SPONSOR_TIER_INFO[t].feeSen)}</Text><Text> a year</Text></option>
+            ))}
+          </Select>
+          <ul className="list-disc space-y-1 pl-5 text-sm text-ink-600">
+            {SPONSOR_TIER_INFO[tier].benefits.map((b) => (
+              <li key={b}><Text>{b}</Text></li>
+            ))}
+          </ul>
+          <Input name="bankRef" label="Bank reference" required maxLength={60} error={save.fields.bankRef} />
+          <Input name="category" label="Category (for exclusivity)" defaultValue={editing?.category ?? ''} maxLength={60} error={save.fields.category} hint="One Green Champion per category, and one Title Partner." />
+          <Input name="tagline" label="Banner text" defaultValue={editing?.tagline ?? ''} maxLength={120} error={save.fields.tagline} hint="Shown labelled “Sponsored”, never on safety screens." />
+        </form>
+      </Modal>
+    </Card>
+  );
+}
 
 export default function CampaignsPage() {
   const me = useApi<Me>('/me');
@@ -54,21 +164,17 @@ export default function CampaignsPage() {
   return (
     <>
       <PageHeader
-        title="Campaigns"
+        title="Campaigns & sponsors"
         description="Challenges with a fixed, prefunded reward pool. Nothing is awarded until the funder’s payment is recorded, and awards stop when the pool is used up."
         action={
           <Button onClick={() => setCreating(true)}>
-            <Plus className="size-4" aria-hidden />
-            New campaign
-          </Button>
+            <Plus className="size-4" aria-hidden /><Text>New campaign</Text></Button>
         }
       />
       <Async state={campaigns}>
         {(list) =>
           list.length === 0 ? (
-            <EmptyState title="No campaigns yet" action={<Button onClick={() => setCreating(true)}>New campaign</Button>}>
-              Set up a challenge for a sponsor, or a community programme funded by Sime Darby Property.
-            </EmptyState>
+            <EmptyState title="No campaigns yet" action={<Button onClick={() => setCreating(true)}><Text>New campaign</Text></Button>}><Text>Set up a challenge for a sponsor, or a community programme funded by Sime Darby Property.</Text></EmptyState>
           ) : (
             <div className="grid gap-4 lg:grid-cols-2">
               {list.map((c) => (
@@ -76,17 +182,14 @@ export default function CampaignsPage() {
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <CampaignStatus campaign={c} />
                     <span className="text-sm text-ink-500">
-                      {formatDate(c.starts_at)} – {formatDate(c.ends_at)}
+                      <Text>{formatDate(c.starts_at)}</Text> – <Text>{formatDate(c.ends_at)}</Text>
                     </span>
                   </div>
                   <h2 className="mt-3 text-lg font-semibold">{c.title}</h2>
                   <p className="mt-1 flex-1 text-[15px] text-ink-600">{c.description}</p>
-                  <p className="mt-3 text-sm text-ink-700">
-                    Funded by <strong>{c.funder}</strong> · {formatPoints(c.reward_points)} points per reward, up to {c.per_person_cap} per person
-                    {c.status === 'FUNDED' && (
+                  <p className="mt-3 text-sm text-ink-700"><Text>Funded by </Text><strong><Text>{c.funder}</Text></strong> · <Text>{formatPoints(c.reward_points)}</Text><Text> points per reward, up to </Text><Text>{c.per_person_cap}</Text><Text> per person</Text>{c.status === 'FUNDED' && (
                       <>
-                        {' '}
-                        · pool left <strong>{formatRM(c.pool_left_sen)}</strong>
+                        <Text>{' '}</Text><Text>· pool left </Text><strong><Text>{formatRM(c.pool_left_sen)}</Text></strong>
                       </>
                     )}
                   </p>
@@ -96,22 +199,18 @@ export default function CampaignsPage() {
                   <div className="mt-4 flex flex-wrap gap-2">
                     {c.status !== 'DRAFT' && (
                       <Button variant="secondary" size="sm" onClick={() => setReport(c)}>
-                        <BarChart3 className="size-4" aria-hidden />
-                        Results
-                      </Button>
+                        <BarChart3 className="size-4" aria-hidden /><Text>Results</Text></Button>
                     )}
                     {isAdmin && c.status === 'DRAFT' && (
-                      <Button size="sm" onClick={() => setFunding(c)}>
-                        Record payment
-                      </Button>
+                      <Button size="sm" onClick={() => setFunding(c)}><Text>Record payment</Text></Button>
                     )}
                     {isAdmin && c.status !== 'CLOSED' && (
                       <Button variant="ghost" size="sm" onClick={() => setClosing(c)}>
-                        {c.status === 'DRAFT' ? 'Cancel' : 'Close and refund'}
+                        <Text>{c.status === 'DRAFT' ? 'Cancel' : 'Close and refund'}</Text>
                       </Button>
                     )}
                   </div>
-                  {!isAdmin && c.status === 'DRAFT' && <p className="mt-3 text-sm text-ink-500">A township admin records the funder’s payment to start it.</p>}
+                  {!isAdmin && c.status === 'DRAFT' && <p className="mt-3 text-sm text-ink-500"><Text>A township admin records the funder’s payment to start it.</Text></p>}
                 </Card>
               ))}
             </div>
@@ -120,6 +219,7 @@ export default function CampaignsPage() {
       </Async>
 
       <CreateCampaign open={creating} onClose={() => setCreating(false)} onCreated={reload} />
+      <SponsorTiers isHq={me.data?.role === 'HQ_ADMIN'} />
       <CampaignReport campaign={report} onClose={() => setReport(null)} />
 
       <Modal
@@ -129,12 +229,8 @@ export default function CampaignsPage() {
         description={funding ? `${funding.title} · ${formatRM(funding.budget_sen)} from ${funding.funder}` : undefined}
         footer={
           <>
-            <Button variant="secondary" onClick={() => setFunding(null)}>
-              Cancel
-            </Button>
-            <Button type="submit" form="fund-campaign" pending={fund.pending}>
-              Payment received
-            </Button>
+            <Button variant="secondary" onClick={() => setFunding(null)}><Text>Cancel</Text></Button>
+            <Button type="submit" form="fund-campaign" pending={fund.pending}><Text>Payment received</Text></Button>
           </>
         }
       >
@@ -147,7 +243,7 @@ export default function CampaignsPage() {
               void fund.run(funding.id, String(new FormData(event.currentTarget).get('bankRef')));
             }}
           >
-            <p className="text-[15px] text-ink-700">Only record this once the full amount is in the trust account. The reward pool goes into the float; the fee and running costs go to KITA+.</p>
+            <p className="text-[15px] text-ink-700"><Text>Only record this once the full amount is in the trust account. The reward pool goes into the float; the fee and running costs go to KITA+.</Text></p>
             <BudgetSplit campaign={funding} />
             <Input label="Bank reference" name="bankRef" required maxLength={60} error={fund.fields.bankRef} hint="Each reference can be used once." />
           </form>
@@ -156,11 +252,9 @@ export default function CampaignsPage() {
 
       <ConfirmDialog open={closing !== null} onClose={() => setClosing(null)} onConfirm={() => closing && void close.run(closing.id)} title={closing?.status === 'DRAFT' ? 'Cancel this campaign?' : 'Close this campaign?'} confirmLabel={closing?.status === 'DRAFT' ? 'Cancel campaign' : 'Close and refund'} destructive pending={close.pending}>
         {closing?.status === 'FUNDED' ? (
-          <p>
-            No more rewards will be given. The unused pool, <strong>{formatRM(closing.pool_left_sen)}</strong>, is refunded to {closing.funder}. This cannot be undone.
-          </p>
+          <p><Text>No more rewards will be given. The unused pool, </Text><strong><Text>{formatRM(closing.pool_left_sen)}</Text></strong><Text>, is refunded to </Text><Text>{closing.funder}</Text><Text>. This cannot be undone.</Text></p>
         ) : (
-          <p>The campaign was never funded, so nothing is refunded. This cannot be undone.</p>
+          <p><Text>The campaign was never funded, so nothing is refunded. This cannot be undone.</Text></p>
         )}
       </ConfirmDialog>
     </>
@@ -216,12 +310,8 @@ function CreateCampaign({ open, onClose, onCreated }: { open: boolean; onClose: 
       wide
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button type="submit" form="create-campaign" pending={create.pending}>
-            Create campaign
-          </Button>
+          <Button variant="secondary" onClick={onClose}><Text>Cancel</Text></Button>
+          <Button type="submit" form="create-campaign" pending={create.pending}><Text>Create campaign</Text></Button>
         </>
       }
     >
@@ -229,7 +319,7 @@ function CreateCampaign({ open, onClose, onCreated }: { open: boolean; onClose: 
         <Input label="Title" name="title" maxLength={100} required error={f.title} className="sm:col-span-2" />
         <Textarea label="What residents see" name="description" maxLength={600} required error={f.description} className="sm:col-span-2" />
         <Select label="Funded by" value={sponsorId} onChange={(event) => setSponsorId(event.target.value)} error={f.sponsorId}>
-          <option value="">Sime Darby Property (community programme)</option>
+          <option value=""><Text>Sime Darby Property (community programme)</Text></option>
           {sponsors.data?.map((s) => (
             <option key={s.id} value={s.id}>
               {s.name}
@@ -239,7 +329,7 @@ function CreateCampaign({ open, onClose, onCreated }: { open: boolean; onClose: 
         <Select label="Rewards" value={goal} onChange={(event) => setGoal(event.target.value)}>
           {GOALS.map((g) => (
             <option key={g.value} value={g.value}>
-              {g.label}
+              <Text>{g.label}</Text>
             </option>
           ))}
         </Select>
@@ -250,10 +340,8 @@ function CreateCampaign({ open, onClose, onCreated }: { open: boolean; onClose: 
         <Input label="Starts" name="startsAt" type="date" defaultValue={today} required error={f.startsAt} />
         <Input label="Ends" name="endsAt" type="date" required error={f.endsAt} />
         {budgetSen > 0 && (
-          <p className="rounded-lg bg-brand-50 px-4 py-3 text-sm text-brand-800 sm:col-span-2">
-            Reward pool <strong>{formatRM(poolSen)}</strong>
-            {sponsorId ? `, KITA+ fee ${formatRM(Math.floor(budgetSen * 0.25))}, running costs ${formatRM(budgetSen - poolSen - Math.floor(budgetSen * 0.25))}` : ' (the whole budget)'}. Enough for <strong>{rewards.toLocaleString('en-MY')}</strong> rewards; awards stop when it runs out, and anything left is refunded.
-          </p>
+          <p className="rounded-lg bg-brand-50 px-4 py-3 text-sm text-brand-800 sm:col-span-2"><Text>Reward pool </Text><strong><Text>{formatRM(poolSen)}</Text></strong>
+            <Text>{sponsorId ? `, KITA+ fee ${formatRM(Math.floor(budgetSen * 0.25))}, running costs ${formatRM(budgetSen - poolSen - Math.floor(budgetSen * 0.25))}` : ' (the whole budget)'}</Text><Text>. Enough for </Text><strong><Text>{rewards.toLocaleString('en-MY')}</Text></strong><Text> rewards; awards stop when it runs out, and anything left is refunded.</Text></p>
         )}
       </form>
     </Modal>

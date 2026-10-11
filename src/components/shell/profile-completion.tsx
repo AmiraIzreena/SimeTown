@@ -1,7 +1,9 @@
 'use client';
 
+import { Text } from '@/components/ui/localized-text';
+
 import { UserRoundCheck } from 'lucide-react';
-import Link from 'next/link';
+import { LocalizedLink as Link } from '@/components/ui/localized-elements';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -64,14 +66,11 @@ export function ProfileCompletion({ accountHref }: { accountHref: string }) {
         <p className="flex items-center gap-2">
           <UserRoundCheck className="size-5 shrink-0" aria-hidden />
           <span>
-            <strong className="font-semibold">Please complete your account.</strong>{' '}
-            {[...details.map((d) => DETAILS[d].label.toLowerCase()), ...(needsTerms ? ['the updated Terms'] : [])].join(', ').replace(/^./, (c) => c.toUpperCase())}{' '}
-            {details.length + (needsTerms ? 1 : 0) > 1 ? 'are' : 'is'} still needed.
-          </span>
+            <strong className="font-semibold"><Text>Please complete your account.</Text></strong><Text>{' '}</Text>
+            <Text>{[...details.map((d) => DETAILS[d].label.toLowerCase()), ...(needsTerms ? ['the updated Terms'] : [])].join(', ').replace(/^./, (c) => c.toUpperCase())}</Text><Text>{' '}</Text>
+            <Text>{details.length + (needsTerms ? 1 : 0) > 1 ? 'are' : 'is'}</Text><Text> still needed.</Text></span>
         </p>
-        <Button size="sm" variant="secondary" onClick={() => setDismissed(false)} className={onAccountPage && !needsTerms ? 'hidden' : undefined}>
-          Complete now
-        </Button>
+        <Button size="sm" variant="secondary" onClick={() => setDismissed(false)} className={onAccountPage && !needsTerms ? 'hidden' : undefined}><Text>Complete now</Text></Button>
       </div>
 
       <Modal
@@ -81,18 +80,14 @@ export function ProfileCompletion({ accountHref }: { accountHref: string }) {
         description="KITA+ needs these details before you can use every feature."
         footer={
           <>
-            <Button variant="secondary" onClick={close}>
-              Later
-            </Button>
+            <Button variant="secondary" onClick={close}><Text>Later</Text></Button>
             {details.length > 0 && !onAccountPage && (
               <Button
                 onClick={() => {
                   close();
                   router.push(accountHref);
                 }}
-              >
-                Go to my account
-              </Button>
+              ><Text>Go to my account</Text></Button>
             )}
           </>
         }
@@ -102,38 +97,29 @@ export function ProfileCompletion({ accountHref }: { accountHref: string }) {
             <ul className="space-y-3">
               {details.map((d) => (
                 <li key={d}>
-                  <p className="font-semibold text-ink-900">{DETAILS[d].label}</p>
-                  <p className="text-sm text-ink-600">{DETAILS[d].why}</p>
+                  <p className="font-semibold text-ink-900"><Text>{DETAILS[d].label}</Text></p>
+                  <p className="text-sm text-ink-600"><Text>{DETAILS[d].why}</Text></p>
                 </li>
               ))}
             </ul>
           )}
           {needsTerms && (
             <div className="space-y-3 rounded-md border border-ink-200 p-4">
-              <p className="font-semibold text-ink-900">Terms of Use and Privacy Notice</p>
+              <p className="font-semibold text-ink-900"><Text>Terms of Use and Privacy Notice</Text></p>
               <p className="text-sm text-ink-600">
-                {me.data?.terms.version ? 'They have been updated since you last accepted them.' : 'You have not accepted them yet.'} Please read them before you continue.
-              </p>
+                <Text>{me.data?.terms.version ? 'They have been updated since you last accepted them.' : 'You have not accepted them yet.'}</Text><Text> Please read them before you continue.</Text></p>
               <Checkbox
                 checked={agreed}
                 onChange={(event) => setAgreed(event.target.checked)}
                 label={
-                  <>
-                    I have read and accept the{' '}
-                    <Link href="/terms" target="_blank" rel="noopener" className="font-semibold text-brand-700 underline underline-offset-2">
-                      Terms of Use
-                    </Link>{' '}
-                    and the{' '}
-                    <Link href="/privacy" target="_blank" rel="noopener" className="font-semibold text-brand-700 underline underline-offset-2">
-                      Privacy Notice
-                    </Link>
+                  <><Text>I have read and accept the</Text><Text>{' '}</Text>
+                    <Link href="/terms" target="_blank" rel="noopener" className="font-semibold text-brand-700 underline underline-offset-2"><Text>Terms of Use</Text></Link><Text>{' '}</Text><Text>and the</Text><Text>{' '}</Text>
+                    <Link href="/privacy" target="_blank" rel="noopener" className="font-semibold text-brand-700 underline underline-offset-2"><Text>Privacy Notice</Text></Link>
                     .
                   </>
                 }
               />
-              <Button size="sm" disabled={!agreed} pending={accept.pending} onClick={() => void accept.run()}>
-                Accept
-              </Button>
+              <Button size="sm" disabled={!agreed} pending={accept.pending} onClick={() => void accept.run()}><Text>Accept</Text></Button>
             </div>
           )}
         </div>

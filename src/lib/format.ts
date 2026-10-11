@@ -1,3 +1,4 @@
+import { formatRM } from '@/shared/domain';
 import type { ActionRewardView } from './types';
 
 const LOCALE = 'en-MY';
@@ -24,11 +25,13 @@ export function timeAgo(value: string | Date): string {
   return formatDate(value);
 }
 
-/** One sentence for what an action earned, naming who paid for any points. */
+/** One sentence for what an action earned, in ringgit, naming who paid for any points. */
 export function rewardMessage(reward: ActionRewardView | null | undefined, fallback: string): string {
-  if (!reward || (reward.xp === 0 && reward.points === 0)) return fallback;
+  const offer = reward?.offerPoints ?? 0;
+  if (!reward || (reward.xp === 0 && reward.points === 0 && offer === 0)) return fallback;
   const parts = [`+${reward.xp} Impact XP`];
-  if (reward.points > 0) parts.push(`+${reward.points} points, funded by ${[...new Set(reward.fundedBy)].join(' and ')}`);
+  if (reward.points > 0) parts.push(`+${reward.points} points (${formatRM(reward.points)}), funded by ${[...new Set(reward.fundedBy)].join(' and ')}`);
+  if (offer > 0) parts.push(`+${offer} offer points (${formatRM(offer)}), backed by township shop offers`);
   return parts.join(' · ');
 }
 

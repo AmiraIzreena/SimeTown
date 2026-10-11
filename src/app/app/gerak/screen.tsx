@@ -1,9 +1,12 @@
 'use client';
 
+import { Text } from '@/components/ui/localized-text';
+
 import { Bike, CheckCircle2, Circle, Footprints, Route } from 'lucide-react';
 import { useState } from 'react';
 import { CampaignCard } from '@/components/features/rewards';
 import { CodeEntry } from '@/components/features/scan';
+import { Tracker } from '@/components/features/tracker';
 import { Badge, Card, CardHeader, PageHeader, Stat } from '@/components/ui/card';
 import { Async, EmptyState, SkeletonList, SkeletonStats } from '@/components/ui/feedback';
 import { api } from '@/lib/api';
@@ -43,7 +46,7 @@ export function GerakScreen({ scanned }: { scanned: string }) {
 
   return (
     <>
-      <PageHeader title="Gerak" description="Walk or cycle a township loop and scan the checkpoint posters on the way. Finish every checkpoint on the same day to complete the loop." />
+      <PageHeader title="Gerak" description="Walk, run, cycle or wheel a township loop. Track it on the map and the checkpoints tick themselves, or scan the posters on the way." />
       <div className="space-y-6">
         <Async state={overview} skeleton={<SkeletonStats count={3} />}>
           {(o) => (
@@ -57,8 +60,15 @@ export function GerakScreen({ scanned }: { scanned: string }) {
           )}
         </Async>
 
+        <Tracker
+          onFinished={() => {
+            void overview.mutate();
+            void campaigns.mutate();
+          }}
+        />
+
         <Card>
-          <CardHeader title="Scan a checkpoint" />
+          <CardHeader title="Or scan a checkpoint poster" description="The backup when GPS is weak. Scan every checkpoint of a loop on the same day." />
           <div className="p-5">
             <CodeEntry label="Checkpoint code" value={code} onChange={setCode} onSubmit={() => void scan.run()} pending={scan.pending} error={scan.fields.code} action="Check in" />
           </div>
@@ -73,15 +83,11 @@ export function GerakScreen({ scanned }: { scanned: string }) {
         )}
 
         <section aria-labelledby="loops-title">
-          <h2 id="loops-title" className="mb-3 text-lg font-semibold">
-            Township loops
-          </h2>
+          <h2 id="loops-title" className="mb-3 text-lg font-semibold"><Text>Township loops</Text></h2>
           <Async state={overview} skeleton={<SkeletonList rows={2} />}>
             {(o) =>
               o.loops.length === 0 ? (
-                <EmptyState icon={Route} title="No loops yet">
-                  The township team has not set up any walking or cycling loops.
-                </EmptyState>
+                <EmptyState icon={Route} title="No loops yet"><Text>The township team has not set up any walking or cycling loops.</Text></EmptyState>
               ) : (
                 <div className="grid gap-4 md:grid-cols-2">
                   {o.loops.map((loop) => {
@@ -89,9 +95,9 @@ export function GerakScreen({ scanned }: { scanned: string }) {
                     return (
                       <Card key={loop.id} className="p-5">
                         <div className="flex flex-wrap items-center gap-2">
-                          <Badge tone="brand">{loop.mode === 'CYCLE' ? 'Cycling' : 'Walking'}</Badge>
-                          <Badge>{formatKm(loop.distance_m)}</Badge>
-                          {done === loop.checkpoints.length && <Badge tone="success">Done today</Badge>}
+                          <Badge tone="brand"><Text>{loop.mode === 'CYCLE' ? 'Cycling' : 'Walking'}</Text></Badge>
+                          <Badge><Text>{formatKm(loop.distance_m)}</Text></Badge>
+                          {done === loop.checkpoints.length && <Badge tone="success"><Text>Done today</Text></Badge>}
                         </div>
                         <h3 className="mt-3 text-[17px] font-semibold">{loop.name}</h3>
                         <p className="mt-1 text-[15px] text-ink-600">{loop.description}</p>
@@ -100,7 +106,7 @@ export function GerakScreen({ scanned }: { scanned: string }) {
                             <li key={cp.id} className="flex items-center gap-2.5 text-[15px]">
                               {cp.scanned_today ? <CheckCircle2 className="size-5 shrink-0 text-success-600" aria-hidden /> : <Circle className="size-5 shrink-0 text-ink-300" aria-hidden />}
                               <span className={cp.scanned_today ? 'text-ink-900' : 'text-ink-600'}>{cp.name}</span>
-                              <span className="sr-only">{cp.scanned_today ? '(scanned today)' : '(not scanned yet)'}</span>
+                              <span className="sr-only"><Text>{cp.scanned_today ? '(scanned today)' : '(not scanned yet)'}</Text></span>
                             </li>
                           ))}
                         </ol>

@@ -5,6 +5,9 @@ import { decodeCursor, toPage, type PageQuery } from '../../http/pagination';
 import { audit } from '../audit';
 import { runFloatCheck, runSettlement } from '../ledger/finance';
 import { expirePoints, sendExpiryReminders } from '../ledger/points';
+import { expireOfferPoints } from '../offers/service';
+import { retentionCleanup } from '../retention';
+import { runAgentClock } from '../banjir/agent';
 import { getSettings, SETTINGS_COLUMNS, type Settings } from '../settings';
 
 /** Audit trail, programme settings and scheduled jobs. */
@@ -59,7 +62,7 @@ export async function updateSettings(db: Db, actor: Actor, changes: Partial<Sett
   });
 }
 
-export const JOBS = ['expire-points', 'float-check', 'settle', 'cleanup'] as const;
+export const JOBS = ['expire-points', 'float-check', 'settle', 'cleanup', 'flood-agent'] as const;
 export type JobName = (typeof JOBS)[number];
 
 /**
@@ -70,19 +73,22 @@ export type JobName = (typeof JOBS)[number];
 export async function runJob(db: Db, name: JobName, now: Date): Promise<Record<string, unknown>> {
   switch (name) {
     case 'expire-points':
-      return { ...(await expirePoints(db, now)), reminders: await sendExpiryReminders(db, now) };
+      return { ...(await expirePoints(db, now)), offerLotsExpired: await expireOfferPoints(db, now), reminders: await sendExpiryReminders(db, now) };
     case 'float-check': {
       const check = await runFloatCheck(db, null, now);
       return { ok: check.ok, issues: check.issues };
     }
     case 'settle':
       return runSettlement(db, null, now);
+    case 'flood-agent':
+      // Every minute or two: one-signal drafts past their deadline, and the 15-minute updates (BR28).
+      return runAgentClock(db, now);
     case 'cleanup': {
       const sessions = await db.query('DELETE FROM sessions WHERE expires_at < $1 RETURNING id', [now]);
       await db.query(`DELETE FROM rate_limits WHERE window_start < $1::timestamptz - interval '1 day'`, [now]);
       await db.query(`DELETE FROM user_invites WHERE expires_at < $1 OR used_at IS NOT NULL`, [now]);
       const sales = await db.query(`UPDATE sales SET status = 'EXPIRED' WHERE status = 'PENDING' AND expires_at < $1 RETURNING id`, [now]);
-      return { sessionsRemoved: sessions.length, salesExpired: sales.length };
+      return { sessionsRemoved: sessions.length, salesExpired: sales.length, ...(await retentionCleanup(db, now)) };
     }
   }
 }

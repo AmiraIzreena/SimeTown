@@ -1,7 +1,9 @@
 'use client';
 
+import { Text } from '@/components/ui/localized-text';
+
 import { BellOff } from 'lucide-react';
-import Link from 'next/link';
+import { LocalizedLink as Link } from '@/components/ui/localized-elements';
 import { useEffect } from 'react';
 import { Badge } from '@/components/ui/card';
 import { Drawer } from '@/components/ui/dialog';
@@ -26,20 +28,18 @@ export function NotificationsDrawer({ open, onClose, list, onRead }: { open: boo
       {!list ? (
         <SkeletonList rows={3} />
       ) : list.items.length === 0 ? (
-        <EmptyState icon={BellOff} title="Nothing yet">
-          Updates about your points, reports and township alerts will appear here.
-        </EmptyState>
+        <EmptyState icon={BellOff} title="Nothing yet"><Text>Updates about your points, reports and township alerts will appear here.</Text></EmptyState>
       ) : (
         <ul className="-mx-2 space-y-1">
           {list.items.map((n) => {
             const body = (
               <>
                 <div className="flex items-start justify-between gap-3">
-                  <p className={cn('text-sm font-semibold', n.read_at ? 'text-ink-700' : 'text-ink-900')}>{n.title}</p>
-                  {n.priority === 'URGENT' && <Badge tone="danger">Urgent</Badge>}
+                  <p className={cn('text-sm font-semibold', n.read_at ? 'text-ink-700' : 'text-ink-900')}><Text>{n.title}</Text></p>
+                  {n.priority === 'URGENT' && <Badge tone="danger"><Text>Urgent</Text></Badge>}
                 </div>
-                <p className="mt-0.5 text-sm text-ink-600">{n.body}</p>
-                <p className="mt-1 text-xs text-ink-500">{timeAgo(n.created_at)}</p>
+                <p className="mt-0.5 text-sm text-ink-600"><Text>{n.body}</Text></p>
+                <p className="mt-1 text-xs text-ink-500"><Text>{timeAgo(n.created_at)}</Text></p>
               </>
             );
             const className = cn('block rounded-md px-3 py-2.5 transition-colors duration-200', !n.read_at && 'bg-brand-50/60', n.link && 'hover:bg-ink-50');
@@ -47,10 +47,10 @@ export function NotificationsDrawer({ open, onClose, list, onRead }: { open: boo
               <li key={n.id}>
                 {n.link ? (
                   <Link href={n.link} onClick={onClose} className={className}>
-                    {body}
+                    <Text>{body}</Text>
                   </Link>
                 ) : (
-                  <div className={className}>{body}</div>
+                  <div className={className}><Text>{body}</Text></div>
                 )}
               </li>
             );

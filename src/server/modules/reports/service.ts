@@ -7,6 +7,7 @@ import { conflict, notFound } from '../../errors';
 import { decodeCursor, toPage, type PageQuery } from '../../http/pagination';
 import { audit } from '../audit';
 import { notify } from '../notifications';
+import { reportSignal } from '../banjir/agent';
 import { recordAction, rewardUserById } from '../rewards';
 
 /** Lapor: report a hazard or an access barrier, and follow it until it is closed. */
@@ -54,6 +55,8 @@ export async function createReport(db: Db, actor: Actor, input: ReportInput, now
       );
       await notify(tx, staff.map((s) => s.id), { priority: 'URGENT', title: 'Urgent safety report', body: `${input.locationText}: ${input.description.slice(0, 120)}`, link: '/console/reports' });
     }
+    // Water in a drain, reported with its area, is a second opinion for the Banjir agent (never a decision on its own).
+    if (category === 'DRAINAGE' && input.zoneId) await reportSignal(tx, input.zoneId, report!.id, now);
     return { id: report!.id, category, urgency: suggestion.urgency, suggestion };
   });
 }

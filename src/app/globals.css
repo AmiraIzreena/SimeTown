@@ -263,6 +263,21 @@
   }
 }
 
+/*
+ * Akses+ flashing alert, only for residents who asked for it (deaf and hard-of-hearing).
+ * Once a second for ten seconds: well under the three-flashes-a-second limit of WCAG 2.3.1.
+ * It is an accessibility request the person made, so it runs even with reduced motion on.
+ */
+@keyframes flash-alert {
+  0%, 49% { background-color: var(--color-accent-700); }
+  50%, 100% { background-color: var(--color-accent-900); }
+}
+dialog.flash-alert[open] {
+  animation: flash-alert 1s step-end 10 !important;
+  animation-duration: 1s !important;
+  animation-iteration-count: 10 !important;
+}
+
 @media print {
   .no-print {
     display: none !important;

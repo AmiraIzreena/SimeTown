@@ -11,6 +11,7 @@ export interface Me {
   email: string;
   fullName: string;
   phone: string | null;
+  language: 'en' | 'ms';
   residencyStatus: 'NONE' | 'PENDING' | 'VERIFIED' | 'REJECTED';
   memberCode: string | null;
   townshipId: string | null;
@@ -37,6 +38,8 @@ export interface Me {
 export interface ActionRewardView {
   xp: number;
   points: number;
+  /** Offer-backed points, backed by what township shops pledged this month. */
+  offerPoints?: number;
   fundedBy: string[];
 }
 
@@ -46,6 +49,9 @@ export interface SaleView {
   memberName: string;
   billSen: number;
   redeemPoints: number;
+  offerPoints: number;
+  offerTitle: string | null;
+  successFeeSen: number;
   cashSen: number;
   pointsEarned: number;
   feeSen: number;
@@ -92,8 +98,9 @@ export interface Zone {
 }
 
 export interface BanjirOverview {
-  zones: Zone[];
+  zones: (Zone & { message_kind: string | null; what: string | null; where_text: string | null; todo: string | null; next_update_at: string | null; sent_at: string | null })[];
   myZoneId: string | null;
+  myCheckin: 'SAFE' | 'NEED_HELP' | null;
   warningPct: number;
   dangerPct: number;
 }

@@ -1,5 +1,8 @@
 'use client';
 
+import { Text } from '@/components/ui/localized-text';
+import { LocalizedInput } from '@/components/ui/localized-elements';
+
 import { Camera, MapPin, Plus } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { ReportPhoto, StatusBadge, UrgencyBadge, categoryLabel, URGENCY_LABELS, type Report } from '@/components/features/report-bits';
@@ -32,9 +35,7 @@ export default function LaporPage() {
         description="Report a hazard or an access barrier in under a minute. You earn Impact XP once township staff confirm it."
         action={
           <Button onClick={() => setOpen(true)}>
-            <Plus className="size-4" aria-hidden />
-            New report
-          </Button>
+            <Plus className="size-4" aria-hidden /><Text>New report</Text></Button>
         }
       />
       {reports.error ? (
@@ -42,9 +43,7 @@ export default function LaporPage() {
       ) : reports.isLoading ? (
         <SkeletonList rows={3} />
       ) : reports.items.length === 0 ? (
-        <EmptyState title="You have not reported anything" action={<Button onClick={() => setOpen(true)}>New report</Button>}>
-          Seen a pothole, a broken light, a blocked drain or a blocked ramp? Tell the township team.
-        </EmptyState>
+        <EmptyState title="You have not reported anything" action={<Button onClick={() => setOpen(true)}><Text>New report</Text></Button>}><Text>Seen a pothole, a broken light, a blocked drain or a blocked ramp? Tell the township team.</Text></EmptyState>
       ) : (
         <ul className="space-y-3">
           {reports.items.map((report) => (
@@ -52,8 +51,8 @@ export default function LaporPage() {
               <button type="button" onClick={() => setDetail(report)} className="lift block w-full rounded-lg border border-ink-200 bg-white p-5 text-left shadow-xs">
                 <div className="flex flex-wrap items-center gap-2">
                   <StatusBadge status={report.status} />
-                  <span className="text-sm font-semibold text-ink-900">{categoryLabel(report.category)}</span>
-                  <span className="ml-auto text-xs text-ink-500">{timeAgo(report.created_at)}</span>
+                  <span className="text-sm font-semibold text-ink-900"><Text>{categoryLabel(report.category)}</Text></span>
+                  <span className="ml-auto text-xs text-ink-500"><Text>{timeAgo(report.created_at)}</Text></span>
                 </div>
                 <p className="mt-2 line-clamp-2 text-[15px] text-ink-700">{report.description}</p>
                 <p className="mt-2 inline-flex items-center gap-1.5 text-sm text-ink-500">
@@ -67,9 +66,7 @@ export default function LaporPage() {
       )}
       {reports.hasMore && (
         <div className="mt-5 text-center">
-          <Button variant="secondary" onClick={() => void reports.loadMore()} pending={reports.loadingMore}>
-            Show more
-          </Button>
+          <Button variant="secondary" onClick={() => void reports.loadMore()} pending={reports.loadingMore}><Text>Show more</Text></Button>
         </div>
       )}
 
@@ -86,11 +83,11 @@ export default function LaporPage() {
             <ReportPhoto report={detail} />
             {detail.staff_note && (
               <div className="rounded-lg bg-brand-50 p-4 text-[15px] text-brand-800">
-                <p className="text-xs font-semibold uppercase tracking-wide text-brand-600">From the township team</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-brand-600"><Text>From the township team</Text></p>
                 <p className="mt-1">{detail.staff_note}</p>
               </div>
             )}
-            <p className="text-sm text-ink-500">Last updated {timeAgo(detail.updated_at)}.</p>
+            <p className="text-sm text-ink-500"><Text>Last updated </Text><Text>{timeAgo(detail.updated_at)}</Text>.</p>
           </div>
         )}
       </Modal>
@@ -131,12 +128,8 @@ function NewReport({ open, onClose, onCreated }: { open: boolean; onClose: () =>
       description="If someone is in immediate danger, call 999 first."
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button type="submit" form="new-report" pending={create.pending}>
-            Send report
-          </Button>
+          <Button variant="secondary" onClick={onClose}><Text>Cancel</Text></Button>
+          <Button type="submit" form="new-report" pending={create.pending}><Text>Send report</Text></Button>
         </>
       }
     >
@@ -145,7 +138,7 @@ function NewReport({ open, onClose, onCreated }: { open: boolean; onClose: () =>
         <Input label="Where is it?" name="locationText" maxLength={160} placeholder="Street, landmark or nearest house" required error={f.locationText} />
         <div className="grid gap-3 sm:grid-cols-2">
           <Select label="Area (optional)" name="zoneId" defaultValue="">
-            <option value="">Not sure</option>
+            <option value=""><Text>Not sure</Text></option>
             {zones.data?.zones.map((zone) => (
               <option key={zone.id} value={zone.id}>
                 {zone.name}
@@ -153,18 +146,18 @@ function NewReport({ open, onClose, onCreated }: { open: boolean; onClose: () =>
             ))}
           </Select>
           <Select label="Type" name="category" defaultValue="" hint="Leave it and KITA+ will suggest one.">
-            <option value="">Suggest for me</option>
+            <option value=""><Text>Suggest for me</Text></option>
             {REPORT_CATEGORIES.map((category) => (
               <option key={category} value={category}>
-                {REPORT_CATEGORY_LABELS[category]}
+                <Text>{REPORT_CATEGORY_LABELS[category]}</Text>
               </option>
             ))}
           </Select>
         </div>
         <label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-md border border-dashed border-ink-300 px-4 py-3 text-[15px] text-ink-700 transition-colors duration-200 hover:border-brand-500 hover:bg-brand-50/40 focus-within:border-brand-500">
           <Camera className="size-5 shrink-0 text-ink-500" aria-hidden />
-          <span className="min-w-0 flex-1 truncate">{photoName ?? 'Add a photo (optional)'}</span>
-          <input type="file" name="photo" accept="image/jpeg,image/png,image/webp" capture="environment" className="sr-only" onChange={(event) => setPhotoName(event.target.files?.[0]?.name ?? null)} />
+          <span className="min-w-0 flex-1 truncate"><Text>{photoName ?? 'Add a photo (optional)'}</Text></span>
+          <LocalizedInput type="file" name="photo" accept="image/jpeg,image/png,image/webp" capture="environment" className="sr-only" onChange={(event) => setPhotoName(event.target.files?.[0]?.name ?? null)} />
         </label>
       </form>
     </Modal>

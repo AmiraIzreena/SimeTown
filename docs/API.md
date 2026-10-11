@@ -22,6 +22,7 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | POST | `/auth/logout` | Any signed-in user | Sign out |
 | GET | `/me` | Any signed-in user | The signed-in account, with any required details still missing |
 | PATCH | `/me` | Any signed-in user | Update name and phone (both required) |
+| POST | `/me/language` | Any signed-in user | Choose English or Bahasa Malaysia |
 | POST | `/me/terms` | Any signed-in user | Accept the Terms of Use and Privacy Notice now in force |
 | POST | `/me/home` | RESIDENT | Set or change my address (a new home is confirmed again) |
 | POST | `/me/password` | Any signed-in user | Change password (signs out other devices) |
@@ -65,6 +66,17 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | POST | `/admin/merchants/:merchantId/status` | TOWNSHIP_ADMIN, HQ_ADMIN | Approve, suspend or restore a shop |
 | POST | `/admin/merchants/:merchantId/deposits` | TOWNSHIP_ADMIN, HQ_ADMIN | Record money a shop paid into its reward pool |
 
+## Shop Offers
+
+| Method | Path | Who | What it does |
+| --- | --- | --- | --- |
+| GET | `/merchant/offers` | MERCHANT | This shop's offers, this month's budget used and success fees |
+| POST | `/merchant/offers` | MERCHANT | Create a Shop Offer with its terms and monthly budget (BR30) |
+| POST | `/merchant/offers/:offerId/status` | MERCHANT | Pause, resume or end an offer |
+| POST | `/merchant/akses-friendly` | MERCHANT | Show or hide the Akses-friendly badge for this shop |
+| GET | `/offers` | RESIDENT | Live Shop Offers in my township, my offer-backed points and the pledges behind them |
+| GET | `/admin/offers` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | The township's pledges and offer-backed points this month |
+
 ## KITA Partner Hub
 
 | Method | Path | Who | What it does |
@@ -76,6 +88,10 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | GET | `/campaigns/:campaignId/report` | SPONSOR, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Grouped results for a campaign |
 | GET | `/sponsors` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Sponsor organisations |
 | POST | `/sponsors` | TOWNSHIP_ADMIN, HQ_ADMIN | Add a sponsor organisation |
+| POST | `/admin/sponsors/:sponsorId/tier` | HQ_ADMIN | Record a yearly tier payment and give the sponsor that tier (SDP HQ) |
+| GET | `/sponsor/tier` | SPONSOR | My tier, its benefits and challenges used this year |
+| GET | `/public/partners` | Public | The Partners page: sponsors with a current tier (names only) |
+| GET | `/sponsored` | RESIDENT | One labelled sponsored banner for the home screen (never on safety screens) |
 
 ## Jiran & Kongsi
 
@@ -100,6 +116,25 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | GET | `/reports/:reportId/photo` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | The report's photo (reporter and township staff only) |
 | PATCH | `/reports/:reportId` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Staff update status, type, urgency or note (corrections to the AI are logged) |
 
+## Tamu
+
+| Method | Path | Who | What it does |
+| --- | --- | --- | --- |
+| GET | `/tamu` | RESIDENT | My home's visitor passes, visits and walk-ins waiting for an answer |
+| POST | `/tamu/passes` | RESIDENT | Create a visitor pass; the link is returned once |
+| POST | `/tamu/passes/:passId/link` | RESIDENT | A fresh link for a pass (the old link stops working) |
+| POST | `/tamu/passes/:passId/cancel` | RESIDENT | Cancel a pass |
+| POST | `/tamu/entries/:entryId/reply` | RESIDENT | Answer the guard about a walk-in visitor |
+| POST | `/tamu/sos` | RESIDENT | SOS to the guardhouse |
+| GET | `/passes/:token` | Public | A visitor's pass from their link (no sign-in; street only, never the house) |
+| GET | `/guard` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN | The guard's screen: today's gate log, SOS calls, patrol and flood tasks |
+| POST | `/guard/scan` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN | Scan a visitor's pass; the host is told at once |
+| POST | `/guard/walk-ins` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN | Log a visitor without a pass (name, vehicle, house; never an IC) |
+| POST | `/guard/entries/:entryId/exit` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN | Log that a visitor has left |
+| POST | `/guard/sos/:sosId` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN | Acknowledge or close an SOS call |
+| POST | `/guard/patrol` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN | Scan a patrol point on a round |
+| GET | `/admin/patrol-points` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Patrol points with their printable codes |
+
 ## Gerak
 
 | Method | Path | Who | What it does |
@@ -108,6 +143,11 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | POST | `/gerak/checkins` | RESIDENT | Scan a checkpoint code |
 | GET | `/admin/gerak/loops` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Loops with their printable checkpoint codes |
 | POST | `/admin/gerak/loops` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Create a loop and its checkpoints |
+| POST | `/admin/gerak/loops/:loopId/map` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Draw a loop on the map: its path and where each checkpoint is |
+| GET | `/gerak/map` | RESIDENT | Checkpoints with their positions, the activity in progress and recent trips |
+| POST | `/gerak/activities` | RESIDENT | Tap Start: begin a tracked walk, run, ride or wheelchair trip |
+| POST | `/gerak/activities/:activityId/points` | RESIDENT | A batch of positions, sent only between Start and Finish |
+| POST | `/gerak/activities/:activityId/finish` | RESIDENT | Tap Finish: fair-play checks, then verified distance and loops are credited |
 
 ## Kitar
 
@@ -118,6 +158,19 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | POST | `/kitar/dropoffs` | RESIDENT | Record a drop-off at a kiosk |
 | GET | `/admin/kitar/kiosks` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Kiosks with their printable codes |
 | POST | `/admin/kitar/kiosks` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Add a kiosk |
+| POST | `/kitar/machine/join` | RESIDENT | Start recycling at a machine by scanning the code on its screen |
+| GET | `/kitar/machine/session` | RESIDENT | My recycling session at a machine, live, and its result |
+| POST | `/kitar/claim` | RESIDENT | Claim guest recycling within 14 days (Impact XP only) |
+| GET | `/admin/kitar/machines` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Recycling machines, their state and today’s use |
+| POST | `/admin/kitar/machines` | TOWNSHIP_ADMIN, HQ_ADMIN | Put a recycling machine at a kiosk |
+| POST | `/admin/kitar/machines/:machineId/status` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Mark a machine online, full or offline |
+| GET | `/admin/kitar/machines/:machineId/screen` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Prototype: the machine's screen (rotating code and the session in progress) |
+| POST | `/admin/kitar/machines/:machineId/start` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Prototype: the machine reads a KITA QR, or a guest taps "Recycle as guest" |
+| POST | `/admin/kitar/machines/:machineId/items` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Prototype: the machine's camera, barcode reader and scale report one item |
+| POST | `/admin/kitar/machines/:machineId/finish` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Prototype: the machine signs its summary and closes the session |
+| POST | `/ingest/kitar/start` | Bearer token (machine) | Device: start a session (KITA QR read, or guest); signed by the machine |
+| POST | `/ingest/kitar/items` | Bearer token (machine) | Device: one item recognised, counted and weighed; signed by the machine |
+| POST | `/ingest/kitar/finish` | Bearer token (machine) | Device: the session's summary, which must match the items; signed by the machine |
 
 ## Jimat
 
@@ -127,15 +180,58 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | POST | `/jimat/readings` | RESIDENT | Enter monthly electricity and water readings |
 | POST | `/jimat/solar-interest` | RESIDENT | Ask to be contacted about solar, or withdraw that request |
 | GET | `/admin/solar-leads` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Residents who asked to be contacted about solar |
+| GET | `/jimat/bills` | RESIDENT | Bills read and confirmed for my home (numbers only; no file is kept) |
+| POST | `/jimat/bills` | RESIDENT | Upload a bill (multipart: file, kind). Checked, read in memory, never stored |
+| POST | `/jimat/bills/:billId/confirm` | RESIDENT | Confirm or correct the numbers read from a bill |
+| POST | `/jimat/bills/:billId/discard` | RESIDENT | Throw away a bill that was read but not confirmed |
+| GET | `/jimat/sample-bill` | RESIDENT | Prototype: a sample bill (PDF) to my address, marked SAMPLE, for trying bill reading |
 
 ## Banjir
 
 | Method | Path | Who | What it does |
 | --- | --- | --- | --- |
-| GET | `/banjir` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Water level and risk for each zone |
-| GET | `/alerts/active` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Open flood alerts that concern me (drives the danger takeover) |
-| POST | `/admin/banjir/zones/:zoneId/level` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Staff set a zone water level (the prototype sensor) |
-| POST | `/ingest/flood` | Bearer token (sensor) | Sensor bridge posts a reading (bearer token) |
+| GET | `/banjir` | RESIDENT, GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Water level, risk and the latest official message for each zone |
+| GET | `/alerts/active` | RESIDENT, GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Open flood alerts that concern me (drives the danger takeover) |
+| POST | `/banjir/checkin` | RESIDENT | "I'm safe" or "I need help" during an alert in my zone |
+| GET | `/public/flood-status` | Public | The one official flood status page (no sign-in, nothing about any person) |
+| POST | `/admin/banjir/zones/:zoneId/level` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | The duty officer sets a zone water level by hand (sent at once) |
+| GET | `/admin/banjir/agent` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | The Banjir agent: each zone's signals, drafts waiting for the officer and the decision timeline |
+| POST | `/admin/banjir/zones/:zoneId/signals` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Prototype: a signal from the sensor simulator, a camera test picture or the rain gauge |
+| POST | `/admin/banjir/drafts/:messageId` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | One tap: send (optionally edited) or cancel a one-signal draft |
+| POST | `/ingest/flood` | Bearer token (sensor) | Sensor bridge posts a reading (bearer token); the agent judges it with the other signals |
+
+## Akses+
+
+| Method | Path | Who | What it does |
+| --- | --- | --- | --- |
+| GET | `/me/access` | Any signed-in user | My access needs and display choices (private) |
+| POST | `/me/access` | Any signed-in user | Save my access needs and choices (needs and the priority list need consent) |
+| POST | `/me/access/delete` | Any signed-in user | Delete my access needs now (BR32) |
+| GET | `/carers` | RESIDENT | My carers, and the people I care for |
+| POST | `/carers` | RESIDENT | Ask another resident (by member code) to be my carer |
+| POST | `/carers/:linkId/respond` | RESIDENT | Accept or decline being someone’s carer |
+| POST | `/carers/:linkId/end` | RESIDENT | End a carer link (either side) |
+| GET | `/access-places` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Step-free routes, ramps, lifts, accessible toilets and OKU parking |
+| POST | `/access-places` | RESIDENT | Suggest an accessible place (staff check it) |
+| POST | `/access-places/:placeId/blocked` | RESIDENT | Say an accessible place is blocked |
+| POST | `/admin/access-places` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Add a checked accessible place |
+| POST | `/admin/access-places/:placeId/review` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Confirm a place, mark it blocked, or remove it |
+
+## Taman
+
+| Method | Path | Who | What it does |
+| --- | --- | --- | --- |
+| GET | `/taman` | RESIDENT | Gardens, plots, the watering roster and the wildlife log |
+| POST | `/taman/plots/:plotId/book` | RESIDENT | Book a garden plot for six months (one per home) |
+| POST | `/taman/plots/:plotId/release` | RESIDENT | Give a plot back |
+| POST | `/taman/roster` | RESIDENT | Take a day on a garden's watering roster |
+| POST | `/taman/watered` | RESIDENT | Scan the garden's code after watering |
+| POST | `/taman/sightings` | RESIDENT | Log a bird, insect or plant you spotted (multipart form; photo optional) |
+| GET | `/taman/sightings/:sightingId/photo` | Any signed-in user | A sighting photo (the person who logged it, or staff) |
+| GET | `/admin/taman/sightings` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Sightings waiting to be confirmed |
+| POST | `/admin/taman/sightings/:sightingId` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Confirm or reject a sighting |
+| GET | `/admin/taman/gardens` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Gardens with their printable gate codes |
+| POST | `/admin/taman/gardens` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Add a community garden and its plots |
 
 ## KITA Insights
 
@@ -168,7 +264,7 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 
 | Method | Path | Who | What it does |
 | --- | --- | --- | --- |
-| POST | `/internal/jobs/:name` | Bearer token (cron) | Run a scheduled job (expire-points, float-check, settle, cleanup); bearer token |
+| POST | `/internal/jobs/:name` | Bearer token (cron) | Run a scheduled job (expire-points, float-check, settle, cleanup, flood-agent); bearer token |
 | GET | `/health` | Public | Liveness: the process is up |
 | GET | `/ready` | Public | Readiness: the database answers and the schema is migrated |
 | GET | `/openapi.json` | Public | This API as an OpenAPI 3.1 document |

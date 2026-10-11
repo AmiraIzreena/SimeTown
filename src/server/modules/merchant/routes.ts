@@ -39,6 +39,7 @@ export const merchantRoutes = [
       memberCode: zMemberCode,
       billSen: zSen(10_000_000),
       redeemPoints: z.number().int().min(0).max(3_000_000).default(0),
+      useOffer: z.boolean().default(false),
       idempotencyKey: zId,
     }),
     handler: (c) => merchant.createSale(c.db, c.actor, c.body, c.now),

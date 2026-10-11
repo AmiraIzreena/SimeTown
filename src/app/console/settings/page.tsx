@@ -1,5 +1,7 @@
 'use client';
 
+import { Text } from '@/components/ui/localized-text';
+
 import type { FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, PageHeader } from '@/components/ui/card';
@@ -37,6 +39,14 @@ const GROUPS: { title: string; description: string; fields: { key: string; label
     ],
   },
   {
+    title: 'Shop Offers',
+    description: 'Offer-backed points come only from what shops pledge each month: no pledge, no points.',
+    fields: [
+      { key: 'offer_points_monthly_home', label: 'Offer-backed points per home per month', hint: 'From verified green actions. The proposal’s example is 800 (RM8).' },
+      { key: 'offer_success_fee_bps', label: 'Success fee on an offer used (%)', hint: 'Of the discount, charged to the shop only when an offer is used.', scale: 100 },
+    ],
+  },
+  {
     title: 'Safety and privacy',
     description: 'Flood lines, moderation and the smallest group a sponsor may see.',
     fields: [
@@ -71,12 +81,9 @@ export default function SettingsPage() {
             {s.issuance_paused && (
               <Card className="flex flex-wrap items-center justify-between gap-4 border-accent-200 bg-accent-50 p-5 text-[15px] text-accent-700">
                 <p>
-                  <strong>Points are paused</strong> because a float check failed. Resume only after the cause has been found and fixed.
-                </p>
+                  <strong><Text>Points are paused</Text></strong><Text> because a float check failed. Resume only after the cause has been found and fixed.</Text></p>
                 {canEdit && (
-                  <Button type="button" variant="danger" onClick={() => void save.run({ issuance_paused: false })} pending={save.pending}>
-                    Resume points
-                  </Button>
+                  <Button type="button" variant="danger" onClick={() => void save.run({ issuance_paused: false })} pending={save.pending}><Text>Resume points</Text></Button>
                 )}
               </Card>
             )}
@@ -91,9 +98,7 @@ export default function SettingsPage() {
               </Card>
             ))}
             {canEdit && (
-              <Button type="submit" size="lg" pending={save.pending}>
-                Save rules
-              </Button>
+              <Button type="submit" size="lg" pending={save.pending}><Text>Save rules</Text></Button>
             )}
           </form>
         )}

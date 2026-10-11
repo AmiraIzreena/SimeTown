@@ -1,5 +1,7 @@
 'use client';
 
+import { Text } from '@/components/ui/localized-text';
+
 import { Copy, Plus, Sun, UserCheck } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
@@ -78,9 +80,7 @@ function VerifyResidents() {
   if (pending.isLoading) return <SkeletonList rows={3} />;
   if (pending.items.length === 0) {
     return (
-      <EmptyState icon={UserCheck} title="Nobody is waiting">
-        New residents appear here until their home is checked against the property record.
-      </EmptyState>
+      <EmptyState icon={UserCheck} title="Nobody is waiting"><Text>New residents appear here until their home is checked against the property record.</Text></EmptyState>
     );
   }
   return (
@@ -91,20 +91,15 @@ function VerifyResidents() {
             <div className="min-w-0">
               <p className="text-[15px] font-semibold text-ink-900">{r.full_name}</p>
               <p className="text-sm text-ink-600">
-                {r.occupancy === 'OWNER' ? 'Owner' : 'Tenant'} · {r.address}
+                <Text>{r.occupancy === 'OWNER' ? 'Owner' : 'Tenant'}</Text> · {r.address}
               </p>
-              <p className="text-sm text-ink-500">
-                Property record <strong className="font-semibold text-ink-700">{r.unit_code}</strong> · {r.email}
-                {r.phone ? ` · ${formatPhone(r.phone)}` : ''} · registered {timeAgo(r.created_at)}
+              <p className="text-sm text-ink-500"><Text>Property record </Text><strong className="font-semibold text-ink-700"><Text>{r.unit_code}</Text></strong> · {r.email}
+                {r.phone ? ` · ${formatPhone(r.phone)}` : ''}<Text> · registered </Text><Text>{timeAgo(r.created_at)}</Text>
               </p>
             </div>
             <div className="flex gap-2">
-              <Button size="sm" onClick={() => decide.run(r.id, true)} disabled={decide.pending}>
-                Confirm
-              </Button>
-              <Button size="sm" variant="secondary" onClick={() => decide.run(r.id, false)} disabled={decide.pending}>
-                Reject
-              </Button>
+              <Button size="sm" onClick={() => decide.run(r.id, true)} disabled={decide.pending}><Text>Confirm</Text></Button>
+              <Button size="sm" variant="secondary" onClick={() => decide.run(r.id, false)} disabled={decide.pending}><Text>Reject</Text></Button>
             </div>
           </Card>
         </li>
@@ -167,42 +162,34 @@ function Accounts({ hq, meId }: { hq: boolean; meId?: string }) {
           }}
         >
           <Input label="Add a sponsor organisation" name="name" maxLength={120} required className="w-64" />
-          <Button type="submit" variant="secondary" pending={addSponsor.pending}>
-            Add
-          </Button>
+          <Button type="submit" variant="secondary" pending={addSponsor.pending}><Text>Add</Text></Button>
         </form>
         <Button onClick={() => setCreating(true)} className="self-end">
-          <Plus className="size-4" aria-hidden />
-          New account
-        </Button>
+          <Plus className="size-4" aria-hidden /><Text>New account</Text></Button>
       </div>
       {requests.data && requests.data.length > 0 && (
         <Card className="space-y-3 p-5">
           <div>
-            <h2 className="text-base font-semibold text-ink-900">Waiting for a second admin</h2>
-            <p className="text-sm text-ink-600">New admin accounts, and new passwords for accounts already in use, need two people. Only the approver gets the link.</p>
+            <h2 className="text-base font-semibold text-ink-900"><Text>Waiting for a second admin</Text></h2>
+            <p className="text-sm text-ink-600"><Text>New admin accounts, and new passwords for accounts already in use, need two people. Only the approver gets the link.</Text></p>
           </div>
           <ul className="divide-y divide-ink-100">
             {requests.data.map((r) => (
               <li key={r.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                 <div className="min-w-0">
                   <p className="text-[15px] font-medium text-ink-900">
-                    {r.kind === 'NEW_ADMIN' ? 'New account' : 'New set-password link'}: {r.name} · {ROLE_LABELS[r.role]}
+                    <Text>{r.kind === 'NEW_ADMIN' ? 'New account' : 'New set-password link'}</Text>: {r.name} · <Text>{ROLE_LABELS[r.role]}</Text>
                   </p>
                   <p className="text-sm text-ink-500">
-                    {r.email} · asked by {r.requestedBy} {timeAgo(r.createdAt)}
+                    {r.email}<Text> · asked by </Text><Text>{r.requestedBy}</Text> <Text>{timeAgo(r.createdAt)}</Text>
                   </p>
                 </div>
                 {r.mine ? (
-                  <Badge tone="warning">Waiting for another admin</Badge>
+                  <Badge tone="warning"><Text>Waiting for another admin</Text></Badge>
                 ) : (
                   <div className="flex gap-2">
-                    <Button size="sm" onClick={() => decide.run(r.id, true)} disabled={decide.pending}>
-                      Approve
-                    </Button>
-                    <Button size="sm" variant="secondary" onClick={() => decide.run(r.id, false)} disabled={decide.pending}>
-                      Reject
-                    </Button>
+                    <Button size="sm" onClick={() => decide.run(r.id, true)} disabled={decide.pending}><Text>Approve</Text></Button>
+                    <Button size="sm" variant="secondary" onClick={() => decide.run(r.id, false)} disabled={decide.pending}><Text>Reject</Text></Button>
                   </div>
                 )}
               </li>
@@ -220,15 +207,13 @@ function Accounts({ hq, meId }: { hq: boolean; meId?: string }) {
               { header: 'Name', cell: (a) => <span className="font-medium text-ink-900">{a.full_name}</span> },
               { header: 'Email', cell: (a) => a.email },
               { header: 'Role', cell: (a) => `${ROLE_LABELS[a.role]}${a.merchant_name ? ` · ${a.merchant_name}` : ''}${a.sponsor_name ? ` · ${a.sponsor_name}` : ''}` },
-              { header: 'Sign-in', cell: (a) => <Badge tone={a.active ? 'success' : 'warning'}>{a.active ? 'Active' : 'Invited'}</Badge> },
+              { header: 'Sign-in', cell: (a) => <Badge tone={a.active ? 'success' : 'warning'}><Text>{a.active ? 'Active' : 'Invited'}</Text></Badge> },
               {
                 header: '',
                 align: 'right',
                 cell: (a) =>
                   a.id === meId ? null : (
-                    <Button size="sm" variant="ghost" onClick={() => reinvite.run(a.id)} disabled={reinvite.pending}>
-                      New set-password link
-                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => reinvite.run(a.id)} disabled={reinvite.pending}><Text>New set-password link</Text></Button>
                   ),
               },
             ]}
@@ -243,12 +228,8 @@ function Accounts({ hq, meId }: { hq: boolean; meId?: string }) {
         description="The person sets their own password from a one-time link."
         footer={
           <>
-            <Button variant="secondary" onClick={() => setCreating(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" form="create-account" pending={create.pending}>
-              Create and get link
-            </Button>
+            <Button variant="secondary" onClick={() => setCreating(false)}><Text>Cancel</Text></Button>
+            <Button type="submit" form="create-account" pending={create.pending}><Text>Create and get link</Text></Button>
           </>
         }
       >
@@ -256,15 +237,13 @@ function Accounts({ hq, meId }: { hq: boolean; meId?: string }) {
           <Select label="Role" value={role} onChange={(event) => setRole(event.target.value as Role)}>
             {roles.map((r) => (
               <option key={r} value={r}>
-                {ROLE_LABELS[r]}
+                <Text>{ROLE_LABELS[r]}</Text>
               </option>
             ))}
           </Select>
           {role === 'MERCHANT' && (
             <Select label="Shop" name="merchantId" required defaultValue="" error={create.fields.merchantId}>
-              <option value="" disabled>
-                Choose a shop
-              </option>
+              <option value="" disabled><Text>Choose a shop</Text></option>
               {merchants.data?.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.name}
@@ -274,9 +253,7 @@ function Accounts({ hq, meId }: { hq: boolean; meId?: string }) {
           )}
           {role === 'SPONSOR' && (
             <Select label="Sponsor" name="sponsorId" required defaultValue="" error={create.fields.sponsorId}>
-              <option value="" disabled>
-                Choose a sponsor
-              </option>
+              <option value="" disabled><Text>Choose a sponsor</Text></option>
               {sponsors.data?.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
@@ -291,16 +268,14 @@ function Accounts({ hq, meId }: { hq: boolean; meId?: string }) {
 
       <Modal open={link !== null} onClose={() => setLink(null)} title="Set-password link" description="Send this to the person yourself. It works once and expires in 7 days. It will not be shown again.">
         <div className="space-y-4">
-          <p className="break-all rounded-md border border-ink-200 bg-ink-25 p-3 font-mono text-sm text-ink-800">{link}</p>
+          <p className="break-all rounded-md border border-ink-200 bg-ink-25 p-3 font-mono text-sm text-ink-800"><Text>{link}</Text></p>
           <Button
             onClick={async () => {
               await navigator.clipboard.writeText(link!);
               toast.show('Link copied.');
             }}
           >
-            <Copy className="size-4" aria-hidden />
-            Copy link
-          </Button>
+            <Copy className="size-4" aria-hidden /><Text>Copy link</Text></Button>
         </div>
       </Modal>
     </div>
@@ -313,9 +288,7 @@ function SolarLeads() {
     <Async state={leads}>
       {(list) =>
         list.length === 0 ? (
-          <EmptyState icon={Sun} title="No requests yet">
-            Residents appear here only after they ask to be contacted about solar.
-          </EmptyState>
+          <EmptyState icon={Sun} title="No requests yet"><Text>Residents appear here only after they ask to be contacted about solar.</Text></EmptyState>
         ) : (
           <DataTable
             caption="Residents who asked about solar"

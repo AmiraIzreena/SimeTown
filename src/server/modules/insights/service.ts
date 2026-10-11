@@ -1,6 +1,7 @@
 import { one, type Db } from '../../db/client';
 import type { Actor } from '../../auth/actor';
 import { floatPosition } from '../ledger/finance';
+import { pledgeSummary } from '../offers/service';
 import { getSettings } from '../settings';
 
 /**
@@ -109,5 +110,28 @@ export async function insightsOverview(db: Db, actor: Actor, now: Date) {
     ),
     floatPosition(db),
   ]);
-  return { people, planet, reports, community, shops, points, byActivity, byCategory, byZone, daily, float };
+  const [smart, offers] = await Promise.all([
+    one(
+      db,
+      `SELECT (SELECT count(*)::int FROM kitar_machines WHERE ($1::uuid IS NULL OR township_id = $1)) AS machines,
+              (SELECT count(*)::int FROM kitar_machines WHERE status = 'ONLINE' AND ($1::uuid IS NULL OR township_id = $1)) AS machines_online,
+              (SELECT coalesce(sum(s.accepted_g), 0)::int FROM kitar_sessions s JOIN kitar_machines m ON m.id = s.machine_id
+                WHERE s.status = 'DONE' AND ($1::uuid IS NULL OR m.township_id = $1) AND s.closed_at >= ${since}) AS machine_g,
+              (SELECT count(*)::int FROM kitar_sessions s JOIN kitar_machines m ON m.id = s.machine_id
+                WHERE s.status = 'DONE' AND s.mode = 'GUEST' AND ($1::uuid IS NULL OR m.township_id = $1) AND s.closed_at >= ${since}) AS guest_sessions,
+              (SELECT coalesce(sum(a.valid_m), 0)::int FROM gerak_activities a WHERE a.status = 'FINISHED' AND ($1::uuid IS NULL OR a.township_id = $1) AND a.finished_at >= ${since}) AS tracked_m,
+              (SELECT count(*)::int FROM jimat_bills b JOIN homes h ON h.id = b.home_id WHERE b.status = 'CONFIRMED' AND ($1::uuid IS NULL OR h.township_id = $1) AND b.confirmed_at >= ${since}) AS bills_read,
+              (SELECT count(*)::int FROM visitor_entries e WHERE ($1::uuid IS NULL OR e.township_id = $1) AND e.entered_at >= ${since}) AS visits,
+              (SELECT count(*)::int FROM flood_messages f JOIN flood_zones z ON z.id = f.zone_id
+                WHERE f.status = 'SENT' AND f.kind = 'ALERT' AND ($1::uuid IS NULL OR z.township_id = $1) AND f.sent_at >= ${since}) AS flood_alerts,
+              (SELECT count(*)::int FROM reports r WHERE r.category = 'ACCESS_BARRIER' AND ($1::uuid IS NULL OR r.township_id = $1) AND r.created_at >= ${since}) AS barriers_reported,
+              (SELECT count(*)::int FROM reports r WHERE r.category = 'ACCESS_BARRIER' AND r.status = 'RESOLVED' AND r.resolved_at - r.created_at <= interval '7 days'
+                AND ($1::uuid IS NULL OR r.township_id = $1) AND r.created_at >= ${since}) AS barriers_fixed_on_time,
+              (SELECT count(*)::int FROM wildlife_sightings w WHERE w.status = 'CONFIRMED' AND ($1::uuid IS NULL OR w.township_id = $1) AND w.created_at >= ${since}) AS sightings,
+              (SELECT count(*)::int FROM garden_plots p JOIN gardens g ON g.id = p.garden_id WHERE p.holder_home_id IS NOT NULL AND p.booked_until >= current_date AND ($1::uuid IS NULL OR g.township_id = $1)) AS plots_booked`,
+      [t, now],
+    ),
+    pledgeSummary(db, t, now, tz),
+  ]);
+  return { people, planet, reports, community, shops, points, byActivity, byCategory, byZone, daily, float, smart, offers };
 }

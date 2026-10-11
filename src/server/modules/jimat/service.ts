@@ -2,7 +2,7 @@ import { formatAddress, type HomeAddress } from '@/shared/domain';
 import { one, type Db } from '../../db/client';
 import { requireVerifiedResident, type Actor } from '../../auth/actor';
 import { conflict, ruleViolation } from '../../errors';
-import { recordAction, type ActionReward } from '../rewards';
+import { recordAction, sumRewards, type ActionReward } from '../rewards';
 import { getSettings } from '../settings';
 import { HOME_ADDRESS_COLUMNS } from '../townships';
 
@@ -10,11 +10,17 @@ import { HOME_ADDRESS_COLUMNS } from '../townships';
 
 interface Reading {
   month: string;
-  electricity_kwh: number;
-  water_litres: number;
+  /** Either may be missing for a month when only one bill has been read so far. */
+  electricity_kwh: number | null;
+  water_litres: number | null;
+  electricity_sen: number | null;
+  water_sen: number | null;
+  electricity_source: 'TYPED' | 'BILL' | null;
+  water_source: 'TYPED' | 'BILL' | null;
 }
 
-const pctChange = (now: number, before: number) => (before > 0 ? Math.round(((now - before) / before) * 1000) / 10 : null);
+const pctChange = (now: number | null | undefined, before: number | null | undefined) =>
+  now != null && before != null && before > 0 ? Math.round(((now - before) / before) * 1000) / 10 : null;
 
 function tipsFor(electricityPct: number | null, waterPct: number | null, leak: boolean): string[] {
   const tips: string[] = [];
@@ -33,18 +39,19 @@ export async function jimatOverview(db: Db, actor: Actor) {
   const resident = requireVerifiedResident(actor);
   const readings = (
     await db.query<Reading>(
-      `SELECT month::text AS month, electricity_kwh, water_litres FROM jimat_readings WHERE home_id = $1 ORDER BY month DESC LIMIT 12`,
+      `SELECT month::text AS month, electricity_kwh, water_litres, electricity_sen, water_sen, electricity_source, water_source
+         FROM jimat_readings WHERE home_id = $1 ORDER BY month DESC LIMIT 12`,
       [resident.homeId],
     )
   ).reverse();
   const latest = readings[readings.length - 1];
   const previous = readings[readings.length - 2];
-  const electricityPct = latest && previous ? pctChange(latest.electricity_kwh, previous.electricity_kwh) : null;
-  const waterPct = latest && previous ? pctChange(latest.water_litres, previous.water_litres) : null;
+  const electricityPct = pctChange(latest?.electricity_kwh, previous?.electricity_kwh);
+  const waterPct = pctChange(latest?.water_litres, previous?.water_litres);
   // "Leak alert": this month's water is at least 30% above the average of up to three earlier months.
-  const earlier = readings.slice(-4, -1);
-  const average = earlier.length ? earlier.reduce((sum, r) => sum + r.water_litres, 0) / earlier.length : 0;
-  const leakSuspected = Boolean(latest && average > 0 && latest.water_litres >= average * 1.3);
+  const earlier = readings.slice(-4, -1).filter((r) => r.water_litres !== null);
+  const average = earlier.length ? earlier.reduce((sum, r) => sum + r.water_litres!, 0) / earlier.length : 0;
+  const leakSuspected = Boolean(latest?.water_litres != null && average > 0 && latest.water_litres >= average * 1.3);
   const solar = await one(db, 'SELECT 1 FROM solar_leads WHERE user_id = $1', [resident.id]);
   return { readings, electricityPct, waterPct, leakSuspected, tips: latest ? tipsFor(electricityPct, waterPct, leakSuspected) : [], solarInterest: Boolean(solar) };
 }
@@ -65,8 +72,8 @@ export async function submitReading(db: Db, actor: Actor, input: { month: string
     );
     if (!window!.ok) throw ruleViolation('MONTH_NOT_OPEN', 'You can enter readings for this month or last month only.');
     const added = await tx.query(
-      `INSERT INTO jimat_readings (home_id, month, electricity_kwh, water_litres, entered_by, created_at)
-       VALUES ($1, $2::date, $3, $4, $5, $6) ON CONFLICT DO NOTHING RETURNING month`,
+      `INSERT INTO jimat_readings (home_id, month, electricity_kwh, water_litres, electricity_source, water_source, entered_by, created_at)
+       VALUES ($1, $2::date, $3, $4, 'TYPED', 'TYPED', $5, $6) ON CONFLICT DO NOTHING RETURNING month`,
       [resident.homeId, `${input.month}-01`, input.electricityKwh, input.waterLitres, resident.id, now],
     );
     if (added.length === 0) throw conflict('READING_EXISTS', 'Readings for that month have already been entered for your home.');
@@ -80,13 +87,15 @@ export async function submitReading(db: Db, actor: Actor, input: { month: string
     // A "saver" month: neither figure went up, and at least one fell by 5% or more.
     const saved =
       previous !== undefined &&
+      previous.electricity_kwh !== null &&
+      previous.water_litres !== null &&
       input.electricityKwh <= previous.electricity_kwh &&
       input.waterLitres <= previous.water_litres &&
       (input.electricityKwh <= previous.electricity_kwh * 0.95 || input.waterLitres <= previous.water_litres * 0.95);
     if (saved) rewards.push(await recordAction(tx, { user: resident, activity: 'JIMAT_SAVER', ref: input.month, now }));
     return {
       saved,
-      reward: { xp: rewards.reduce((s, r) => s + r.xp, 0), points: rewards.reduce((s, r) => s + r.points, 0), fundedBy: rewards.flatMap((r) => r.fundedBy) },
+      reward: sumRewards(rewards),
     };
   });
 }

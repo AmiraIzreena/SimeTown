@@ -1,5 +1,7 @@
+
+import { Text } from '@/components/ui/localized-text';
 import type { Metadata } from 'next';
-import Link from 'next/link';
+import { LocalizedLink as Link } from '@/components/ui/localized-elements';
 import { redirect } from 'next/navigation';
 import { AuthFrame, LoginForm } from '@/components/features/auth';
 import { currentActor } from '@/server/auth/guard';
@@ -17,17 +19,11 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       intro="One sign-in for residents, shops, sponsors and township staff."
       footer={
         <>
-          <p>
-            New resident?{' '}
-            <Link href="/register" className="font-semibold text-brand-700 hover:underline">
-              Create an account
-            </Link>
+          <p><Text>New resident?</Text><Text>{' '}</Text>
+            <Link href="/register" className="font-semibold text-brand-700 hover:underline"><Text>Create an account</Text></Link>
           </p>
-          <p>
-            Run a township shop?{' '}
-            <Link href="/join" className="font-semibold text-brand-700 hover:underline">
-              Apply to join
-            </Link>
+          <p><Text>Run a township shop?</Text><Text>{' '}</Text>
+            <Link href="/join" className="font-semibold text-brand-700 hover:underline"><Text>Apply to join</Text></Link>
           </p>
         </>
       }

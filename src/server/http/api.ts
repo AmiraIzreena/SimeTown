@@ -1,4 +1,5 @@
 import { adminRoutes } from '../modules/admin/routes';
+import { aksesRoutes } from '../modules/akses/routes';
 import { banjirRoutes } from '../modules/banjir/routes';
 import { campaignRoutes } from '../modules/campaigns/routes';
 import { communityRoutes } from '../modules/community/routes';
@@ -7,7 +8,10 @@ import { identityRoutes } from '../modules/identity/routes';
 import { jimatRoutes } from '../modules/jimat/routes';
 import { kitarRoutes } from '../modules/kitar/routes';
 import { merchantRoutes } from '../modules/merchant/routes';
+import { offerRoutes } from '../modules/offers/routes';
 import { reportRoutes } from '../modules/reports/routes';
+import { tamanRoutes } from '../modules/taman/routes';
+import { tamuRoutes } from '../modules/tamu/routes';
 import { walletRoutes } from '../modules/wallet/routes';
 import { buildOpenApi } from './openapi';
 import { createRouter, json, route, type RouteDef } from './router';
@@ -19,13 +23,17 @@ export const routes: RouteDef[] = [
   ...identityRoutes,
   ...walletRoutes,
   ...merchantRoutes,
+  ...offerRoutes,
   ...campaignRoutes,
   ...communityRoutes,
   ...reportRoutes,
+  ...tamuRoutes,
   ...gerakRoutes,
   ...kitarRoutes,
   ...jimatRoutes,
   ...banjirRoutes,
+  ...aksesRoutes,
+  ...tamanRoutes,
   ...adminRoutes,
 ];
 

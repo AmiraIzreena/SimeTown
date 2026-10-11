@@ -1,7 +1,10 @@
+
+import { Text } from '@/components/ui/localized-text';
+import { LocalizedNav } from '@/components/ui/localized-elements';
 import {
-  ArrowRight, Bike, Building2, Droplets, Gauge, HandHeart, Megaphone, Recycle, Repeat2, ShieldCheck, Store, TriangleAlert, Wallet, Zap, type LucideIcon,
+  Accessibility, ArrowRight, Bike, Bot, Building2, DoorOpen, Droplets, Gauge, HandHeart, House, Megaphone, Recycle, Repeat2, ShieldCheck, Sprout, Store, TriangleAlert, Wallet, Zap, type LucideIcon,
 } from 'lucide-react';
-import Link from 'next/link';
+import { LocalizedLink as Link } from '@/components/ui/localized-elements';
 import { Logo } from '@/components/shell/logo';
 import { Button } from '@/components/ui/button';
 import { Reveal } from '@/components/ui/reveal';
@@ -22,26 +25,31 @@ const FEATURES: { layer: string; question: string; items: { icon: LucideIcon; na
     items: [
       { icon: HandHeart, name: 'Jiran', gloss: 'Neighbours', text: 'Join township events. Ask for help or offer it.' },
       { icon: TriangleAlert, name: 'Lapor', gloss: 'Report', text: 'Report a hazard or a blocked ramp in under a minute and follow it until it is fixed.' },
-      { icon: Bike, name: 'Gerak', gloss: 'Move', text: 'Walk or cycle township loops and scan checkpoints along the way.' },
+      { icon: DoorOpen, name: 'Tamu', gloss: 'Visitors', text: 'Send a visitor pass by link. The guard scans it and you are told the moment they arrive.' },
+      { icon: Bike, name: 'Gerak', gloss: 'Move', text: 'Track a walk or ride on the map; checkpoints tick themselves, with fair-play checks.' },
+      { icon: Accessibility, name: 'Akses+', gloss: 'Access', text: 'Simple Mode, read-aloud, flashing alerts, step-free places and a priority help list.' },
     ],
   },
   {
     layer: 'Planet',
     question: 'Making sustainable living easy and worth doing',
     items: [
-      { icon: Recycle, name: 'Kitar', gloss: 'Recycle', text: 'Check the material, drop it at a kiosk, and see your street’s total grow.' },
+      { icon: Recycle, name: 'Kitar', gloss: 'Recycle', text: 'A smart machine recognises, counts and weighs each item, and signs every record.' },
       { icon: Repeat2, name: 'Kongsi', gloss: 'Share', text: 'Give away or lend things instead of throwing them out.' },
-      { icon: Zap, name: 'Jimat', gloss: 'Save', text: 'Track electricity and water month by month, with tips and a leak alert.' },
-      { icon: Droplets, name: 'Banjir', gloss: 'Flood', text: 'Water levels by zone. A danger warning takes over the screen with a safe route.' },
+      { icon: Zap, name: 'Jimat', gloss: 'Save', text: 'Upload a bill: it is checked for safety, read, and confirmed by you. Leak alerts and tips.' },
+      { icon: Droplets, name: 'Banjir', gloss: 'Flood', text: 'Sensors and camera AI, two signals must agree, a person checks the rest, and a safe route.' },
+      { icon: Sprout, name: 'Taman', gloss: 'Garden', text: 'Book a garden plot, take a day on the watering roster and log the wildlife you spot.' },
+      { icon: Bot, name: 'KITA Assistant', gloss: 'Preview', text: 'Ask in English or Bahasa Malaysia. It acts only after you confirm, and never decides an alert.' },
     ],
   },
   {
     layer: 'Business',
     question: 'Tools for shops, sponsors and Sime Darby Property',
     items: [
-      { icon: Store, name: 'KITA Merchant', gloss: 'Shops', text: 'Give points on sales and accept points as part-payment, with a weekly statement.' },
-      { icon: Megaphone, name: 'KITA Partner Hub', gloss: 'Sponsors', text: 'Fund a challenge with a fixed budget. Whatever is not used is refunded.' },
+      { icon: Store, name: 'KITA Merchant', gloss: 'Shops', text: 'Give and accept points, and set your own Shop Offer with a monthly budget you control.' },
+      { icon: Megaphone, name: 'KITA Partner Hub', gloss: 'Sponsors', text: 'Four sponsor tiers, and challenges with a fixed budget. Whatever is not used is refunded.' },
       { icon: Gauge, name: 'KITA Insights', gloss: 'SDP', text: 'What the township achieved, in totals only, with the float matched to the sen.' },
+      { icon: House, name: 'KITA Home', gloss: 'Preview', text: 'A home logbook, trusted home services with contractor passes, and early previews of launches.' },
     ],
   },
 ];
@@ -61,22 +69,16 @@ export default async function LandingPage() {
       <header className="absolute inset-x-0 top-0 z-20">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 sm:px-8">
           <Logo tone="light" />
-          <nav aria-label="Account" className="flex items-center gap-2">
+          <LocalizedNav aria-label="Account" className="flex items-center gap-2">
             {home ? (
-              <Button href={home} variant="light" size="sm">
-                Open KITA+
-              </Button>
+              <Button href={home} variant="light" size="sm"><Text>Open KITA+</Text></Button>
             ) : (
               <>
-                <Link href="/login" className="rounded-md px-3 py-2 text-sm font-semibold text-white/90 transition-colors duration-200 hover:text-white">
-                  Sign in
-                </Link>
-                <Button href="/register" variant="light" size="sm">
-                  Get started
-                </Button>
+                <Link href="/login" className="rounded-md px-3 py-2 text-sm font-semibold text-white/90 transition-colors duration-200 hover:text-white"><Text>Sign in</Text></Link>
+                <Button href="/register" variant="light" size="sm"><Text>Get started</Text></Button>
               </>
             )}
-          </nav>
+          </LocalizedNav>
         </div>
       </header>
 
@@ -94,22 +96,17 @@ export default async function LandingPage() {
           </svg>
           <div className="mx-auto grid max-w-6xl items-center gap-12 px-5 pb-20 pt-32 sm:px-8 lg:grid-cols-[1.1fr_0.9fr] lg:pb-28 lg:pt-40">
             <div className="animate-rise">
-              <p className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/8 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-brand-100">Township of Tomorrow · People &amp; Planet</p>
-              <h1 className="mt-6 text-4xl font-extrabold leading-[1.08] text-white sm:text-5xl lg:text-[56px]">
-                One app where people, businesses and nature <span className="text-gold-300">thrive together</span>.
+              <p className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/8 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-brand-100"><Text>Township of Tomorrow · People &amp; Planet</Text></p>
+              <h1 className="mt-6 text-4xl font-extrabold leading-[1.08] text-white sm:text-5xl lg:text-[56px]"><Text>One app where people, businesses and nature </Text><span className="text-gold-300"><Text>thrive together</Text></span>.
               </h1>
-              <p className="mt-6 max-w-xl text-lg leading-relaxed text-brand-100/90">
-                KITA+ rewards everyday good actions with points that keep value inside the township. Every point is paid for before it is given.
-              </p>
+              <p className="mt-6 max-w-xl text-lg leading-relaxed text-brand-100/90"><Text>KITA+ rewards everyday good actions with points that keep value inside the township. Every point is paid for before it is given.</Text></p>
               <div className="mt-9 flex flex-wrap gap-3">
                 <Button href={home ?? '/register'} variant="light" size="lg">
-                  {home ? 'Open KITA+' : 'Create a resident account'}
+                  <Text>{home ? 'Open KITA+' : 'Create a resident account'}</Text>
                   <ArrowRight className="size-4" aria-hidden />
                 </Button>
                 {!home && (
-                  <Button href="/login" size="lg" className="border border-white/25 bg-transparent text-white shadow-none hover:bg-white/10">
-                    Sign in
-                  </Button>
+                  <Button href="/login" size="lg" className="border border-white/25 bg-transparent text-white shadow-none hover:bg-white/10"><Text>Sign in</Text></Button>
                 )}
               </div>
             </div>
@@ -119,11 +116,11 @@ export default async function LandingPage() {
               <div className="rounded-2xl border border-white/15 bg-white/8 p-3 shadow-lg backdrop-blur-sm">
                 <div className="rounded-xl bg-white p-5 text-ink-800">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium text-ink-500">KITA Points</p>
-                    <span className="rounded-full bg-gold-50 px-2.5 py-0.5 text-xs font-semibold text-gold-700">100 pts = RM1</span>
+                    <p className="text-sm font-medium text-ink-500"><Text>KITA Points</Text></p>
+                    <span className="rounded-full bg-gold-50 px-2.5 py-0.5 text-xs font-semibold text-gold-700"><Text>100 pts = RM1</Text></span>
                   </div>
                   <p className="mt-2 font-display text-4xl font-bold tracking-tight text-ink-900">675</p>
-                  <p className="text-sm text-ink-500">worth RM6.75 at township shops</p>
+                  <p className="text-sm text-ink-500"><Text>worth RM6.75 at township shops</Text></p>
                   <div className="mt-5 space-y-2.5 border-t border-ink-100 pt-4 text-sm">
                     {[
                       ['Kitar Challenge', 'funded by a sponsor', '+300'],
@@ -132,10 +129,10 @@ export default async function LandingPage() {
                     ].map(([name, who, points]) => (
                       <div key={name} className="flex items-center justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="truncate font-medium text-ink-800">{name}</p>
-                          <p className="truncate text-xs text-ink-500">{who}</p>
+                          <p className="truncate font-medium text-ink-800"><Text>{name}</Text></p>
+                          <p className="truncate text-xs text-ink-500"><Text>{who}</Text></p>
                         </div>
-                        <span className={points!.startsWith('+') ? 'font-semibold text-success-700' : 'font-semibold text-ink-700'}>{points}</span>
+                        <span className={points!.startsWith('+') ? 'font-semibold text-success-700' : 'font-semibold text-ink-700'}><Text>{points}</Text></span>
                       </div>
                     ))}
                   </div>
@@ -148,16 +145,16 @@ export default async function LandingPage() {
         {/* How it works */}
         <section className="mx-auto max-w-6xl px-5 py-20 sm:px-8">
           <Reveal>
-            <p className="text-sm font-semibold uppercase tracking-[0.14em] text-brand-600">How it works</p>
-            <h2 className="mt-2 max-w-2xl text-3xl font-bold sm:text-4xl">Four steps, and the money is always there first.</h2>
+            <p className="text-sm font-semibold uppercase tracking-[0.14em] text-brand-600"><Text>How it works</Text></p>
+            <h2 className="mt-2 max-w-2xl text-3xl font-bold sm:text-4xl"><Text>Four steps, and the money is always there first.</Text></h2>
           </Reveal>
           <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {STEPS.map((step, i) => (
               <Reveal key={step.n} index={i}>
                 <div className="h-full rounded-lg border border-ink-200 bg-white p-6 shadow-xs">
-                  <span className="grid size-9 place-items-center rounded-full bg-brand-700 font-display text-sm font-bold text-white">{step.n}</span>
-                  <h3 className="mt-4 text-lg font-semibold">{step.title}</h3>
-                  <p className="mt-1.5 text-[15px] leading-relaxed text-ink-600">{step.text}</p>
+                  <span className="grid size-9 place-items-center rounded-full bg-brand-700 font-display text-sm font-bold text-white"><Text>{step.n}</Text></span>
+                  <h3 className="mt-4 text-lg font-semibold"><Text>{step.title}</Text></h3>
+                  <p className="mt-1.5 text-[15px] leading-relaxed text-ink-600"><Text>{step.text}</Text></p>
                 </div>
               </Reveal>
             ))}
@@ -170,8 +167,8 @@ export default async function LandingPage() {
             {FEATURES.map((group) => (
               <div key={group.layer}>
                 <Reveal>
-                  <p className="text-sm font-semibold uppercase tracking-[0.14em] text-brand-600">{group.layer}</p>
-                  <h2 className="mt-2 text-2xl font-bold sm:text-3xl">{group.question}</h2>
+                  <p className="text-sm font-semibold uppercase tracking-[0.14em] text-brand-600"><Text>{group.layer}</Text></p>
+                  <h2 className="mt-2 text-2xl font-bold sm:text-3xl"><Text>{group.question}</Text></h2>
                 </Reveal>
                 <div className={`mt-7 grid gap-4 sm:grid-cols-2 ${group.items.length === 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
                   {group.items.map((item, i) => (
@@ -181,9 +178,9 @@ export default async function LandingPage() {
                           <item.icon className="size-5" aria-hidden />
                         </span>
                         <h3 className="mt-4 text-base font-semibold">
-                          {item.name} <span className="text-sm font-normal text-ink-500">{item.gloss}</span>
+                          {item.name} <span className="text-sm font-normal text-ink-500"><Text>{item.gloss}</Text></span>
                         </h3>
-                        <p className="mt-1.5 text-sm leading-relaxed text-ink-600">{item.text}</p>
+                        <p className="mt-1.5 text-sm leading-relaxed text-ink-600"><Text>{item.text}</Text></p>
                       </article>
                     </Reveal>
                   ))}
@@ -197,11 +194,9 @@ export default async function LandingPage() {
         <section className="mx-auto max-w-6xl px-5 py-20 sm:px-8">
           <div className="grid items-center gap-10 lg:grid-cols-2">
             <Reveal>
-              <p className="text-sm font-semibold uppercase tracking-[0.14em] text-accent-600">The most important rule</p>
-              <h2 className="mt-2 text-3xl font-bold sm:text-4xl">No pool, no points.</h2>
-              <p className="mt-4 text-[17px] leading-relaxed text-ink-600">
-                A point is given only after someone has put the money for it into a separate, locked pot: the reward float. That is why a shop can always be paid, and why KITA+ never earns from points residents fail to use.
-              </p>
+              <p className="text-sm font-semibold uppercase tracking-[0.14em] text-accent-600"><Text>The most important rule</Text></p>
+              <h2 className="mt-2 text-3xl font-bold sm:text-4xl"><Text>No pool, no points.</Text></h2>
+              <p className="mt-4 text-[17px] leading-relaxed text-ink-600"><Text>A point is given only after someone has put the money for it into a separate, locked pot: the reward float. That is why a shop can always be paid, and why KITA+ never earns from points residents fail to use.</Text></p>
             </Reveal>
             <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
               {[
@@ -211,9 +206,9 @@ export default async function LandingPage() {
               ].map(([big, small, text], i) => (
                 <Reveal key={big} index={i}>
                   <div className="h-full rounded-lg border border-ink-200 bg-white p-5 shadow-xs">
-                    <p className="font-display text-3xl font-bold text-brand-700">{big}</p>
-                    <p className="text-sm font-semibold text-ink-800">{small}</p>
-                    <p className="mt-2 text-sm text-ink-500">{text}</p>
+                    <p className="font-display text-3xl font-bold text-brand-700"><Text>{big}</Text></p>
+                    <p className="text-sm font-semibold text-ink-800"><Text>{small}</Text></p>
+                    <p className="mt-2 text-sm text-ink-500"><Text>{text}</Text></p>
                   </div>
                 </Reveal>
               ))}
@@ -225,17 +220,17 @@ export default async function LandingPage() {
         <section className="bg-gradient-to-br from-brand-800 to-brand-950 py-20 text-white">
           <div className="mx-auto max-w-6xl px-5 sm:px-8">
             <Reveal>
-              <h2 className="text-3xl font-bold text-white sm:text-4xl">Three groups gain together.</h2>
+              <h2 className="text-3xl font-bold text-white sm:text-4xl"><Text>Three groups gain together.</Text></h2>
             </Reveal>
             <div className="mt-9 grid gap-4 md:grid-cols-3">
               {AUDIENCES.map((a, i) => (
                 <Reveal key={a.title} index={i}>
                   <div className="flex h-full flex-col rounded-lg border border-white/12 bg-white/6 p-6">
                     <a.icon className="size-7 text-gold-300" aria-hidden />
-                    <h3 className="mt-4 text-lg font-semibold text-white">{a.title}</h3>
-                    <p className="mt-1.5 flex-1 text-[15px] text-brand-100/90">{a.text}</p>
+                    <h3 className="mt-4 text-lg font-semibold text-white"><Text>{a.title}</Text></h3>
+                    <p className="mt-1.5 flex-1 text-[15px] text-brand-100/90"><Text>{a.text}</Text></p>
                     <Link href={a.href} className="group mt-5 inline-flex items-center gap-1.5 self-start rounded-md text-sm font-semibold text-white">
-                      {a.cta}
+                      <Text>{a.cta}</Text>
                       <ArrowRight className="size-4 transition-transform duration-200 ease-soft group-hover:translate-x-0.5" aria-hidden />
                     </Link>
                   </div>
@@ -250,17 +245,16 @@ export default async function LandingPage() {
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-5 py-8 text-sm text-ink-500 sm:px-8 md:flex-row md:items-center md:justify-between">
           <Logo className="text-base" />
           <div className="max-w-2xl space-y-2 md:text-right">
-            <p>
-              A student prototype for the Sime Darby Property University Hackathon 2026. It is not an official Sime Darby Property product. All residents, shops, sponsors and figures shown are demo data, and no real money moves.
-            </p>
-            <nav aria-label="Legal" className="flex gap-4 md:justify-end">
-              <Link href="/terms" className="font-medium text-ink-700 hover:underline">
-                Terms of Use
-              </Link>
-              <Link href="/privacy" className="font-medium text-ink-700 hover:underline">
-                Privacy Notice
-              </Link>
-            </nav>
+            <p><Text>A student prototype for the Sime Darby Property University Hackathon 2026. It is not an official Sime Darby Property product. All residents, shops, sponsors and figures shown are demo data, and no real money moves.</Text></p>
+            <LocalizedNav aria-label="Public pages" className="flex flex-wrap gap-4 md:justify-end">
+              <Link href="/status" className="font-medium text-ink-700 hover:underline"><Text>Flood status</Text></Link>
+              <Link href="/guest" className="font-medium text-ink-700 hover:underline"><Text>Visiting as a guest</Text></Link>
+              <Link href="/partners" className="font-medium text-ink-700 hover:underline"><Text>Partners</Text></Link>
+            </LocalizedNav>
+            <LocalizedNav aria-label="Legal" className="flex gap-4 md:justify-end">
+              <Link href="/terms" className="font-medium text-ink-700 hover:underline"><Text>Terms of Use</Text></Link>
+              <Link href="/privacy" className="font-medium text-ink-700 hover:underline"><Text>Privacy Notice</Text></Link>
+            </LocalizedNav>
           </div>
         </div>
       </footer>

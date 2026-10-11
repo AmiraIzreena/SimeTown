@@ -1,5 +1,7 @@
 'use client';
 
+import { Text } from '@/components/ui/localized-text';
+
 import { Receipt } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -40,9 +42,7 @@ export default function SalesPage() {
       ) : sales.isLoading ? (
         <SkeletonList rows={4} />
       ) : sales.items.length === 0 ? (
-        <EmptyState icon={Receipt} title="No sales yet" action={<Button href="/merchant">Go to the counter</Button>}>
-          Sales you record at the counter appear here.
-        </EmptyState>
+        <EmptyState icon={Receipt} title="No sales yet" action={<Button href="/merchant"><Text>Go to the counter</Text></Button>}><Text>Sales you record at the counter appear here.</Text></EmptyState>
       ) : (
         <DataTable
           caption="Sales"
@@ -55,15 +55,13 @@ export default function SalesPage() {
             { header: 'Points accepted', align: 'right', cell: (s) => formatPoints(s.redeemPoints) },
             { header: 'Points given', align: 'right', cell: (s) => formatPoints(s.pointsEarned) },
             { header: 'Service fee', align: 'right', desktopOnly: true, cell: (s) => formatRM(s.feeSen) },
-            { header: 'Status', cell: (s) => <Badge tone={STATUS[s.status][1]}>{STATUS[s.status][0]}</Badge> },
+            { header: 'Status', cell: (s) => <Badge tone={STATUS[s.status][1]}><Text>{STATUS[s.status][0]}</Text></Badge> },
             {
               header: '',
               align: 'right',
               cell: (s) =>
                 s.status === 'COMPLETED' && (
-                  <Button size="sm" variant="ghost" onClick={() => setTarget(s)}>
-                    Refund
-                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setTarget(s)}><Text>Refund</Text></Button>
                 ),
             },
           ]}
@@ -71,9 +69,7 @@ export default function SalesPage() {
       )}
       {sales.hasMore && (
         <div className="mt-5 text-center">
-          <Button variant="secondary" onClick={() => void sales.loadMore()} pending={sales.loadingMore}>
-            Show more
-          </Button>
+          <Button variant="secondary" onClick={() => void sales.loadMore()} pending={sales.loadingMore}><Text>Show more</Text></Button>
         </div>
       )}
 
@@ -81,12 +77,12 @@ export default function SalesPage() {
         {target && (
           <>
             <p>
-              {target.memberName} · {formatRM(target.billSen)} on {formatDateTime(target.createdAt)}
+              <Text>{target.memberName}</Text> · <Text>{formatRM(target.billSen)}</Text><Text> on </Text><Text>{formatDateTime(target.createdAt)}</Text>
             </p>
             <ul className="list-disc space-y-1 pl-5">
-              {target.pointsEarned > 0 && <li>The {formatPoints(target.pointsEarned)} points earned on this sale are taken back and returned to your pool.</li>}
-              {target.redeemPoints > 0 && <li>The {formatPoints(target.redeemPoints)} points the customer used are returned to them as points, not cash.</li>}
-              <li>You will be told how much cash to give back.</li>
+              {target.pointsEarned > 0 && <li><Text>The </Text><Text>{formatPoints(target.pointsEarned)}</Text><Text> points earned on this sale are taken back and returned to your pool.</Text></li>}
+              {target.redeemPoints > 0 && <li><Text>The </Text><Text>{formatPoints(target.redeemPoints)}</Text><Text> points the customer used are returned to them as points, not cash.</Text></li>}
+              <li><Text>You will be told how much cash to give back.</Text></li>
             </ul>
           </>
         )}

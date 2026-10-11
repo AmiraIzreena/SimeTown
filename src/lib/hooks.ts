@@ -40,6 +40,8 @@ export function usePaged<T>(path: string | null) {
 }
 
 interface ActionOptions<R> {
+  /** Login failures must be visible; expired-session errors redirect elsewhere. */
+  showUnauthorizedError?: boolean;
   /** Shown as a success toast. Return null to stay quiet. */
   success?: string | ((result: R) => string | null);
   onSuccess?: (result: R) => void;
@@ -67,7 +69,7 @@ export function useAction<A extends unknown[], R>(fn: (...args: A) => Promise<R>
       } catch (error) {
         const apiError = error instanceof ApiError ? error : new ApiError(0, 'UNKNOWN', 'Something went wrong. Please try again.');
         setFields(apiError.fields);
-        if (apiError.status !== 401) toast.show(apiError.message, 'error');
+        if (apiError.status !== 401 || options.showUnauthorizedError) toast.show(apiError.message, 'error');
         return undefined;
       } finally {
         setPending(false);

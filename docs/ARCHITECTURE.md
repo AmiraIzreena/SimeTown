@@ -26,12 +26,14 @@ assessment below is therefore of the *specification*.
 
 | Left out | Why |
 | --- | --- |
-| Akses, Taman, KITA Assistant, KITA Home | The proposal marks them "later". Each needs something this build cannot honestly provide (map data, garden plots, a tuned language model, service providers). A screen that does nothing would be a placeholder, so they are left out rather than faked. |
+| A language model behind KITA Assistant; real bookings in KITA Home | The third edition adds Akses+ and Taman as working features. The Assistant and KITA Home need a tuned language model and real service providers, so they are shown as clearly labelled previews: the Assistant answers from fixed rules over the resident's own data, and KITA Home is a mock-up where nothing can be booked or sold. |
+| Machine learning for the recycling machine, CCTV and bills | Planned after the hackathon selection. The machine is a tablet page whose buttons stand in for camera, barcode and scale (its signed records are real); CCTV is a fixed set of test pictures with known readings; bills are read from the PDF's own text, with the optional AI service for photos. |
 | In-app payments, top-up, stored cash | Rule BR11 forbids them, and they would bring e-money regulation. Residents pay shops directly. |
 | A separate API service, Redis, queues, WebSockets | The pilot design has them. At prototype scale they add operations work and no user benefit: polling every few seconds is enough for a counter confirmation and a flood alert. The backend is already isolated (`src/server`) so it can be lifted out later. |
 | An ORM | The ledger is a handful of precise SQL statements. Plain parameterised SQL keeps them readable and reviewable, and removes a dependency. |
 | A global state library, a component library, a chart library, a date library | SWR covers server data; the UI kit is about 900 lines; charts are plain CSS bars; dates use `Intl`. |
-| Dark mode, multiple languages | Worth doing, not required by the brief, and each doubles the testing surface. Feature names stay in Bahasa Malaysia with an English gloss. |
+| Dark mode; a full Malay translation | Worth doing, and each doubles the testing surface. The third edition adds an EN/BM switch (`src/lib/i18n.ts`) covering navigation, the home screen, Simple Mode, Tamu and flood alerts; the rest stays in English. |
+| Third-party map tiles | They would break the strict security policy and send residents' positions to another company. The township map is drawn in the page from the township's own data (`township-map.tsx`). |
 | E-mail, SMS, push | Marked "simulated" in the proposal. Notifications are in-app; `notify()` is the single hook where delivery would be added. |
 
 ## 2. Target architecture
@@ -47,8 +49,9 @@ assessment below is therefore of the *specification*.
  │  src/server/http/router.ts   ◄──────────────────────┘                            │
  │     origin check → session → role → rate limit → validation → handler → errors   │
  │  src/server/modules/<feature>/routes.ts → service.ts                             │
- │     identity · wallet · merchant · campaigns · community · reports · gerak ·     │
- │     kitar · jimat · banjir · insights · admin                                    │
+ │     identity · wallet · merchant · offers · campaigns · community · reports ·    │
+ │     gerak · kitar · jimat · banjir · tamu · akses · taman · insights · admin     │
+ │  src/server/files/*                 upload gate and PDF reader (bills)           │
  │  src/server/modules/rewards.ts      XP, limits, campaign awards (one door)       │
  │  src/server/modules/ledger/*        double-entry ledger, float, settlement       │
  └───────────────────────────────────────────┬──────────────────────────────────────┘
@@ -56,8 +59,9 @@ assessment below is therefore of the *specification*.
                           PostgreSQL 15+ (constraints and triggers
                           guard the ledger even against our own bugs)
 
- Scheduler ──bearer token──► POST /api/v1/internal/jobs/{expire-points|float-check|settle|cleanup}
+ Scheduler ──bearer token──► POST /api/v1/internal/jobs/{expire-points|float-check|settle|cleanup|flood-agent}
  Sensor bridge ──bearer token──► POST /api/v1/ingest/flood
+ Recycling machine ──HMAC-signed records──► POST /api/v1/ingest/kitar/{start|items|finish}
  Optional: hosted AI vision service ◄── one HTTPS call from src/server/ai/classifier.ts
 ```
 
@@ -95,6 +99,12 @@ route({
 Because who-may-call-what is data, it is easy to audit, and the same table generates
 [API.md](API.md) and the OpenAPI document.
 
+Routes use one of five auth modes: `public`, `session` (cookie, Origin check and role),
+`cron` and `sensor` (bearer tokens), and `machine`. A `machine` route takes no cookie and no
+Origin; the handler checks the record's HMAC-SHA256 signature with that machine's own key, its
+age (5 minutes at most) and its sequence number before anything is stored
+(`kitar/machine.ts → assertSigned`).
+
 ## 3. Technology choices
 
 | Choice | Why |
@@ -127,6 +137,7 @@ One migration, `src/server/db/migrations/001_init.sql`, about 30 tables in these
 | **Ledger** | `ledger_accounts`, `ledger_txns`, `ledger_entries`, `point_lots` |
 | Shops and money | `sales`, `settlements`, `deposits`, `float_checks`, `adjustments` |
 | Features | `posts`, `post_responses`, `post_flags`, `uploads`, `reports`, `gerak_*`, `kitar_*`, `jimat_readings`, `solar_leads`, `flood_readings`, `flood_alerts` |
+| Third edition (`004_third_edition.sql`) | Shop Offers: `shop_offers`, `offer_pledges`, `offer_months`, `offer_point_lots`, `offer_fees`, `sponsor_tier_payments`. Tamu: `visitor_passes`, `visitor_entries`, `guard_sos`, `patrol_points`, `patrol_scans`. Machines and tracking: `kitar_machines`, `kitar_sessions`, `kitar_items`, `gerak_activities`, `gerak_activity_hits`. Bills: `jimat_bills` (numbers only, never the file). Banjir agent: `flood_signals`, `flood_messages`, `flood_agent_log`, `flood_checkins`. Akses+: `access_profiles`, `carer_links`, `access_places`. Taman: `gardens`, `garden_plots`, `garden_roster`, `wildlife_sightings`. |
 
 Decisions worth knowing:
 
@@ -162,7 +173,7 @@ Decisions worth knowing:
 | `WALLET` (per resident) | liability | Points a resident holds |
 | `MERCHANT_PAYABLE` (per shop) | liability | Owed to a shop for points it accepted |
 | `COMMUNITY_POOL` | liability | Value held for community rewards and corrections |
-| `REVENUE_*` | income | Issuance fee, campaign fee, campaign running costs |
+| `REVENUE_*` | income | Issuance fee, campaign fee, campaign running costs, Shop Offer success fee (`REVENUE_SUCCESS_FEE`), sponsor tier fees (`REVENUE_SPONSOR_TIER`) |
 
 ### What each event writes
 
@@ -180,6 +191,8 @@ Every event is one balanced transaction (debits = credits). Amounts for the prop
 | Points expire | Dr wallet · Cr the funder's pool (or the community pool if that campaign has closed) |
 | Refund: earned points clawed back | Dr wallet · Cr shop pool |
 | Refund: spent points returned | Dr shop payable (or its pool, if already paid out) · Cr wallet |
+| Shop Offer used: 10% success fee on a RM3 discount | Dr shop pool (or what the float owes the shop) 30 · Cr success-fee revenue 30; Dr operating 30 · Cr trust 30 |
+| Sponsor buys a tier | Dr operating · Cr sponsor-tier revenue (income, never in the float) |
 
 ### The invariant
 
@@ -215,6 +228,17 @@ expires, how much is left and how much was spent at shops. Spending uses the bat
 soonest. This is what lets the wallet show the funder of every point (BR8), lets expired value go
 back to the right funder (BR10) and lets a campaign report say how much was spent locally.
 
+### Offer-backed points (third edition)
+
+A Shop Offer is a discount a shop promises, not money it paid in, so the points it backs are kept
+**outside** the ledger, in `offer_point_lots`. They never touch the trust bank, and the float
+invariant above is unchanged. "No pledge, no points": each month the shops' live offers become
+pledges (`offer_pledges`); `giveOfferPoints` locks the township's month row and never gives more
+than was pledged, than the home's monthly limit (800) or than the action is worth. Spending locks
+the shop's pledge row, a `CHECK (used_sen <= budget_sen)` stops it going over, and batches are
+used soonest-expiring first. The only real money in an offer is the success fee, which goes
+through the ledger like the issuance fee. The wallet shows one balance with both kinds of backing.
+
 ## 6. Rewards: one door
 
 `modules/rewards.ts → recordAction()` is called by every People and Planet feature once its own
@@ -222,6 +246,9 @@ check has passed (kiosk code scanned, staff confirmed the report, neighbour conf
 It gives Impact XP, applies the daily and monthly caps, makes the action impossible to count
 twice, and then awards points from any live, funded campaign that covers the action, up to the
 per-person cap and only while the pool can pay. Features never touch the ledger themselves.
+Actions proved by something stronger than the resident's word (a signed machine session, a
+tracked trip, a bill-verified saving, a garden code) pass `offerEligible` and may also earn
+offer-backed points; a guest machine session claimed later passes `xpOnly`.
 
 ## 7. Design system
 
@@ -305,5 +332,8 @@ acknowledged rather than dismissed by accident.
 | Phone one-time codes | Replace `identity/service.ts → login`; sessions stay. |
 | Redis + queue | Jobs in `admin/service.ts → runJob` become queue workers. |
 | MQTT sensors | A bridge posts to `/ingest/flood` (already there). |
+| Real recycling machines | Each device gets its key at set-up (held in a key store, not the database) and posts to `/ingest/kitar/*` (already there). |
+| Vision models (machine, CCTV, bill photos) | Replace the simulator buttons and test pictures; the agreement rules and the 60% confidence floor stay. |
+| Virus scanning | Replace the EICAR stand-in in `files/gate.ts` with a real scanner (for example ClamAV). |
 | Bank transfers | `runSettlement` gains a payout step and a "paid" confirmation. |
 | Object storage | `uploads` moves to R2/S3. |

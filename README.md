@@ -31,11 +31,14 @@ password yourself, set `SEED_DEMO_PASSWORD` in `.env` (10+ characters) before ru
 
 | Sign in as | Email | What you see |
 | --- | --- | --- |
-| Resident (main demo) | `aisyah@demo.kita.test` | Points & XP, Kitar, Gerak, Lapor, Jiran, Kongsi, Jimat, Banjir |
-| Shop | `kafe@demo.kita.test`, `kedai@demo.kita.test` | Counter, sales, weekly statements |
+| Resident (main demo) | `aisyah@demo.kita.test` | Today card, Points & XP (cash- and offer-backed), Kitar with the smart machine, Gerak map tracking, Tamu, Lapor, Jiran, Kongsi, Jimat bill reading, Banjir, Taman, Akses+, Assistant, KITA Home |
+| Resident in Simple Mode | `zainab@demo.kita.test` | Simple Mode's four big buttons; on the flood priority help list; Mei Ling is her carer |
+| Resident with a visitor waiting | `daniel@demo.kita.test` | A walk-in at the main gate waiting for his answer in Tamu |
+| Shop | `kafe@demo.kita.test`, `kedai@demo.kita.test` | Counter with Shop Offers, offers page, sales, weekly statements |
+| Guard | `guard@demo.kita.test` | The main gate: scan passes, walk-ins, SOS calls, patrol round, flood tasks |
 | Shop, not yet approved | `bengkel@demo.kita.test` | The "waiting for approval" state |
-| Sponsor | `sponsor@demo.kita.test` | Own campaigns and grouped results |
-| Township staff | `staff@demo.kita.test` | Insights, report queue, flood sensors, kiosks and trails |
+| Sponsor | `sponsor@demo.kita.test` | Its Green Champion tier, own campaigns and grouped results |
+| Township staff | `staff@demo.kita.test` | Insights, report queue, the flood agent, kiosks, smart machines, gardens and patrol points, nature and access |
 | Township admin | `admin@demo.kita.test`, `admin2@demo.kita.test` | Everything staff see, plus shops, money and corrections |
 | SDP HQ admin | `hq@demo.kita.test` | Everything, plus the programme rules |
 
@@ -81,36 +84,77 @@ Open two browser windows (one normal, one private) so you can be the resident an
    a danger warning takes over Aisyah's screen with the safe route.
 8. **KITA Insights.** The SDP dashboard has changed all day, with the float matched to the sen.
 
+### The third edition's features
+
+9. **Smart recycling machine.** As staff, open *Kiosks, machines & trails* → *Smart machines* →
+   *Open the machine screen* (a tablet in a real demo). Scan its QR code with Aisyah's phone, or
+   type her member code under "Camera: read a KITA QR". Drop items with the sensor buttons, try
+   "Camera sees a different material", then *Finish*. Aisyah's Kitar screen follows item by item;
+   the session earns XP and offer-backed points. *Recycle as guest* gives a claim code instead.
+10. **Shop Offers.** As the grocer, the counter now has *Customer wants to use your Shop Offer*
+    (RM2 off, all day). Aisyah confirms on her phone, pays RM18 of a RM20 bill, and the shop's
+    statement shows the 10% success fee. *Shop Offers* in the shop's menu sets terms and budgets.
+11. **Gerak map tracking.** In *Gerak*, switch on *Demo: play back a route* and tap *Start*: the
+    trip follows the Lake Loop on the map, checkpoints tick themselves, then *Finish*. On a phone
+    outdoors, leave the demo switch off and real GPS is used.
+12. **Jimat bill reading.** In *Jimat* → *Read a bill*, download *Sample bill (demo)*, then upload it:
+    every step of the file-safety gate is shown, the numbers are read from the PDF, you confirm,
+    and the file is never stored.
+13. **Tamu.** As Aisyah, create a pass and share it (WhatsApp, SMS or link). Open the link in a
+    private window: that is the visitor's view. As the guard, type or scan the code: Aisyah is told
+    her visitor arrived. As Daniel, answer the walk-in waiting at the gate.
+14. **Banjir agent.** As staff, open *Flood agent*. Move a zone's sensor past 75%: only one signal,
+    so a draft waits for the officer. Click a CCTV test picture near the warning line: two signals
+    agree and the warning goes out. Push the sensor past 90%: a danger draft starts a 3-minute
+    countdown. Residents check in "I'm safe"; the priority help list appears for duty staff.
+    The public page is at `/status`.
+15. **Akses+, Taman, Assistant, KITA Home, Bahasa Malaysia.** Sign in as Zainab for Simple Mode.
+    Taman books plots and logs wildlife (staff confirm under *Nature & access*). The Assistant and
+    KITA Home are labelled previews. The *EN/BM* switch in the top bar changes the language.
+
 ---
 
 ## 3. What is in the box
 
 | Layer | Feature | Working here |
 | --- | --- | --- |
-| Core | KITA ID | Register against a unit, staff or owner confirms the home, six roles, invitations |
-| Core | Points & XP | Balance, history with the funder of every point, levels, badges, street league, confirm-on-phone |
+| Core | KITA ID | Register against a unit, staff or owner confirms the home, seven roles (with Guard), invitations, guest pages (`/guest`, `/status`, `/partners`), English and Bahasa Malaysia (partial) |
+| Core | Points & XP | One balance with two kinds of backing (cash in the float; shops' monthly pledges), "You saved", every amount in ringgit, history, levels, badges, street league, confirm-on-phone |
+| Core | Today card | Changes through the day: flood level, a visitor at the gate or expected, a shop offer nearby, collection day |
+| Core | KITA Assistant | **Preview**: fixed answers from the resident's own data in English or Malay, a visitor pass after confirming, never decides an alert |
+| People | Tamu | Visitor passes by link (no app for the visitor), guard screen with camera scan, walk-ins with Expected / Not expected / Call me, SOS, patrol rounds, flood task list, 90-day deletion |
+| People | Akses+ | Private access needs with consent, Simple Mode, read-aloud, flashing alerts, carer links, step-free places, priority help list for floods |
 | People | Jiran | Events with places, help board, XP when the organiser or asker confirms |
 | People | Lapor | Report with photo, suggested type and urgency, staff queue, case tracking, access-barrier type |
-| People | Gerak | Loops with QR checkpoints, loop completion, distance milestones, sponsored challenge |
-| Planet | Kitar | Material check (photo if an AI key is set, otherwise pick from a list), kiosk code, weight, street totals |
+| People | Gerak | Live map tracking with checkpoints that tick themselves, speed bands, near-home trimming, 30-day route deletion; QR checkpoints as the backup; demo playback |
+| Planet | Kitar | Smart machine: rotating screen code, KITA QR or guest, camera + barcode + weight agreement, signed records, guest claim codes; kiosk drop-off with a photo check as the backup |
 | Planet | Kongsi | Give away and lend, XP on confirmed handover |
-| Planet | Jimat | Monthly readings, change from last month, tips, leak alert, opt-in solar request |
-| Planet | Banjir | Zone levels, warning and danger lines, danger takeover with safe route, sensor ingest endpoint |
-| Business | KITA Merchant | Apply and approval, give points, accept points up to 30%, refunds, weekly statement |
-| Business | KITA Partner Hub | Campaigns with a prefunded pool, per-person limit, refund of the unused pool, grouped results |
-| Business | KITA Insights | 30-day township totals, float against what it owes, report clusters |
+| Planet | Jimat | Bill reading behind a file-safety gate (PDF text, or the AI service for photos), confirm with unsure fields marked, same bill only once, file never stored; typed readings, tips, leak alert, solar request |
+| Planet | Banjir | The agent: sensor, CCTV test pictures, rain gauge and resident reports; two signals must agree; one-signal drafts with 3- and 5-minute windows; 15-minute updates; four-line messages; check-ins; public status page |
+| Planet | Taman | Garden plots (one per home), watering roster proved by the garden code, wildlife log confirmed by staff, share the harvest in Kongsi |
+| Business | KITA Merchant | Shop Offers with the shop's own terms and monthly cap, 10% success fee, new and returning customers, Akses-friendly badge; give and accept points, refunds, weekly statement |
+| Business | KITA Partner Hub | Four sponsor tiers with a public Partners page and one labelled banner; campaigns with a prefunded pool and grouped results |
+| Business | KITA Insights | 30-day totals, the float against what it owes, machine uptime, offer pledges, visitors, flood alerts, barriers fixed on time, nature; printable monthly report |
+| Business | KITA Home | **Mock-up**: home logbook, services with contractor passes, resale and rental, early previews |
 
 Also built because a real system needs them: moderation of flagged posts, the daily float check,
 weekly settlement, points expiry and reminders, two-person approval for balance corrections, an
 audit trail, adjustable programme rules, data download and account deletion.
 
-**Not built, on purpose** (the proposal lists them as later modules, and half-built versions would
-make the system less reliable): Akses, Taman, KITA Assistant, KITA Home. See
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#what-we-chose-not-to-build).
+**Shown as previews, and labelled so:** KITA Assistant (fixed rules, no language model yet) and
+KITA Home (a mock-up: nothing can be booked or sold).
 
 **Simulated, and labelled so in the app:** no real money moves (deposits and settlements are
-ledger entries an admin records); the flood sensor is a slider; meter readings are typed; there is
-no SMS, e-mail or one-time code.
+ledger entries an admin records); the recycling machine is a tablet page whose buttons stand in for
+its camera, barcode reader and scale (its signed records and their checks are real); flood sensors,
+CCTV and the rain gauge are a simulator and a fixed test set of pictures; Gerak can play back a
+route instead of GPS outside production; the sample bill is generated by the app; WhatsApp and SMS
+open the phone's own apps; there is no e-mail or one-time code. Bahasa Malaysia covers navigation,
+the home screen, Simple Mode, Tamu and flood alerts.
+
+**Adding the third edition to an existing demo database:** `npm run db:migrate` then
+`npm run db:seed`. On a database that already holds the demo township, the seed only adds what the
+new features need (the guard, offers, machines, gardens, map, tiers…) and changes nothing else.
 
 ---
 
@@ -120,13 +164,13 @@ no SMS, e-mail or one-time code.
 | --- | --- |
 | `npm run dev` | Development server |
 | `npm run build` / `npm start` | Production build and server |
-| `npm test` | All 64 tests, on in-process PostgreSQL |
+| `npm test` | All 123 tests, on in-process PostgreSQL |
 | `TEST_DATABASE_URL=postgres://… npm test` | The same tests on a real server (this **empties that database**) |
 | `npm run lint` / `npm run typecheck` / `npm run check` | Code checks (`check` runs lint, types and tests) |
 | `npm run db:migrate` | Apply new migrations |
 | `npm run db:seed` | Load the demo township (refuses when `APP_ENV=production`) |
 | `npm run bootstrap -- <file.json>` | Set up a real township: zones, homes and the first admin's invitation link (see `docs/bootstrap.example.json`) |
-| `npm run job -- <name>` | Run `expire-points`, `float-check`, `settle` or `cleanup` once |
+| `npm run job -- <name>` | Run `expire-points`, `float-check`, `settle`, `cleanup` or `flood-agent` once (`flood-agent` every minute or two in a pilot; `cleanup` also applies the 90-day and 30-day deletions) |
 | `npm run docs:api` | Regenerate `docs/API.md` and `docs/openapi.json` from the route table |
 
 ---
@@ -187,6 +231,19 @@ Checked while building (October 2026, Node 22, PostgreSQL 16):
 - The ZIP was unpacked into an empty folder and taken through section 1 exactly as written
   (`npm ci`, `.env.example`, `db:setup` on the zero-install database, checks, build, start), and
   the browser journeys were run again against that copy.
+
+Third edition (October 2026):
+
+- 123 automated tests pass on in-process PostgreSQL, including 34 new tests for Shop Offers, the
+  recycling machine's signatures, Gerak tracking, the bill file gate, Tamu, the Banjir agent,
+  Akses+, Taman and sponsor tiers.
+- Migration `004_third_edition.sql` and the seed were rehearsed on a copy of the previous database
+  and on an empty one (the seed was run twice to prove it changes nothing the second time), then
+  applied to the shared Supabase database; the float check passed afterwards.
+- A production build was run and every new endpoint and screen was exercised end to end against
+  it, with screenshots of each screen taken in headless Chrome and no browser errors.
+- Not checked for the third edition: the accessibility scan, real GPS outdoors, a real camera or
+  barcode reader on the guard screen, and the AI bill reader for photos.
 
 Not checked:
 

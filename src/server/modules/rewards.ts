@@ -2,6 +2,7 @@ import type { Activity } from '@/shared/domain';
 import { one, type Queryable } from '../db/client';
 import { earnAllowance, issueFromPool } from './ledger/points';
 import { getAccount } from './ledger/ledger';
+import { giveOfferPoints, offerPointsFor } from './offers/service';
 import { getSettings, startOf, type Settings } from './settings';
 
 /**
@@ -19,7 +20,10 @@ export interface RewardUser {
 
 export interface ActionReward {
   xp: number;
+  /** Cash-backed points from a funded campaign. */
   points: number;
+  /** Offer-backed points, backed by what shops pledged this month (BR29). */
+  offerPoints: number;
   /** Who paid for the points, so the screen can say so. */
   fundedBy: string[];
   /** Why no XP was given, if none was. */
@@ -34,14 +38,22 @@ interface ActionInput {
   /** Grams for Kitar, metres for Gerak loops; 1 otherwise. */
   quantity?: number;
   now: Date;
+  /**
+   * The action was checked by something stronger than the resident's own word (a signed
+   * machine record, a tracked trip, a read bill, a scanned garden code), so it may earn
+   * offer-backed points. Off by default.
+   */
+  offerEligible?: boolean;
+  /** Impact XP only, never points: a guest recycling session claimed later (BR23). */
+  xpOnly?: boolean;
 }
 
 export async function recordAction(tx: Queryable, input: ActionInput): Promise<ActionReward> {
   const { user, activity, now } = input;
   const settings = await getSettings(tx);
-  const rule = (await one<{ xp: number; daily_cap_person: number; monthly_cap_home: number }>(
+  const rule = (await one<{ xp: number; label: string; daily_cap_person: number; monthly_cap_home: number; offer_points: number; offer_per_quantity: number | null }>(
     tx,
-    'SELECT xp, daily_cap_person, monthly_cap_home FROM activity_rules WHERE activity = $1',
+    'SELECT xp, label, daily_cap_person, monthly_cap_home, offer_points, offer_per_quantity FROM activity_rules WHERE activity = $1',
     [activity],
   ))!;
 
@@ -55,19 +67,32 @@ export async function recordAction(tx: Queryable, input: ActionInput): Promise<A
       WHERE u.home_id = $2 AND e.activity = $3 AND e.created_at >= ${startOf('month', '$4', '$5')}`,
     [user.id, user.homeId, activity, now, settings.timezone],
   );
-  if (used!.today >= rule.daily_cap_person) return { xp: 0, points: 0, fundedBy: [], skipped: 'DAILY_LIMIT' };
-  if (used!.month_home >= rule.monthly_cap_home) return { xp: 0, points: 0, fundedBy: [], skipped: 'MONTHLY_LIMIT' };
+  if (used!.today >= rule.daily_cap_person) return { xp: 0, points: 0, offerPoints: 0, fundedBy: [], skipped: 'DAILY_LIMIT' };
+  if (used!.month_home >= rule.monthly_cap_home) return { xp: 0, points: 0, offerPoints: 0, fundedBy: [], skipped: 'MONTHLY_LIMIT' };
 
   const inserted = await tx.query(
     `INSERT INTO xp_events (user_id, activity, ref, xp, quantity, created_at) VALUES ($1, $2, $3, $4, $5, $6)
      ON CONFLICT (user_id, activity, ref) DO NOTHING RETURNING id`,
     [user.id, activity, input.ref, rule.xp, input.quantity ?? 1, now],
   );
-  if (inserted.length === 0) return { xp: 0, points: 0, fundedBy: [], skipped: 'ALREADY_COUNTED' };
+  if (inserted.length === 0) return { xp: 0, points: 0, offerPoints: 0, fundedBy: [], skipped: 'ALREADY_COUNTED' };
   await tx.query('UPDATE users SET xp_total = xp_total + $2 WHERE id = $1', [user.id, rule.xp]);
 
+  if (input.xpOnly) return { xp: rule.xp, points: 0, offerPoints: 0, fundedBy: [] };
   const awards = await awardCampaigns(tx, user, activity, now, settings);
-  return { xp: rule.xp, points: awards.reduce((sum, a) => sum + a.points, 0), fundedBy: awards.map((a) => a.fundedBy) };
+  const offerPoints = input.offerEligible
+    ? await giveOfferPoints(tx, {
+        userId: user.id,
+        homeId: user.homeId,
+        townshipId: user.townshipId,
+        points: offerPointsFor(rule, input.quantity ?? 1),
+        ref: `${activity}:${input.ref}`,
+        label: `${rule.label} · backed by township shop offers`,
+        now,
+        settings,
+      })
+    : 0;
+  return { xp: rule.xp, points: awards.reduce((sum, a) => sum + a.points, 0), offerPoints, fundedBy: awards.map((a) => a.fundedBy) };
 }
 
 interface LiveCampaign {
@@ -140,6 +165,16 @@ async function awardCampaigns(
     }
   }
   return given;
+}
+
+/** Adds up the rewards of several actions recorded together, for one message on screen. */
+export function sumRewards(rewards: ActionReward[]): ActionReward {
+  return {
+    xp: rewards.reduce((sum, r) => sum + r.xp, 0),
+    points: rewards.reduce((sum, r) => sum + r.points, 0),
+    offerPoints: rewards.reduce((sum, r) => sum + r.offerPoints, 0),
+    fundedBy: rewards.flatMap((r) => r.fundedBy),
+  };
 }
 
 /** Loads what `recordAction` needs for someone other than the signed-in person (for example a report's author). */

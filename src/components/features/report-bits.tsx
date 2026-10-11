@@ -1,3 +1,6 @@
+
+import { Text } from '@/components/ui/localized-text';
+import { LocalizedImg } from '@/components/ui/localized-elements';
 import { Badge } from '@/components/ui/card';
 import { REPORT_CATEGORY_LABELS, type ReportCategory, type ReportStatus, type Urgency } from '@/shared/domain';
 
@@ -23,13 +26,12 @@ const STATUS_TONES = { NEW: 'brand', IN_PROGRESS: 'warning', RESOLVED: 'success'
 const URGENCY_TONES = { LOW: 'neutral', MEDIUM: 'brand', HIGH: 'warning', URGENT: 'danger' } as const;
 export const URGENCY_LABELS: Record<Urgency, string> = { LOW: 'Low', MEDIUM: 'Medium', HIGH: 'High', URGENT: 'Urgent' };
 
-export const StatusBadge = ({ status }: { status: ReportStatus }) => <Badge tone={STATUS_TONES[status]}>{STATUS_LABELS[status]}</Badge>;
-export const UrgencyBadge = ({ urgency }: { urgency: Urgency }) => <Badge tone={URGENCY_TONES[urgency]}>{URGENCY_LABELS[urgency]} urgency</Badge>;
+export const StatusBadge = ({ status }: { status: ReportStatus }) => <Badge tone={STATUS_TONES[status]}><Text>{STATUS_LABELS[status]}</Text></Badge>;
+export const UrgencyBadge = ({ urgency }: { urgency: Urgency }) => <Badge tone={URGENCY_TONES[urgency]}><Text>{`${URGENCY_LABELS[urgency]} urgency`}</Text></Badge>;
 export const categoryLabel = (category: ReportCategory) => REPORT_CATEGORY_LABELS[category];
 
 /** The reporter's photo, served only to them and to township staff. */
 export function ReportPhoto({ report }: { report: Report }) {
   if (!report.photo_id) return null;
-  // eslint-disable-next-line @next/next/no-img-element -- an access-controlled API image; it must not pass through the public image optimiser
-  return <img src={`/api/v1/reports/${report.id}/photo`} alt="Photo attached to this report" loading="lazy" className="max-h-72 w-full rounded-lg border border-ink-200 object-cover" />;
+  return <LocalizedImg src={`/api/v1/reports/${report.id}/photo`} alt="Photo attached to this report" loading="lazy" className="max-h-72 w-full rounded-lg border border-ink-200 object-cover" />;
 }

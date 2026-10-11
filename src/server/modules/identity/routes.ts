@@ -78,6 +78,11 @@ export const identityRoutes = [
     handler: (c) => identity.updateProfile(c.db, c.actor, c.body, c.now),
   }),
   route({
+    method: 'POST', path: '/me/language', tag: 'KITA ID', summary: 'Choose English or Bahasa Malaysia', auth: 'session',
+    body: z.object({ language: z.enum(['en', 'ms']) }),
+    handler: (c) => identity.setLanguage(c.db, c.actor, c.body.language),
+  }),
+  route({
     method: 'POST', path: '/me/terms', tag: 'KITA ID', summary: 'Accept the Terms of Use and Privacy Notice now in force', auth: 'session',
     body: z.object({ version: zText(40) }),
     handler: (c) => identity.acceptTerms(c.db, c.actor, c.body.version, c.now),

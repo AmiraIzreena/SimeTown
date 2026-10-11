@@ -1,7 +1,9 @@
 'use client';
 
+import { Text } from '@/components/ui/localized-text';
+
 import { Download, LogOut, MapPin, Trash2 } from 'lucide-react';
-import Link from 'next/link';
+import { LocalizedLink as Link } from '@/components/ui/localized-elements';
 import { useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, PageHeader } from '@/components/ui/card';
@@ -37,14 +39,14 @@ function HomeCard({ me, onChanged }: { me: Me; onChanged: () => void }) {
             <MapPin className="mt-0.5 size-4 shrink-0 text-brand-700" aria-hidden />
             <span>
               {me.home.address}
-              <span className="block text-sm text-ink-500">{me.occupancy === 'TENANT' ? 'Tenant' : 'Owner'}</span>
+              <span className="block text-sm text-ink-500"><Text>{me.occupancy === 'TENANT' ? 'Tenant' : 'Owner'}</Text></span>
             </span>
           </p>
         ) : (
-          <p className="rounded-md border border-warning-600/30 bg-warning-50 p-3 text-sm text-warning-700">Your address is incomplete. Please choose your home from the list.</p>
+          <p className="rounded-md border border-warning-600/30 bg-warning-50 p-3 text-sm text-warning-700"><Text>Your address is incomplete. Please choose your home from the list.</Text></p>
         )}
         <Button variant={incomplete ? 'primary' : 'secondary'} onClick={() => setChanging(true)}>
-          {incomplete ? 'Choose my address' : 'Change address'}
+          <Text>{incomplete ? 'Choose my address' : 'Change address'}</Text>
         </Button>
       </div>
       <Modal
@@ -54,12 +56,8 @@ function HomeCard({ me, onChanged }: { me: Me; onChanged: () => void }) {
         description="If you choose a different home, your account is confirmed again before you can earn or spend."
         footer={
           <>
-            <Button variant="secondary" onClick={() => setChanging(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" form="change-home" pending={change.pending}>
-              Save address
-            </Button>
+            <Button variant="secondary" onClick={() => setChanging(false)}><Text>Cancel</Text></Button>
+            <Button type="submit" form="change-home" pending={change.pending}><Text>Save address</Text></Button>
           </>
         }
       >
@@ -76,8 +74,8 @@ function HomeCard({ me, onChanged }: { me: Me; onChanged: () => void }) {
         >
           <AddressPicker townshipId={me.townshipId} error={change.fields.homeId} />
           <Select label="I am the" name="occupancy" defaultValue={me.occupancy ?? 'OWNER'} error={change.fields.occupancy}>
-            <option value="OWNER">Owner</option>
-            <option value="TENANT">Tenant</option>
+            <option value="OWNER"><Text>Owner</Text></option>
+            <option value="TENANT"><Text>Tenant</Text></option>
           </Select>
         </form>
       </Modal>
@@ -101,9 +99,7 @@ function ShopAddressCard({ me, onChanged }: { me: Me; onChanged: () => void }) {
         }}
       >
         <ShopAddressFields fields={save.fields} initial={me.shop ?? undefined} />
-        <Button type="submit" pending={save.pending}>
-          Save shop address
-        </Button>
+        <Button type="submit" pending={save.pending}><Text>Save shop address</Text></Button>
       </form>
     </Card>
   );
@@ -140,8 +136,8 @@ export function AccountPanel() {
             {(user) => (
               <form method="post" onSubmit={onProfile} className="space-y-4 p-5" noValidate>
                 <div className="flex flex-wrap gap-2">
-                  <Badge tone="brand">{ROLE_LABELS[user.role]}</Badge>
-                  {user.role === 'RESIDENT' && <Badge tone={user.residencyStatus === 'VERIFIED' ? 'success' : 'warning'}>{user.residencyStatus === 'VERIFIED' ? 'Home confirmed' : 'Home not confirmed yet'}</Badge>}
+                  <Badge tone="brand"><Text>{ROLE_LABELS[user.role]}</Text></Badge>
+                  {user.role === 'RESIDENT' && <Badge tone={user.residencyStatus === 'VERIFIED' ? 'success' : 'warning'}><Text>{user.residencyStatus === 'VERIFIED' ? 'Home confirmed' : 'Home not confirmed yet'}</Text></Badge>}
                 </div>
                 <Input label="Email" value={user.email} readOnly disabled hint="Contact the township office to change your email." />
                 <Input label="Full name" name="fullName" defaultValue={user.fullName} autoComplete="name" required error={save.fields.fullName} />
@@ -156,9 +152,7 @@ export function AccountPanel() {
                   hint={user.phone ? 'Used for urgent alerts and by the township office.' : 'Required. A Malaysian mobile number, such as 012-345 6789.'}
                   error={save.fields.phone}
                 />
-                <Button type="submit" pending={save.pending}>
-                  Save profile
-                </Button>
+                <Button type="submit" pending={save.pending}><Text>Save profile</Text></Button>
               </form>
             )}
           </Async>
@@ -172,9 +166,7 @@ export function AccountPanel() {
           <form onSubmit={onPassword} method="post" className="space-y-4 p-5" noValidate>
             <Input label="Current password" name="current" type="password" autoComplete="current-password" required error={password.fields.current} />
             <Input label="New password" name="next" type="password" autoComplete="new-password" hint="At least 10 characters." required error={password.fields.next} />
-            <Button type="submit" pending={password.pending}>
-              Change password
-            </Button>
+            <Button type="submit" pending={password.pending}><Text>Change password</Text></Button>
           </form>
         </Card>
 
@@ -182,13 +174,9 @@ export function AccountPanel() {
           <CardHeader title="Your data" description="Under Malaysia’s Personal Data Protection Act you can see and remove what we hold about you." />
           <div className="flex flex-wrap gap-3 p-5">
             <a href="/api/v1/me/export" download className="inline-flex min-h-11 items-center gap-2 rounded-md border border-ink-200 bg-white px-4 text-[15px] font-semibold text-ink-800 shadow-xs transition-colors duration-200 hover:border-ink-300 hover:bg-ink-25">
-              <Download className="size-4" aria-hidden />
-              Download my data
-            </a>
+              <Download className="size-4" aria-hidden /><Text>Download my data</Text></a>
             <Button variant="ghost" className="text-accent-600 hover:bg-accent-50" onClick={() => setDeleting(true)}>
-              <Trash2 className="size-4" aria-hidden />
-              Delete my account
-            </Button>
+              <Trash2 className="size-4" aria-hidden /><Text>Delete my account</Text></Button>
           </div>
         </Card>
 
@@ -196,17 +184,13 @@ export function AccountPanel() {
           <CardHeader title="Terms and privacy" description="The agreements that apply to your account." />
           <div className="space-y-3 p-5 text-[15px] text-ink-700">
             {me.data?.terms.version === me.data?.terms.current && me.data?.terms.acceptedAt ? (
-              <p>You accepted the current Terms of Use and Privacy Notice on {formatDate(me.data.terms.acceptedAt)}.</p>
+              <p><Text>You accepted the current Terms of Use and Privacy Notice on </Text><Text>{formatDate(me.data.terms.acceptedAt)}</Text>.</p>
             ) : (
-              <p>The Terms of Use and Privacy Notice have changed since you last accepted them. You will be asked to review them.</p>
+              <p><Text>The Terms of Use and Privacy Notice have changed since you last accepted them. You will be asked to review them.</Text></p>
             )}
             <div className="flex flex-wrap gap-4">
-              <Link href="/terms" className="font-semibold text-brand-700 hover:underline">
-                Terms of Use
-              </Link>
-              <Link href="/privacy" className="font-semibold text-brand-700 hover:underline">
-                Privacy Notice
-              </Link>
+              <Link href="/terms" className="font-semibold text-brand-700 hover:underline"><Text>Terms of Use</Text></Link>
+              <Link href="/privacy" className="font-semibold text-brand-700 hover:underline"><Text>Privacy Notice</Text></Link>
             </div>
           </div>
         </Card>
@@ -221,9 +205,7 @@ export function AccountPanel() {
                 reloadTo('/');
               }}
             >
-              <LogOut className="size-4" aria-hidden />
-              Sign out
-            </Button>
+              <LogOut className="size-4" aria-hidden /><Text>Sign out</Text></Button>
           </div>
         </Card>
       </div>
@@ -234,12 +216,8 @@ export function AccountPanel() {
         title="Delete your account?"
         footer={
           <>
-            <Button variant="secondary" onClick={() => setDeleting(false)}>
-              Keep my account
-            </Button>
-            <Button variant="danger" type="submit" form="delete-account" pending={remove.pending}>
-              Delete for good
-            </Button>
+            <Button variant="secondary" onClick={() => setDeleting(false)}><Text>Keep my account</Text></Button>
+            <Button variant="danger" type="submit" form="delete-account" pending={remove.pending}><Text>Delete for good</Text></Button>
           </>
         }
       >
@@ -252,8 +230,8 @@ export function AccountPanel() {
             void remove.run(String(new FormData(event.currentTarget).get('password')));
           }}
         >
-          <p>This cannot be undone. Your name, contact details, posts and photos are removed.</p>
-          {me.data?.role === 'RESIDENT' && <p>Any points you still hold are given up and go back to whoever funded them. Anonymous records of past transactions are kept, as the law requires.</p>}
+          <p><Text>This cannot be undone. Your name, contact details, posts and photos are removed.</Text></p>
+          {me.data?.role === 'RESIDENT' && <p><Text>Any points you still hold are given up and go back to whoever funded them. Anonymous records of past transactions are kept, as the law requires.</Text></p>}
           <Input label="Enter your password to confirm" name="password" type="password" autoComplete="current-password" required />
         </form>
       </Modal>

@@ -19,6 +19,7 @@ import { recordCommunityDeposit, recordMerchantDeposit, runFloatCheck, runSettle
 import { setMerchantStatus } from '../src/server/modules/merchant/admin';
 import { createSale, decideSale } from '../src/server/modules/merchant/service';
 import { createReport, updateReport } from '../src/server/modules/reports/service';
+import { seedThirdEdition } from './seed-third-edition';
 
 /**
  * Demo data for local development and the hackathon demo. Everything here is
@@ -39,15 +40,20 @@ async function main() {
   const config = getConfig();
   if (config.APP_ENV === 'production') throw new Error('Refusing to seed demo data when APP_ENV=production.');
   const db = await getDb();
-  if (await one(db, 'SELECT 1 FROM townships LIMIT 1')) {
-    console.log('The database already has data. Nothing was changed.');
-    return db.close();
-  }
-
   const password = process.env.SEED_DEMO_PASSWORD ?? randomBytes(9).toString('base64url');
   if (password.length < 10) throw new Error('SEED_DEMO_PASSWORD must be at least 10 characters.');
   const passwordHash = await hashPassword(password);
   const now = new Date();
+
+  if (await one(db, 'SELECT 1 FROM townships LIMIT 1')) {
+    // An existing demo database: add only what the third edition's features need, and touch nothing else.
+    console.log('The database already has data. Adding any missing third-edition demo data only.\n');
+    await seedThirdEdition(db, { passwordHash, now, log: (line) => console.log(`  ${line}`) });
+    const check = await runFloatCheck(db, null, now);
+    console.log(`\n  Float check: ${check.ok ? 'OK' : `FAILED: ${check.issues.join(' ')}`}`);
+    if (!process.env.SEED_DEMO_PASSWORD) console.log(`  A new account (if any was added) uses the password: ${password}`);
+    return db.close();
+  }
   const daysAgo = (days: number, hour = 4) => new Date(Math.floor(now.getTime() / DAY) * DAY - days * DAY + hour * 3_600_000);
 
   // --- Township, zones, homes -------------------------------------------------
@@ -252,9 +258,12 @@ async function main() {
   }
 
   // --- Banjir: a calm day ---------------------------------------------------------------
-  await recordLevel(db, { zoneId: zones['Zone A · Lakeside']!, levelPct: 42, source: 'MANUAL', actor: staff }, now);
-  await recordLevel(db, { zoneId: zones['Zone B · Central']!, levelPct: 18, source: 'MANUAL', actor: staff }, now);
-  await recordLevel(db, { zoneId: zones['Zone C · Hillside']!, levelPct: 9, source: 'MANUAL', actor: staff }, now);
+  await recordLevel(db, { zoneId: zones['Zone A · Lakeside']!, levelPct: 42, actor: staff }, now);
+  await recordLevel(db, { zoneId: zones['Zone B · Central']!, levelPct: 18, actor: staff }, now);
+  await recordLevel(db, { zoneId: zones['Zone C · Hillside']!, levelPct: 9, actor: staff }, now);
+
+  // --- Third edition: Tamu, Shop Offers, the smart machine, map tracking, Akses+, Taman ---------
+  await seedThirdEdition(db, { passwordHash, now, log: () => undefined });
 
   const check = await runFloatCheck(db, admin2.id, now);
   if (!check.ok) throw new Error(`Seed left the float out of balance: ${check.issues.join(' ')}`);
@@ -266,6 +275,7 @@ async function main() {
     ['Shop', `kafe@${DOMAIN}`, 'Kafe Seri Pagi'],
     ['Shop', `kedai@${DOMAIN}`, 'Kedai Runcit Mesra'],
     ['Shop (not yet approved)', `bengkel@${DOMAIN}`, 'Bengkel Basikal Roda'],
+    ['Guard', `guard@${DOMAIN}`, 'the main gate: visitor passes, walk-ins, SOS, patrol'],
     ['Sponsor', `sponsor@${DOMAIN}`, 'Solar Cerah (demo sponsor)'],
     ['Township staff', `staff@${DOMAIN}`, ''],
     ['Township admin', `admin@${DOMAIN}`, ''],

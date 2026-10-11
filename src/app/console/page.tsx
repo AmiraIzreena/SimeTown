@@ -1,6 +1,9 @@
 'use client';
 
-import { Bike, CheckCircle2, ClipboardList, Home, Recycle, ShieldCheck, Store, Zap } from 'lucide-react';
+import { Text } from '@/components/ui/localized-text';
+
+import { Accessibility, Bike, CheckCircle2, ClipboardList, Cpu, DoorOpen, Droplets, FileText, Home, Leaf, Printer, Recycle, ShieldCheck, Store, Tag, Zap } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Card, CardHeader, PageHeader, Stat } from '@/components/ui/card';
 import { BarChart, RankBars } from '@/components/ui/charts';
 import { Async, SkeletonList, SkeletonStats } from '@/components/ui/feedback';
@@ -20,13 +23,35 @@ interface Insights {
   byZone: { zone: string; open: number }[];
   daily: { day: string; actions: number; sales: number }[];
   float: { trustSen: number; walletsSen: number; payablesSen: number; poolsSen: number; communitySen: number };
+  smart: {
+    machines: number;
+    machines_online: number;
+    machine_g: number;
+    guest_sessions: number;
+    tracked_m: number;
+    bills_read: number;
+    visits: number;
+    flood_alerts: number;
+    barriers_reported: number;
+    barriers_fixed_on_time: number;
+    sightings: number;
+    plots_booked: number;
+  };
+  offers: { month: string; pledged: number; issued: number; used: number; shops: number };
 }
 
 export default function InsightsPage() {
   const insights = useApi<Insights>('/insights', { refreshInterval: 20_000 });
   return (
     <>
-      <PageHeader title="Insights" description="What the township achieved in the last 30 days. Totals for groups only, never one person." />
+      <PageHeader
+        title="Insights"
+        description="What the township achieved in the last 30 days. Totals for groups only, never one person."
+        action={
+          <Button variant="secondary" className="no-print" onClick={() => window.print()}>
+            <Printer className="size-4" aria-hidden /><Text>Monthly impact report</Text></Button>
+        }
+      />
       <Async
         state={insights}
         skeleton={
@@ -59,7 +84,7 @@ export default function InsightsPage() {
                   action={
                     <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold ${matched ? 'bg-success-50 text-success-700' : 'bg-accent-50 text-accent-700'}`}>
                       <ShieldCheck className="size-4" aria-hidden />
-                      {matched ? 'Matched to the sen' : 'Does not match'}
+                      <Text>{matched ? 'Matched to the sen' : 'Does not match'}</Text>
                     </span>
                   }
                 />
@@ -73,10 +98,10 @@ export default function InsightsPage() {
                   ].map(([label, value, tone], i) => (
                     <div key={label as string} className="bg-white px-5 py-4">
                       <dt className="text-xs font-medium text-ink-500">
-                        {i === 1 ? '= ' : i > 1 ? '+ ' : ''}
-                        {label}
+                        <Text>{i === 1 ? '= ' : i > 1 ? '+ ' : ''}</Text>
+                        <Text>{label}</Text>
                       </dt>
-                      <dd className={`mt-1 font-display text-xl tabular-nums ${tone}`}>{formatRM(value as number)}</dd>
+                      <dd className={`mt-1 font-display text-xl tabular-nums ${tone}`}><Text>{formatRM(value as number)}</Text></dd>
                     </div>
                   ))}
                 </dl>
@@ -99,8 +124,39 @@ export default function InsightsPage() {
                   <CardHeader title="Where open reports cluster" description="By area and by type." />
                   <div className="grid gap-6 p-5 sm:grid-cols-2">
                     <RankBars tone="bg-accent-500" rows={d.byZone.map((z) => ({ label: z.zone, value: z.open }))} />
-                    {d.byCategory.length ? <RankBars tone="bg-warning-600" rows={d.byCategory.map((c) => ({ label: REPORT_CATEGORY_LABELS[c.category], value: c.open }))} /> : <p className="text-sm text-ink-500">No open reports.</p>}
+                    {d.byCategory.length ? <RankBars tone="bg-warning-600" rows={d.byCategory.map((c) => ({ label: REPORT_CATEGORY_LABELS[c.category], value: c.open }))} /> : <p className="text-sm text-ink-500"><Text>No open reports.</Text></p>}
                   </div>
+                </Card>
+                <Card className="lg:col-span-2">
+                  <CardHeader title="Smart township, last 30 days" description="The third edition's features: machines, tracked trips, read bills, visitors, flood alerts, access and nature." />
+                  <dl className="grid grid-cols-2 gap-px bg-ink-100 sm:grid-cols-3 lg:grid-cols-6">
+                    {[
+                      [Cpu, 'Machine uptime', `${d.smart.machines_online} of ${d.smart.machines} online`],
+                      [Recycle, 'Recycled at machines', formatKg(d.smart.machine_g)],
+                      [Bike, 'Tracked walks and rides', formatKm(d.smart.tracked_m)],
+                      [FileText, 'Bills read', String(d.smart.bills_read)],
+                      [DoorOpen, 'Visitors at the gate', String(d.smart.visits)],
+                      [Droplets, 'Flood alerts sent', String(d.smart.flood_alerts)],
+                      [Accessibility, 'Barriers fixed within 7 days', `${d.smart.barriers_fixed_on_time} of ${d.smart.barriers_reported}`],
+                      [Leaf, 'Wildlife sightings', String(d.smart.sightings)],
+                      [Leaf, 'Garden plots in use', String(d.smart.plots_booked)],
+                      [Recycle, 'Guest recycling sessions', String(d.smart.guest_sessions)],
+                      [Tag, 'Shop pledges this month', formatRM(d.offers.pledged)],
+                      [Tag, 'Offer points given / used', `${formatPoints(d.offers.issued)} / ${formatPoints(d.offers.used)}`],
+                    ].map(([Icon, label, value]) => {
+                      const I = Icon as typeof Cpu;
+                      return (
+                        <div key={label as string} className="bg-white px-4 py-4">
+                          <dt className="flex items-center gap-1.5 text-xs font-medium text-ink-500">
+                            <I className="size-3.5" aria-hidden />
+                            <Text>{label as string}</Text>
+                          </dt>
+                          <dd className="mt-1 font-display text-xl font-bold tabular-nums text-ink-900"><Text>{value as string}</Text></dd>
+                        </div>
+                      );
+                    })}
+                  </dl>
+                  <p className="px-5 py-3 text-xs text-ink-500"><Text>No pledge, no points: offer-backed points given this month (</Text><Text>{formatPoints(d.offers.issued)}</Text><Text>) can never pass what </Text><Text>{d.offers.shops}</Text><Text> shop offer</Text><Text>{d.offers.shops === 1 ? '' : 's'}</Text><Text> promised (</Text><Text>{formatPoints(d.offers.pledged)}</Text>).</p>
                 </Card>
                 <Card>
                   <CardHeader title="Community" description="Neighbours meeting, helping and sharing." />
@@ -112,8 +168,8 @@ export default function InsightsPage() {
                       ['Items given or lent', d.community.items_shared],
                     ].map(([label, value]) => (
                       <div key={label as string} className="bg-white px-5 py-4">
-                        <dt className="text-xs font-medium text-ink-500">{label}</dt>
-                        <dd className="mt-1 font-display text-2xl font-bold tabular-nums text-ink-900">{value}</dd>
+                        <dt className="text-xs font-medium text-ink-500"><Text>{label}</Text></dt>
+                        <dd className="mt-1 font-display text-2xl font-bold tabular-nums text-ink-900"><Text>{value}</Text></dd>
                       </div>
                     ))}
                   </dl>

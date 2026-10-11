@@ -1,5 +1,7 @@
+
+import { Text } from '@/components/ui/localized-text';
 import type { Metadata } from 'next';
-import Link from 'next/link';
+import { LocalizedLink as Link } from '@/components/ui/localized-elements';
 import { Bullets, LegalDocument, type LegalSection } from '@/components/features/legal';
 import { LEGAL } from '@/shared/legal';
 
@@ -7,7 +9,7 @@ export const metadata: Metadata = { title: 'Terms of Use', description: 'The ter
 
 const link = (href: string, text: string) => (
   <Link href={href} className="font-semibold text-brand-700 hover:underline">
-    {text}
+    <Text>{text}</Text>
   </Link>
 );
 
@@ -17,17 +19,9 @@ const sections: LegalSection[] = [
     title: 'About KITA+ and these Terms',
     body: (
       <>
-        <p>
-          KITA+ is a township platform that brings community, safety, mobility, green living and local shopping into one account. It is operated by {LEGAL.operator} (“we”, “us”). These Terms of
-          Use (“Terms”) apply whenever you create an account or use KITA+.
-        </p>
-        <p>
-          KITA+ is currently a <strong>prototype</strong> built for the Sime Darby Property University Hackathon 2026. It is not an official Sime Darby Property service. In this prototype the
-          townships, homes, shops, sponsors and figures are demonstration data, no real money moves, and KITA Points cannot be exchanged for real goods or services.
-        </p>
-        <p>
-          By ticking “I accept” when you register, or by using KITA+, you agree to these Terms and to our {link('/privacy', 'Privacy Notice')}. If you do not agree, please do not use KITA+.
-        </p>
+        <p><Text>KITA+ is a township platform that brings community, safety, mobility, green living and local shopping into one account. It is operated by </Text><Text>{LEGAL.operator}</Text><Text> (“we”, “us”). These Terms of Use (“Terms”) apply whenever you create an account or use KITA+.</Text></p>
+        <p><Text>KITA+ is currently a </Text><strong><Text>prototype</Text></strong><Text> built for the Sime Darby Property University Hackathon 2026. It is not an official Sime Darby Property service. In this prototype the townships, homes, shops, sponsors and figures are demonstration data, no real money moves, and KITA Points cannot be exchanged for real goods or services.</Text></p>
+        <p><Text>By ticking “I accept” when you register, or by using KITA+, you agree to these Terms and to our </Text><Text>{link('/privacy', 'Privacy Notice')}</Text><Text>. If you do not agree, please do not use KITA+.</Text></p>
       </>
     ),
   },
@@ -67,11 +61,9 @@ const sections: LegalSection[] = [
     body: (
       <>
         <p>
-          <strong>Impact XP</strong> recognises verified good actions such as recycling, walking a township loop or helping a neighbour. It gives you levels and badges. It has no money value.
-        </p>
+          <strong><Text>Impact XP</Text></strong><Text> recognises verified good actions such as recycling, walking a township loop or helping a neighbour. It gives you levels and badges. It has no money value.</Text></p>
         <p>
-          <strong>KITA Points</strong> have value only when spent at participating township shops, where 100 points are worth RM1. They are not money, not e-money and not a deposit.
-        </p>
+          <strong><Text>KITA Points</Text></strong><Text> have value only when spent at participating township shops, where 100 points are worth RM1. They are not money, not e-money and not a deposit.</Text></p>
         <Bullets
           items={[
             'Points are given only when a shop, a sponsor or Sime Darby Property has already paid for them (“no pool, no points”). When a reward pool runs out, those rewards stop.',
@@ -84,7 +76,7 @@ const sections: LegalSection[] = [
             'If a daily check finds a problem with the reward float, points may be paused until it is resolved.',
           ]}
         />
-        <p>Programme rules such as rates and limits are shown in the app and may change. We will tell you in the app before a change that affects points you already hold.</p>
+        <p><Text>Programme rules such as rates and limits are shown in the app and may change. We will tell you in the app before a change that affects points you already hold.</Text></p>
       </>
     ),
   },
@@ -107,10 +99,7 @@ const sections: LegalSection[] = [
     id: 'sponsors',
     title: 'Sponsors and campaigns',
     body: (
-      <p>
-        Sponsors fund challenges with a fixed budget paid in advance. Rewards stop when the budget is used, and any unused budget is refunded when the campaign closes. Sponsors receive grouped
-        results only, never details of individual residents, unless a resident chooses to share them.
-      </p>
+      <p><Text>Sponsors fund challenges with a fixed budget paid in advance. Rewards stop when the budget is used, and any unused budget is refunded when the campaign closes. Sponsors receive grouped results only, never details of individual residents, unless a resident chooses to share them.</Text></p>
     ),
   },
   {
@@ -118,7 +107,7 @@ const sections: LegalSection[] = [
     title: 'Community features and your content',
     body: (
       <>
-        <p>Jiran, Kongsi and Lapor let you post events, ask for or offer help, give away or lend items, and report problems. When you post or report:</p>
+        <p><Text>Jiran, Kongsi and Lapor let you post events, ask for or offer help, give away or lend items, and report problems. When you post or report:</Text></p>
         <Bullets
           items={[
             'Be truthful and respectful. Do not post anything unlawful, harmful, misleading, discriminatory or that invades someone’s privacy.',
@@ -127,7 +116,7 @@ const sections: LegalSection[] = [
             'Posts flagged by several residents are hidden until a moderator reviews them. We may remove content that breaks these Terms.',
           ]}
         />
-        <p>You keep ownership of what you post. You allow us to store, display and process it to run KITA+ for the township.</p>
+        <p><Text>You keep ownership of what you post. You allow us to store, display and process it to run KITA+ for the township.</Text></p>
       </>
     ),
   },
@@ -136,13 +125,9 @@ const sections: LegalSection[] = [
     title: 'Flood alerts and safety information',
     body: (
       <>
+        <p><Text>Banjir shows water levels and warnings by zone, and a danger warning with a safe route. These alerts </Text><strong><Text>support but do not replace</Text></strong><Text> official warnings from the authorities, such as Jabatan Pengairan dan Saliran (Public Infobanjir) and the National Disaster Management Agency (NADMA). Always follow instructions from the authorities.</Text></p>
         <p>
-          Banjir shows water levels and warnings by zone, and a danger warning with a safe route. These alerts <strong>support but do not replace</strong> official warnings from the authorities,
-          such as Jabatan Pengairan dan Saliran (Public Infobanjir) and the National Disaster Management Agency (NADMA). Always follow instructions from the authorities.
-        </p>
-        <p>
-          <strong>In an emergency, call 999.</strong> In this prototype, water levels come from a simulated sensor.
-        </p>
+          <strong><Text>In an emergency, call 999.</Text></strong><Text> In this prototype, water levels come from a simulated sensor.</Text></p>
       </>
     ),
   },
@@ -150,10 +135,7 @@ const sections: LegalSection[] = [
     id: 'ai',
     title: 'Automated suggestions',
     body: (
-      <p>
-        KITA+ may suggest the type and urgency of a report, or the material of an item you recycle, using rules or an AI service. Suggestions can be wrong. Township staff can always correct
-        them, and every correction is recorded.
-      </p>
+      <p><Text>KITA+ may suggest the type and urgency of a report, or the material of an item you recycle, using rules or an AI service. Suggestions can be wrong. Township staff can always correct them, and every correction is recorded.</Text></p>
     ),
   },
   {
@@ -173,10 +155,7 @@ const sections: LegalSection[] = [
     id: 'availability',
     title: 'Availability and changes to KITA+',
     body: (
-      <p>
-        KITA+ is a prototype and is provided as it is. We may change, pause or stop features, and demonstration data may be reset. We try to keep KITA+ available and accurate but cannot promise
-        that it will always be uninterrupted or error-free.
-      </p>
+      <p><Text>KITA+ is a prototype and is provided as it is. We may change, pause or stop features, and demonstration data may be reset. We try to keep KITA+ available and accurate but cannot promise that it will always be uninterrupted or error-free.</Text></p>
     ),
   },
   {
@@ -184,11 +163,8 @@ const sections: LegalSection[] = [
     title: 'Our responsibility to you',
     body: (
       <>
-        <p>
-          Nothing in these Terms limits rights you have under Malaysian law that cannot be limited, including under the Consumer Protection Act 1999. Subject to that, we are not responsible for
-          loss that was not reasonably foreseeable, for loss caused by events outside our reasonable control, or for exchanges between residents.
-        </p>
-        <p>Where we are responsible for a mistake in your points, we will correct your balance.</p>
+        <p><Text>Nothing in these Terms limits rights you have under Malaysian law that cannot be limited, including under the Consumer Protection Act 1999. Subject to that, we are not responsible for loss that was not reasonably foreseeable, for loss caused by events outside our reasonable control, or for exchanges between residents.</Text></p>
+        <p><Text>Where we are responsible for a mistake in your points, we will correct your balance.</Text></p>
       </>
     ),
   },
@@ -196,34 +172,26 @@ const sections: LegalSection[] = [
     id: 'closing',
     title: 'Closing or suspending an account',
     body: (
-      <p>
-        You can delete your account at any time from your Account page. Your personal details are then removed, and any points you still hold are given up and go back to whoever funded them.
-        We may suspend or close an account that breaks these Terms, and will tell you why unless the law prevents us.
-      </p>
+      <p><Text>You can delete your account at any time from your Account page. Your personal details are then removed, and any points you still hold are given up and go back to whoever funded them. We may suspend or close an account that breaks these Terms, and will tell you why unless the law prevents us.</Text></p>
     ),
   },
   {
     id: 'changes',
     title: 'Changes to these Terms',
     body: (
-      <p>
-        We may update these Terms. The version and date are shown at the top of this page. When we make a change that matters, we will ask you to read and accept the new Terms the next time you
-        sign in.
-      </p>
+      <p><Text>We may update these Terms. The version and date are shown at the top of this page. When we make a change that matters, we will ask you to read and accept the new Terms the next time you sign in.</Text></p>
     ),
   },
   {
     id: 'law',
     title: 'Law and disputes',
-    body: <p>These Terms are governed by the laws of Malaysia. The courts of Malaysia have jurisdiction over any dispute about them.</p>,
+    body: <p><Text>These Terms are governed by the laws of Malaysia. The courts of Malaysia have jurisdiction over any dispute about them.</Text></p>,
   },
   {
     id: 'contact',
     title: 'Contact us',
     body: (
-      <p>
-        Questions about these Terms: <a href={`mailto:${LEGAL.contactEmail}`} className="font-semibold text-brand-700 hover:underline">{LEGAL.contactEmail}</a>, or speak to your township office.
-      </p>
+      <p><Text>Questions about these Terms: </Text><a href={`mailto:${LEGAL.contactEmail}`} className="font-semibold text-brand-700 hover:underline"><Text>{LEGAL.contactEmail}</Text></a><Text>, or speak to your township office.</Text></p>
     ),
   },
 ];
@@ -235,11 +203,8 @@ export default function TermsPage() {
       other={{ href: '/privacy', label: 'Privacy Notice' }}
       summary={
         <>
-          <p className="font-semibold">In short</p>
-          <p className="mt-1">
-            Give accurate details and keep your account to yourself. KITA Points are a reward worth RM1 per 100 points at township shops, never cash. Be respectful in community features. Flood
-            alerts support, but do not replace, official warnings. This is a prototype: no real money moves.
-          </p>
+          <p className="font-semibold"><Text>In short</Text></p>
+          <p className="mt-1"><Text>Give accurate details and keep your account to yourself. KITA Points are a reward worth RM1 per 100 points at township shops, never cash. Be respectful in community features. Flood alerts support, but do not replace, official warnings. This is a prototype: no real money moves.</Text></p>
         </>
       }
       sections={sections}

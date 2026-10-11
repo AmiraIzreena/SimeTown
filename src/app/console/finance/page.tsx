@@ -1,5 +1,7 @@
 'use client';
 
+import { Text } from '@/components/ui/localized-text';
+
 import { CheckCircle2, ShieldAlert, ShieldCheck, XCircle } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
@@ -76,8 +78,7 @@ function FloatTab({ isAdmin }: { isAdmin: boolean }) {
               <Card className="flex gap-3 border-accent-200 bg-accent-50 p-5 text-[15px] text-accent-700">
                 <ShieldAlert className="mt-0.5 size-5 shrink-0" aria-hidden />
                 <p>
-                  <strong>Points are paused.</strong> A float check failed, so no points can be given or spent until the cause is found. An SDP HQ admin resumes points under Rules.
-                </p>
+                  <strong><Text>Points are paused.</Text></strong><Text> A float check failed, so no points can be given or spent until the cause is found. An SDP HQ admin resumes points under Rules.</Text></p>
               </Card>
             )}
             <Card>
@@ -86,7 +87,7 @@ function FloatTab({ isAdmin }: { isAdmin: boolean }) {
                 action={
                   <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold ${matched ? 'bg-success-50 text-success-700' : 'bg-accent-50 text-accent-700'}`}>
                     <ShieldCheck className="size-4" aria-hidden />
-                    {matched ? 'Matched to the sen' : 'Does not match'}
+                    <Text>{matched ? 'Matched to the sen' : 'Does not match'}</Text>
                   </span>
                 }
               />
@@ -98,17 +99,17 @@ function FloatTab({ isAdmin }: { isAdmin: boolean }) {
                   ['Community pool', p.communitySen],
                 ].map(([label, value]) => (
                   <div key={label as string} className="flex items-center justify-between gap-4 px-5 py-3">
-                    <dt className="text-ink-600">{label}</dt>
-                    <dd className="font-semibold tabular-nums text-ink-900">{formatRM(value as number)}</dd>
+                    <dt className="text-ink-600"><Text>{label}</Text></dt>
+                    <dd className="font-semibold tabular-nums text-ink-900"><Text>{formatRM(value as number)}</Text></dd>
                   </div>
                 ))}
                 <div className="flex items-center justify-between gap-4 bg-ink-25 px-5 py-3">
-                  <dt className="font-semibold text-ink-900">The float owes</dt>
-                  <dd className="font-display text-lg font-bold tabular-nums text-ink-900">{formatRM(owed)}</dd>
+                  <dt className="font-semibold text-ink-900"><Text>The float owes</Text></dt>
+                  <dd className="font-display text-lg font-bold tabular-nums text-ink-900"><Text>{formatRM(owed)}</Text></dd>
                 </div>
                 <div className="flex items-center justify-between gap-4 bg-ink-25 px-5 py-3">
-                  <dt className="font-semibold text-ink-900">The float holds</dt>
-                  <dd className="font-display text-lg font-bold tabular-nums text-ink-900">{formatRM(p.trustSen)}</dd>
+                  <dt className="font-semibold text-ink-900"><Text>The float holds</Text></dt>
+                  <dd className="font-display text-lg font-bold tabular-nums text-ink-900"><Text>{formatRM(p.trustSen)}</Text></dd>
                 </div>
               </dl>
             </Card>
@@ -125,9 +126,7 @@ function FloatTab({ isAdmin }: { isAdmin: boolean }) {
                     }}
                   >
                     <Input label="Trust account balance on the bank statement (RM, optional)" value={statement} onChange={(event) => setStatement(event.target.value)} inputMode="decimal" className="min-w-0 flex-1 basis-64" />
-                    <Button type="submit" pending={check.pending}>
-                      Run check
-                    </Button>
+                    <Button type="submit" pending={check.pending}><Text>Run check</Text></Button>
                   </form>
                 </Card>
                 <Card>
@@ -143,9 +142,7 @@ function FloatTab({ isAdmin }: { isAdmin: boolean }) {
                   >
                     <Input label="Amount (RM)" name="amount" inputMode="decimal" required error={deposit.fields.amountSen} />
                     <Input label="Bank reference" name="bankRef" required error={deposit.fields.bankRef} />
-                    <Button type="submit" variant="secondary" pending={deposit.pending}>
-                      Record
-                    </Button>
+                    <Button type="submit" variant="secondary" pending={deposit.pending}><Text>Record</Text></Button>
                   </form>
                 </Card>
               </div>
@@ -154,7 +151,7 @@ function FloatTab({ isAdmin }: { isAdmin: boolean }) {
             <Card>
               <CardHeader title="Recent checks" />
               {f.checks.length === 0 ? (
-                <p className="p-5 text-[15px] text-ink-500">No checks have run yet.</p>
+                <p className="p-5 text-[15px] text-ink-500"><Text>No checks have run yet.</Text></p>
               ) : (
                 <ul className="divide-y divide-ink-100">
                   {f.checks.map((c) => (
@@ -162,16 +159,16 @@ function FloatTab({ isAdmin }: { isAdmin: boolean }) {
                       {c.ok ? <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-success-600" aria-hidden /> : <XCircle className="mt-0.5 size-5 shrink-0 text-accent-600" aria-hidden />}
                       <div className="min-w-0 flex-1">
                         <p className="font-medium text-ink-900">
-                          {c.ok ? 'Passed' : 'Failed'} · float {formatRM(c.trust_sen)}
-                          {c.bank_statement_sen !== null && ` · bank statement ${formatRM(c.bank_statement_sen)}`}
+                          <Text>{c.ok ? 'Passed' : 'Failed'}</Text><Text> · float </Text><Text>{formatRM(c.trust_sen)}</Text>
+                          <Text>{c.bank_statement_sen !== null && ` · bank statement ${formatRM(c.bank_statement_sen)}`}</Text>
                         </p>
                         {c.issues.map((issue) => (
                           <p key={issue} className="text-sm text-accent-700">
-                            {issue}
+                            <Text>{issue}</Text>
                           </p>
                         ))}
                       </div>
-                      <span className="text-sm text-ink-500">{formatDateTime(c.checked_at)}</span>
+                      <span className="text-sm text-ink-500"><Text>{formatDateTime(c.checked_at)}</Text></span>
                     </li>
                   ))}
                 </ul>
@@ -201,20 +198,18 @@ function PaymentsTab({ isAdmin }: { isAdmin: boolean }) {
     <div className="space-y-5">
       <Card className="flex flex-wrap items-center justify-between gap-4 p-5">
         <div>
-          <p className="text-sm font-medium text-ink-500">Owed to shops now</p>
-          <p className="font-display text-3xl font-bold tabular-nums text-ink-900">{formatRM(due)}</p>
-          <p className="mt-1 text-sm text-ink-500">Shops are paid 100% of the points they accept, every week. In this prototype the payment is a statement entry, not a bank transfer.</p>
+          <p className="text-sm font-medium text-ink-500"><Text>Owed to shops now</Text></p>
+          <p className="font-display text-3xl font-bold tabular-nums text-ink-900"><Text>{formatRM(due)}</Text></p>
+          <p className="mt-1 text-sm text-ink-500"><Text>Shops are paid 100% of the points they accept, every week. In this prototype the payment is a statement entry, not a bank transfer.</Text></p>
         </div>
         {isAdmin && (
-          <Button onClick={() => setConfirming(true)} disabled={due === 0}>
-            Run settlement
-          </Button>
+          <Button onClick={() => setConfirming(true)} disabled={due === 0}><Text>Run settlement</Text></Button>
         )}
       </Card>
       <Async state={settlements}>
         {(list) =>
           list.length === 0 ? (
-            <EmptyState title="No payments yet">The weekly settlement pays every shop what it is owed.</EmptyState>
+            <EmptyState title="No payments yet"><Text>The weekly settlement pays every shop what it is owed.</Text></EmptyState>
           ) : (
             <DataTable
               caption="Payments to shops"
@@ -231,9 +226,7 @@ function PaymentsTab({ isAdmin }: { isAdmin: boolean }) {
         }
       </Async>
       <ConfirmDialog open={confirming} onClose={() => setConfirming(false)} onConfirm={() => void run.run()} title="Run the settlement?" confirmLabel="Pay shops" pending={run.pending}>
-        <p>
-          Every shop is paid what it is owed, <strong>{formatRM(due)}</strong> in total, from the reward float. Each shop gets a statement.
-        </p>
+        <p><Text>Every shop is paid what it is owed, </Text><strong><Text>{formatRM(due)}</Text></strong><Text> in total, from the reward float. Each shop gets a statement.</Text></p>
       </ConfirmDialog>
     </div>
   );
@@ -261,16 +254,14 @@ function CorrectionsTab({ myId }: { myId?: string }) {
           <Input label="Points to add (or remove, with a minus sign)" name="points" type="number" step={1} required error={request.fields.points} />
           <Textarea label="Reason" name="reason" maxLength={300} required error={request.fields.reason} className="sm:col-span-2" hint="At least 10 characters. This is kept in the audit trail." />
           <div>
-            <Button type="submit" pending={request.pending}>
-              Send for approval
-            </Button>
+            <Button type="submit" pending={request.pending}><Text>Send for approval</Text></Button>
           </div>
         </form>
       </Card>
       <Async state={adjustments}>
         {(list) =>
           list.length === 0 ? (
-            <EmptyState title="No corrections">Requests and their approvals appear here.</EmptyState>
+            <EmptyState title="No corrections"><Text>Requests and their approvals appear here.</Text></EmptyState>
           ) : (
             <ul className="space-y-3">
               {list.map((a) => (
@@ -278,27 +269,22 @@ function CorrectionsTab({ myId }: { myId?: string }) {
                   <Card className="flex flex-wrap items-center justify-between gap-4 p-5">
                     <div className="min-w-0">
                       <p className="text-[15px] font-semibold text-ink-900">
-                        {a.points > 0 ? '+' : '−'}
-                        {formatPoints(Math.abs(a.points))} points · {a.member_name} ({a.member_code})
+                        <Text>{a.points > 0 ? '+' : '−'}</Text>
+                        <Text>{formatPoints(Math.abs(a.points))}</Text><Text> points · </Text><Text>{a.member_name}</Text> (<Text>{a.member_code}</Text>)
                       </p>
                       <p className="text-sm text-ink-600">{a.reason}</p>
-                      <p className="text-sm text-ink-500">
-                        Requested by {a.requested_by_name} · {formatDateTime(a.created_at)}
-                        {a.decided_by_name && ` · decided by ${a.decided_by_name}`}
+                      <p className="text-sm text-ink-500"><Text>Requested by </Text><Text>{a.requested_by_name}</Text> · <Text>{formatDateTime(a.created_at)}</Text>
+                        <Text>{a.decided_by_name && ` · decided by ${a.decided_by_name}`}</Text>
                       </p>
                     </div>
                     {a.status !== 'PENDING' ? (
-                      <Badge tone={a.status === 'APPROVED' ? 'success' : 'neutral'}>{a.status === 'APPROVED' ? 'Approved' : 'Rejected'}</Badge>
+                      <Badge tone={a.status === 'APPROVED' ? 'success' : 'neutral'}><Text>{a.status === 'APPROVED' ? 'Approved' : 'Rejected'}</Text></Badge>
                     ) : a.requested_by === myId ? (
-                      <Badge tone="warning">Needs a second admin</Badge>
+                      <Badge tone="warning"><Text>Needs a second admin</Text></Badge>
                     ) : (
                       <div className="flex gap-2">
-                        <Button size="sm" onClick={() => decide.run(a.id, true)} disabled={decide.pending}>
-                          Approve
-                        </Button>
-                        <Button size="sm" variant="secondary" onClick={() => decide.run(a.id, false)} disabled={decide.pending}>
-                          Reject
-                        </Button>
+                        <Button size="sm" onClick={() => decide.run(a.id, true)} disabled={decide.pending}><Text>Approve</Text></Button>
+                        <Button size="sm" variant="secondary" onClick={() => decide.run(a.id, false)} disabled={decide.pending}><Text>Reject</Text></Button>
                       </div>
                     )}
                   </Card>
