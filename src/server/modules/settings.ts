@@ -19,6 +19,8 @@ export interface Settings {
   min_group_size: number;
   timezone: string;
   issuance_paused: boolean;
+  offer_points_monthly_home: number;
+  offer_success_fee_bps: number;
 }
 
 export const SETTINGS_COLUMNS = [
@@ -39,6 +41,8 @@ export const SETTINGS_COLUMNS = [
   'min_group_size',
   'timezone',
   'issuance_paused',
+  'offer_points_monthly_home',
+  'offer_success_fee_bps',
 ] as const satisfies readonly (keyof Settings)[];
 
 export async function getSettings(q: Queryable): Promise<Settings> {

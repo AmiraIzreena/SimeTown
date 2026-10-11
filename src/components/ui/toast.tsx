@@ -1,5 +1,8 @@
 'use client';
 
+import { Text } from '@/components/ui/localized-text';
+import { LocalizedButton } from '@/components/ui/localized-elements';
+
 import { AlertCircle, CheckCircle2, X } from 'lucide-react';
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 import { cn } from '@/lib/cn';
@@ -37,7 +40,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   return (
     <ToastContext.Provider value={value}>
-      {children}
+      <Text>{children}</Text>
       <div aria-live="polite" className="no-print pointer-events-none fixed inset-x-0 bottom-20 z-[60] flex flex-col items-center gap-2 px-4 md:bottom-6 md:items-end md:px-6">
         {toasts.map((toast) => (
           <div
@@ -49,10 +52,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             )}
           >
             {toast.kind === 'error' ? <AlertCircle className="mt-0.5 size-5 shrink-0 text-accent-600" aria-hidden /> : <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-success-600" aria-hidden />}
-            <p className="min-w-0 flex-1 text-sm font-medium text-ink-800">{toast.message}</p>
-            <button type="button" onClick={() => dismiss(toast.id)} aria-label="Dismiss" className="grid size-6 shrink-0 place-items-center rounded text-ink-500 hover:text-ink-700">
+            <p className="min-w-0 flex-1 text-sm font-medium text-ink-800"><Text>{toast.message}</Text></p>
+            <LocalizedButton type="button" onClick={() => dismiss(toast.id)} aria-label="Dismiss" className="grid size-6 shrink-0 place-items-center rounded text-ink-500 hover:text-ink-700">
               <X className="size-4" aria-hidden />
-            </button>
+            </LocalizedButton>
           </div>
         ))}
       </div>

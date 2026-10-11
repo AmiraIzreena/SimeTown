@@ -1,5 +1,8 @@
 'use client';
 
+import { Text } from '@/components/ui/localized-text';
+import { LocalizedInput } from '@/components/ui/localized-elements';
+
 import { MapPin, Sparkles } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { ReportPhoto, STATUS_LABELS, StatusBadge, URGENCY_LABELS, UrgencyBadge, categoryLabel, type Report } from '@/components/features/report-bits';
@@ -43,7 +46,7 @@ export default function ReportQueuePage() {
         ) : reports.isLoading ? (
           <SkeletonList rows={4} />
         ) : reports.items.length === 0 ? (
-          <EmptyState title="Nothing here">No reports with this status.</EmptyState>
+          <EmptyState title="Nothing here"><Text>No reports with this status.</Text></EmptyState>
         ) : (
           <ul className="space-y-3">
             {[...reports.items]
@@ -53,9 +56,9 @@ export default function ReportQueuePage() {
                   <button type="button" onClick={() => setOpen(report)} className="lift block w-full rounded-lg border border-ink-200 bg-white p-5 text-left shadow-xs">
                     <div className="flex flex-wrap items-center gap-2">
                       <UrgencyBadge urgency={report.urgency} />
-                      <span className="text-sm font-semibold text-ink-900">{categoryLabel(report.category)}</span>
-                      {report.zone_name && <span className="text-sm text-ink-500">· {report.zone_name}</span>}
-                      <span className="ml-auto text-xs text-ink-500">{timeAgo(report.created_at)}</span>
+                      <span className="text-sm font-semibold text-ink-900"><Text>{categoryLabel(report.category)}</Text></span>
+                      {report.zone_name && <span className="text-sm text-ink-500">· <Text>{report.zone_name}</Text></span>}
+                      <span className="ml-auto text-xs text-ink-500"><Text>{timeAgo(report.created_at)}</Text></span>
                     </div>
                     <p className="mt-2 line-clamp-2 text-[15px] text-ink-700">{report.description}</p>
                     <p className="mt-2 inline-flex items-center gap-1.5 text-sm text-ink-500">
@@ -69,9 +72,7 @@ export default function ReportQueuePage() {
         )}
         {reports.hasMore && (
           <div className="mt-5 text-center">
-            <Button variant="secondary" onClick={() => void reports.loadMore()} pending={reports.loadingMore}>
-              Show more
-            </Button>
+            <Button variant="secondary" onClick={() => void reports.loadMore()} pending={reports.loadingMore}><Text>Show more</Text></Button>
           </div>
         )}
       </TabPanel>
@@ -84,12 +85,8 @@ export default function ReportQueuePage() {
         wide
         footer={
           <>
-            <Button variant="secondary" onClick={() => setOpen(null)}>
-              Close
-            </Button>
-            <Button type="submit" form="report-update" pending={update.pending}>
-              Save
-            </Button>
+            <Button variant="secondary" onClick={() => setOpen(null)}><Text>Close</Text></Button>
+            <Button type="submit" form="report-update" pending={update.pending}><Text>Save</Text></Button>
           </>
         }
       >
@@ -104,34 +101,32 @@ export default function ReportQueuePage() {
             {open.ai_category && (
               <p className="flex gap-2 rounded-lg bg-brand-50 px-4 py-3 text-sm text-brand-800">
                 <Sparkles className="mt-0.5 size-4 shrink-0" aria-hidden />
-                <span>
-                  Suggested by {open.ai_source === 'MODEL' ? 'the AI photo and text check' : 'keyword rules'}: <strong>{REPORT_CATEGORY_LABELS[open.ai_category]}</strong>, <strong>{URGENCY_LABELS[open.ai_urgency!].toLowerCase()}</strong> urgency. You can change either below.
-                </span>
+                <span><Text>Suggested by </Text><Text>{open.ai_source === 'MODEL' ? 'the AI photo and text check' : 'keyword rules'}</Text>: <strong><Text>{REPORT_CATEGORY_LABELS[open.ai_category]}</Text></strong>, <strong><Text>{URGENCY_LABELS[open.ai_urgency!].toLowerCase()}</Text></strong><Text> urgency. You can change either below.</Text></span>
               </p>
             )}
             <form method="post" id="report-update" key={open.id} onSubmit={submit} className="grid gap-4 sm:grid-cols-3">
               <Select label="Type" name="category" defaultValue={open.category}>
                 {REPORT_CATEGORIES.map((c) => (
                   <option key={c} value={c}>
-                    {REPORT_CATEGORY_LABELS[c]}
+                    <Text>{REPORT_CATEGORY_LABELS[c]}</Text>
                   </option>
                 ))}
               </Select>
               <Select label="Urgency" name="urgency" defaultValue={open.urgency}>
                 {URGENCIES.map((u) => (
                   <option key={u} value={u}>
-                    {URGENCY_LABELS[u]}
+                    <Text>{URGENCY_LABELS[u]}</Text>
                   </option>
                 ))}
               </Select>
               <Select label="Status" name="status" defaultValue={open.status} disabled={closed} hint={closed ? 'This report is closed.' : 'The resident earns XP once it is in progress or resolved.'}>
                 {REPORT_STATUSES.map((s) => (
                   <option key={s} value={s}>
-                    {STATUS_LABELS[s]}
+                    <Text>{STATUS_LABELS[s]}</Text>
                   </option>
                 ))}
               </Select>
-              {closed && <input type="hidden" name="status" value={open.status} />}
+              {closed && <LocalizedInput type="hidden" name="status" value={open.status} />}
               <Textarea label="Note to the resident (optional)" name="staffNote" defaultValue={open.staff_note ?? ''} maxLength={500} className="sm:col-span-3" />
             </form>
           </div>

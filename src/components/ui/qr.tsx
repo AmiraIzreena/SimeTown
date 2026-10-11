@@ -1,5 +1,7 @@
 'use client';
 
+import { LocalizedImg } from '@/components/ui/localized-elements';
+
 import { useEffect, useState } from 'react';
 
 /** Draws a QR code. The generator is loaded only when a code is actually shown. */
@@ -16,6 +18,5 @@ export function QrCode({ value, size = 220, label }: { value: string; size?: num
     };
   }, [value, size]);
   if (!src) return <div aria-hidden className="skeleton rounded-lg" style={{ width: size, height: size }} />;
-  // eslint-disable-next-line @next/next/no-img-element -- a generated data URL; the image optimiser adds nothing here
-  return <img src={src} width={size} height={size} alt={label} className="rounded-lg border border-ink-200" />;
+  return <LocalizedImg src={src} width={size} height={size} alt={label} className="rounded-lg border border-ink-200" />;
 }

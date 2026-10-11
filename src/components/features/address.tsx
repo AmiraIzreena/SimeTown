@@ -1,5 +1,7 @@
 'use client';
 
+import { Text } from '@/components/ui/localized-text';
+
 import { MapPin } from 'lucide-react';
 import { useState } from 'react';
 import { Select } from '@/components/ui/field';
@@ -37,13 +39,13 @@ export function AddressPicker({ townshipId, error }: { townshipId: string | null
   if (!townshipId) {
     return (
       <Select label="Address" disabled defaultValue="" error={error}>
-        <option value="">Choose your township first</option>
+        <option value=""><Text>Choose your township first</Text></option>
       </Select>
     );
   }
   return (
     <fieldset className="space-y-4">
-      <legend className="sr-only">Your address</legend>
+      <legend className="sr-only"><Text>Your address</Text></legend>
       <div className={askPrecinct ? 'grid gap-4 sm:grid-cols-2' : undefined}>
         {askPrecinct && (
           <Select
@@ -57,11 +59,11 @@ export function AddressPicker({ townshipId, error }: { townshipId: string | null
             required
           >
             <option value="" disabled>
-              {options.data ? 'Choose' : 'Loading…'}
+              <Text>{options.data ? 'Choose' : 'Loading…'}</Text>
             </option>
             {groups.map((g) => (
               <option key={g.precinct ?? ''} value={g.precinct ?? ''}>
-                {g.precinct}
+                <Text>{g.precinct}</Text>
               </option>
             ))}
           </Select>
@@ -77,11 +79,11 @@ export function AddressPicker({ townshipId, error }: { townshipId: string | null
           required
         >
           <option value="" disabled>
-            {group ? 'Choose' : askPrecinct ? 'Choose a precinct first' : 'Loading…'}
+            <Text>{group ? 'Choose' : askPrecinct ? 'Choose a precinct first' : 'Loading…'}</Text>
           </option>
           {group?.streets.map((s) => (
             <option key={s} value={s}>
-              {s}
+              <Text>{s}</Text>
             </option>
           ))}
         </Select>
@@ -97,11 +99,11 @@ export function AddressPicker({ townshipId, error }: { townshipId: string | null
         hint="Cannot find your address? The township office adds homes from the property record."
       >
         <option value="" disabled>
-          {!street ? 'Choose a street first' : homes.data ? 'Choose' : 'Loading…'}
+          <Text>{!street ? 'Choose a street first' : homes.data ? 'Choose' : 'Loading…'}</Text>
         </option>
         {homes.data?.map((h) => (
           <option key={h.id} value={h.id}>
-            {h.label}
+            <Text>{h.label}</Text>
           </option>
         ))}
       </Select>

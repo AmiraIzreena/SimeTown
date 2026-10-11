@@ -1,5 +1,7 @@
 'use client';
 
+import { Text } from '@/components/ui/localized-text';
+
 import { CalendarDays, Flag, MapPin, Plus, Users } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
@@ -73,7 +75,7 @@ export function PostsBoard({ title, description, kinds }: { title: string; descr
         action={
           <Button onClick={() => setCreating(true)}>
             <Plus className="size-4" aria-hidden />
-            {kind.create}
+            <Text>{kind.create}</Text>
           </Button>
         }
       />
@@ -84,20 +86,20 @@ export function PostsBoard({ title, description, kinds }: { title: string; descr
         ) : posts.isLoading ? (
           <SkeletonList rows={3} />
         ) : posts.items.length === 0 ? (
-          <EmptyState title="Nothing here yet" action={<Button onClick={() => setCreating(true)}>{kind.create}</Button>}>
-            {kind.empty}
+          <EmptyState title="Nothing here yet" action={<Button onClick={() => setCreating(true)}><Text>{kind.create}</Text></Button>}>
+            <Text>{kind.empty}</Text>
           </EmptyState>
         ) : (
           <div className="grid gap-4 md:grid-cols-2">
             {posts.items.map((post) => (
               <Card key={post.id} className="flex flex-col p-5">
                 <div className="flex flex-wrap items-center gap-2">
-                  {post.by_township && <Badge tone="brand">Township</Badge>}
-                  {post.is_mine && <Badge>Yours</Badge>}
-                  {post.status === 'CLOSED' && <Badge>Closed</Badge>}
-                  {post.status === 'HIDDEN' && <Badge tone="warning">Hidden for review</Badge>}
+                  {post.by_township && <Badge tone="brand"><Text>Township</Text></Badge>}
+                  {post.is_mine && <Badge><Text>Yours</Text></Badge>}
+                  {post.status === 'CLOSED' && <Badge><Text>Closed</Text></Badge>}
+                  {post.status === 'HIDDEN' && <Badge tone="warning"><Text>Hidden for review</Text></Badge>}
                   <span className="ml-auto text-xs text-ink-500">
-                    {post.author_name} · {timeAgo(post.created_at)}
+                    {post.author_name} · <Text>{timeAgo(post.created_at)}</Text>
                   </span>
                 </div>
                 <h3 className="mt-3 text-[17px] font-semibold">{post.title}</h3>
@@ -106,19 +108,19 @@ export function PostsBoard({ title, description, kinds }: { title: string; descr
                   {post.starts_at && (
                     <span className="inline-flex items-center gap-1.5">
                       <CalendarDays className="size-4" aria-hidden />
-                      {formatDateTime(post.starts_at)}
+                      <Text>{formatDateTime(post.starts_at)}</Text>
                     </span>
                   )}
                   {post.location && (
                     <span className="inline-flex items-center gap-1.5">
                       <MapPin className="size-4" aria-hidden />
-                      {post.location}
+                      <Text>{post.location}</Text>
                     </span>
                   )}
                   <span className="inline-flex items-center gap-1.5">
                     <Users className="size-4" aria-hidden />
-                    {post.responses}
-                    {post.capacity ? ` of ${post.capacity}` : ''}
+                    <Text>{post.responses}</Text>
+                    <Text>{post.capacity ? ` of ${post.capacity}` : ''}</Text>
                   </span>
                 </div>
 
@@ -128,10 +130,10 @@ export function PostsBoard({ title, description, kinds }: { title: string; descr
                       <li key={r.user_id} className="flex items-center justify-between gap-3 text-sm">
                         <span className="font-medium text-ink-800">{r.name}</span>
                         {r.status === 'CONFIRMED' ? (
-                          <Badge tone="success">Confirmed</Badge>
+                          <Badge tone="success"><Text>Confirmed</Text></Badge>
                         ) : (
                           <Button size="sm" variant="secondary" onClick={() => confirm.run(post.id, r.user_id)} disabled={confirm.pending}>
-                            {kind.confirm}
+                            <Text>{kind.confirm}</Text>
                           </Button>
                         )}
                       </li>
@@ -142,24 +144,20 @@ export function PostsBoard({ title, description, kinds }: { title: string; descr
                 <div className="mt-4 flex flex-wrap items-center gap-2">
                   {post.is_mine ? (
                     post.status === 'OPEN' && (
-                      <Button size="sm" variant="ghost" onClick={() => close.run(post.id)} disabled={close.pending}>
-                        Close
-                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => close.run(post.id)} disabled={close.pending}><Text>Close</Text></Button>
                     )
                   ) : post.my_response ? (
-                    <Badge tone={post.my_response === 'CONFIRMED' ? 'success' : 'brand'}>{post.my_response === 'CONFIRMED' ? 'Confirmed' : kind.responded}</Badge>
+                    <Badge tone={post.my_response === 'CONFIRMED' ? 'success' : 'brand'}><Text>{post.my_response === 'CONFIRMED' ? 'Confirmed' : kind.responded}</Text></Badge>
                   ) : (
                     post.status === 'OPEN' && (
                       <Button size="sm" onClick={() => respond.run(post.id)} disabled={respond.pending}>
-                        {kind.respond}
+                        <Text>{kind.respond}</Text>
                       </Button>
                     )
                   )}
                   {!post.is_mine && (
                     <button type="button" onClick={() => setFlagging(post)} className="ml-auto inline-flex min-h-9 items-center gap-1.5 rounded-md px-2 text-sm text-ink-500 transition-colors duration-200 hover:text-accent-600">
-                      <Flag className="size-4" aria-hidden />
-                      Report post
-                    </button>
+                      <Flag className="size-4" aria-hidden /><Text>Report post</Text></button>
                   )}
                 </div>
               </Card>
@@ -168,9 +166,7 @@ export function PostsBoard({ title, description, kinds }: { title: string; descr
         )}
         {posts.hasMore && (
           <div className="mt-5 text-center">
-            <Button variant="secondary" onClick={() => void posts.loadMore()} pending={posts.loadingMore}>
-              Show more
-            </Button>
+            <Button variant="secondary" onClick={() => void posts.loadMore()} pending={posts.loadingMore}><Text>Show more</Text></Button>
           </div>
         )}
       </TabPanel>
@@ -210,12 +206,8 @@ function CreatePost({ kind, open, onClose, onCreated }: { kind: BoardKind; open:
       description={kind.xpNote}
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button type="submit" form="create-post" pending={create.pending}>
-            Post
-          </Button>
+          <Button variant="secondary" onClick={onClose}><Text>Cancel</Text></Button>
+          <Button type="submit" form="create-post" pending={create.pending}><Text>Post</Text></Button>
         </>
       }
     >
@@ -250,12 +242,8 @@ function FlagPost({ post, onClose, onFlagged }: { post: Post | null; onClose: ()
       description="Posts flagged by several residents are hidden until a moderator has reviewed them."
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button variant="danger" type="submit" form="flag-post" pending={flag.pending}>
-            Report
-          </Button>
+          <Button variant="secondary" onClick={onClose}><Text>Cancel</Text></Button>
+          <Button variant="danger" type="submit" form="flag-post" pending={flag.pending}><Text>Report</Text></Button>
         </>
       }
     >

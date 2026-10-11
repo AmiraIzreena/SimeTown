@@ -13,7 +13,9 @@ export type SystemAccountKind =
   | 'COMMUNITY_POOL'
   | 'REVENUE_ISSUANCE_FEE'
   | 'REVENUE_CAMPAIGN_FEE'
-  | 'REVENUE_CAMPAIGN_COSTS';
+  | 'REVENUE_CAMPAIGN_COSTS'
+  | 'REVENUE_SUCCESS_FEE'
+  | 'REVENUE_SPONSOR_TIER';
 export type OwnedAccountKind = 'FUNDER_POOL' | 'WALLET' | 'MERCHANT_PAYABLE';
 type Owner = { merchantId: string } | { campaignId: string } | { userId: string };
 
@@ -27,7 +29,9 @@ export type TxnKind =
   | 'SETTLEMENT'
   | 'CAMPAIGN_FUND'
   | 'CAMPAIGN_REFUND'
-  | 'ADJUSTMENT';
+  | 'ADJUSTMENT'
+  | 'OFFER_FEE'
+  | 'SPONSOR_TIER';
 
 export interface Entry {
   accountId: string;

@@ -41,8 +41,9 @@ export interface RouteDef<B = unknown, Q = unknown> {
    * public  = no sign-in needed
    * session = signed-in browser session; `roles` narrows it
    * cron / sensor = machine caller with a bearer token from the environment
+   * machine = a device that signs each record with its own key; the handler must verify the signature
    */
-  auth: 'public' | 'session' | 'cron' | 'sensor';
+  auth: 'public' | 'session' | 'cron' | 'sensor' | 'machine';
   roles?: readonly Role[];
   body?: ZodType<B>;
   query?: ZodType<Q>;
@@ -224,6 +225,9 @@ export function createRouter(routes: RouteDef[], options: { prefix: string; db?:
         const secret = def.auth === 'cron' ? getConfig().CRON_SECRET : getConfig().SENSOR_INGEST_TOKEN;
         if (!secret) throw notFound('Endpoint'); // feature switched off
         if (!bearerMatches(req, secret)) throw unauthorized('A valid token is required.');
+      } else if (def.auth === 'machine') {
+        // No cookie and no Origin: a device, not a browser. Its handler checks the record's signature
+        // against that machine's own key before anything is stored.
       } else {
         if (write) assertSameOrigin(req);
         if (def.auth === 'session') {

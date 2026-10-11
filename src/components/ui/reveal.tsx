@@ -1,5 +1,7 @@
 'use client';
 
+import { Text } from '@/components/ui/localized-text';
+
 import { useEffect, useRef, type CSSProperties, type ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 
@@ -30,7 +32,7 @@ export function Reveal({ children, index = 0, className }: { children: ReactNode
   }, []);
   return (
     <div ref={ref} className={cn('reveal', className)} style={{ '--i': index } as CSSProperties}>
-      {children}
+      <Text>{children}</Text>
     </div>
   );
 }

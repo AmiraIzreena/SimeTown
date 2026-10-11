@@ -1,6 +1,6 @@
 /** Vocabulary shared by the server and the screens. No logic that needs a database lives here. */
 
-export const ROLES = ['RESIDENT', 'MERCHANT', 'SPONSOR', 'TOWNSHIP_STAFF', 'TOWNSHIP_ADMIN', 'HQ_ADMIN'] as const;
+export const ROLES = ['RESIDENT', 'MERCHANT', 'SPONSOR', 'GUARD', 'TOWNSHIP_STAFF', 'TOWNSHIP_ADMIN', 'HQ_ADMIN'] as const;
 export type Role = (typeof ROLES)[number];
 
 /** Township staff and above. */
@@ -12,6 +12,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   RESIDENT: 'Resident',
   MERCHANT: 'Shop',
   SPONSOR: 'Sponsor',
+  GUARD: 'Guard',
   TOWNSHIP_STAFF: 'Township staff',
   TOWNSHIP_ADMIN: 'Township admin',
   HQ_ADMIN: 'SDP HQ admin',
@@ -22,6 +23,7 @@ export const ROLE_HOME: Record<Role, string> = {
   RESIDENT: '/app',
   MERCHANT: '/merchant',
   SPONSOR: '/sponsor',
+  GUARD: '/guard',
   TOWNSHIP_STAFF: '/console',
   TOWNSHIP_ADMIN: '/console',
   HQ_ADMIN: '/console',
@@ -38,6 +40,10 @@ export const ACTIVITIES = [
   'KITAR_DROPOFF',
   'JIMAT_READING',
   'JIMAT_SAVER',
+  'GERAK_TRIP',
+  'TAMAN_WATERING',
+  'TAMAN_SIGHTING',
+  'AKSES_UPDATE',
 ] as const;
 export type Activity = (typeof ACTIVITIES)[number];
 
@@ -76,6 +82,134 @@ export const MATERIAL_INFO: Record<Material, { label: string; tip: string }> = {
 };
 
 export type FloodStatus = 'NORMAL' | 'WARNING' | 'DANGER';
+
+/** Where a flood signal comes from, and how far the Banjir agent trusts it (proposal 6.5). */
+export const FLOOD_SOURCES = ['SENSOR', 'CAMERA', 'RAIN', 'REPORT'] as const;
+export type FloodSource = (typeof FLOOD_SOURCES)[number];
+export const FLOOD_SOURCE_LABELS: Record<FloodSource, string> = {
+  SENSOR: 'Drain water-level sensor',
+  CAMERA: 'CCTV picture read by AI',
+  RAIN: 'Rain gauge',
+  REPORT: 'Residents’ photo reports',
+};
+
+/**
+ * The prototype's camera test set (proposal 6.5): pictures of a painted measuring
+ * post in a drain, each with the true water level and what the image model read.
+ * Accuracy is reported only as measured on this set. A reading below 0.6
+ * confidence is not trusted as a signal.
+ */
+export const FLOOD_TEST_PICTURES = [
+  { id: 'day-12', label: 'Daylight, low water', truePct: 12, readPct: 13, confidence: 0.94, night: false },
+  { id: 'day-45', label: 'Daylight, rising after rain', truePct: 45, readPct: 43, confidence: 0.91, night: false },
+  { id: 'day-78', label: 'Daylight, near the warning line', truePct: 78, readPct: 80, confidence: 0.88, night: false },
+  { id: 'day-93', label: 'Daylight, above the danger line', truePct: 93, readPct: 92, confidence: 0.87, night: false },
+  { id: 'glare-62', label: 'Glare on the water', truePct: 62, readPct: 67, confidence: 0.63, night: false },
+  { id: 'night-88', label: 'Night, heavy rain', truePct: 88, readPct: 71, confidence: 0.46, night: true },
+] as const;
+export type FloodTestPictureId = (typeof FLOOD_TEST_PICTURES)[number]['id'];
+export const CAMERA_MIN_CONFIDENCE = 0.6;
+
+// --- Tamu: visitors -----------------------------------------------------------
+
+export const PASS_TYPES = ['ONE_VISIT', 'REGULAR_HELPER', 'DELIVERY', 'EVENT', 'CONTRACTOR', 'CARER'] as const;
+export type PassType = (typeof PASS_TYPES)[number];
+/** How long each kind of pass may last, and how many entries it allows (null = any number within the dates). */
+export const PASS_TYPE_INFO: Record<PassType, { label: string; maxDays: number; entries: number | null }> = {
+  ONE_VISIT: { label: 'One visit', maxDays: 2, entries: 1 },
+  REGULAR_HELPER: { label: 'Regular helper', maxDays: 90, entries: null },
+  DELIVERY: { label: 'Delivery', maxDays: 1, entries: 1 },
+  EVENT: { label: 'Event guest', maxDays: 2, entries: null },
+  CONTRACTOR: { label: 'Contractor', maxDays: 30, entries: null },
+  CARER: { label: 'Carer', maxDays: 90, entries: null },
+};
+export const HOST_REPLIES = ['EXPECTED', 'NOT_EXPECTED', 'CALL_ME'] as const;
+export type HostReply = (typeof HOST_REPLIES)[number];
+
+// --- Sponsors -----------------------------------------------------------------
+
+export const SPONSOR_TIERS = ['COMMUNITY_FRIEND', 'TOWNSHIP_PARTNER', 'GREEN_CHAMPION', 'TITLE_PARTNER'] as const;
+export type SponsorTier = (typeof SPONSOR_TIERS)[number];
+/** The proposal's four tiers (section 12). Fees are placeholders to test with real brands in the pilot. */
+export const SPONSOR_TIER_INFO: Record<SponsorTier, { label: string; feeSen: number; challenges: number | null; benefits: string[] }> = {
+  COMMUNITY_FRIEND: {
+    label: 'Community Friend',
+    feeSen: 600_000,
+    challenges: 1,
+    benefits: ['Logo on the Partners page', 'One sponsored challenge a year', 'One booth day at a township event', 'An impact certificate'],
+  },
+  TOWNSHIP_PARTNER: {
+    label: 'Township Partner',
+    feeSen: 1_800_000,
+    challenges: 4,
+    benefits: ['Everything in Community Friend', 'A rotating banner on the guest page and home screen', 'Four challenges a year', 'Screen time on the recycling machines', 'Four booth days', 'A grouped report each quarter'],
+  },
+  GREEN_CHAMPION: {
+    label: 'Green Champion',
+    feeSen: 4_800_000,
+    challenges: null,
+    benefits: ['Everything in Township Partner', 'The only brand in its category', 'Its name on one Gerak loop or street league', 'Its design on two recycling machines', 'Twelve booth days or a pop-up space', 'Boost weeks it funds', 'A staff volunteer day'],
+  },
+  TITLE_PARTNER: {
+    label: 'Title Partner',
+    feeSen: 12_000_000,
+    challenges: null,
+    benefits: ['Everything in Green Champion', '“Presented by” naming for a yearly Green Month', 'First position on the guest page', 'Branding on every machine', 'A joint yearly impact report', 'First right to renew'],
+  },
+};
+
+// --- Akses+ -------------------------------------------------------------------
+
+export const ACCESS_NEEDS = ['MOBILITY', 'VISION', 'HEARING', 'COGNITIVE', 'ELDERLY'] as const;
+export type AccessNeed = (typeof ACCESS_NEEDS)[number];
+export const ACCESS_NEED_LABELS: Record<AccessNeed, string> = {
+  MOBILITY: 'I use a wheelchair or find steps hard',
+  VISION: 'I am blind or have low vision',
+  HEARING: 'I am deaf or hard of hearing',
+  COGNITIVE: 'I prefer simple screens and steps',
+  ELDERLY: 'I am an older resident',
+};
+export const PLACE_KINDS = ['STEP_FREE_ROUTE', 'RAMP', 'LIFT', 'ACCESSIBLE_TOILET', 'OKU_PARKING', 'SEATING'] as const;
+export type PlaceKind = (typeof PLACE_KINDS)[number];
+export const PLACE_KIND_LABELS: Record<PlaceKind, string> = {
+  STEP_FREE_ROUTE: 'Step-free route',
+  RAMP: 'Ramp',
+  LIFT: 'Lift',
+  ACCESSIBLE_TOILET: 'Accessible toilet',
+  OKU_PARKING: 'OKU parking',
+  SEATING: 'Rest seating',
+};
+
+// --- Taman --------------------------------------------------------------------
+
+export const WILDLIFE_KINDS = ['BIRD', 'INSECT', 'MAMMAL', 'REPTILE', 'AMPHIBIAN', 'PLANT', 'OTHER'] as const;
+export type WildlifeKind = (typeof WILDLIFE_KINDS)[number];
+export const WILDLIFE_KIND_LABELS: Record<WildlifeKind, string> = {
+  BIRD: 'Bird',
+  INSECT: 'Insect or butterfly',
+  MAMMAL: 'Mammal',
+  REPTILE: 'Reptile',
+  AMPHIBIAN: 'Frog or toad',
+  PLANT: 'Native plant',
+  OTHER: 'Something else',
+};
+
+// --- Gerak ----------------------------------------------------------------------
+
+export const GERAK_MODES = ['WALK', 'RUN', 'CYCLE', 'WHEELCHAIR'] as const;
+export type GerakMode = (typeof GERAK_MODES)[number];
+/** Fair play (BR24): parts of a trip faster than the top speed for the activity do not count. */
+export const GERAK_MODE_INFO: Record<GerakMode, { label: string; maxSpeedKmh: number }> = {
+  WALK: { label: 'Walk', maxSpeedKmh: 9 },
+  RUN: { label: 'Run', maxSpeedKmh: 22 },
+  CYCLE: { label: 'Cycle', maxSpeedKmh: 40 },
+  WHEELCHAIR: { label: 'Wheelchair', maxSpeedKmh: 12 },
+};
+
+// --- Jimat ----------------------------------------------------------------------
+
+export const BILL_KINDS = ['ELECTRICITY', 'WATER'] as const;
+export type BillKind = (typeof BILL_KINDS)[number];
 
 /** Impact XP needed to reach each level. Level n starts at 50·n·(n−1) XP. */
 export const LEVEL_NAMES = ['Newcomer', 'Neighbour', 'Helper', 'Champion', 'Guardian', 'Township Hero'] as const;

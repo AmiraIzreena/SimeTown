@@ -1,7 +1,8 @@
 import { z } from 'zod';
-import { ACTIVITIES, ADMINS, STAFF } from '@/shared/domain';
+import { ACTIVITIES, ADMINS, SPONSOR_TIERS, STAFF } from '@/shared/domain';
 import { emptyBody, route, zId, zSen, zText } from '../../http/router';
 import * as campaigns from './service';
+import * as tiers from './tiers';
 
 const campaignBody = z
   .object({
@@ -51,11 +52,29 @@ export const campaignRoutes = [
   }),
   route({
     method: 'GET', path: '/sponsors', tag: 'KITA Partner Hub', summary: 'Sponsor organisations', auth: 'session', roles: STAFF,
-    handler: (c) => campaigns.listSponsors(c.db),
+    handler: (c) => tiers.listSponsorsWithTiers(c.db),
   }),
   route({
     method: 'POST', path: '/sponsors', tag: 'KITA Partner Hub', summary: 'Add a sponsor organisation', auth: 'session', roles: ADMINS,
     body: z.object({ name: zText(120, 2) }),
     handler: (c) => campaigns.createSponsor(c.db, c.actor, c.body.name),
+  }),
+  route({
+    method: 'POST', path: '/admin/sponsors/:sponsorId/tier', tag: 'KITA Partner Hub', summary: 'Record a yearly tier payment and give the sponsor that tier (SDP HQ)', auth: 'session', roles: ['HQ_ADMIN'],
+    body: z.object({ tier: z.enum(SPONSOR_TIERS), bankRef: zText(60, 3), category: zText(60, 2).optional(), tagline: zText(120, 3).optional() }),
+    handler: (c) => tiers.setSponsorTier(c.db, c.actor, c.params.sponsorId!, c.body, c.now),
+  }),
+  route({
+    method: 'GET', path: '/sponsor/tier', tag: 'KITA Partner Hub', summary: 'My tier, its benefits and challenges used this year', auth: 'session', roles: ['SPONSOR'],
+    handler: (c) => tiers.myTier(c.db, c.actor, c.now),
+  }),
+  route({
+    method: 'GET', path: '/public/partners', tag: 'KITA Partner Hub', summary: 'The Partners page: sponsors with a current tier (names only)', auth: 'public',
+    rateLimit: { limit: 120, windowSec: 60, by: 'ip' },
+    handler: (c) => tiers.publicPartners(c.db, c.now),
+  }),
+  route({
+    method: 'GET', path: '/sponsored', tag: 'KITA Partner Hub', summary: 'One labelled sponsored banner for the home screen (never on safety screens)', auth: 'session', roles: ['RESIDENT'],
+    handler: (c) => tiers.sponsoredBanner(c.db, c.now),
   }),
 ];

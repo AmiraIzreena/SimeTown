@@ -1,3 +1,5 @@
+
+import { Text } from '@/components/ui/localized-text';
 import '@fontsource-variable/inter';
 import '@fontsource-variable/plus-jakarta-sans';
 import './globals.css';
@@ -5,6 +7,7 @@ import type { Metadata, Viewport } from 'next';
 import { headers } from 'next/headers';
 import type { ReactNode } from 'react';
 import { ToastProvider } from '@/components/ui/toast';
+import { LanguageProvider } from '@/components/ui/language';
 
 export const metadata: Metadata = {
   title: { default: 'KITA+ · Township Super-App', template: '%s · KITA+' },
@@ -20,7 +23,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   return (
     <html lang="en">
       <body>
-        <ToastProvider>{children}</ToastProvider>
+        <LanguageProvider><ToastProvider><Text>{children}</Text></ToastProvider></LanguageProvider>
       </body>
     </html>
   );

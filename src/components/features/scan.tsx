@@ -1,5 +1,7 @@
 'use client';
 
+import { Text } from '@/components/ui/localized-text';
+
 import { ScanLine } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/field';
@@ -29,7 +31,7 @@ export function CodeEntry({ label, value, onChange, onSubmit, pending, error, ac
       <Input label={label} value={value} onChange={(event) => onChange(event.target.value.toUpperCase())} placeholder="e.g. GABC2345XY" autoCapitalize="characters" autoComplete="off" spellCheck={false} maxLength={16} error={error} className="min-w-0 flex-1 basis-56" hint="Scan the poster with your camera, or type the code printed under it." />
       <Button type="submit" pending={pending} disabled={value.trim().length < 6} className="mb-[26px]">
         <ScanLine className="size-4" aria-hidden />
-        {action}
+        <Text>{action}</Text>
       </Button>
     </form>
   );

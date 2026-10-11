@@ -114,6 +114,7 @@ export async function profile(db: Db, actor: Actor) {
       terms_version: string | null;
       terms_accepted_at: Date | null;
       has_home: boolean;
+      language: 'en' | 'ms';
       shop_address_line: string | null;
       shop_postcode: string | null;
       shop_city: string | null;
@@ -121,7 +122,7 @@ export async function profile(db: Db, actor: Actor) {
     }
   >(
     db,
-    `SELECT u.phone, t.name AS township, u.occupancy, u.terms_version, u.terms_accepted_at, (h.id IS NOT NULL) AS has_home, ${HOME_ADDRESS_COLUMNS},
+    `SELECT u.phone, t.name AS township, u.occupancy, u.terms_version, u.terms_accepted_at, u.language, (h.id IS NOT NULL) AS has_home, ${HOME_ADDRESS_COLUMNS},
             m.address_line AS shop_address_line, m.postcode AS shop_postcode, m.city AS shop_city, m.state AS shop_state
        FROM users u
        LEFT JOIN homes h ON h.id = u.home_id
@@ -142,6 +143,7 @@ export async function profile(db: Db, actor: Actor) {
   return {
     ...actor,
     phone: r.phone,
+    language: r.language,
     township: r.township,
     occupancy: r.occupancy,
     home: home && {
@@ -159,6 +161,12 @@ export async function profile(db: Db, actor: Actor) {
     terms: { version: r.terms_version, acceptedAt: r.terms_accepted_at, current: LEGAL.version },
     missing,
   };
+}
+
+/** English or Bahasa Malaysia, remembered for the person across devices. */
+export async function setLanguage(db: Db, actor: Actor, language: 'en' | 'ms') {
+  await db.query('UPDATE users SET language = $2 WHERE id = $1', [actor.id, language]);
+  return { language };
 }
 
 /** Records that the person read and accepted the Terms of Use and Privacy Notice now in force. */
@@ -205,8 +213,8 @@ async function issueInvite(tx: Queryable, userId: string, createdBy: string, now
 /** Which roles each admin level may create and manage. Residents always register themselves. */
 const CAN_CREATE: Partial<Record<Role, Role[]>> = {
   // Sponsors are not tied to one township, so only HQ manages their logins.
-  TOWNSHIP_ADMIN: ['TOWNSHIP_STAFF', 'MERCHANT'],
-  HQ_ADMIN: ['TOWNSHIP_STAFF', 'TOWNSHIP_ADMIN', 'HQ_ADMIN', 'MERCHANT', 'SPONSOR'],
+  TOWNSHIP_ADMIN: ['TOWNSHIP_STAFF', 'GUARD', 'MERCHANT'],
+  HQ_ADMIN: ['TOWNSHIP_STAFF', 'TOWNSHIP_ADMIN', 'HQ_ADMIN', 'GUARD', 'MERCHANT', 'SPONSOR'],
 };
 const ADMIN_ROLES: readonly Role[] = ['TOWNSHIP_ADMIN', 'HQ_ADMIN'];
 
@@ -548,8 +556,28 @@ export async function exportMyData(db: Db, actor: Actor) {
     db.query('SELECT consent_at, note FROM solar_leads WHERE user_id = $1', [id]),
     db.query('SELECT created_at, title, body FROM notifications WHERE user_id = $1 ORDER BY id', [id]),
   ]);
+  // Third-edition features: every table that holds something about this person.
+  const [offerPoints, visitorPasses, access, carers, activities, bills, recycling, sightings, garden] = await Promise.all([
+    db.query('SELECT earned_at, label, amount, remaining, redeemed, expires_at FROM offer_point_lots WHERE user_id = $1 ORDER BY earned_at', [id]),
+    db.query('SELECT created_at, type, visitor_name, vehicle_no, valid_from, valid_until, status FROM visitor_passes WHERE host_user_id = $1 ORDER BY created_at', [id]),
+    db.query('SELECT needs, simple_mode, read_aloud, flash_alerts, priority_help, priority_note, consent_at FROM access_profiles WHERE user_id = $1', [id]),
+    db.query(
+      `SELECT c.created_at, c.status, CASE WHEN c.resident_id = $1 THEN 'my carer' ELSE 'I care for' END AS relation, u.full_name
+         FROM carer_links c JOIN users u ON u.id = CASE WHEN c.resident_id = $1 THEN c.carer_id ELSE c.resident_id END
+        WHERE c.resident_id = $1 OR c.carer_id = $1 ORDER BY c.created_at`,
+      [id],
+    ),
+    db.query('SELECT started_at, finished_at, mode, status, distance_m, valid_m, active_s, route FROM gerak_activities WHERE user_id = $1 ORDER BY started_at', [id]),
+    db.query(`SELECT created_at, kind, status, usage, amount_sen, period_month FROM jimat_bills WHERE user_id = $1 ORDER BY created_at`, [id]),
+    db.query('SELECT started_at, mode, status, accepted_count, rejected_count, accepted_g FROM kitar_sessions WHERE user_id = $1 OR claimed_by = $1 ORDER BY started_at', [id]),
+    db.query('SELECT created_at, kind, species, location, note, status FROM wildlife_sightings WHERE user_id = $1 ORDER BY created_at', [id]),
+    db.query(`SELECT r.day, g.name AS garden, r.done_at FROM garden_roster r JOIN gardens g ON g.id = r.garden_id WHERE r.user_id = $1 ORDER BY r.day`, [id]),
+  ]);
   await audit(db, id, 'DATA_EXPORTED', 'user', id);
-  return { exportedAt: new Date().toISOString(), account, points, xp, sales, posts, responses, reports, dropoffs, checkins, readings, solar, notifications };
+  return {
+    exportedAt: new Date().toISOString(), account, points, xp, sales, posts, responses, reports, dropoffs, checkins, readings, solar, notifications,
+    offerPoints, visitorPasses, access, carers, activities, bills, recycling, sightings, garden,
+  };
 }
 
 /**
@@ -571,7 +599,21 @@ export async function deleteAccount(db: Db, actor: Actor, password: string, now:
     await tx.query(`UPDATE posts SET status = 'REMOVED', title = '[removed]', body = '[removed]', location = NULL WHERE author_id = $1`, [id]);
     await tx.query('DELETE FROM post_responses WHERE user_id = $1', [id]);
     await tx.query(`UPDATE reports SET photo_id = NULL, description = '[removed at the reporter''s request]' WHERE reporter_id = $1`, [id]);
+    await tx.query(`UPDATE wildlife_sightings SET photo_id = NULL, note = NULL WHERE user_id = $1`, [id]);
     await tx.query('DELETE FROM uploads WHERE owner_id = $1', [id]);
+    // Third-edition features: access needs, carers, visitors, routes, bills, offer points, gardens.
+    await tx.query('DELETE FROM access_profiles WHERE user_id = $1', [id]);
+    await tx.query(`UPDATE carer_links SET status = 'REVOKED', revoked_at = $2 WHERE (resident_id = $1 OR carer_id = $1) AND status <> 'REVOKED'`, [id, now]);
+    await tx.query(`UPDATE visitor_passes SET status = 'CANCELLED', visitor_name = '[removed]', vehicle_no = NULL WHERE host_user_id = $1`, [id]);
+    await tx.query(
+      `UPDATE gerak_activities SET route = '[]', route_deleted_at = $2, status = CASE WHEN status = 'ACTIVE' THEN 'ABANDONED' ELSE status END WHERE user_id = $1`,
+      [id, now],
+    );
+    await tx.query(`DELETE FROM jimat_bills WHERE user_id = $1 AND status <> 'CONFIRMED'`, [id]);
+    await tx.query('UPDATE offer_point_lots SET remaining = 0 WHERE user_id = $1 AND remaining > 0', [id]);
+    await tx.query(`UPDATE kitar_sessions SET status = 'EXPIRED', closed_at = $2 WHERE user_id = $1 AND status = 'OPEN'`, [id, now]);
+    await tx.query('UPDATE garden_plots SET holder_home_id = NULL, holder_user_id = NULL, booked_until = NULL WHERE holder_user_id = $1', [id]);
+    await tx.query('DELETE FROM garden_roster WHERE user_id = $1 AND done_at IS NULL', [id]);
     await tx.query('DELETE FROM solar_leads WHERE user_id = $1', [id]);
     await tx.query('DELETE FROM notifications WHERE user_id = $1', [id]);
     await tx.query('DELETE FROM sessions WHERE user_id = $1', [id]);

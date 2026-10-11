@@ -9,6 +9,7 @@ import { randomCode } from '../identity/service';
 import { recordAction } from '../rewards';
 import { getSettings, startOf } from '../settings';
 import { resolveTownship } from '../townships';
+import { machinesForResident } from './machine';
 
 /** Kitar: check the material, then record the drop-off at a township kiosk. */
 
@@ -16,7 +17,7 @@ export async function kitarOverview(db: Db, actor: Actor, now: Date) {
   const resident = requireVerifiedResident(actor);
   const tz = (await getSettings(db)).timezone;
   const month = startOf('month', '$2', '$3');
-  const [mine, street, recent, kiosks] = await Promise.all([
+  const [mine, street, recent, kiosks, machines] = await Promise.all([
     one<{ month_g: number; all_g: number; drops: number }>(
       db,
       `SELECT coalesce(sum(weight_g) FILTER (WHERE created_at >= ${month}), 0)::int AS month_g,
@@ -39,6 +40,7 @@ export async function kitarOverview(db: Db, actor: Actor, now: Date) {
       [resident.id],
     ),
     db.query(`SELECT id, name, location FROM kitar_kiosks WHERE township_id = $1 AND active ORDER BY name`, [resident.townshipId]),
+    machinesForResident(db, resident.townshipId),
   ]);
   return {
     monthGrams: mine!.month_g,
@@ -48,6 +50,7 @@ export async function kitarOverview(db: Db, actor: Actor, now: Date) {
     streetMonthGrams: street?.month_g ?? 0,
     recent,
     kiosks,
+    machines,
     photoCheck: getConfig().AI_PROVIDER !== 'none',
   };
 }

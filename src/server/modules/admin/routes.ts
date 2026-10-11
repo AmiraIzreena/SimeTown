@@ -27,6 +27,8 @@ const settingsBody = z
     flag_hide_threshold: z.number().int().min(1).max(100),
     min_group_size: z.number().int().min(2).max(1000),
     issuance_paused: z.boolean(),
+    offer_points_monthly_home: z.number().int().min(1).max(1_000_000),
+    offer_success_fee_bps: z.number().int().min(0).max(5000),
   })
   .partial()
   .strict();

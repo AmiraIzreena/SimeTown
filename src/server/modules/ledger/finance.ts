@@ -3,6 +3,7 @@ import { assertTownshipAccess, type Actor } from '../../auth/actor';
 import { conflict, forbidden, notFound, ruleViolation } from '../../errors';
 import { audit } from '../audit';
 import { notify } from '../notifications';
+import { collectDueOfferFees } from '../offers/service';
 import { getSettings } from '../settings';
 import { credit, debit, getAccount, lockAccountById, postTxn, systemAccounts } from './ledger';
 import { addPoints, removePoints } from './points';
@@ -45,7 +46,9 @@ export async function recordMerchantDeposit(
       [merchantId, input.amountSen, input.bankRef, txnId, actor.id, now],
     );
     await audit(tx, actor.id, 'DEPOSIT_RECORDED', 'merchant', merchantId, input);
-    return { poolSen: pool.balance + input.amountSen };
+    // Success fees that were waiting for money are collected from the top-up first.
+    const feesCollectedSen = await collectDueOfferFees(tx, merchantId, now);
+    return { poolSen: (await getAccount(tx, 'FUNDER_POOL', { merchantId })).balance, feesCollectedSen };
   });
 }
 
@@ -90,6 +93,8 @@ export async function runSettlement(db: Db, actorId: string | null, now: Date, t
   let totalSen = 0;
   for (const { merchant_id } of due) {
     totalSen += await db.tx(async (tx) => {
+      // Net settlement: success fees still owed come off what the float pays the shop (proposal section 10).
+      await collectDueOfferFees(tx, merchant_id, now);
       const payable = await getAccount(tx, 'MERCHANT_PAYABLE', { merchantId: merchant_id }, true);
       if (payable.balance === 0) return 0;
       const period = await one<{ period_end: string; period_start: string; already: boolean }>(

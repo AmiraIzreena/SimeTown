@@ -21,7 +21,7 @@ export function buildOpenApi(routes: RouteDef[], prefix: string): Record<string,
       }
     }
     const who =
-      r.auth === 'public' ? 'Anyone.' : r.auth === 'session' ? `Signed-in ${r.roles ? r.roles.join(', ') : 'user (any role)'}.` : 'Machine caller with a bearer token.';
+      r.auth === 'public' ? 'Anyone.' : r.auth === 'session' ? `Signed-in ${r.roles ? r.roles.join(', ') : 'user (any role)'}.` : r.auth === 'machine' ? 'A recycling machine; every record carries an HMAC-SHA256 signature made with that machine’s own key.' : 'Machine caller with a bearer token.';
     (paths[path] ??= {})[r.method.toLowerCase()] = {
       tags: [r.tag],
       summary: r.summary,
@@ -29,7 +29,7 @@ export function buildOpenApi(routes: RouteDef[], prefix: string): Record<string,
       operationId: `${r.method.toLowerCase()}${r.path.replace(/[^A-Za-z0-9]+(.)?/g, (_, c: string | undefined) => (c ? c.toUpperCase() : ''))}`,
       parameters,
       ...(r.body ? { requestBody: { required: true, content: { 'application/json': { schema: toSchema(r.body) } } } } : {}),
-      security: r.auth === 'public' ? [] : r.auth === 'session' ? [{ session: [] }] : [{ token: [] }],
+      security: r.auth === 'public' || r.auth === 'machine' ? [] : r.auth === 'session' ? [{ session: [] }] : [{ token: [] }],
       responses: {
         200: { description: 'Success. The result is in `data`.', content: { 'application/json': { schema: { type: 'object', properties: { data: {} } } } } },
         ...(r.body || r.query ? { 400: { $ref: '#/components/responses/Error' } } : {}),

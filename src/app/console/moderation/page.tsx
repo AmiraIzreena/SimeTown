@@ -1,5 +1,7 @@
 'use client';
 
+import { Text } from '@/components/ui/localized-text';
+
 import { ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, PageHeader } from '@/components/ui/card';
@@ -27,24 +29,22 @@ export default function ModerationPage() {
       <Async state={queue}>
         {(list) =>
           list.length === 0 ? (
-            <EmptyState icon={ShieldCheck} title="Nothing to review">
-              No posts are waiting.
-            </EmptyState>
+            <EmptyState icon={ShieldCheck} title="Nothing to review"><Text>No posts are waiting.</Text></EmptyState>
           ) : (
             <ul className="space-y-3">
               {list.map((post) => (
                 <li key={post.id}>
                   <Card className="p-5">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Badge tone="warning">Hidden</Badge>
+                      <Badge tone="warning"><Text>Hidden</Text></Badge>
                       <span className="text-sm text-ink-500">
-                        {post.author_name} · {timeAgo(post.created_at)}
+                        {post.author_name} · <Text>{timeAgo(post.created_at)}</Text>
                       </span>
                     </div>
                     <h2 className="mt-3 text-[17px] font-semibold">{post.title}</h2>
                     <p className="mt-1 whitespace-pre-line text-[15px] text-ink-600">{post.body}</p>
                     <div className="mt-3 rounded-lg bg-ink-50 p-3 text-sm text-ink-700">
-                      <p className="font-semibold">Why residents flagged it</p>
+                      <p className="font-semibold"><Text>Why residents flagged it</Text></p>
                       <ul className="mt-1 list-disc pl-5">
                         {post.reasons.map((reason, i) => (
                           <li key={i}>{reason}</li>
@@ -52,12 +52,8 @@ export default function ModerationPage() {
                       </ul>
                     </div>
                     <div className="mt-4 flex gap-2">
-                      <Button size="sm" variant="secondary" onClick={() => decide.run(post.id, 'RESTORE')} disabled={decide.pending}>
-                        It is fine: restore
-                      </Button>
-                      <Button size="sm" variant="danger" onClick={() => decide.run(post.id, 'REMOVE')} disabled={decide.pending}>
-                        Remove
-                      </Button>
+                      <Button size="sm" variant="secondary" onClick={() => decide.run(post.id, 'RESTORE')} disabled={decide.pending}><Text>It is fine: restore</Text></Button>
+                      <Button size="sm" variant="danger" onClick={() => decide.run(post.id, 'REMOVE')} disabled={decide.pending}><Text>Remove</Text></Button>
                     </div>
                   </Card>
                 </li>
