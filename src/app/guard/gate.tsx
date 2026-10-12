@@ -159,7 +159,7 @@ export function GateScreen({ initialPatrol }: { initialPatrol: string }) {
                 <div aria-live="polite" className={cn('animate-rise rounded-lg p-5', result.ok ? 'bg-success-50' : 'bg-accent-50')}>
                   {result.ok ? (
                     <div className="flex items-start gap-3">
-                      <CheckCircle2 className="size-8 shrink-0 text-success-700" aria-hidden />
+                      <CheckCircle2 className="gate-result-icon size-8 shrink-0 text-success-700" aria-hidden />
                       <div>
                         <p className="font-display text-xl font-bold text-success-700"><Text>Let in: </Text>{result.pass.visitorName}</p>
                         <p className="text-[15px] text-ink-800">
@@ -184,7 +184,7 @@ export function GateScreen({ initialPatrol }: { initialPatrol: string }) {
           </Card>
 
           <Card>
-            <CardHeader title="Walk-in visitor" description="No pass? Record name, vehicle and house. The household replies in KITA+." />
+            <CardHeader title="Walk-in visitor" description="No pass? Record name, vehicle and house. The household replies in SimeTown." />
             <form method="post" onSubmit={submitWalkIn} className="space-y-4 p-5" noValidate>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Input name="visitorName" label="Visitor name" required maxLength={80} error={walkIn.fields.visitorName} />

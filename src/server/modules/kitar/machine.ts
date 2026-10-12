@@ -14,7 +14,7 @@ import { resolveTownship } from '../townships';
  *
  * A machine proves who is recycling in one of three ways: the resident scans
  * the code on its screen (it changes every 30 seconds, so a photo of an old
- * code is useless), the machine reads the resident's KITA QR, or the visitor
+ * code is useless), the machine reads the resident's SimeTown QR, or the visitor
  * recycles as a guest and gets a claim code for 14 days.
  *
  * The machine recognises, counts and weighs each item, and signs every record
@@ -148,7 +148,7 @@ async function openSession(tx: Queryable, machine: MachineRow, userId: string | 
   return row!.id;
 }
 
-/** The resident scanned the code on the machine's screen with KITA+. */
+/** The resident scanned the code on the machine's screen with SimeTown. */
 export async function joinFromScreen(db: Db, actor: Actor, input: { machineId: string; code: string }, now: Date) {
   const resident = requireVerifiedResident(actor);
   return db.tx(async (tx) => {
@@ -182,7 +182,7 @@ async function startSession(tx: Queryable, machine: MachineRow, record: StartRec
   return { sessionId: await openSession(tx, machine, memberId, 'MEMBER_QR', now), guest: false };
 }
 
-/** Device endpoint: the machine starts a session itself (it read a KITA QR, or a guest tapped "Recycle as guest"). */
+/** Device endpoint: the machine starts a session itself (it read a SimeTown QR, or a guest tapped "Recycle as guest"). */
 export async function ingestStart(db: Db, record: StartRecord & { signature: string }, now: Date) {
   return db.tx(async (tx) => {
     const machine = await loadMachine(tx, record.machineId, true);
@@ -396,7 +396,7 @@ export async function machineScreen(db: Db, actor: Actor, machineId: string, now
   };
 }
 
-/** The console stands in for the machine's camera reading a KITA QR, or a guest tapping "Recycle as guest". */
+/** The console stands in for the machine's camera reading a SimeTown QR, or a guest tapping "Recycle as guest". */
 export async function simulateStart(db: Db, actor: Actor, machineId: string, input: { mode: 'MEMBER_QR' | 'GUEST'; memberCode?: string }, now: Date) {
   return db.tx(async (tx) => {
     const machine = await staffMachine(tx, actor, machineId, true);

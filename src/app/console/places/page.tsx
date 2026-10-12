@@ -99,7 +99,7 @@ export default function PlacesPage() {
           <div className="flex flex-col items-center gap-4 py-2 text-center">
             <QrCode value={`${window.location.origin}${poster.path}${poster.code}`} label={`QR code for ${poster.title}`} size={240} />
             <p className="font-display text-3xl font-bold tracking-[0.18em] text-ink-900"><Text>{poster.code}</Text></p>
-            <p className="text-sm text-ink-500"><Text>Scan with your phone camera, or type the code in KITA+.</Text></p>
+            <p className="text-sm text-ink-500"><Text>Scan with your phone camera, or type the code in SimeTown.</Text></p>
             <Button variant="secondary" className="no-print" onClick={() => window.print()}>
               <Printer className="size-4" aria-hidden /><Text>Print poster</Text></Button>
           </div>

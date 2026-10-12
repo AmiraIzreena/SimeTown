@@ -132,7 +132,7 @@ function bearerMatches(req: Request, secret: string | undefined): boolean {
  */
 function assertSameOrigin(req: Request): void {
   if (req.headers.get('origin') !== getConfig().appOrigin) {
-    throw forbidden('This request did not come from the KITA+ app.');
+    throw forbidden('This request did not come from the SimeTown app.');
   }
 }
 

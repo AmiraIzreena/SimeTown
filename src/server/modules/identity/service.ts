@@ -13,7 +13,7 @@ import { expireLotsForUser } from '../ledger/points';
 import { notify } from '../notifications';
 import { HOME_ADDRESS_COLUMNS, resolveTownship } from '../townships';
 
-/** KITA ID: one account per person, tied to a home, a shop or a sponsor. */
+/** SimeTown ID: one account per person, tied to a home, a shop or a sponsor. */
 
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no look-alikes such as 0/O or 1/I
 export function randomCode(length: number): string {
@@ -102,7 +102,7 @@ export async function updateProfile(db: Db, actor: Actor, input: { fullName: str
   return { ok: true };
 }
 
-/** Details everyone must have before using KITA+ fully. Each one tells the screens what to ask for. */
+/** Details everyone must have before using SimeTown fully. Each one tells the screens what to ask for. */
 export type MissingDetail = 'phone' | 'address' | 'shopAddress' | 'terms';
 
 export async function profile(db: Db, actor: Actor) {
@@ -471,7 +471,7 @@ async function decideResidency(tx: Queryable, deciderId: string, userId: string,
   await audit(tx, deciderId, approve ? 'RESIDENT_VERIFIED' : 'RESIDENT_REJECTED', 'user', userId);
   await notify(tx, [userId], {
     title: approve ? 'Your home is confirmed' : 'We could not confirm your home',
-    body: approve ? 'You can now earn Impact XP and KITA Points.' : 'Please contact the township office.',
+    body: approve ? 'You can now earn Impact XP and SimeTown Points.' : 'Please contact the township office.',
     link: '/app',
   });
 }
@@ -523,7 +523,7 @@ export async function decideTenant(db: Db, actor: Actor, tenantId: string, appro
 
 // --- Personal data rights (BR18) ---------------------------------------------
 
-/** Everything KITA+ holds about the signed-in person, as one JSON document. */
+/** Everything SimeTown holds about the signed-in person, as one JSON document. */
 export async function exportMyData(db: Db, actor: Actor) {
   const id = actor.id;
   const [account, points, xp, sales, posts, responses, reports, dropoffs, checkins, readings, solar, notifications] = await Promise.all([

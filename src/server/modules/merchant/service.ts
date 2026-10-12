@@ -9,7 +9,7 @@ import { notify } from '../notifications';
 import { liveOfferFor, offerAvailability, offerBalance, returnOfferPoints, spendOnOffer } from '../offers/service';
 import { getSettings, type Settings } from '../settings';
 
-/** KITA Merchant: give points on a sale, accept points as part-payment, refunds and statements. */
+/** SimeTown Merchant: give points on a sale, accept points as part-payment, refunds and statements. */
 
 interface SaleRow {
   id: string;

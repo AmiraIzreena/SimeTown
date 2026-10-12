@@ -6,14 +6,14 @@ import { buildOpenApi } from '../src/server/http/openapi';
 writeFileSync('docs/openapi.json', `${JSON.stringify(buildOpenApi(routes, API_PREFIX), null, 2)}\n`);
 
 const lines = [
-  '# KITA+ API reference',
+  '# SimeTown API reference',
   '',
   'Generated from the route table by `npm run docs:api`. Do not edit by hand.',
   `The machine-readable version is [openapi.json](openapi.json), also served at \`${API_PREFIX}/openapi.json\`.`,
   '',
   '- Base path: `' + API_PREFIX + '`',
   '- Success: `{ "data": … }`. Failure: `{ "error": { "code", "message", "details?", "requestId" } }`.',
-  '- Money is in whole sen. 1 KITA Point = 1 sen.',
+  '- Money is in whole sen. 1 SimeTown Point = 1 sen.',
   '- Sign-in sets an HttpOnly session cookie. Every POST, PATCH and DELETE must send an `Origin` header equal to the app origin.',
   '- Lists that can grow take `?cursor=&limit=` and return `{ items, nextCursor }`.',
   '',

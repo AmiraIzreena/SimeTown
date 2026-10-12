@@ -97,7 +97,7 @@ export default function JimatPage() {
               <div className="grid gap-4 lg:grid-cols-2">
                 <Card>
                   <CardHeader title="Month by month" />
-                  <div className="p-5">
+                  <div className="energy-chart p-5">
                     {o.readings.length === 0 ? (
                       <EmptyState icon={Zap} title="No readings yet"><Text>Enter your first month below. The comparison starts with the second.</Text></EmptyState>
                     ) : (

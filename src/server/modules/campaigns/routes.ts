@@ -27,54 +27,54 @@ const campaignBody = z
 
 export const campaignRoutes = [
   route({
-    method: 'GET', path: '/campaigns', tag: 'KITA Partner Hub', summary: 'Campaigns visible to this role (residents also get their progress)', auth: 'session',
+    method: 'GET', path: '/campaigns', tag: 'SimeTown Partner Hub', summary: 'Campaigns visible to this role (residents also get their progress)', auth: 'session',
     roles: ['RESIDENT', 'SPONSOR', ...STAFF],
     handler: (c) => campaigns.listCampaigns(c.db, c.actor, c.now),
   }),
   route({
-    method: 'POST', path: '/campaigns', tag: 'KITA Partner Hub', summary: 'Set up a challenge (draft until funded)', auth: 'session', roles: STAFF,
+    method: 'POST', path: '/campaigns', tag: 'SimeTown Partner Hub', summary: 'Set up a challenge (draft until funded)', auth: 'session', roles: STAFF,
     body: campaignBody,
     handler: (c) => campaigns.createCampaign(c.db, c.actor, c.body),
   }),
   route({
-    method: 'POST', path: '/campaigns/:campaignId/fund', tag: 'KITA Partner Hub', summary: "Record the funder's payment and open the reward pool", auth: 'session', roles: ADMINS,
+    method: 'POST', path: '/campaigns/:campaignId/fund', tag: 'SimeTown Partner Hub', summary: "Record the funder's payment and open the reward pool", auth: 'session', roles: ADMINS,
     body: z.object({ bankRef: zText(60, 3) }),
     handler: (c) => campaigns.fundCampaign(c.db, c.actor, c.params.campaignId!, c.body.bankRef, c.now),
   }),
   route({
-    method: 'POST', path: '/campaigns/:campaignId/close', tag: 'KITA Partner Hub', summary: 'End a campaign and refund the unused pool', auth: 'session', roles: ADMINS,
+    method: 'POST', path: '/campaigns/:campaignId/close', tag: 'SimeTown Partner Hub', summary: 'End a campaign and refund the unused pool', auth: 'session', roles: ADMINS,
     body: emptyBody,
     handler: (c) => campaigns.closeCampaign(c.db, c.actor, c.params.campaignId!, c.now),
   }),
   route({
-    method: 'GET', path: '/campaigns/:campaignId/report', tag: 'KITA Partner Hub', summary: 'Grouped results for a campaign', auth: 'session', roles: ['SPONSOR', ...STAFF],
+    method: 'GET', path: '/campaigns/:campaignId/report', tag: 'SimeTown Partner Hub', summary: 'Grouped results for a campaign', auth: 'session', roles: ['SPONSOR', ...STAFF],
     handler: (c) => campaigns.campaignReport(c.db, c.actor, c.params.campaignId!, c.now),
   }),
   route({
-    method: 'GET', path: '/sponsors', tag: 'KITA Partner Hub', summary: 'Sponsor organisations', auth: 'session', roles: STAFF,
+    method: 'GET', path: '/sponsors', tag: 'SimeTown Partner Hub', summary: 'Sponsor organisations', auth: 'session', roles: STAFF,
     handler: (c) => tiers.listSponsorsWithTiers(c.db),
   }),
   route({
-    method: 'POST', path: '/sponsors', tag: 'KITA Partner Hub', summary: 'Add a sponsor organisation', auth: 'session', roles: ADMINS,
+    method: 'POST', path: '/sponsors', tag: 'SimeTown Partner Hub', summary: 'Add a sponsor organisation', auth: 'session', roles: ADMINS,
     body: z.object({ name: zText(120, 2) }),
     handler: (c) => campaigns.createSponsor(c.db, c.actor, c.body.name),
   }),
   route({
-    method: 'POST', path: '/admin/sponsors/:sponsorId/tier', tag: 'KITA Partner Hub', summary: 'Record a yearly tier payment and give the sponsor that tier (SDP HQ)', auth: 'session', roles: ['HQ_ADMIN'],
+    method: 'POST', path: '/admin/sponsors/:sponsorId/tier', tag: 'SimeTown Partner Hub', summary: 'Record a yearly tier payment and give the sponsor that tier (SDP HQ)', auth: 'session', roles: ['HQ_ADMIN'],
     body: z.object({ tier: z.enum(SPONSOR_TIERS), bankRef: zText(60, 3), category: zText(60, 2).optional(), tagline: zText(120, 3).optional() }),
     handler: (c) => tiers.setSponsorTier(c.db, c.actor, c.params.sponsorId!, c.body, c.now),
   }),
   route({
-    method: 'GET', path: '/sponsor/tier', tag: 'KITA Partner Hub', summary: 'My tier, its benefits and challenges used this year', auth: 'session', roles: ['SPONSOR'],
+    method: 'GET', path: '/sponsor/tier', tag: 'SimeTown Partner Hub', summary: 'My tier, its benefits and challenges used this year', auth: 'session', roles: ['SPONSOR'],
     handler: (c) => tiers.myTier(c.db, c.actor, c.now),
   }),
   route({
-    method: 'GET', path: '/public/partners', tag: 'KITA Partner Hub', summary: 'The Partners page: sponsors with a current tier (names only)', auth: 'public',
+    method: 'GET', path: '/public/partners', tag: 'SimeTown Partner Hub', summary: 'The Partners page: sponsors with a current tier (names only)', auth: 'public',
     rateLimit: { limit: 120, windowSec: 60, by: 'ip' },
     handler: (c) => tiers.publicPartners(c.db, c.now),
   }),
   route({
-    method: 'GET', path: '/sponsored', tag: 'KITA Partner Hub', summary: 'One labelled sponsored banner for the home screen (never on safety screens)', auth: 'session', roles: ['RESIDENT'],
+    method: 'GET', path: '/sponsored', tag: 'SimeTown Partner Hub', summary: 'One labelled sponsored banner for the home screen (never on safety screens)', auth: 'session', roles: ['RESIDENT'],
     handler: (c) => tiers.sponsoredBanner(c.db, c.now),
   }),
 ];

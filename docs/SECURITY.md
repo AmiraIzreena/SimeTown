@@ -72,7 +72,7 @@ Be honest about these with judges and mentors.
   and a regulated holder for the float; the float check accepts a statement figure for this reason.
 - **Audit entries are append-only by convention** (no endpoint edits them), not by a database trigger
   like the ledger.
-- **Whether KITA Points fall under Bank Negara Malaysia's e-money rules** is a legal question for
+- **Whether SimeTown Points fall under Bank Negara Malaysia's e-money rules** is a legal question for
   SDP's counsel. This build assumes the closed-loop, no-cash-out design in the proposal.
 
 ## Reporting a problem

@@ -7,7 +7,7 @@ import { createAccount, credit, debit, getAccount, postTxn, systemAccounts } fro
 import { getSettings } from '../settings';
 import { resolveTownship } from '../townships';
 
-/** KITA Partner Hub: challenges with a fixed, prefunded reward pool. */
+/** SimeTown Partner Hub: challenges with a fixed, prefunded reward pool. */
 
 export interface CampaignInput {
   townshipId?: string;
@@ -79,7 +79,7 @@ async function lockCampaign(tx: Queryable, actor: Actor, id: string): Promise<Ca
 
 /**
  * Records that the funder's money has arrived. The reward pool goes into the
- * ring-fenced float; the platform fee and running costs go to KITA+'s own
+ * ring-fenced float; the platform fee and running costs go to SimeTown's own
  * account. Nothing can be awarded before this step (BR8).
  */
 export async function fundCampaign(db: Db, actor: Actor, id: string, bankRef: string, now: Date) {

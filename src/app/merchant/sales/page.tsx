@@ -36,7 +36,7 @@ export default function SalesPage() {
 
   return (
     <>
-      <PageHeader title="Sales" description="Every sale recorded through KITA+, newest first." />
+      <PageHeader title="Sales" description="Every sale recorded through SimeTown, newest first." />
       {sales.error ? (
         <ErrorState error={sales.error} onRetry={() => void sales.reload()} />
       ) : sales.isLoading ? (

@@ -78,7 +78,7 @@ export const kitarRoutes = [
     handler: (c) => machine.machineScreen(c.db, c.actor, c.params.machineId!, c.now),
   }),
   route({
-    method: 'POST', path: '/admin/kitar/machines/:machineId/start', tag: 'Kitar', summary: 'Prototype: the machine reads a KITA QR, or a guest taps "Recycle as guest"', auth: 'session', roles: STAFF,
+    method: 'POST', path: '/admin/kitar/machines/:machineId/start', tag: 'Kitar', summary: 'Prototype: the machine reads a SimeTown QR, or a guest taps "Recycle as guest"', auth: 'session', roles: STAFF,
     body: z.object({ mode: z.enum(['MEMBER_QR', 'GUEST']), memberCode: z.string().trim().min(6).max(12).regex(/^[A-Za-z0-9]+$/).optional() }),
     handler: (c) => machine.simulateStart(c.db, c.actor, c.params.machineId!, c.body, c.now),
   }),
@@ -93,7 +93,7 @@ export const kitarRoutes = [
     handler: (c) => machine.simulateFinish(c.db, c.actor, c.params.machineId!, c.now),
   }),
   route({
-    method: 'POST', path: '/ingest/kitar/start', tag: 'Kitar', summary: 'Device: start a session (KITA QR read, or guest); signed by the machine', auth: 'machine',
+    method: 'POST', path: '/ingest/kitar/start', tag: 'Kitar', summary: 'Device: start a session (SimeTown QR read, or guest); signed by the machine', auth: 'machine',
     rateLimit: { limit: 120, windowSec: 60, by: 'ip' },
     body: z.object({ machineId: zId, mode: z.enum(['MEMBER_QR', 'GUEST']), memberCode: z.string().trim().min(6).max(12).regex(/^[A-Za-z0-9]+$/).nullable(), ts: z.iso.datetime(), signature: zSignature }),
     handler: (c) => machine.ingestStart(c.db, c.body, c.now),

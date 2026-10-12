@@ -102,7 +102,7 @@ export default function TamuPage() {
   };
 
   const link = issued ? `${window.location.origin}/pass/${issued.token}` : '';
-  const message = issued ? `Salam! Here is your visitor pass for Taman KITA. Show the QR code at the main gate: ${link}` : '';
+  const message = issued ? `Salam! Here is your visitor pass for Taman SimeTown. Show the QR code at the main gate: ${link}` : '';
 
   return (
     <>
@@ -255,7 +255,7 @@ export default function TamuPage() {
         {issued && (
           <div className="flex flex-col items-center gap-4">
             <QrCode value={`KITAPASS:${issued.code}`} label={`Visitor pass ${issued.code}`} />
-            <p className="font-display text-2xl font-bold tracking-[0.18em] text-ink-900"><Text>{issued.code}</Text></p>
+            <p className="visitor-pass-reveal font-display text-2xl font-bold tracking-[0.18em] text-ink-900"><Text>{issued.code}</Text></p>
             <div className="grid w-full gap-2 sm:grid-cols-3">
               <Button href={`https://wa.me/?text=${encodeURIComponent(message)}`} variant="primary">
                 <MessageCircle className="size-4" aria-hidden />

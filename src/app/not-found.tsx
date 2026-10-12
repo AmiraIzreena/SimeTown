@@ -14,7 +14,7 @@ export default function NotFound() {
         </span>
         <h1 className="mt-6 text-2xl font-bold"><Text>We could not find that page</Text></h1>
         <p className="mt-2 text-ink-500"><Text>The link may be old, or the page may have moved.</Text></p>
-        <Button href="/" className="mt-8"><Text>Back to KITA+</Text></Button>
+        <Button href="/" className="mt-8"><Text>Back to SimeTown</Text></Button>
       </div>
     </main>
   );

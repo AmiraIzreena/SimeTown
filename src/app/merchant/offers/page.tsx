@@ -86,7 +86,7 @@ export default function OffersPage() {
 
   return (
     <>
-      <PageHeader title="Shop Offers" description="Your own discount for KITA points, on your terms, with a monthly budget you set. Residents earn offer-backed points from green actions, up to what shops have promised." />
+      <PageHeader title="Shop Offers" description="Your own discount for SimeTown points, on your terms, with a monthly budget you set. Residents earn offer-backed points from green actions, up to what shops have promised." />
       <div className="space-y-6">
         <Async state={data} skeleton={<SkeletonStats count={3} />}>
           {(d) => (

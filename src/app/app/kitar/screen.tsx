@@ -137,7 +137,7 @@ export function KitarScreen({ scanned }: { scanned: string }) {
                   <QrIcon className="size-4" aria-hidden />
                 </span>
                 <span>
-                  <strong className="text-ink-900"><Text>Or show your KITA QR</Text></strong><Text> to the machine’s camera (Points & XP, “Show my code”). It works on a phone with no data, or on a printed card.</Text></span>
+                  <strong className="text-ink-900"><Text>Or show your SimeTown QR</Text></strong><Text> to the machine’s camera (Points & XP, “Show my code”). It works on a phone with no data, or on a printed card.</Text></span>
               </li>
               <li className="flex gap-3">
                 <span className="grid size-8 shrink-0 place-items-center rounded-full bg-ink-200 text-sm font-bold text-ink-700">

@@ -1,6 +1,6 @@
 # Architecture
 
-This document explains how KITA+ is built and why. It follows the order the work was done in:
+This document explains how SimeTown is built and why. It follows the order the work was done in:
 assess, design, build, check.
 
 ## 1. Assessment: what we started from
@@ -26,7 +26,7 @@ assessment below is therefore of the *specification*.
 
 | Left out | Why |
 | --- | --- |
-| A language model behind KITA Assistant; real bookings in KITA Home | The third edition adds Akses+ and Taman as working features. The Assistant and KITA Home need a tuned language model and real service providers, so they are shown as clearly labelled previews: the Assistant answers from fixed rules over the resident's own data, and KITA Home is a mock-up where nothing can be booked or sold. |
+| A language model behind SimeTown Assistant; real bookings in SimeTown Home | The third edition adds Akses+ and Taman as working features. The Assistant and SimeTown Home need a tuned language model and real service providers, so they are shown as clearly labelled previews: the Assistant answers from fixed rules over the resident's own data, and SimeTown Home is a mock-up where nothing can be booked or sold. |
 | Machine learning for the recycling machine, CCTV and bills | Planned after the hackathon selection. The machine is a tablet page whose buttons stand in for camera, barcode and scale (its signed records are real); CCTV is a fixed set of test pictures with known readings; bills are read from the PDF's own text, with the optional AI service for photos. |
 | In-app payments, top-up, stored cash | Rule BR11 forbids them, and they would bring e-money regulation. Residents pay shops directly. |
 | A separate API service, Redis, queues, WebSockets | The pilot design has them. At prototype scale they add operations work and no user benefit: polling every few seconds is enough for a counter confirmation and a flood alert. The backend is already isolated (`src/server`) so it can be lifted out later. |
@@ -88,7 +88,7 @@ Every endpoint is declared the same way, in one place per feature:
 
 ```ts
 route({
-  method: 'POST', path: '/merchant/sales', tag: 'KITA Merchant',
+  method: 'POST', path: '/merchant/sales', tag: 'SimeTown Merchant',
   summary: 'Record a sale: give points, and optionally ask to accept points',
   auth: 'session', roles: ['MERCHANT'],
   body: z.object({ memberCode: zMemberCode, billSen: zSen(10_000_000), … }),
@@ -168,7 +168,7 @@ Decisions worth knowing:
 | Account | Kind | Meaning |
 | --- | --- | --- |
 | `TRUST_BANK` | asset | The ring-fenced reward float |
-| `OPERATING_BANK` | asset | KITA+'s own money |
+| `OPERATING_BANK` | asset | SimeTown's own money |
 | `FUNDER_POOL` (per shop, per campaign) | liability | Money paid in, not yet given as points |
 | `WALLET` (per resident) | liability | Points a resident holds |
 | `MERCHANT_PAYABLE` (per shop) | liability | Owed to a shop for points it accepted |

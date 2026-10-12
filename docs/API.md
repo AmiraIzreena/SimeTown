@@ -1,19 +1,19 @@
-# KITA+ API reference
+# SimeTown API reference
 
 Generated from the route table by `npm run docs:api`. Do not edit by hand.
 The machine-readable version is [openapi.json](openapi.json), also served at `/api/v1/openapi.json`.
 
 - Base path: `/api/v1`
 - Success: `{ "data": … }`. Failure: `{ "error": { "code", "message", "details?", "requestId" } }`.
-- Money is in whole sen. 1 KITA Point = 1 sen.
+- Money is in whole sen. 1 SimeTown Point = 1 sen.
 - Sign-in sets an HttpOnly session cookie. Every POST, PATCH and DELETE must send an `Origin` header equal to the app origin.
 - Lists that can grow take `?cursor=&limit=` and return `{ items, nextCursor }`.
 
-## KITA ID
+## SimeTown ID
 
 | Method | Path | Who | What it does |
 | --- | --- | --- | --- |
-| GET | `/townships` | Public | Townships that use KITA+ |
+| GET | `/townships` | Public | Townships that use SimeTown |
 | GET | `/townships/:townshipId/addresses` | Public | The township's precincts and streets, for the address picker |
 | GET | `/townships/:townshipId/homes` | Public | Houses and units on one street, for the address picker (addresses only) |
 | POST | `/auth/register` | Public | Register as a resident (starts unverified) |
@@ -49,7 +49,7 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | GET | `/notifications` | Any signed-in user | My notifications |
 | POST | `/notifications/read` | Any signed-in user | Mark all notifications as read |
 
-## KITA Merchant
+## SimeTown Merchant
 
 | Method | Path | Who | What it does |
 | --- | --- | --- | --- |
@@ -77,7 +77,7 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | GET | `/offers` | RESIDENT | Live Shop Offers in my township, my offer-backed points and the pledges behind them |
 | GET | `/admin/offers` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | The township's pledges and offer-backed points this month |
 
-## KITA Partner Hub
+## SimeTown Partner Hub
 
 | Method | Path | Who | What it does |
 | --- | --- | --- | --- |
@@ -165,10 +165,10 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | POST | `/admin/kitar/machines` | TOWNSHIP_ADMIN, HQ_ADMIN | Put a recycling machine at a kiosk |
 | POST | `/admin/kitar/machines/:machineId/status` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Mark a machine online, full or offline |
 | GET | `/admin/kitar/machines/:machineId/screen` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Prototype: the machine's screen (rotating code and the session in progress) |
-| POST | `/admin/kitar/machines/:machineId/start` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Prototype: the machine reads a KITA QR, or a guest taps "Recycle as guest" |
+| POST | `/admin/kitar/machines/:machineId/start` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Prototype: the machine reads a SimeTown QR, or a guest taps "Recycle as guest" |
 | POST | `/admin/kitar/machines/:machineId/items` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Prototype: the machine's camera, barcode reader and scale report one item |
 | POST | `/admin/kitar/machines/:machineId/finish` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Prototype: the machine signs its summary and closes the session |
-| POST | `/ingest/kitar/start` | Bearer token (machine) | Device: start a session (KITA QR read, or guest); signed by the machine |
+| POST | `/ingest/kitar/start` | Bearer token (machine) | Device: start a session (SimeTown QR read, or guest); signed by the machine |
 | POST | `/ingest/kitar/items` | Bearer token (machine) | Device: one item recognised, counted and weighed; signed by the machine |
 | POST | `/ingest/kitar/finish` | Bearer token (machine) | Device: the session's summary, which must match the items; signed by the machine |
 
@@ -233,7 +233,7 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | GET | `/admin/taman/gardens` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Gardens with their printable gate codes |
 | POST | `/admin/taman/gardens` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Add a community garden and its plots |
 
-## KITA Insights
+## SimeTown Insights
 
 | Method | Path | Who | What it does |
 | --- | --- | --- | --- |

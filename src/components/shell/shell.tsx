@@ -28,6 +28,36 @@ export interface ShellUser {
 
 const isActive = (pathname: string, item: NavItem, root: string) => (item.href === root ? pathname === root : pathname === item.href || pathname.startsWith(`${item.href}/`));
 
+function pageMotion(pathname: string) {
+  if (pathname === '/app') return 'motion-home';
+  const routes: [string, string][] = [
+    ['/app/wallet', 'motion-wallet'],
+    ['/app/kitar', 'motion-kitar'],
+    ['/app/gerak', 'motion-gerak'],
+    ['/app/lapor', 'motion-lapor'],
+    ['/app/tamu', 'motion-tamu'],
+    ['/app/jiran', 'motion-jiran'],
+    ['/app/kongsi', 'motion-kongsi'],
+    ['/app/jimat', 'motion-jimat'],
+    ['/app/banjir', 'motion-banjir'],
+    ['/app/akses', 'motion-access'],
+    ['/app/assistant', 'motion-assistant'],
+    ['/app/home-services', 'motion-home-services'],
+    ['/merchant/offers', 'motion-offers'],
+    ['/merchant/sales', 'motion-sales'],
+    ['/merchant/statements', 'motion-statements'],
+    ['/merchant', 'motion-merchant'],
+    ['/sponsor', 'motion-sponsor'],
+    ['/guard', 'motion-gate'],
+    ['/console/finance', 'motion-finance'],
+    ['/console/reports', 'motion-reports'],
+    ['/console/banjir', 'motion-flood-console'],
+    ['/console/campaigns', 'motion-campaigns'],
+    ['/console', 'motion-console'],
+  ];
+  return routes.find(([route]) => pathname === route || pathname.startsWith(`${route}/`))?.[1] ?? 'motion-utility';
+}
+
 async function signOut() {
   await api.post('/auth/logout').catch(() => undefined);
   reloadTo('/');
@@ -57,6 +87,7 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
   const primary = items.filter((item) => item.primary).slice(0, 4);
   const needsMore = items.length > primary.length;
   const initials = user.fullName.split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase();
+  const motion = pageMotion(pathname);
 
   const link = (item: NavItem, compact: boolean) => {
     const active = isActive(pathname, item, root);
@@ -67,7 +98,7 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
         aria-current={active ? 'page' : undefined}
         title={compact ? item.label : undefined}
         className={cn(
-          'group relative flex min-h-11 items-center gap-3 rounded-md px-3 text-[15px] font-medium transition-colors duration-200',
+          'group relative flex min-h-11 items-center gap-3 rounded-lg px-3 text-[15px] font-medium transition-colors duration-200',
           active ? 'bg-white/12 text-white' : 'text-brand-100/80 hover:bg-white/8 hover:text-white',
           compact && 'justify-center px-0 lg:justify-start lg:px-3',
         )}
@@ -83,14 +114,14 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
   };
 
   return (
-    <div className="min-h-dvh md:pl-[72px] lg:pl-64">
+    <div className="min-h-dvh md:pl-20 lg:pl-64">
       <AccountLanguage />
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[70] focus:rounded-md focus:bg-white focus:px-4 focus:py-2 focus:shadow-lg"><Text>Skip to content</Text></a>
 
       {/* Tablet rail and desktop sidebar */}
-      <aside className="no-print fixed inset-y-0 left-0 z-40 hidden w-[72px] flex-col bg-gradient-to-b from-brand-900 to-brand-950 md:flex lg:w-64">
+      <aside className="no-print fixed inset-y-0 left-0 z-40 hidden w-20 flex-col border-r border-white/15 bg-gradient-to-b from-brand-900/85 to-brand-950/85 shadow-xl backdrop-blur-2xl md:flex lg:w-64">
         <div className="flex h-16 items-center justify-center px-4 lg:justify-start">
-          <Link href={root} aria-label="KITA+ home" className="rounded-md">
+          <Link href={root} aria-label="SimeTown home" className="rounded-md">
             <Logo tone="light" className="[&>span]:hidden lg:[&>span]:inline" />
           </Link>
         </div>
@@ -113,8 +144,8 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
       </aside>
 
       {/* Top bar */}
-      <header className="no-print sticky top-0 z-30 flex h-14 items-center justify-between gap-3 border-b border-ink-200 bg-white/90 px-4 backdrop-blur-sm sm:px-6 md:h-16 lg:px-8">
-        <Link href={root} aria-label="KITA+ home" className="rounded-md md:hidden">
+      <header className="no-print sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-white/70 bg-white/65 px-4 shadow-[0_4px_20px_rgb(45_20_7_/_0.035)] backdrop-blur-2xl sm:px-6 lg:px-10">
+        <Link href={root} aria-label="SimeTown home" className="rounded-md md:hidden">
           <Logo />
         </Link>
         <p className="hidden text-sm font-medium text-ink-500 md:block">{t(NAV[area].title)}</p>
@@ -142,16 +173,16 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
 
       {(area === 'resident' || area === 'console' || area === 'guard') && <AlertTakeover href={area === 'resident' ? '/app/banjir' : area === 'guard' ? '/guard' : '/console/banjir'} />}
 
-      <main id="main" className="mx-auto w-full max-w-6xl px-4 pb-28 pt-6 sm:px-6 md:pb-12 lg:px-8 lg:pt-8">
+      <main id="main" className="mx-auto w-full max-w-7xl px-4 pb-28 pt-7 sm:px-6 md:pb-14 md:pt-9 lg:px-10 lg:pt-10">
         <ProfileCompletion accountHref={`${root}/account`} />
         {/* A short fade-and-rise when moving between screens. */}
-        <div key={pathname} className="animate-rise">
+        <div key={pathname} className={cn('animate-rise', motion)}>
           <Text>{children}</Text>
         </div>
       </main>
 
       {/* Phone bottom bar */}
-      <LocalizedNav aria-label="Main" className="no-print fixed inset-x-0 bottom-0 z-40 grid auto-cols-fr grid-flow-col border-t border-ink-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-sm md:hidden">
+      <LocalizedNav aria-label="Main" className="no-print fixed inset-x-0 bottom-0 z-40 grid auto-cols-fr grid-flow-col border-t border-white/70 bg-white/70 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_rgb(45_20_7_/_0.055)] backdrop-blur-2xl md:hidden">
         {primary.map((item) => {
           const active = isActive(pathname, item, root);
           return (

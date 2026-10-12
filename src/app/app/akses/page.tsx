@@ -137,7 +137,7 @@ export default function AksesPage() {
                     <Switch label="Simple Mode" hint="Four big buttons on your home screen: Help, Visitors, Flood, My points." checked={p.simpleMode} onChange={(v) => edit({ simpleMode: v })} />
                     <div className="pt-3">
                       <Switch label="Read alerts aloud" hint="Flood warnings and Simple Mode are read out by your phone’s own voice." checked={p.readAloud} onChange={(v) => edit({ readAloud: v })} />
-                      <Button variant="ghost" size="sm" className="mt-1" onClick={() => speak(lang === 'ms' ? 'Ini contoh suara KITA+.' : 'This is how KITA+ sounds when it reads aloud.', lang)}>
+                      <Button variant="ghost" size="sm" className="mt-1" onClick={() => speak(lang === 'ms' ? 'Ini contoh suara SimeTown.' : 'This is how SimeTown sounds when it reads aloud.', lang)}>
                         <Volume2 className="size-4" aria-hidden /><Text>Try it</Text></Button>
                     </div>
                     <div className="pt-3">
@@ -154,7 +154,7 @@ export default function AksesPage() {
                 <div className="space-y-4 border-t border-ink-100 p-5">
                   {needsConsent && (
                     <Checkbox
-                      label="I agree that KITA+ keeps these access needs to adapt the app for me, and shows my name, address and note to duty staff during a flood alert if I join the priority list. I can delete them at any time."
+                      label="I agree that SimeTown keeps these access needs to adapt the app for me, and shows my name, address and note to duty staff during a flood alert if I join the priority list. I can delete them at any time."
                       checked={consent}
                       onChange={(event) => setConsent(event.target.checked)}
                       error={save.fields.consent}

@@ -136,16 +136,16 @@ export default function MachineScreenPage({ params }: { params: Promise<{ machin
                         <div className="mt-5 flex flex-col items-center gap-2 rounded-xl bg-white p-4 text-ink-900">
                           <QrCode value={finished.claimCode} size={150} label={`Claim code ${finished.claimCode}`} />
                           <p className="font-display text-2xl font-bold tracking-[0.2em]"><Text>{finished.claimCode}</Text></p>
-                          <p className="max-w-[16rem] text-xs text-ink-600"><Text>Join KITA+ and claim this within </Text><Text>{finished.claimDays}</Text><Text> days for Impact XP.</Text></p>
+                          <p className="max-w-[16rem] text-xs text-ink-600"><Text>Join SimeTown and claim this within </Text><Text>{finished.claimDays}</Text><Text> days for Impact XP.</Text></p>
                         </div>
                       ) : (
-                        <p className="mt-4 max-w-sm rounded-lg bg-white/10 px-4 py-3 text-sm"><Text>{rewardMessage(finished.reward, 'Recorded in your KITA+ app.')}</Text></p>
+                        <p className="mt-4 max-w-sm rounded-lg bg-white/10 px-4 py-3 text-sm"><Text>{rewardMessage(finished.reward, 'Recorded in your SimeTown app.')}</Text></p>
                       )}
                       <Button variant="ghost" className="mt-5 text-white hover:bg-white/10" onClick={() => setFinished(null)}><Text>Next person</Text></Button>
                     </>
                   ) : (
                     <>
-                      <p className="text-2xl font-bold"><Text>Scan with KITA+ to start</Text></p>
+                      <p className="text-2xl font-bold"><Text>Scan with SimeTown to start</Text></p>
                       <div className="mt-5 rounded-2xl bg-white p-3">
                         <QrCode value={joinUrl} size={210} label="Code to start recycling at this machine" />
                       </div>
@@ -155,7 +155,7 @@ export default function MachineScreenPage({ params }: { params: Promise<{ machin
                       <p className="mt-2 text-xs text-brand-200"><Text>A new code every 30 seconds</Text></p>
                       <div className="mt-6 flex flex-wrap justify-center gap-2 text-sm">
                         <span className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5">
-                          <QrIcon className="size-4" aria-hidden /><Text> Or show your KITA QR to the camera</Text></span>
+                          <QrIcon className="size-4" aria-hidden /><Text> Or show your SimeTown QR to the camera</Text></span>
                         <button type="button" onClick={() => void start.run({ mode: 'GUEST' })} className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 font-semibold hover:bg-white/20">
                           <UserRound className="size-4" aria-hidden /><Text> Recycle as guest</Text></button>
                       </div>
@@ -167,7 +167,7 @@ export default function MachineScreenPage({ params }: { params: Promise<{ machin
               <div className="space-y-4">
                 <SimulatedNote><Text>The machine is simulated. These controls stand in for its camera, barcode reader and scale. The records they make, and the signature checks, are the ones a real machine’s would go through.</Text></SimulatedNote>
                 <Card>
-                  <CardHeader title="Camera: read a KITA QR" description="Stands in for the machine reading a resident’s code." />
+                  <CardHeader title="Camera: read a SimeTown QR" description="Stands in for the machine reading a resident’s code." />
                   <form
                     method="post"
                     className="flex flex-wrap items-end gap-3 p-5"

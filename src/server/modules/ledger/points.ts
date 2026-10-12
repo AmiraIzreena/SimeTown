@@ -91,7 +91,7 @@ export async function addPoints(
 /**
  * Gives points from a prefunded pool, charging the service fee to the same
  * pool (BR14). The fee is real money, so it also moves from the trust account
- * to KITA+'s operating account. Throws POOL_EMPTY if the pool cannot cover it.
+ * to SimeTown's operating account. Throws POOL_EMPTY if the pool cannot cover it.
  */
 export async function issueFromPool(
   tx: Queryable,
@@ -159,7 +159,7 @@ export async function removePoints(
 /**
  * Expires one resident's open batches that match `where`. The value goes back
  * to the funder's pool, or to the community pool if that campaign has closed.
- * It never becomes KITA+ income (BR10).
+ * It never becomes SimeTown income (BR10).
  */
 export async function expireLotsForUser(
   tx: Queryable,

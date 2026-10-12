@@ -243,7 +243,7 @@ export default function CampaignsPage() {
               void fund.run(funding.id, String(new FormData(event.currentTarget).get('bankRef')));
             }}
           >
-            <p className="text-[15px] text-ink-700"><Text>Only record this once the full amount is in the trust account. The reward pool goes into the float; the fee and running costs go to KITA+.</Text></p>
+            <p className="text-[15px] text-ink-700"><Text>Only record this once the full amount is in the trust account. The reward pool goes into the float; the fee and running costs go to SimeTown.</Text></p>
             <BudgetSplit campaign={funding} />
             <Input label="Bank reference" name="bankRef" required maxLength={60} error={fund.fields.bankRef} hint="Each reference can be used once." />
           </form>
@@ -341,7 +341,7 @@ function CreateCampaign({ open, onClose, onCreated }: { open: boolean; onClose: 
         <Input label="Ends" name="endsAt" type="date" required error={f.endsAt} />
         {budgetSen > 0 && (
           <p className="rounded-lg bg-brand-50 px-4 py-3 text-sm text-brand-800 sm:col-span-2"><Text>Reward pool </Text><strong><Text>{formatRM(poolSen)}</Text></strong>
-            <Text>{sponsorId ? `, KITA+ fee ${formatRM(Math.floor(budgetSen * 0.25))}, running costs ${formatRM(budgetSen - poolSen - Math.floor(budgetSen * 0.25))}` : ' (the whole budget)'}</Text><Text>. Enough for </Text><strong><Text>{rewards.toLocaleString('en-MY')}</Text></strong><Text> rewards; awards stop when it runs out, and anything left is refunded.</Text></p>
+            <Text>{sponsorId ? `, SimeTown fee ${formatRM(Math.floor(budgetSen * 0.25))}, running costs ${formatRM(budgetSen - poolSen - Math.floor(budgetSen * 0.25))}` : ' (the whole budget)'}</Text><Text>. Enough for </Text><strong><Text>{rewards.toLocaleString('en-MY')}</Text></strong><Text> rewards; awards stop when it runs out, and anything left is refunded.</Text></p>
         )}
       </form>
     </Modal>

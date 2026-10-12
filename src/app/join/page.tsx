@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: 'Join as a shop' };
 export default function JoinPage() {
   return (
     <AuthFrame
-      title="Bring your shop into KITA+"
+      title="Bring your shop into SimeTown"
       intro="Free to list and to accept points. You are paid 100% of every point you accept, every week."
       footer={
         <p><Text>Already applied?</Text><Text>{' '}</Text>

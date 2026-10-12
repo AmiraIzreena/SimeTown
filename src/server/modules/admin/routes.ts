@@ -35,7 +35,7 @@ const settingsBody = z
 
 export const adminRoutes = [
   route({
-    method: 'GET', path: '/insights', tag: 'KITA Insights', summary: 'Township results for the last 30 days (totals only)', auth: 'session', roles: STAFF,
+    method: 'GET', path: '/insights', tag: 'SimeTown Insights', summary: 'Township results for the last 30 days (totals only)', auth: 'session', roles: STAFF,
     handler: (c) => insightsOverview(c.db, c.actor, c.now),
   }),
   route({

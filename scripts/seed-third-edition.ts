@@ -64,7 +64,7 @@ function walkAlong(path: [number, number][], startMs: number, speedMs: number, s
 export async function seedThirdEdition(db: Db, input: { passwordHash: string; now: Date; log: (line: string) => void }) {
   const { now, log } = input;
   const daysAgo = (days: number, hour = 4) => new Date(Math.floor(now.getTime() / DAY) * DAY - days * DAY + hour * 3_600_000);
-  const township = await one<{ id: string }>(db, `SELECT id FROM townships WHERE name = 'Taman KITA (demo township)'`);
+  const township = await one<{ id: string }>(db, `SELECT id FROM townships WHERE name = 'Taman SimeTown (demo township)'`);
   if (!township) {
     log('No demo township found; the third-edition demo data needs the main seed first.');
     return;
@@ -114,7 +114,7 @@ export async function seedThirdEdition(db: Db, input: { passwordHash: string; no
   // --- Sponsor tiers -------------------------------------------------------------------------
   const solar = await one<{ id: string; tier: string }>(db, `SELECT id, tier FROM sponsors WHERE name = 'Solar Cerah (demo sponsor)'`);
   if (solar && solar.tier === 'NONE') {
-    await db.query(`UPDATE sponsors SET tagline = 'Cleaner power for every Taman KITA roof' WHERE id = $1`, [solar.id]);
+    await db.query(`UPDATE sponsors SET tagline = 'Cleaner power for every Taman SimeTown roof' WHERE id = $1`, [solar.id]);
     await setSponsorTier(db, hq, solar.id, { tier: 'GREEN_CHAMPION', bankRef: 'DEMO-TIER-SOLAR', category: 'Solar energy' }, daysAgo(14));
     for (const [name, tier, category, tagline] of [
       ['Basikal Bersama (demo sponsor)', 'TOWNSHIP_PARTNER', 'Mobility', 'Bike repairs and rentals for every street'],
@@ -190,8 +190,8 @@ export async function seedThirdEdition(db: Db, input: { passwordHash: string; no
     for (const place of [
       { name: 'Lake path, gate to boathouse', kind: 'STEP_FREE_ROUTE' as const, location: 'Lakeside, the whole western side', note: 'Smooth and level; benches every 200 m.' },
       { name: 'Community hall main entrance', kind: 'RAMP' as const, location: 'Community hall, Jalan Melur 2/KT2' },
-      { name: 'Residensi KITA Block A lift', kind: 'LIFT' as const, location: 'Block A lobby' },
-      { name: 'KITA Square OKU bays', kind: 'OKU_PARKING' as const, location: 'KITA Square car park, row A (2 bays)' },
+      { name: 'Residensi SimeTown Block A lift', kind: 'LIFT' as const, location: 'Block A lobby' },
+      { name: 'SimeTown Square OKU bays', kind: 'OKU_PARKING' as const, location: 'SimeTown Square car park, row A (2 bays)' },
       { name: 'Community hall accessible toilet', kind: 'ACCESSIBLE_TOILET' as const, location: 'Community hall, ground floor' },
     ]) {
       await createPlace(db, staff, place, daysAgo(7));

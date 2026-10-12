@@ -11,6 +11,8 @@ import { Reveal } from '@/components/ui/reveal';
 import { currentActor } from '@/server/auth/guard';
 import { ROLE_HOME } from '@/shared/domain';
 
+
+//changes all instances of 'SimeTown' to SimeTown
 const STEPS = [
   { n: '1', title: 'Do', text: 'Recycle, cycle a loop, report a hazard, help a neighbour, or simply shop locally.' },
   { n: '2', title: 'Earn', text: 'Every verified action earns Impact XP. Points come only where a shop, a sponsor or SDP has paid for them.' },
@@ -34,22 +36,22 @@ const FEATURES: { layer: string; question: string; items: { icon: LucideIcon; na
     layer: 'Planet',
     question: 'Making sustainable living easy and worth doing',
     items: [
-      { icon: Recycle, name: 'Kitar', gloss: 'Recycle', text: 'A smart machine recognises, counts and weighs each item, and signs every record.' },
+      { icon: Recycle, name: 'SimeTown Recycle', gloss: 'Recycle', text: 'A smart machine recognises, counts and weighs each item, and signs every record.' },
       { icon: Repeat2, name: 'Kongsi', gloss: 'Share', text: 'Give away or lend things instead of throwing them out.' },
       { icon: Zap, name: 'Jimat', gloss: 'Save', text: 'Upload a bill: it is checked for safety, read, and confirmed by you. Leak alerts and tips.' },
       { icon: Droplets, name: 'Banjir', gloss: 'Flood', text: 'Sensors and camera AI, two signals must agree, a person checks the rest, and a safe route.' },
       { icon: Sprout, name: 'Taman', gloss: 'Garden', text: 'Book a garden plot, take a day on the watering roster and log the wildlife you spot.' },
-      { icon: Bot, name: 'KITA Assistant', gloss: 'Preview', text: 'Ask in English or Bahasa Malaysia. It acts only after you confirm, and never decides an alert.' },
+      { icon: Bot, name: 'SimeTown Assistant', gloss: 'Preview', text: 'Ask in English or Bahasa Malaysia. It acts only after you confirm, and never decides an alert.' },
     ],
   },
   {
     layer: 'Business',
     question: 'Tools for shops, sponsors and Sime Darby Property',
     items: [
-      { icon: Store, name: 'KITA Merchant', gloss: 'Shops', text: 'Give and accept points, and set your own Shop Offer with a monthly budget you control.' },
-      { icon: Megaphone, name: 'KITA Partner Hub', gloss: 'Sponsors', text: 'Four sponsor tiers, and challenges with a fixed budget. Whatever is not used is refunded.' },
-      { icon: Gauge, name: 'KITA Insights', gloss: 'SDP', text: 'What the township achieved, in totals only, with the float matched to the sen.' },
-      { icon: House, name: 'KITA Home', gloss: 'Preview', text: 'A home logbook, trusted home services with contractor passes, and early previews of launches.' },
+      { icon: Store, name: 'SimeTown Merchant', gloss: 'Shops', text: 'Give and accept points, and set your own Shop Offer with a monthly budget you control.' },
+      { icon: Megaphone, name: 'SimeTown Partner Hub', gloss: 'Sponsors', text: 'Four sponsor tiers, and challenges with a fixed budget. Whatever is not used is refunded.' },
+      { icon: Gauge, name: 'SimeTown Insights', gloss: 'SDP', text: 'What the township achieved, in totals only, with the float matched to the sen.' },
+      { icon: House, name: 'SimeTown Home', gloss: 'Preview', text: 'A home logbook, trusted home services with contractor passes, and early previews of launches.' },
     ],
   },
 ];
@@ -71,7 +73,7 @@ export default async function LandingPage() {
           <Logo tone="light" />
           <LocalizedNav aria-label="Account" className="flex items-center gap-2">
             {home ? (
-              <Button href={home} variant="light" size="sm"><Text>Open KITA+</Text></Button>
+              <Button href={home} variant="light" size="sm"><Text>Open SimeTown</Text></Button>
             ) : (
               <>
                 <Link href="/login" className="rounded-md px-3 py-2 text-sm font-semibold text-white/90 transition-colors duration-200 hover:text-white"><Text>Sign in</Text></Link>
@@ -99,10 +101,10 @@ export default async function LandingPage() {
               <p className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/8 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-brand-100"><Text>Township of Tomorrow · People &amp; Planet</Text></p>
               <h1 className="mt-6 text-4xl font-extrabold leading-[1.08] text-white sm:text-5xl lg:text-[56px]"><Text>One app where people, businesses and nature </Text><span className="text-gold-300"><Text>thrive together</Text></span>.
               </h1>
-              <p className="mt-6 max-w-xl text-lg leading-relaxed text-brand-100/90"><Text>KITA+ rewards everyday good actions with points that keep value inside the township. Every point is paid for before it is given.</Text></p>
+              <p className="mt-6 max-w-xl text-lg leading-relaxed text-brand-100/90"><Text>SimeTown rewards everyday good actions with points that keep value inside the township. Every point is paid for before it is given.</Text></p>
               <div className="mt-9 flex flex-wrap gap-3">
                 <Button href={home ?? '/register'} variant="light" size="lg">
-                  <Text>{home ? 'Open KITA+' : 'Create a resident account'}</Text>
+                  <Text>{home ? 'Open SimeTown' : 'Create a resident account'}</Text>
                   <ArrowRight className="size-4" aria-hidden />
                 </Button>
                 {!home && (
@@ -114,16 +116,16 @@ export default async function LandingPage() {
             {/* An original illustration of the resident's wallet, drawn in markup. */}
             <div aria-hidden className="animate-rise mx-auto w-full max-w-sm [animation-delay:120ms] lg:mx-0 lg:justify-self-end">
               <div className="rounded-2xl border border-white/15 bg-white/8 p-3 shadow-lg backdrop-blur-sm">
-                <div className="rounded-xl bg-white p-5 text-ink-800">
+                <div className="rounded-xl border border-white/70 bg-white/90 p-5 text-ink-800 shadow-md backdrop-blur-xl">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium text-ink-500"><Text>KITA Points</Text></p>
+                    <p className="text-sm font-medium text-ink-500"><Text>SimeTown Points</Text></p>
                     <span className="rounded-full bg-gold-50 px-2.5 py-0.5 text-xs font-semibold text-gold-700"><Text>100 pts = RM1</Text></span>
                   </div>
                   <p className="mt-2 font-display text-4xl font-bold tracking-tight text-ink-900">675</p>
                   <p className="text-sm text-ink-500"><Text>worth RM6.75 at township shops</Text></p>
                   <div className="mt-5 space-y-2.5 border-t border-ink-100 pt-4 text-sm">
                     {[
-                      ['Kitar Challenge', 'funded by a sponsor', '+300'],
+                      ['SimeTown Recycle Challenge', 'funded by a sponsor', '+300'],
                       ['Kafe Seri Pagi', 'funded by the shop', '+45'],
                       ['Kedai Runcit Mesra', 'spent on groceries', '−300'],
                     ].map(([name, who, points]) => (
@@ -196,7 +198,7 @@ export default async function LandingPage() {
             <Reveal>
               <p className="text-sm font-semibold uppercase tracking-[0.14em] text-accent-600"><Text>The most important rule</Text></p>
               <h2 className="mt-2 text-3xl font-bold sm:text-4xl"><Text>No pool, no points.</Text></h2>
-              <p className="mt-4 text-[17px] leading-relaxed text-ink-600"><Text>A point is given only after someone has put the money for it into a separate, locked pot: the reward float. That is why a shop can always be paid, and why KITA+ never earns from points residents fail to use.</Text></p>
+              <p className="mt-4 text-[17px] leading-relaxed text-ink-600"><Text>A point is given only after someone has put the money for it into a separate, locked pot: the reward float. That is why a shop can always be paid, and why SimeTown never earns from points residents fail to use.</Text></p>
             </Reveal>
             <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
               {[

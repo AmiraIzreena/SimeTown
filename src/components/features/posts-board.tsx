@@ -90,9 +90,9 @@ export function PostsBoard({ title, description, kinds }: { title: string; descr
             <Text>{kind.empty}</Text>
           </EmptyState>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2">
-            {posts.items.map((post) => (
-              <Card key={post.id} className="flex flex-col p-5">
+          <div className={`grid gap-4 md:grid-cols-2 ${title === 'Jiran' ? 'community-post-grid' : 'sharing-post-grid'}`}>
+            {posts.items.map((post, index) => (
+              <Card key={post.id} className="post-card-enter flex flex-col p-5" style={{ animationDelay: `${Math.min(index, 8) * 60}ms` }}>
                 <div className="flex flex-wrap items-center gap-2">
                   {post.by_township && <Badge tone="brand"><Text>Township</Text></Badge>}
                   {post.is_mine && <Badge><Text>Yours</Text></Badge>}

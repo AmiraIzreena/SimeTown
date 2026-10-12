@@ -1,8 +1,8 @@
 {
-  "name": "kita-plus",
+  "name": "SimeTown",
   "version": "1.0.0",
   "private": true,
-  "description": "KITA+ Township Super-App: residents, shops, sponsors and Sime Darby Property on one points ledger.",
+  "description": "SimeTown Township Super-App: residents, shops, sponsors and Sime Darby Property on one points ledger.",
   "engines": {
     "node": ">=22"
   },

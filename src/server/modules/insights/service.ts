@@ -5,7 +5,7 @@ import { pledgeSummary } from '../offers/service';
 import { getSettings } from '../settings';
 
 /**
- * KITA Insights: what the township achieved in the last 30 days. Totals for
+ * SimeTown Insights: what the township achieved in the last 30 days. Totals for
  * groups only, never one person's activity (BR16).
  */
 export async function insightsOverview(db: Db, actor: Actor, now: Date) {

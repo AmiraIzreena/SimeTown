@@ -34,7 +34,7 @@ export const NAV: Record<Area, { title: string; items: NavItem[] }> = {
       { href: '/app/taman', label: 'Taman', gloss: 'Garden', icon: Sprout },
       { href: '/app/akses', label: 'Akses+', gloss: 'Access', icon: Accessibility },
       { href: '/app/assistant', label: 'Assistant', icon: Bot },
-      { href: '/app/home-services', label: 'KITA Home', gloss: 'Home services', icon: House },
+      { href: '/app/home-services', label: 'SimeTown Home', gloss: 'Home services', icon: House },
       { href: '/app/account', label: 'Account', icon: UserRound },
     ],
   },

@@ -16,7 +16,7 @@ export function LevelGauge({ level, status, warningPct, dangerPct }: { level: nu
   return (
     <div>
       <LocalizedDiv role="meter" aria-label="Water level" aria-valuemin={0} aria-valuemax={100} aria-valuenow={level} aria-valuetext={`${level}%, ${WORD[status]}`} className="relative h-3 rounded-full bg-ink-100">
-        <div className={cn('h-full rounded-full transition-[width,background-color] duration-500 ease-soft', FILL[status])} style={{ width: `${level}%` }} />
+        <div className={cn('water-level-fill h-full rounded-full transition-[width,background-color] duration-500 ease-soft', FILL[status])} style={{ width: `${level}%` }} />
         <span aria-hidden className="absolute -top-1 h-5 w-0.5 bg-warning-600" style={{ left: `${warningPct}%` }} />
         <span aria-hidden className="absolute -top-1 h-5 w-0.5 bg-accent-600" style={{ left: `${dangerPct}%` }} />
       </LocalizedDiv>

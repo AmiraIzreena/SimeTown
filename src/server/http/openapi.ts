@@ -42,10 +42,10 @@ export function buildOpenApi(routes: RouteDef[], prefix: string): Record<string,
   return {
     openapi: '3.1.0',
     info: {
-      title: 'KITA+ API',
+      title: 'SimeTown API',
       version: '1.0.0',
       description:
-        'One API for the resident, shop, sponsor and SDP views. Amounts of money are whole sen; 1 KITA Point = 1 sen. ' +
+        'One API for the resident, shop, sponsor and SDP views. Amounts of money are whole sen; 1 SimeTown Point = 1 sen. ' +
         'State-changing requests must carry an Origin header equal to the app origin. Lists use `cursor` and `limit`.',
     },
     paths,

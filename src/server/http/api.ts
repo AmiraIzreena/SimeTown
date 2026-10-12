@@ -18,7 +18,7 @@ import { createRouter, json, route, type RouteDef } from './router';
 
 export const API_PREFIX = '/api/v1';
 
-/** Every endpoint in KITA+, one feature after another. */
+/** Every endpoint in SimeTown, one feature after another. */
 export const routes: RouteDef[] = [
   ...identityRoutes,
   ...walletRoutes,

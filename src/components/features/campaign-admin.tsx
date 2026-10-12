@@ -24,14 +24,14 @@ export function BudgetSplit({ campaign: c }: { campaign: Campaign }) {
   const fee = Math.floor((c.budget_sen * c.fee_bps) / 10_000);
   const parts = [
     { label: 'Reward pool', value: pool, className: 'bg-brand-600' },
-    { label: 'KITA+ fee', value: fee, className: 'bg-gold-500' },
+    { label: 'SimeTown fee', value: fee, className: 'bg-gold-500' },
     { label: 'Running costs', value: c.budget_sen - pool - fee, className: 'bg-ink-300' },
   ].filter((p) => p.value > 0);
   return (
     <div>
       <LocalizedDiv className="flex h-2.5 overflow-hidden rounded-full bg-ink-100" role="img" aria-label={parts.map((p) => `${p.label} ${formatRM(p.value)}`).join(', ')}>
-        {parts.map((p) => (
-          <div key={p.label} className={p.className} style={{ width: `${(p.value / c.budget_sen) * 100}%` }} />
+        {parts.map((p, index) => (
+          <div key={p.label} className={`campaign-budget-segment ${p.className}`} style={{ width: `${(p.value / c.budget_sen) * 100}%`, animationDelay: `${index * 90}ms` }} />
         ))}
       </LocalizedDiv>
       <dl className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm">
@@ -89,7 +89,7 @@ export function CampaignReport({ campaign, onClose }: { campaign: Campaign | nul
               )
             }
           </Async>
-          <p className="text-sm text-ink-500"><Text>Totals only. KITA+ never shares a list of people with a sponsor.</Text></p>
+          <p className="text-sm text-ink-500"><Text>Totals only. SimeTown never shares a list of people with a sponsor.</Text></p>
         </div>
       )}
     </Modal>

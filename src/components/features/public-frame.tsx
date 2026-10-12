@@ -8,10 +8,10 @@ import { Logo } from '@/components/shell/logo';
 /** The frame for pages anyone can open without signing in: the status page, partners and the guest page. */
 export function PublicFrame({ title, intro, children }: { title: string; intro: ReactNode; children: ReactNode }) {
   return (
-    <div className="min-h-dvh bg-ink-50">
+    <div className="min-h-dvh">
       <header className="bg-gradient-to-br from-brand-800 to-brand-950 text-white">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4 sm:px-6">
-          <Link href="/" aria-label="KITA+ home" className="rounded-md">
+          <Link href="/" aria-label="SimeTown home" className="rounded-md">
             <Logo tone="light" />
           </Link>
           <LocalizedNav aria-label="Public pages" className="flex items-center gap-1 text-sm font-semibold">

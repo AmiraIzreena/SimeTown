@@ -1,17 +1,17 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "KITA+ API",
+    "title": "SimeTown API",
     "version": "1.0.0",
-    "description": "One API for the resident, shop, sponsor and SDP views. Amounts of money are whole sen; 1 KITA Point = 1 sen. State-changing requests must carry an Origin header equal to the app origin. Lists use `cursor` and `limit`."
+    "description": "One API for the resident, shop, sponsor and SDP views. Amounts of money are whole sen; 1 SimeTown Point = 1 sen. State-changing requests must carry an Origin header equal to the app origin. Lists use `cursor` and `limit`."
   },
   "paths": {
     "/api/v1/townships": {
       "get": {
         "tags": [
-          "KITA ID"
+          "SimeTown ID"
         ],
-        "summary": "Townships that use KITA+",
+        "summary": "Townships that use SimeTown",
         "description": "Anyone.",
         "operationId": "getTownships",
         "parameters": [],
@@ -36,7 +36,7 @@
     "/api/v1/townships/{townshipId}/addresses": {
       "get": {
         "tags": [
-          "KITA ID"
+          "SimeTown ID"
         ],
         "summary": "The township's precincts and streets, for the address picker",
         "description": "Anyone.",
@@ -73,7 +73,7 @@
     "/api/v1/townships/{townshipId}/homes": {
       "get": {
         "tags": [
-          "KITA ID"
+          "SimeTown ID"
         ],
         "summary": "Houses and units on one street, for the address picker (addresses only)",
         "description": "Anyone.",
@@ -133,7 +133,7 @@
     "/api/v1/auth/register": {
       "post": {
         "tags": [
-          "KITA ID"
+          "SimeTown ID"
         ],
         "summary": "Register as a resident (starts unverified)",
         "description": "Anyone.",
@@ -233,7 +233,7 @@
     "/api/v1/auth/login": {
       "post": {
         "tags": [
-          "KITA ID"
+          "SimeTown ID"
         ],
         "summary": "Sign in",
         "description": "Anyone.",
@@ -297,7 +297,7 @@
     "/api/v1/auth/accept-invite": {
       "post": {
         "tags": [
-          "KITA ID"
+          "SimeTown ID"
         ],
         "summary": "Set a password from an invitation link",
         "description": "Anyone.",
@@ -365,7 +365,7 @@
     "/api/v1/auth/logout": {
       "post": {
         "tags": [
-          "KITA ID"
+          "SimeTown ID"
         ],
         "summary": "Sign out",
         "description": "Signed-in user (any role).",
@@ -424,7 +424,7 @@
     "/api/v1/me": {
       "get": {
         "tags": [
-          "KITA ID"
+          "SimeTown ID"
         ],
         "summary": "The signed-in account, with any required details still missing",
         "description": "Signed-in user (any role).",
@@ -459,7 +459,7 @@
       },
       "patch": {
         "tags": [
-          "KITA ID"
+          "SimeTown ID"
         ],
         "summary": "Update name and phone (both required)",
         "description": "Signed-in user (any role).",
@@ -531,7 +531,7 @@
     "/api/v1/me/language": {
       "post": {
         "tags": [
-          "KITA ID"
+          "SimeTown ID"
         ],
         "summary": "Choose English or Bahasa Malaysia",
         "description": "Signed-in user (any role).",
@@ -600,7 +600,7 @@
     "/api/v1/me/terms": {
       "post": {
         "tags": [
-          "KITA ID"
+          "SimeTown ID"
         ],
         "summary": "Accept the Terms of Use and Privacy Notice now in force",
         "description": "Signed-in user (any role).",
@@ -667,7 +667,7 @@
     "/api/v1/me/home": {
       "post": {
         "tags": [
-          "KITA ID"
+          "SimeTown ID"
         ],
         "summary": "Set or change my address (a new home is confirmed again)",
         "description": "Signed-in RESIDENT.",
@@ -742,7 +742,7 @@
     "/api/v1/me/password": {
       "post": {
         "tags": [
-          "KITA ID"
+          "SimeTown ID"
         ],
         "summary": "Change password (signs out other devices)",
         "description": "Signed-in user (any role).",
@@ -815,7 +815,7 @@
     "/api/v1/me/export": {
       "get": {
         "tags": [
-          "KITA ID"
+          "SimeTown ID"
         ],
         "summary": "Download everything held about me (PDPA)",
         "description": "Signed-in user (any role).",
@@ -852,7 +852,7 @@
     "/api/v1/me/delete": {
       "post": {
         "tags": [
-          "KITA ID"
+          "SimeTown ID"
         ],
         "summary": "Delete my account (PDPA)",
         "description": "Signed-in user (any role).",
@@ -919,7 +919,7 @@
     "/api/v1/household/requests": {
       "get": {
         "tags": [
-          "KITA ID"
+          "SimeTown ID"
         ],
         "summary": "Tenants waiting for this owner to confirm them",
         "description": "Signed-in RESIDENT.",
@@ -956,7 +956,7 @@
     "/api/v1/household/requests/{userId}": {
       "post": {
         "tags": [
-          "KITA ID"
+          "SimeTown ID"
         ],
         "summary": "Owner confirms or declines a tenant",
         "description": "Signed-in RESIDENT.",
@@ -1031,7 +1031,7 @@
     "/api/v1/admin/residents": {
       "get": {
         "tags": [
-          "KITA ID"
+          "SimeTown ID"
         ],
         "summary": "Residents by verification status",
         "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
@@ -1106,7 +1106,7 @@
     "/api/v1/admin/residents/{userId}/verify": {
       "post": {
         "tags": [
-          "KITA ID"
+          "SimeTown ID"
         ],
         "summary": "Confirm or reject a resident against the property record",
         "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
@@ -1181,7 +1181,7 @@
     "/api/v1/admin/accounts": {
       "get": {
         "tags": [
-          "KITA ID"
+          "SimeTown ID"
         ],
         "summary": "Shop, sponsor and staff accounts",
         "description": "Signed-in TOWNSHIP_ADMIN, HQ_ADMIN.",
@@ -1216,7 +1216,7 @@
       },
       "post": {
         "tags": [
-          "KITA ID"
+          "SimeTown ID"
         ],
         "summary": "Create a shop, sponsor or staff account and get its invitation link",
         "description": "Signed-in TOWNSHIP_ADMIN, HQ_ADMIN.",
@@ -1317,7 +1317,7 @@
     "/api/v1/admin/accounts/{userId}/invite": {
       "post": {
         "tags": [
-          "KITA ID"
+          "SimeTown ID"
         ],
         "summary": "Issue a set-password link (a second admin approves it if the account is in use)",
         "description": "Signed-in TOWNSHIP_ADMIN, HQ_ADMIN.",
@@ -1386,7 +1386,7 @@
     "/api/v1/admin/account-requests": {
       "get": {
         "tags": [
-          "KITA ID"
+          "SimeTown ID"
         ],
         "summary": "New admin accounts and password links waiting for a second admin",
         "description": "Signed-in TOWNSHIP_ADMIN, HQ_ADMIN.",
@@ -1423,7 +1423,7 @@
     "/api/v1/admin/account-requests/{requestId}/decision": {
       "post": {
         "tags": [
-          "KITA ID"
+          "SimeTown ID"
         ],
         "summary": "Approve or reject an account request (not your own)",
         "description": "Signed-in TOWNSHIP_ADMIN, HQ_ADMIN.",
@@ -1804,7 +1804,7 @@
     "/api/v1/merchants/apply": {
       "post": {
         "tags": [
-          "KITA Merchant"
+          "SimeTown Merchant"
         ],
         "summary": "Apply to join as a shop (needs admin approval)",
         "description": "Anyone.",
@@ -1947,7 +1947,7 @@
     "/api/v1/merchant/profile": {
       "patch": {
         "tags": [
-          "KITA Merchant"
+          "SimeTown Merchant"
         ],
         "summary": "Update the shop's business address",
         "description": "Signed-in MERCHANT.",
@@ -2047,7 +2047,7 @@
     "/api/v1/merchants": {
       "get": {
         "tags": [
-          "KITA Merchant"
+          "SimeTown Merchant"
         ],
         "summary": "Shops residents can visit",
         "description": "Signed-in RESIDENT.",
@@ -2084,7 +2084,7 @@
     "/api/v1/merchant/summary": {
       "get": {
         "tags": [
-          "KITA Merchant"
+          "SimeTown Merchant"
         ],
         "summary": "Reward pool, amount owed, last 7 days and the rules",
         "description": "Signed-in MERCHANT.",
@@ -2121,7 +2121,7 @@
     "/api/v1/merchant/sales": {
       "post": {
         "tags": [
-          "KITA Merchant"
+          "SimeTown Merchant"
         ],
         "summary": "Record a sale: give points, and optionally ask to accept points",
         "description": "Signed-in MERCHANT.",
@@ -2209,7 +2209,7 @@
       },
       "get": {
         "tags": [
-          "KITA Merchant"
+          "SimeTown Merchant"
         ],
         "summary": "This shop's sales",
         "description": "Signed-in MERCHANT.",
@@ -2270,7 +2270,7 @@
     "/api/v1/merchant/sales/{saleId}": {
       "get": {
         "tags": [
-          "KITA Merchant"
+          "SimeTown Merchant"
         ],
         "summary": "One sale (used to wait for the resident to confirm)",
         "description": "Signed-in MERCHANT.",
@@ -2317,7 +2317,7 @@
     "/api/v1/merchant/sales/{saleId}/refund": {
       "post": {
         "tags": [
-          "KITA Merchant"
+          "SimeTown Merchant"
         ],
         "summary": "Refund a sale: claw back earned points, return spent points",
         "description": "Signed-in MERCHANT.",
@@ -2386,7 +2386,7 @@
     "/api/v1/merchant/statements": {
       "get": {
         "tags": [
-          "KITA Merchant"
+          "SimeTown Merchant"
         ],
         "summary": "Weekly statements and the amount due this week",
         "description": "Signed-in MERCHANT.",
@@ -2423,7 +2423,7 @@
     "/api/v1/admin/merchants": {
       "get": {
         "tags": [
-          "KITA Merchant"
+          "SimeTown Merchant"
         ],
         "summary": "All shops with pool and amounts owed",
         "description": "Signed-in TOWNSHIP_ADMIN, HQ_ADMIN.",
@@ -2460,7 +2460,7 @@
     "/api/v1/admin/merchants/{merchantId}/status": {
       "post": {
         "tags": [
-          "KITA Merchant"
+          "SimeTown Merchant"
         ],
         "summary": "Approve, suspend or restore a shop",
         "description": "Signed-in TOWNSHIP_ADMIN, HQ_ADMIN.",
@@ -2539,7 +2539,7 @@
     "/api/v1/admin/merchants/{merchantId}/deposits": {
       "post": {
         "tags": [
-          "KITA Merchant"
+          "SimeTown Merchant"
         ],
         "summary": "Record money a shop paid into its reward pool",
         "description": "Signed-in TOWNSHIP_ADMIN, HQ_ADMIN.",
@@ -2979,7 +2979,7 @@
     "/api/v1/campaigns": {
       "get": {
         "tags": [
-          "KITA Partner Hub"
+          "SimeTown Partner Hub"
         ],
         "summary": "Campaigns visible to this role (residents also get their progress)",
         "description": "Signed-in RESIDENT, SPONSOR, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
@@ -3014,7 +3014,7 @@
       },
       "post": {
         "tags": [
-          "KITA Partner Hub"
+          "SimeTown Partner Hub"
         ],
         "summary": "Set up a challenge (draft until funded)",
         "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
@@ -3178,7 +3178,7 @@
     "/api/v1/campaigns/{campaignId}/fund": {
       "post": {
         "tags": [
-          "KITA Partner Hub"
+          "SimeTown Partner Hub"
         ],
         "summary": "Record the funder's payment and open the reward pool",
         "description": "Signed-in TOWNSHIP_ADMIN, HQ_ADMIN.",
@@ -3255,7 +3255,7 @@
     "/api/v1/campaigns/{campaignId}/close": {
       "post": {
         "tags": [
-          "KITA Partner Hub"
+          "SimeTown Partner Hub"
         ],
         "summary": "End a campaign and refund the unused pool",
         "description": "Signed-in TOWNSHIP_ADMIN, HQ_ADMIN.",
@@ -3324,7 +3324,7 @@
     "/api/v1/campaigns/{campaignId}/report": {
       "get": {
         "tags": [
-          "KITA Partner Hub"
+          "SimeTown Partner Hub"
         ],
         "summary": "Grouped results for a campaign",
         "description": "Signed-in SPONSOR, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
@@ -3371,7 +3371,7 @@
     "/api/v1/sponsors": {
       "get": {
         "tags": [
-          "KITA Partner Hub"
+          "SimeTown Partner Hub"
         ],
         "summary": "Sponsor organisations",
         "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
@@ -3406,7 +3406,7 @@
       },
       "post": {
         "tags": [
-          "KITA Partner Hub"
+          "SimeTown Partner Hub"
         ],
         "summary": "Add a sponsor organisation",
         "description": "Signed-in TOWNSHIP_ADMIN, HQ_ADMIN.",
@@ -3473,7 +3473,7 @@
     "/api/v1/admin/sponsors/{sponsorId}/tier": {
       "post": {
         "tags": [
-          "KITA Partner Hub"
+          "SimeTown Partner Hub"
         ],
         "summary": "Record a yearly tier payment and give the sponsor that tier (SDP HQ)",
         "description": "Signed-in HQ_ADMIN.",
@@ -3570,7 +3570,7 @@
     "/api/v1/sponsor/tier": {
       "get": {
         "tags": [
-          "KITA Partner Hub"
+          "SimeTown Partner Hub"
         ],
         "summary": "My tier, its benefits and challenges used this year",
         "description": "Signed-in SPONSOR.",
@@ -3607,7 +3607,7 @@
     "/api/v1/public/partners": {
       "get": {
         "tags": [
-          "KITA Partner Hub"
+          "SimeTown Partner Hub"
         ],
         "summary": "The Partners page: sponsors with a current tier (names only)",
         "description": "Anyone.",
@@ -3634,7 +3634,7 @@
     "/api/v1/sponsored": {
       "get": {
         "tags": [
-          "KITA Partner Hub"
+          "SimeTown Partner Hub"
         ],
         "summary": "One labelled sponsored banner for the home screen (never on safety screens)",
         "description": "Signed-in RESIDENT.",
@@ -6788,7 +6788,7 @@
         "tags": [
           "Kitar"
         ],
-        "summary": "Prototype: the machine reads a KITA QR, or a guest taps \"Recycle as guest\"",
+        "summary": "Prototype: the machine reads a SimeTown QR, or a guest taps \"Recycle as guest\"",
         "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
         "operationId": "postAdminKitarMachinesMachineIdStart",
         "parameters": [
@@ -7036,7 +7036,7 @@
         "tags": [
           "Kitar"
         ],
-        "summary": "Device: start a session (KITA QR read, or guest); signed by the machine",
+        "summary": "Device: start a session (SimeTown QR read, or guest); signed by the machine",
         "description": "A recycling machine; every record carries an HMAC-SHA256 signature made with that machine’s own key.",
         "operationId": "postIngestKitarStart",
         "parameters": [],
@@ -9907,7 +9907,7 @@
     "/api/v1/insights": {
       "get": {
         "tags": [
-          "KITA Insights"
+          "SimeTown Insights"
         ],
         "summary": "Township results for the last 30 days (totals only)",
         "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",

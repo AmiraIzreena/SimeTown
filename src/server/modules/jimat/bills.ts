@@ -281,9 +281,9 @@ export async function sampleBill(db: Db, actor: Actor, kind: BillKind, now: Date
   const rm = (sen: number) => `RM ${(sen / 100).toFixed(2)}`;
   const lines = [
     { text: 'SAMPLE BILL - NOT A REAL BILL', x: 50, y: 800, size: 9, bold: true },
-    { text: kind === 'ELECTRICITY' ? 'KITA Demo Electricity' : 'KITA Demo Water', x: 50, y: 770, size: 20, bold: true },
+    { text: kind === 'ELECTRICITY' ? 'SimeTown Demo Electricity' : 'SimeTown Demo Water', x: 50, y: 770, size: 20, bold: true },
     { text: `Bil ${kind === 'ELECTRICITY' ? 'Elektrik' : 'Air'} / ${kind === 'ELECTRICITY' ? 'Electricity' : 'Water'} Bill`, x: 50, y: 748, size: 12 },
-    { text: 'Made by KITA+ for the hackathon demo. No real utility issued it.', x: 50, y: 732, size: 9 },
+    { text: 'Made by SimeTown for the hackathon demo. No real utility issued it.', x: 50, y: 732, size: 9 },
     { text: 'Nama / Name: Resident of the home below', x: 50, y: 690 },
     { text: `Alamat / Address: ${formatAddress(home)}`, x: 50, y: 674 },
     { text: `No. Akaun / Account No: ${account}`, x: 50, y: 650, bold: true },

@@ -2,7 +2,7 @@ import { one, type Queryable } from '../../db/client';
 import { AppError } from '../../errors';
 
 /**
- * The double-entry core. Every movement of value in KITA+ goes through
+ * The double-entry core. Every movement of value in SimeTown goes through
  * `postTxn`. The database itself rejects a transaction that does not balance
  * or that would push any account below zero (see 001_init.sql).
  */

@@ -9,7 +9,7 @@ import { getSettings, startOf, type Settings } from './settings';
  * The single door between "a resident did something good" and rewards.
  * Every People and Planet feature calls `recordAction` once its own check has
  * passed. It gives Impact XP (BR4), applies the limits (BR6) and then gives
- * KITA Points only where a funded campaign covers the action.
+ * SimeTown Points only where a funded campaign covers the action.
  */
 
 export interface RewardUser {

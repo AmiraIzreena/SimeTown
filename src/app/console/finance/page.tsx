@@ -50,7 +50,7 @@ export default function FinancePage() {
   const [tab, setTab] = useState<Tab>('float');
   return (
     <>
-      <PageHeader title="Float & payments" description="The reward float is kept apart from KITA+’s own money. It must always equal the points residents hold plus everything else it owes." />
+      <PageHeader title="Float & payments" description="The reward float is kept apart from SimeTown’s own money. It must always equal the points residents hold plus everything else it owes." />
       <Tabs<Tab> label="Finance sections" value={tab} onChange={setTab} items={[{ key: 'float', label: 'Float check' }, { key: 'payments', label: 'Payments to shops' }, ...(isAdmin ? [{ key: 'corrections' as const, label: 'Corrections' }] : [])]} />
       <TabPanel>{tab === 'float' ? <FloatTab isAdmin={isAdmin} /> : tab === 'payments' ? <PaymentsTab isAdmin={isAdmin} /> : <CorrectionsTab myId={me.data?.id} />}</TabPanel>
     </>

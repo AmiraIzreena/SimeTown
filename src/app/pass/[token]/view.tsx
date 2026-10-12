@@ -119,7 +119,7 @@ export function PassView({ token }: { token: string | null }) {
               }}
             </Async>
           )}
-          <p className="mt-6 text-center text-xs text-brand-100/80"><Text>KITA+ does not ask for or keep any identity card. The guard records your name, vehicle number and the house you visit only.</Text></p>
+          <p className="mt-6 text-center text-xs text-brand-100/80"><Text>SimeTown does not ask for or keep any identity card. The guard records your name, vehicle number and the house you visit only.</Text></p>
         </div>
       </div>
     </div>

@@ -5,7 +5,7 @@ import { LocalizedLink as Link } from '@/components/ui/localized-elements';
 import { Bullets, LegalDocument, type LegalSection } from '@/components/features/legal';
 import { LEGAL } from '@/shared/legal';
 
-export const metadata: Metadata = { title: 'Terms of Use', description: 'The terms that apply when you use KITA+.' };
+export const metadata: Metadata = { title: 'Terms of Use', description: 'The terms that apply when you use SimeTown.' };
 
 const link = (href: string, text: string) => (
   <Link href={href} className="font-semibold text-brand-700 hover:underline">
@@ -16,18 +16,18 @@ const link = (href: string, text: string) => (
 const sections: LegalSection[] = [
   {
     id: 'about',
-    title: 'About KITA+ and these Terms',
+    title: 'About SimeTown and these Terms',
     body: (
       <>
-        <p><Text>KITA+ is a township platform that brings community, safety, mobility, green living and local shopping into one account. It is operated by </Text><Text>{LEGAL.operator}</Text><Text> (“we”, “us”). These Terms of Use (“Terms”) apply whenever you create an account or use KITA+.</Text></p>
-        <p><Text>KITA+ is currently a </Text><strong><Text>prototype</Text></strong><Text> built for the Sime Darby Property University Hackathon 2026. It is not an official Sime Darby Property service. In this prototype the townships, homes, shops, sponsors and figures are demonstration data, no real money moves, and KITA Points cannot be exchanged for real goods or services.</Text></p>
-        <p><Text>By ticking “I accept” when you register, or by using KITA+, you agree to these Terms and to our </Text><Text>{link('/privacy', 'Privacy Notice')}</Text><Text>. If you do not agree, please do not use KITA+.</Text></p>
+        <p><Text>SimeTown is a township platform that brings community, safety, mobility, green living and local shopping into one account. It is operated by </Text><Text>{LEGAL.operator}</Text><Text> (“we”, “us”). These Terms of Use (“Terms”) apply whenever you create an account or use SimeTown.</Text></p>
+        <p><Text>SimeTown is currently a </Text><strong><Text>prototype</Text></strong><Text> built for the Sime Darby Property University Hackathon 2026. It is not an official Sime Darby Property service. In this prototype the townships, homes, shops, sponsors and figures are demonstration data, no real money moves, and SimeTown Points cannot be exchanged for real goods or services.</Text></p>
+        <p><Text>By ticking “I accept” when you register, or by using SimeTown, you agree to these Terms and to our </Text><Text>{link('/privacy', 'Privacy Notice')}</Text><Text>. If you do not agree, please do not use SimeTown.</Text></p>
       </>
     ),
   },
   {
     id: 'eligibility',
-    title: 'Who can use KITA+',
+    title: 'Who can use SimeTown',
     body: (
       <Bullets
         items={[
@@ -57,13 +57,13 @@ const sections: LegalSection[] = [
   },
   {
     id: 'points',
-    title: 'KITA Points and Impact XP',
+    title: 'SimeTown Points and Impact XP',
     body: (
       <>
         <p>
           <strong><Text>Impact XP</Text></strong><Text> recognises verified good actions such as recycling, walking a township loop or helping a neighbour. It gives you levels and badges. It has no money value.</Text></p>
         <p>
-          <strong><Text>KITA Points</Text></strong><Text> have value only when spent at participating township shops, where 100 points are worth RM1. They are not money, not e-money and not a deposit.</Text></p>
+          <strong><Text>SimeTown Points</Text></strong><Text> have value only when spent at participating township shops, where 100 points are worth RM1. They are not money, not e-money and not a deposit.</Text></p>
         <Bullets
           items={[
             'Points are given only when a shop, a sponsor or Sime Darby Property has already paid for them (“no pool, no points”). When a reward pool runs out, those rewards stop.',
@@ -89,7 +89,7 @@ const sections: LegalSection[] = [
           'Record only real sales, at the amount actually paid, for the resident whose member code you were shown.',
           'Points you give are paid from your prefunded reward pool, together with the service fee shown in your dashboard. Without enough money in the pool, no points are given.',
           'Accept points within the rules above. You are paid 100% of the value of points you accept, in a weekly settlement. There is no fee for accepting points.',
-          'Process refunds in KITA+ as well as at your till, so points are adjusted correctly.',
+          'Process refunds in SimeTown as well as at your till, so points are adjusted correctly.',
           'Keep your business details and address up to date. We may suspend a shop that breaks these Terms.',
         ]}
       />
@@ -116,7 +116,7 @@ const sections: LegalSection[] = [
             'Posts flagged by several residents are hidden until a moderator reviews them. We may remove content that breaks these Terms.',
           ]}
         />
-        <p><Text>You keep ownership of what you post. You allow us to store, display and process it to run KITA+ for the township.</Text></p>
+        <p><Text>You keep ownership of what you post. You allow us to store, display and process it to run SimeTown for the township.</Text></p>
       </>
     ),
   },
@@ -135,7 +135,7 @@ const sections: LegalSection[] = [
     id: 'ai',
     title: 'Automated suggestions',
     body: (
-      <p><Text>KITA+ may suggest the type and urgency of a report, or the material of an item you recycle, using rules or an AI service. Suggestions can be wrong. Township staff can always correct them, and every correction is recorded.</Text></p>
+      <p><Text>SimeTown may suggest the type and urgency of a report, or the material of an item you recycle, using rules or an AI service. Suggestions can be wrong. Township staff can always correct them, and every correction is recorded.</Text></p>
     ),
   },
   {
@@ -145,17 +145,17 @@ const sections: LegalSection[] = [
       <Bullets
         items={[
           'Do not create fake accounts, impersonate anyone, or try to earn points or XP in ways the rules do not intend, such as fake sales, invented drop-offs or shared checkpoint codes.',
-          'Do not try to get into accounts or data that are not yours, interfere with KITA+, or collect data from it by automated means.',
-          'Do not use KITA+ for any unlawful purpose.',
+          'Do not try to get into accounts or data that are not yours, interfere with SimeTown, or collect data from it by automated means.',
+          'Do not use SimeTown for any unlawful purpose.',
         ]}
       />
     ),
   },
   {
     id: 'availability',
-    title: 'Availability and changes to KITA+',
+    title: 'Availability and changes to SimeTown',
     body: (
-      <p><Text>KITA+ is a prototype and is provided as it is. We may change, pause or stop features, and demonstration data may be reset. We try to keep KITA+ available and accurate but cannot promise that it will always be uninterrupted or error-free.</Text></p>
+      <p><Text>SimeTown is a prototype and is provided as it is. We may change, pause or stop features, and demonstration data may be reset. We try to keep SimeTown available and accurate but cannot promise that it will always be uninterrupted or error-free.</Text></p>
     ),
   },
   {
@@ -204,7 +204,7 @@ export default function TermsPage() {
       summary={
         <>
           <p className="font-semibold"><Text>In short</Text></p>
-          <p className="mt-1"><Text>Give accurate details and keep your account to yourself. KITA Points are a reward worth RM1 per 100 points at township shops, never cash. Be respectful in community features. Flood alerts support, but do not replace, official warnings. This is a prototype: no real money moves.</Text></p>
+          <p className="mt-1"><Text>Give accurate details and keep your account to yourself. SimeTown Points are a reward worth RM1 per 100 points at township shops, never cash. Be respectful in community features. Flood alerts support, but do not replace, official warnings. This is a prototype: no real money moves.</Text></p>
         </>
       }
       sections={sections}

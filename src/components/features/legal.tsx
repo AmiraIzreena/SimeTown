@@ -18,7 +18,7 @@ export function LegalDocument({ title, summary, sections, other }: { title: stri
     <div className="min-h-dvh bg-white">
       <header className="border-b border-ink-200">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-5 py-4 sm:px-8">
-          <Link href="/" aria-label="KITA+ home" className="rounded-md">
+          <Link href="/" aria-label="SimeTown home" className="rounded-md">
             <Logo />
           </Link>
           <Link href={other.href} className="text-sm font-semibold text-brand-700 hover:underline">
@@ -56,7 +56,7 @@ export function LegalDocument({ title, summary, sections, other }: { title: stri
         <footer className="mt-14 border-t border-ink-200 pt-6 text-sm text-ink-500">
           <p><Text>Questions about this document: </Text><a href={`mailto:${LEGAL.contactEmail}`} className="font-semibold text-brand-700 hover:underline"><Text>{LEGAL.contactEmail}</Text></a>
           </p>
-          <p className="mt-2"><Text>KITA+ is a student prototype for the Sime Darby Property University Hackathon 2026. It is not an official Sime Darby Property product.</Text></p>
+          <p className="mt-2"><Text>SimeTown is a student prototype for the Sime Darby Property University Hackathon 2026. It is not an official Sime Darby Property product.</Text></p>
         </footer>
       </main>
     </div>

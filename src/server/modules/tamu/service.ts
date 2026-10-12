@@ -166,7 +166,7 @@ export async function replyToWalkIn(db: Db, actor: Actor, entryId: string, reply
     await tx.query('UPDATE visitor_entries SET host_reply = $2, replied_by = $3, replied_at = $4 WHERE id = $1', [entryId, reply, resident.id, now]);
     const guards = await tx.query<{ id: string }>(`SELECT id FROM users WHERE township_id = $1 AND role = 'GUARD' AND status = 'ACTIVE'`, [entry.township_id]);
     const words = { EXPECTED: 'is expected', NOT_EXPECTED: 'is NOT expected', CALL_ME: 'needs a call to the host' }[reply];
-    await notify(tx, guards.map((g) => g.id), { title: `${entry.visitor_name} ${words}`, body: 'The host replied in KITA+.', link: '/guard' });
+    await notify(tx, guards.map((g) => g.id), { title: `${entry.visitor_name} ${words}`, body: 'The host replied in SimeTown.', link: '/guard' });
     return { reply };
   });
 }

@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 import { Bullets, LegalDocument, type LegalSection } from '@/components/features/legal';
 import { LEGAL } from '@/shared/legal';
 
-export const metadata: Metadata = { title: 'Privacy Notice', description: 'How KITA+ collects, uses and protects your personal data.' };
+export const metadata: Metadata = { title: 'Privacy Notice', description: 'How SimeTown collects, uses and protects your personal data.' };
 
 const mail = (
   <a href={`mailto:${LEGAL.contactEmail}`} className="font-semibold text-brand-700 hover:underline">
@@ -28,8 +28,8 @@ const sections: LegalSection[] = [
     title: 'Who we are',
     body: (
       <>
-        <p><Text>KITA+ is operated by </Text><Text>{LEGAL.operator}</Text><Text> (“we”, “us”). We are responsible for the personal data processed in KITA+ and handle it in line with Malaysia’s Personal Data Protection Act 2010, as amended in 2024 (“PDPA”). This notice explains what we collect, why, who sees it, how long we keep it, and your rights.</Text></p>
-        <p><Text>KITA+ is a prototype for the Sime Darby Property University Hackathon 2026 and is not an official Sime Darby Property service. Before KITA+ is offered to the public, this notice will be reviewed and a Bahasa Malaysia version provided.</Text></p>
+        <p><Text>SimeTown is operated by </Text><Text>{LEGAL.operator}</Text><Text> (“we”, “us”). We are responsible for the personal data processed in SimeTown and handle it in line with Malaysia’s Personal Data Protection Act 2010, as amended in 2024 (“PDPA”). This notice explains what we collect, why, who sees it, how long we keep it, and your rights.</Text></p>
+        <p><Text>SimeTown is a prototype for the Sime Darby Property University Hackathon 2026 and is not an official Sime Darby Property service. Before SimeTown is offered to the public, this notice will be reviewed and a Bahasa Malaysia version provided.</Text></p>
       </>
     ),
   },
@@ -39,7 +39,7 @@ const sections: LegalSection[] = [
     body: (
       <>
         <table className="w-full text-[15px]">
-          <caption className="sr-only"><Text>Personal data KITA+ collects</Text></caption>
+          <caption className="sr-only"><Text>Personal data SimeTown collects</Text></caption>
           <tbody>
             <Row what="Account" details="Full name, email address, phone number, your role, and your password (stored only as a one-way scrambled hash, never in readable form)." />
             <Row what="Home (residents)" details="The address you choose from the township’s property record, whether you are the owner or a tenant, and whether your home has been confirmed." />
@@ -85,7 +85,7 @@ const sections: LegalSection[] = [
           <><strong><Text>Sponsors</Text></strong><Text> see grouped totals only, and nothing at all for very small groups. They see your details only if you choose to share them.</Text></>,
           <><strong><Text>Other residents</Text></strong><Text> see your first name on posts and responses. Street leagues show street totals, not individuals.</Text></>,
           <><strong><Text>Sime Darby Property</Text></strong><Text> sees township-level results that do not identify anyone.</Text></>,
-          <><strong><Text>Service providers</Text></strong><Text> that run KITA+ for us under contract: our hosting provider and our database provider (Supabase). If automated photo and report checks are switched on, the photo or report text, without your name or contact details, is sent to an AI service provider to suggest a category.</Text></>,
+          <><strong><Text>Service providers</Text></strong><Text> that run SimeTown for us under contract: our hosting provider and our database provider (Supabase). If automated photo and report checks are switched on, the photo or report text, without your name or contact details, is sent to an AI service provider to suggest a category.</Text></>,
           <><strong><Text>Authorities</Text></strong><Text>, where the law requires it.</Text></>,
         ]}
       />
@@ -118,7 +118,7 @@ const sections: LegalSection[] = [
       <>
         <Bullets
           items={[
-            'Passwords are stored only as salted one-way hashes. Connections to KITA+ and to our database are encrypted.',
+            'Passwords are stored only as salted one-way hashes. Connections to SimeTown and to our database are encrypted.',
             'Each role sees only what it needs. Sensitive actions, such as balance corrections, new administrator accounts and password resets for accounts in use, need a second person to approve.',
             'Important actions are recorded in an audit trail.',
           ]}
@@ -148,13 +148,13 @@ const sections: LegalSection[] = [
     id: 'cookies',
     title: 'Cookies and browser storage',
     body: (
-      <p><Text>KITA+ uses one essential cookie, which keeps you signed in. It cannot be read by scripts and is deleted when you sign out or after 7 days. Your browser also remembers, for the current visit only, whether you have already seen a flood warning or a reminder to complete your details. We use no analytics, advertising or third-party cookies.</Text></p>
+      <p><Text>SimeTown uses one essential cookie, which keeps you signed in. It cannot be read by scripts and is deleted when you sign out or after 7 days. Your browser also remembers, for the current visit only, whether you have already seen a flood warning or a reminder to complete your details. We use no analytics, advertising or third-party cookies.</Text></p>
     ),
   },
   {
     id: 'children',
     title: 'Children',
-    body: <p><Text>KITA+ is for adults. Anyone under 18 may use it only with the consent of a parent or guardian.</Text></p>,
+    body: <p><Text>SimeTown is for adults. Anyone under 18 may use it only with the consent of a parent or guardian.</Text></p>,
   },
   {
     id: 'changes',
@@ -178,7 +178,7 @@ export default function PrivacyPage() {
       summary={
         <>
           <p className="font-semibold"><Text>In short</Text></p>
-          <p className="mt-1"><Text>We collect what KITA+ needs to work: your contact details, your address in the township, and what you do in the app. Shops see only your first name and initial; sponsors see grouped totals only. We never sell your data or use it for advertising. You can download or delete your data at any time from your Account page.</Text></p>
+          <p className="mt-1"><Text>We collect what SimeTown needs to work: your contact details, your address in the township, and what you do in the app. Shops see only your first name and initial; sponsors see grouped totals only. We never sell your data or use it for advertising. You can download or delete your data at any time from your Account page.</Text></p>
         </>
       }
       sections={sections}

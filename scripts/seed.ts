@@ -57,7 +57,7 @@ async function main() {
   const daysAgo = (days: number, hour = 4) => new Date(Math.floor(now.getTime() / DAY) * DAY - days * DAY + hour * 3_600_000);
 
   // --- Township, zones, homes -------------------------------------------------
-  const township = (await one<{ id: string }>(db, `INSERT INTO townships (name) VALUES ('Taman KITA (demo township)') RETURNING id`))!.id;
+  const township = (await one<{ id: string }>(db, `INSERT INTO townships (name) VALUES ('Taman SimeTown (demo township)') RETURNING id`))!.id;
   const zones: Record<string, string> = {};
   for (const [name, route, point] of [
     ['Zone A · Lakeside', 'Leave by Jalan Kenanga towards the main gate. Avoid the lake road.', 'Community hall, Level 1'],
@@ -94,7 +94,7 @@ async function main() {
   for (const floor of [1, 2, 3]) {
     for (const unit of [1, 2]) {
       const houseNo = `A-${String(floor).padStart(2, '0')}-${String(unit).padStart(2, '0')}`;
-      homes[`RK-${houseNo}`] = await insertHome(`RK-${houseNo}`, 'Zone B · Central', { street: 'Jalan Melur 2/KT2', precinct: 'Precinct Melur', houseNo, building: 'Residensi KITA, Block A' });
+      homes[`RK-${houseNo}`] = await insertHome(`RK-${houseNo}`, 'Zone B · Central', { street: 'Jalan Melur 2/KT2', precinct: 'Precinct Melur', houseNo, building: 'Residensi SimeTown, Block A' });
     }
   }
 
@@ -149,7 +149,7 @@ async function main() {
       db,
       `INSERT INTO merchants (township_id, name, registration_no, category, address_line, postcode, city, state)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-      [township, name, reg, category, `Lot ${lot}, KITA Square, Jalan Melur 2/KT2`, POSTAL.postcode, POSTAL.city, POSTAL.state],
+      [township, name, reg, category, `Lot ${lot}, SimeTown Square, Jalan Melur 2/KT2`, POSTAL.postcode, POSTAL.city, POSTAL.state],
     ))!.id;
     if (approve) await setMerchantStatus(db, admin, id, 'ACTIVE', daysAgo(21));
     if (poolSen) await recordMerchantDeposit(db, admin, id, { amountSen: poolSen, bankRef: `DEMO-${reg}` }, daysAgo(20));
@@ -270,7 +270,7 @@ async function main() {
 
   const rows = [
     ['Resident', `aisyah@${DOMAIN}`, 'the main demo account; owner of No. 1, Jalan Kenanga 1/KT1'],
-    ['Resident (not yet confirmed)', `grace@${DOMAIN}`, 'A-02-01, Residensi KITA; asked to add a phone number'],
+    ['Resident (not yet confirmed)', `grace@${DOMAIN}`, 'A-02-01, Residensi SimeTown; asked to add a phone number'],
     ['Resident', `daniel@${DOMAIN}`, 'a neighbour'],
     ['Shop', `kafe@${DOMAIN}`, 'Kafe Seri Pagi'],
     ['Shop', `kedai@${DOMAIN}`, 'Kedai Runcit Mesra'],

@@ -103,7 +103,7 @@ export function GerakScreen({ scanned }: { scanned: string }) {
                         <p className="mt-1 text-[15px] text-ink-600">{loop.description}</p>
                         <ol className="mt-4 space-y-2">
                           {loop.checkpoints.map((cp) => (
-                            <li key={cp.id} className="flex items-center gap-2.5 text-[15px]">
+                            <li key={cp.id} className={`gerak-checkpoint flex items-center gap-2.5 text-[15px] ${cp.scanned_today ? 'gerak-checkpoint-done' : ''}`}>
                               {cp.scanned_today ? <CheckCircle2 className="size-5 shrink-0 text-success-600" aria-hidden /> : <Circle className="size-5 shrink-0 text-ink-300" aria-hidden />}
                               <span className={cp.scanned_today ? 'text-ink-900' : 'text-ink-600'}>{cp.name}</span>
                               <span className="sr-only"><Text>{cp.scanned_today ? '(scanned today)' : '(not scanned yet)'}</Text></span>

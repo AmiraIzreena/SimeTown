@@ -71,7 +71,7 @@ export default function InsightsPage() {
                 <Stat label="Recycled" value={d.planet.recycled_g} format={formatKg} icon={Recycle} tone="success" hint={`${d.planet.drop_offs} kiosk drop-offs`} />
                 <Stat label="Walked and cycled" value={d.planet.moved_m} format={formatKm} icon={Bike} hint="Completed township loops" />
                 <Stat label="Open reports" value={d.reports.open} icon={ClipboardList} tone={d.reports.urgent_new ? 'danger' : 'warning'} hint={d.reports.urgent_new ? `${d.reports.urgent_new} urgent and unread` : `${d.reports.resolved} resolved · median ${d.reports.median_hours ?? '–'} h`} />
-                <Stat label="Shop sales through KITA+" value={d.shops.bill_sen} format={formatRM} icon={Store} hint={`${d.shops.sales} sales at ${d.shops.active_shops} shops`} />
+                <Stat label="Shop sales through SimeTown" value={d.shops.bill_sen} format={formatRM} icon={Store} hint={`${d.shops.sales} sales at ${d.shops.active_shops} shops`} />
                 <Stat label="Points given" value={d.points.from_shops + d.points.from_campaigns} icon={CheckCircle2} tone="gold" hint={`${formatPoints(d.points.from_shops)} by shops · ${formatPoints(d.points.from_campaigns)} by campaigns`} />
                 <Stat label="Points spent locally" value={d.shops.points_accepted} format={formatRM} icon={Store} tone="success" hint="Accepted by township shops" />
                 <Stat label="Homes that used less" value={d.planet.saver_homes} icon={Zap} hint={`${d.planet.readings} sets of meter readings`} />

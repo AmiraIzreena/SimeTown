@@ -8,8 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, PageHeader } from '@/components/ui/card';
 
 /**
- * KITA Home, as a mock-up (proposal section 5: "Later", and section 16:
- * "Mock-up screens: KITA Assistant and KITA Home"). It shows what the service
+ * SimeTown Home, as a mock-up (proposal section 5: "Later", and section 16:
+ * "Mock-up screens: SimeTown Assistant and SimeTown Home"). It shows what the service
  * would do. Nothing here can be booked, bought or sold, and every listing and
  * launch shown is invented.
  */
@@ -29,11 +29,11 @@ const SERVICES = [
 export default function HomeServicesPage() {
   return (
     <>
-      <PageHeader title="KITA Home" description="Home services from people Sime Darby Property trusts: a home logbook, bookings with contractor passes, and resale and rental inside the township." action={<PreviewBadge><Text>Mock-up · planned for the pilot</Text></PreviewBadge>} />
+      <PageHeader title="SimeTown Home" description="Home services from people Sime Darby Property trusts: a home logbook, bookings with contractor passes, and resale and rental inside the township." action={<PreviewBadge><Text>Mock-up · planned for the pilot</Text></PreviewBadge>} />
       <div className="space-y-6">
-        <SimulatedNote><Text>This screen shows how KITA Home would work. Nothing can be booked, bought or sold yet, and every record, listing and launch on it is invented for the demo.</Text></SimulatedNote>
+        <SimulatedNote><Text>This screen shows how SimeTown Home would work. Nothing can be booked, bought or sold yet, and every record, listing and launch on it is invented for the demo.</Text></SimulatedNote>
 
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="home-service-grid grid gap-6 lg:grid-cols-2">
           <Card>
             <CardHeader title="Home logbook" description="Defects, warranties and appliance records in one place." />
             <ul className="divide-y divide-ink-100">
@@ -80,7 +80,7 @@ export default function HomeServicesPage() {
             <ul className="divide-y divide-ink-100">
               {[
                 { title: 'Terrace house, 4 bedrooms (sample listing)', text: 'Precinct Melur · for rent', icon: House },
-                { title: 'Residensi KITA, 3 bedrooms (sample listing)', text: 'Block A, mid floor · for sale', icon: Building },
+                { title: 'Residensi SimeTown, 3 bedrooms (sample listing)', text: 'Block A, mid floor · for sale', icon: Building },
               ].map((l) => (
                 <li key={l.title} className="flex items-center gap-3 px-5 py-3.5">
                   <span className="grid size-10 shrink-0 place-items-center rounded-md bg-gold-50 text-gold-700">
@@ -98,7 +98,7 @@ export default function HomeServicesPage() {
             <div className="p-6">
               <Badge tone="gold"><Text>Early preview (sample)</Text></Badge>
               <h2 className="mt-3 text-xl font-bold text-white"><Text>A new phase is coming to the township</Text></h2>
-              <p className="mt-2 text-[15px] text-brand-100"><Text>Residents and their families see new launches first. Engaged residents are the warmest leads for Sime Darby Property, and KITA Home is where they would hear first.</Text></p>
+              <p className="mt-2 text-[15px] text-brand-100"><Text>Residents and their families see new launches first. Engaged residents are the warmest leads for Sime Darby Property, and SimeTown Home is where they would hear first.</Text></p>
               <Button variant="light" className="mt-5" disabled>
                 <KeyRound className="size-4" aria-hidden /><Text>Register interest (in the pilot)</Text></Button>
             </div>

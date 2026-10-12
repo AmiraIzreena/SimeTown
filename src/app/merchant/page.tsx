@@ -98,8 +98,8 @@ export default function CounterPage() {
                 <Stat label="Points given, 7 days" value={s.last7Days.pointsGiven} icon={Coins} tone="gold" hint={`Service fee ${formatRM(s.last7Days.feesSen)}`} />
               </div>
               <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-                <Stat label="KITA customers, 30 days" value={s.last30Days.customers} icon={Receipt} />
-                <Stat label="New customers" value={s.last30Days.newCustomers} icon={UserPlus} tone="success" hint="First KITA sale here in 30 days" />
+                <Stat label="SimeTown customers, 30 days" value={s.last30Days.customers} icon={Receipt} />
+                <Stat label="New customers" value={s.last30Days.newCustomers} icon={UserPlus} tone="success" hint="First SimeTown sale here in 30 days" />
                 <Stat label="Returning customers" value={s.last30Days.returning} icon={Repeat} hint="Bought here before" />
                 <Stat label="Shop Offers used, 30 days" value={s.last30Days.offersUsed} icon={Tag} tone="gold" hint={s.successFeesDueSen ? `${formatRM(s.successFeesDueSen)} in success fees waiting` : undefined} />
               </div>
@@ -197,7 +197,7 @@ export default function CounterPage() {
 
 function SaleResult({ sale, onNext }: { sale: SaleView; onNext: () => void }) {
   const view = {
-    PENDING: { icon: Clock, tone: 'text-gold-700 bg-gold-50', title: 'Waiting for the customer', text: `Ask ${sale.memberName} to open their KITA+ wallet and confirm ${sale.offerPoints ? `the Shop Offer${sale.redeemPoints ? ` and ${formatPoints(sale.redeemPoints)} points` : ''}` : `${formatPoints(sale.redeemPoints)} points`}.` },
+    PENDING: { icon: Clock, tone: 'text-gold-700 bg-gold-50', title: 'Waiting for the customer', text: `Ask ${sale.memberName} to open their SimeTown wallet and confirm ${sale.offerPoints ? `the Shop Offer${sale.redeemPoints ? ` and ${formatPoints(sale.redeemPoints)} points` : ''}` : `${formatPoints(sale.redeemPoints)} points`}.` },
     COMPLETED: { icon: CheckCircle2, tone: 'text-success-700 bg-success-50', title: 'Sale recorded', text: `Collect ${formatRM(sale.cashSen)} from ${sale.memberName}.` },
     DECLINED: { icon: CircleSlash, tone: 'text-ink-600 bg-ink-100', title: 'The customer declined', text: 'No points were used. Record the sale again without points if they still want to buy.' },
     EXPIRED: { icon: CircleSlash, tone: 'text-ink-600 bg-ink-100', title: 'The request ran out of time', text: 'No points were used. Please try again.' },

@@ -306,7 +306,7 @@ export async function spendOnOffer(
  * Collects success fees a shop owes: from its reward pool first, then from what
  * the float owes it this week. A fee neither can cover waits, and is collected
  * at the next top-up or settlement. Each fee moves real money from the trust
- * account to KITA+'s operating account, so the float stays matched (BR9).
+ * account to SimeTown's operating account, so the float stays matched (BR9).
  */
 export async function collectDueOfferFees(tx: Queryable, merchantId: string, now: Date): Promise<number> {
   const due = await tx.query<{ sale_id: string; amount_sen: number }>(

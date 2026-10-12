@@ -1,6 +1,6 @@
 # Deployment
 
-How to take KITA+ from a laptop to staging and production. **Nothing in this guide has been
+How to take SimeTown from a laptop to staging and production. **Nothing in this guide has been
 deployed by us**: the production server was run and exercised locally, but the Docker image was not
 built and no cloud account was used. Treat the cloud steps as a design to follow and verify.
 

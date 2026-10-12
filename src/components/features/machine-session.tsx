@@ -33,7 +33,7 @@ export function LiveMachineSession({ onDone }: { onDone?: () => void }) {
   const s = session.data;
   if (!s) return null;
   return (
-    <Card className={cn('animate-rise', s.status === 'OPEN' ? 'border-brand-300' : s.status === 'DONE' ? 'border-success-600/30' : '')}>
+    <Card className={cn('animate-rise', s.status === 'OPEN' ? 'machine-session-live border-brand-300' : s.status === 'DONE' ? 'border-success-600/30' : '')}>
       <CardHeader
         title={s.status === 'OPEN' ? `Recycling at ${s.machine}` : s.status === 'DONE' ? `Recorded at ${s.machine}` : 'Session closed'}
         description={s.status === 'OPEN' ? 'Drop items in one by one. The machine checks each with its camera, barcode reader and scale.' : 'Every item came from a record the machine signed.'}

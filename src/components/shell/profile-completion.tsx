@@ -77,7 +77,7 @@ export function ProfileCompletion({ accountHref }: { accountHref: string }) {
         open={!dismissed && !(onAccountPage && !needsTerms)}
         onClose={close}
         title="Please complete your account"
-        description="KITA+ needs these details before you can use every feature."
+        description="SimeTown needs these details before you can use every feature."
         footer={
           <>
             <Button variant="secondary" onClick={close}><Text>Later</Text></Button>

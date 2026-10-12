@@ -22,7 +22,7 @@ export function AuthFrame({ title, intro, children, footer }: { title: string; i
   return (
     <div className="grid min-h-dvh bg-white lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
       <main className="flex flex-col px-6 py-8 sm:px-10">
-        <Link href="/" aria-label="KITA+ home" className="self-start rounded-md">
+        <Link href="/" aria-label="SimeTown home" className="self-start rounded-md">
           <Logo />
         </Link>
         <div className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center py-10">
@@ -52,7 +52,7 @@ export function AuthFrame({ title, intro, children, footer }: { title: string; i
         <div className="relative flex h-full flex-col justify-end p-14 text-white">
           <ShieldCheck className="size-10 text-brand-300" aria-hidden />
           <p className="mt-6 max-w-md font-display text-3xl font-bold leading-tight"><Text>No pool, no points.</Text></p>
-          <p className="mt-4 max-w-md text-[17px] leading-relaxed text-brand-100/90"><Text>Every KITA Point is paid for before a resident receives it, and the float is checked against the points residents hold every day, to the sen.</Text></p>
+          <p className="mt-4 max-w-md text-[17px] leading-relaxed text-brand-100/90"><Text>Every SimeTown Point is paid for before a resident receives it, and the float is checked against the points residents hold every day, to the sen.</Text></p>
         </div>
       </aside>
     </div>
@@ -159,7 +159,7 @@ export function ShopAddressFields({ fields, initial }: { fields: Record<string, 
   return (
     <fieldset className="space-y-4">
       <legend className="text-sm font-medium text-ink-700"><Text>Shop address</Text></legend>
-      <Input label="Lot, building and street" name="addressLine" placeholder="e.g. Lot G-05, KITA Square, Jalan Melur 2/KT2" autoComplete="street-address" defaultValue={initial?.addressLine ?? ''} required error={fields.addressLine} />
+      <Input label="Lot, building and street" name="addressLine" placeholder="e.g. Lot G-05, SimeTown Square, Jalan Melur 2/KT2" autoComplete="street-address" defaultValue={initial?.addressLine ?? ''} required error={fields.addressLine} />
       <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-3">
         <Input label="Postcode" name="postcode" inputMode="numeric" maxLength={5} autoComplete="postal-code" defaultValue={initial?.postcode ?? ''} required error={fields.postcode} />
         <Input label="City" name="city" autoComplete="address-level2" defaultValue={initial?.city ?? ''} required error={fields.city} />

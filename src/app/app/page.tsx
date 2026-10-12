@@ -196,7 +196,7 @@ export default function ResidentHome() {
       <Async
         state={wallet}
         skeleton={
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="resident-metrics grid gap-4 md:grid-cols-3">
             <Skeleton className="h-40 rounded-xl" />
             <Skeleton className="h-40 rounded-xl" />
             <Skeleton className="h-40 rounded-xl" />
@@ -206,7 +206,7 @@ export default function ResidentHome() {
         {(w) => (
           <div className="grid gap-4 md:grid-cols-3">
             <Link href="/app/wallet" className="lift block rounded-xl bg-gradient-to-br from-brand-700 to-brand-900 p-6 text-white shadow-sm">
-              <p className="text-sm font-medium text-brand-100">{t('KITA Points')}</p>
+              <p className="text-sm font-medium text-brand-100">{t('SimeTown Points')}</p>
               <p className="mt-2 font-display text-[44px] font-bold leading-none tracking-tight tabular-nums">
                 <CountUp value={w.totalPoints} />
               </p>
@@ -252,9 +252,9 @@ export default function ResidentHome() {
         <h2 id="actions-title" className="mb-3 text-lg font-semibold">
           {t('What would you like to do?')}
         </h2>
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {ACTIONS.map((action) => (
-            <Link key={action.href} href={action.href} className="lift flex items-start gap-3 rounded-lg border border-ink-200 bg-white p-4 shadow-xs">
+        <div className="resident-actions grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {ACTIONS.map((action, index) => (
+            <Link key={action.href} href={action.href} className="lift flex items-start gap-3 rounded-lg border border-ink-200 bg-white p-4 shadow-xs" style={{ animationDelay: `${Math.min(index, 8) * 35}ms` }}>
               <span className="grid size-10 shrink-0 place-items-center rounded-md bg-brand-50 text-brand-700">
                 <action.icon className="size-5" aria-hidden />
               </span>

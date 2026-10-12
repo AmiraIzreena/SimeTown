@@ -18,7 +18,7 @@ interface Group {
 }
 
 /**
- * Guest mode (proposal section 5, KITA ID): what a visitor or a resident who
+ * Guest mode (proposal section 5, SimeTown ID): what a visitor or a resident who
  * has not joined can do without an account. Guests are not tracked.
  */
 export function GuestView() {
@@ -29,7 +29,7 @@ export function GuestView() {
   const title = partners.data?.find((g) => g.label === 'Title Partner')?.sponsors[0] ?? partners.data?.[0]?.sponsors[0];
 
   return (
-    <PublicFrame title="Visiting Taman KITA" intro="No account needed. Check the flood status, recycle as a guest at a smart machine, and use the visitor pass your host sends you.">
+    <PublicFrame title="Visiting Taman SimeTown" intro="No account needed. Check the flood status, recycle as a guest at a smart machine, and use the visitor pass your host sends you.">
       <div className="grid gap-4 md:grid-cols-3">
         <Card className="p-5">
           <span className={alerts.length ? 'grid size-11 place-items-center rounded-md bg-warning-50 text-warning-700' : 'grid size-11 place-items-center rounded-md bg-success-50 text-success-700'}>
@@ -44,7 +44,7 @@ export function GuestView() {
             <Recycle className="size-5" aria-hidden />
           </span>
           <h2 className="mt-3 text-[17px] font-semibold"><Text>Recycle as a guest</Text></h2>
-          <p className="mt-1 text-sm text-ink-600"><Text>Tap “Recycle as guest” on any smart machine. You get a claim code: join KITA+ within 14 days to claim the Impact XP. Guests earn no points and are not tracked.</Text></p>
+          <p className="mt-1 text-sm text-ink-600"><Text>Tap “Recycle as guest” on any smart machine. You get a claim code: join SimeTown within 14 days to claim the Impact XP. Guests earn no points and are not tracked.</Text></p>
         </Card>
         <Card className="p-5">
           <span className="grid size-11 place-items-center rounded-md bg-gold-50 text-gold-700">

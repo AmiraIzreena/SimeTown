@@ -33,7 +33,7 @@ function tomorrowWindow(): [Date, Date] {
   return [start, new Date(start.getTime() + 12 * 3_600_000)];
 }
 
-/** Fixed answers from the resident's own KITA+ data. No model: every rule is readable here. */
+/** Fixed answers from the resident's own SimeTown data. No model: every rule is readable here. */
 async function answer(question: string): Promise<Omit<Message, 'id'>> {
   const q = question.toLowerCase();
   if (/flood|banjir|water level|paras air|hujan|rain/.test(q)) {
@@ -99,8 +99,8 @@ async function answer(question: string): Promise<Omit<Message, 'id'>> {
 }
 
 /**
- * KITA Assistant, as a preview (proposal section 5: "Later"). Answers come from
- * fixed rules over the resident's own KITA+ data, in English or Bahasa
+ * SimeTown Assistant, as a preview (proposal section 5: "Later"). Answers come from
+ * fixed rules over the resident's own SimeTown data, in English or Bahasa
  * Malaysia. It does a task only after the resident confirms, and it never
  * decides a safety alert: flood answers quote the official status only.
  */
@@ -135,7 +135,7 @@ export default function AssistantPage() {
 
   return (
     <>
-      <PageHeader title="KITA Assistant" description="Ask about the township in English or Bahasa Malaysia. It does small tasks after you confirm, and hands over to staff when unsure." action={<PreviewBadge><Text>Preview: rule-based</Text></PreviewBadge>} />
+      <PageHeader title="SimeTown Assistant" description="Ask about the township in English or Bahasa Malaysia. It does small tasks after you confirm, and hands over to staff when unsure." action={<PreviewBadge><Text>Preview: rule-based</Text></PreviewBadge>} />
       <Card className="flex min-h-[32rem] flex-col">
         <ol className="flex-1 space-y-3 overflow-y-auto p-5" aria-live="polite">
           {messages.map((m) => (
@@ -176,7 +176,12 @@ export default function AssistantPage() {
               </div>
             </li>
           ))}
-          {thinking && <li className="text-sm text-ink-500"><Text>Thinking…</Text></li>}
+          {thinking && (
+            <li role="status" className="assistant-thinking text-sm text-ink-500">
+              <span className="sr-only"><Text>Thinking…</Text></span>
+              <span aria-hidden className="thinking-dots"><i /><i /><i /></span>
+            </li>
+          )}
         </ol>
         <div className="border-t border-ink-100 p-4">
           <div className="mb-3 flex flex-wrap gap-2">
@@ -193,7 +198,7 @@ export default function AssistantPage() {
               <Send className="size-4" aria-hidden /><Text>Ask</Text></Button>
           </form>
           <p className="mt-3 flex items-start gap-1.5 text-xs text-ink-500">
-            <ShieldAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden /><Text>A preview with fixed answers from your own KITA+ data. The AI assistant, and voice input, come in the pilot. It never decides a safety alert.</Text></p>
+            <ShieldAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden /><Text>A preview with fixed answers from your own SimeTown data. The AI assistant, and voice input, come in the pilot. It never decides a safety alert.</Text></p>
         </div>
       </Card>
     </>

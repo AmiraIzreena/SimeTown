@@ -1,8 +1,8 @@
-# KITA+ Township Super-App
+# SimeTown Township Super-App
 
 One web app for township life: residents recycle, move, report, share and shop locally; shops give
 and accept points; sponsors fund challenges; Sime Darby Property (SDP) sees what the township
-achieves. Built from the proposal **"KITA+ Township Super-App"** for the Sime Darby Property
+achieves. Built from the proposal **"SimeTown Township Super-App"** for the Sime Darby Property
 University Hackathon 2026 ("Township of Tomorrow", People & Planet).
 
 > A student prototype. It is **not** an official Sime Darby Property product. All residents,
@@ -31,7 +31,7 @@ password yourself, set `SEED_DEMO_PASSWORD` in `.env` (10+ characters) before ru
 
 | Sign in as | Email | What you see |
 | --- | --- | --- |
-| Resident (main demo) | `aisyah@demo.kita.test` | Today card, Points & XP (cash- and offer-backed), Kitar with the smart machine, Gerak map tracking, Tamu, Lapor, Jiran, Kongsi, Jimat bill reading, Banjir, Taman, Akses+, Assistant, KITA Home |
+| Resident (main demo) | `aisyah@demo.kita.test` | Today card, Points & XP (cash- and offer-backed), Kitar with the smart machine, Gerak map tracking, Tamu, Lapor, Jiran, Kongsi, Jimat bill reading, Banjir, Taman, Akses+, Assistant, SimeTown Home |
 | Resident in Simple Mode | `zainab@demo.kita.test` | Simple Mode's four big buttons; on the flood priority help list; Mei Ling is her carer |
 | Resident with a visitor waiting | `daniel@demo.kita.test` | A walk-in at the main gate waiting for his answer in Tamu |
 | Shop | `kafe@demo.kita.test`, `kedai@demo.kita.test` | Counter with Shop Offers, offers page, sales, weekly statements |
@@ -72,7 +72,7 @@ Open two browser windows (one normal, one private) so you can be the resident an
    page with the code filled in.) She earns Impact XP; during a funded challenge she also earns
    points, and the screen says which sponsor paid.
 2. **Gerak.** Scan both checkpoints of *Lake Loop* on the same day to complete it.
-3. **KITA Merchant.** As the café, enter Aisyah's member code (her wallet → *Show my code*) and a
+3. **SimeTown Merchant.** As the café, enter Aisyah's member code (her wallet → *Show my code*) and a
    RM20 bill: she earns 20 points. As the grocer, enter RM20 and switch on *Customer wants to use
    points* → 300. Aisyah's phone asks her to confirm; the grocer's screen updates by itself and its
    statement shows RM3 due this week.
@@ -82,13 +82,13 @@ Open two browser windows (one normal, one private) so you can be the resident an
 6. **Jimat.** Enter this month's electricity and water readings and see the change from last month.
 7. **Banjir.** As staff, open *Flood sensors* and drag Zone A · Lakeside past 90%. Within 15 seconds
    a danger warning takes over Aisyah's screen with the safe route.
-8. **KITA Insights.** The SDP dashboard has changed all day, with the float matched to the sen.
+8. **SimeTown Insights.** The SDP dashboard has changed all day, with the float matched to the sen.
 
 ### The third edition's features
 
 9. **Smart recycling machine.** As staff, open *Kiosks, machines & trails* → *Smart machines* →
    *Open the machine screen* (a tablet in a real demo). Scan its QR code with Aisyah's phone, or
-   type her member code under "Camera: read a KITA QR". Drop items with the sensor buttons, try
+   type her member code under "Camera: read a SimeTown QR". Drop items with the sensor buttons, try
    "Camera sees a different material", then *Finish*. Aisyah's Kitar screen follows item by item;
    the session earns XP and offer-backed points. *Recycle as guest* gives a claim code instead.
 10. **Shop Offers.** As the grocer, the counter now has *Customer wants to use your Shop Offer*
@@ -108,9 +108,9 @@ Open two browser windows (one normal, one private) so you can be the resident an
     agree and the warning goes out. Push the sensor past 90%: a danger draft starts a 3-minute
     countdown. Residents check in "I'm safe"; the priority help list appears for duty staff.
     The public page is at `/status`.
-15. **Akses+, Taman, Assistant, KITA Home, Bahasa Malaysia.** Sign in as Zainab for Simple Mode.
+15. **Akses+, Taman, Assistant, SimeTown Home, Bahasa Malaysia.** Sign in as Zainab for Simple Mode.
     Taman books plots and logs wildlife (staff confirm under *Nature & access*). The Assistant and
-    KITA Home are labelled previews. The *EN/BM* switch in the top bar changes the language.
+    SimeTown Home are labelled previews. The *EN/BM* switch in the top bar changes the language.
 
 ---
 
@@ -118,31 +118,31 @@ Open two browser windows (one normal, one private) so you can be the resident an
 
 | Layer | Feature | Working here |
 | --- | --- | --- |
-| Core | KITA ID | Register against a unit, staff or owner confirms the home, seven roles (with Guard), invitations, guest pages (`/guest`, `/status`, `/partners`), English and Bahasa Malaysia (partial) |
+| Core | SimeTown ID | Register against a unit, staff or owner confirms the home, seven roles (with Guard), invitations, guest pages (`/guest`, `/status`, `/partners`), English and Bahasa Malaysia (partial) |
 | Core | Points & XP | One balance with two kinds of backing (cash in the float; shops' monthly pledges), "You saved", every amount in ringgit, history, levels, badges, street league, confirm-on-phone |
 | Core | Today card | Changes through the day: flood level, a visitor at the gate or expected, a shop offer nearby, collection day |
-| Core | KITA Assistant | **Preview**: fixed answers from the resident's own data in English or Malay, a visitor pass after confirming, never decides an alert |
+| Core | SimeTown Assistant | **Preview**: fixed answers from the resident's own data in English or Malay, a visitor pass after confirming, never decides an alert |
 | People | Tamu | Visitor passes by link (no app for the visitor), guard screen with camera scan, walk-ins with Expected / Not expected / Call me, SOS, patrol rounds, flood task list, 90-day deletion |
 | People | Akses+ | Private access needs with consent, Simple Mode, read-aloud, flashing alerts, carer links, step-free places, priority help list for floods |
 | People | Jiran | Events with places, help board, XP when the organiser or asker confirms |
 | People | Lapor | Report with photo, suggested type and urgency, staff queue, case tracking, access-barrier type |
 | People | Gerak | Live map tracking with checkpoints that tick themselves, speed bands, near-home trimming, 30-day route deletion; QR checkpoints as the backup; demo playback |
-| Planet | Kitar | Smart machine: rotating screen code, KITA QR or guest, camera + barcode + weight agreement, signed records, guest claim codes; kiosk drop-off with a photo check as the backup |
+| Planet | Kitar | Smart machine: rotating screen code, SimeTown QR or guest, camera + barcode + weight agreement, signed records, guest claim codes; kiosk drop-off with a photo check as the backup |
 | Planet | Kongsi | Give away and lend, XP on confirmed handover |
 | Planet | Jimat | Bill reading behind a file-safety gate (PDF text, or the AI service for photos), confirm with unsure fields marked, same bill only once, file never stored; typed readings, tips, leak alert, solar request |
 | Planet | Banjir | The agent: sensor, CCTV test pictures, rain gauge and resident reports; two signals must agree; one-signal drafts with 3- and 5-minute windows; 15-minute updates; four-line messages; check-ins; public status page |
 | Planet | Taman | Garden plots (one per home), watering roster proved by the garden code, wildlife log confirmed by staff, share the harvest in Kongsi |
-| Business | KITA Merchant | Shop Offers with the shop's own terms and monthly cap, 10% success fee, new and returning customers, Akses-friendly badge; give and accept points, refunds, weekly statement |
-| Business | KITA Partner Hub | Four sponsor tiers with a public Partners page and one labelled banner; campaigns with a prefunded pool and grouped results |
-| Business | KITA Insights | 30-day totals, the float against what it owes, machine uptime, offer pledges, visitors, flood alerts, barriers fixed on time, nature; printable monthly report |
-| Business | KITA Home | **Mock-up**: home logbook, services with contractor passes, resale and rental, early previews |
+| Business | SimeTown Merchant | Shop Offers with the shop's own terms and monthly cap, 10% success fee, new and returning customers, Akses-friendly badge; give and accept points, refunds, weekly statement |
+| Business | SimeTown Partner Hub | Four sponsor tiers with a public Partners page and one labelled banner; campaigns with a prefunded pool and grouped results |
+| Business | SimeTown Insights | 30-day totals, the float against what it owes, machine uptime, offer pledges, visitors, flood alerts, barriers fixed on time, nature; printable monthly report |
+| Business | SimeTown Home | **Mock-up**: home logbook, services with contractor passes, resale and rental, early previews |
 
 Also built because a real system needs them: moderation of flagged posts, the daily float check,
 weekly settlement, points expiry and reminders, two-person approval for balance corrections, an
 audit trail, adjustable programme rules, data download and account deletion.
 
-**Shown as previews, and labelled so:** KITA Assistant (fixed rules, no language model yet) and
-KITA Home (a mock-up: nothing can be booked or sold).
+**Shown as previews, and labelled so:** SimeTown Assistant (fixed rules, no language model yet) and
+SimeTown Home (a mock-up: nothing can be booked or sold).
 
 **Simulated, and labelled so in the app:** no real money moves (deposits and settlements are
 ledger entries an admin records); the recycling machine is a tablet page whose buttons stand in for

@@ -96,10 +96,10 @@ export default function WalletPage() {
             ))}
 
             <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-              <div className="rounded-xl bg-gradient-to-br from-brand-700 to-brand-900 p-6 text-white shadow-sm">
+              <div className="wallet-balance-card rounded-xl bg-gradient-to-br from-brand-700 to-brand-900 p-6 text-white shadow-sm">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
-                    <p className="text-sm font-medium text-brand-100"><Text>KITA Points</Text></p>
+                    <p className="text-sm font-medium text-brand-100"><Text>SimeTown Points</Text></p>
                     <p className="mt-2 font-display text-5xl font-bold leading-none tracking-tight tabular-nums">
                       <CountUp value={w.totalPoints} />
                     </p>

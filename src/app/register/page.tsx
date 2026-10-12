@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: 'Create a resident account' };
 export default function RegisterPage() {
   return (
     <AuthFrame
-      title="Create your KITA ID"
+      title="Create your SimeTown ID"
       intro="One verified account per resident, linked to your home."
       footer={
         <p><Text>Already have an account?</Text><Text>{' '}</Text>

@@ -7,15 +7,16 @@ import { cn } from '@/lib/cn';
 import { CountUp } from './count-up';
 
 export function Card({ className, ...rest }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('rounded-lg border border-ink-200 bg-white shadow-xs', className)} {...rest} />;
+  const keepSolid = /(?:^|\s)bg-(?:accent|warning|success|gradient)/.test(className ?? '');
+  return <div className={cn('rounded-xl border shadow-sm', !keepSolid && 'glass-surface', className)} {...rest} />;
 }
 
 export function CardHeader({ title, description, action }: { title: string; description?: ReactNode; action?: ReactNode }) {
   return (
-    <div className="flex flex-wrap items-start justify-between gap-3 border-b border-ink-100 px-5 py-4">
+    <div className="flex flex-wrap items-start justify-between gap-4 border-b border-ink-100/80 px-5 py-5 sm:px-6">
       <div className="min-w-0">
-        <h2 className="text-base font-semibold"><Text>{title}</Text></h2>
-        {description && <p className="mt-0.5 text-sm text-ink-500"><Text>{description}</Text></p>}
+        <h2 className="text-[17px] font-semibold tracking-tight"><Text>{title}</Text></h2>
+        {description && <p className="mt-1 text-sm leading-relaxed text-ink-500"><Text>{description}</Text></p>}
       </div>
       <Text>{action}</Text>
     </div>
@@ -24,10 +25,10 @@ export function CardHeader({ title, description, action }: { title: string; desc
 
 export function PageHeader({ title, description, action }: { title: string; description?: ReactNode; action?: ReactNode }) {
   return (
-    <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
+    <header className="mb-8 flex flex-wrap items-end justify-between gap-5 sm:mb-9">
       <div className="min-w-0">
-        <h1 className="text-2xl font-bold sm:text-[28px]"><Text>{title}</Text></h1>
-        {description && <p className="mt-1 max-w-2xl text-[15px] text-ink-500"><Text>{description}</Text></p>}
+        <h1 className="text-[28px] font-bold leading-tight tracking-tight sm:text-[32px]"><Text>{title}</Text></h1>
+        {description && <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-ink-500"><Text>{description}</Text></p>}
       </div>
       {action && <div className="flex flex-wrap gap-2"><Text>{action}</Text></div>}
     </header>

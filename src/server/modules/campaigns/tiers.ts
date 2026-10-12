@@ -8,7 +8,7 @@ import { getSettings } from '../settings';
 
 /**
  * Sponsor tiers (proposal section 12). The yearly tier fee pays for
- * visibility; it is KITA+'s income and never touches the reward float. Any
+ * visibility; it is SimeTown's income and never touches the reward float. Any
  * reward money a sponsor adds goes into a campaign's prefunded pool as before.
  *
  * Rules that keep residents' trust (BR31): sponsored content is labelled,

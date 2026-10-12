@@ -39,7 +39,7 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
   ],
   [
     "{0} offer points. Recycle at the smart machine or take a tracked walk to earn them.",
-    "{0} mata tawaran. Kitar semula di mesin pintar atau jejak berjalan untuk memperolehnya."
+    "{0} mata tawaran. SimeTown Recycle semula di mesin pintar atau jejak berjalan untuk memperolehnya."
   ],
   [
     "at {0}",
@@ -122,8 +122,8 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
     "Anda memberi diskaun; satu-satunya fi ialah {0}% daripadanya."
   ],
   [
-    "Ask {0} to open their KITA+ wallet and confirm {1}.",
-    "Minta {0} membuka dompet KITA+ dan mengesahkan {1}."
+    "Ask {0} to open their SimeTown wallet and confirm {1}.",
+    "Minta {0} membuka dompet SimeTown dan mengesahkan {1}."
   ],
   [
     "the Shop Offer{0}",
@@ -163,7 +163,7 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
   ],
   [
     "Recycling at {0}",
-    "Kitar semula di {0}"
+    "SimeTown Recycle semula di {0}"
   ],
   [
     "Recorded at {0}",
@@ -295,7 +295,7 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
   ],
   [
     "Claimed {0}. {1} Guest recycling earns XP only.",
-    "Dituntut {0}. {1} Kitar semula tetamu hanya memperoleh XP."
+    "Dituntut {0}. {1} SimeTown Recycle semula tetamu hanya memperoleh XP."
   ],
   [
     "{0}, this month",
@@ -314,8 +314,8 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
     "Tempah plot {0} ({1} m²)"
   ],
   [
-    "Salam! Here is your visitor pass for Taman KITA. Show the QR code at the main gate: {0}",
-    "Salam! Ini pas pelawat anda untuk Taman KITA. Tunjukkan kod QR di pintu utama: {0}"
+    "Salam! Here is your visitor pass for Taman SimeTown. Show the QR code at the main gate: {0}",
+    "Salam! Ini pas pelawat anda untuk Taman SimeTown. Tunjukkan kod QR di pintu utama: {0}"
   ],
   [
     "Up to {0} day{1} for this kind of pass.",
@@ -430,8 +430,8 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
     "Bernilai {0}"
   ],
   [
-    ", KITA+ fee {0}, running costs {1}",
-    ", fi KITA+ {0}, kos operasi {1}"
+    ", SimeTown fee {0}, running costs {1}",
+    ", fi SimeTown {0}, kos operasi {1}"
   ],
   [
     "· bank statement {0}",
@@ -458,8 +458,8 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
     "Kod QR untuk {0}"
   ],
   [
-    "Kitar recycling kiosk · {0}",
-    "Kiosk kitar semula Kitar · {0}"
+    "SimeTown Recycle recycling kiosk · {0}",
+    "Kiosk SimeTown Recycle semula SimeTown Recycle · {0}"
   ],
   [
     "{0} · checkpoint {1} of {2}",
@@ -667,11 +667,11 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
   ],
   [
     "Recycling recorded at {0}",
-    "Kitar semula direkodkan di {0}"
+    "SimeTown Recycle semula direkodkan di {0}"
   ],
   [
     "{0} kg recorded. You have reached today’s recycling limit for rewards.",
-    "{0} kg direkodkan. Anda mencapai had ganjaran kitar semula hari ini."
+    "{0} kg direkodkan. Anda mencapai had ganjaran SimeTown Recycle semula hari ini."
   ],
   [
     "{0} kg recorded: +{1} XP{2}{3}.",
@@ -683,7 +683,7 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
   ],
   [
     "Guest recycling can be claimed for {0} days only.",
-    "Kitar semula tetamu hanya boleh dituntut selama {0} hari."
+    "SimeTown Recycle semula tetamu hanya boleh dituntut selama {0} hari."
   ],
   [
     "{0} is {1}",

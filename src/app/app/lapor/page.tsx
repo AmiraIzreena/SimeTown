@@ -45,9 +45,9 @@ export default function LaporPage() {
       ) : reports.items.length === 0 ? (
         <EmptyState title="You have not reported anything" action={<Button onClick={() => setOpen(true)}><Text>New report</Text></Button>}><Text>Seen a pothole, a broken light, a blocked drain or a blocked ramp? Tell the township team.</Text></EmptyState>
       ) : (
-        <ul className="space-y-3">
-          {reports.items.map((report) => (
-            <li key={report.id}>
+        <ul className="report-timeline space-y-3">
+          {reports.items.map((report, index) => (
+            <li key={report.id} className="report-timeline-item" style={{ animationDelay: `${Math.min(index, 8) * 55}ms` }}>
               <button type="button" onClick={() => setDetail(report)} className="lift block w-full rounded-lg border border-ink-200 bg-white p-5 text-left shadow-xs">
                 <div className="flex flex-wrap items-center gap-2">
                   <StatusBadge status={report.status} />
@@ -145,7 +145,7 @@ function NewReport({ open, onClose, onCreated }: { open: boolean; onClose: () =>
               </option>
             ))}
           </Select>
-          <Select label="Type" name="category" defaultValue="" hint="Leave it and KITA+ will suggest one.">
+          <Select label="Type" name="category" defaultValue="" hint="Leave it and SimeTown will suggest one.">
             <option value=""><Text>Suggest for me</Text></option>
             {REPORT_CATEGORIES.map((category) => (
               <option key={category} value={category}>
