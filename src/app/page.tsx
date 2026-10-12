@@ -67,9 +67,9 @@ export default async function LandingPage() {
   const home = actor ? ROLE_HOME[actor.role] : null;
 
   return (
-    <div className="bg-white">
+    <div className="min-h-dvh overflow-hidden bg-ink-25">
       <header className="absolute inset-x-0 top-0 z-20">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 sm:px-8">
+        <div className="landing-header mx-4 mt-4 flex h-16 items-center justify-between px-4 sm:mx-auto sm:max-w-6xl sm:px-6">
           <Logo tone="light" />
           <LocalizedNav aria-label="Account" className="flex items-center gap-2">
             {home ? (
@@ -86,7 +86,7 @@ export default async function LandingPage() {
 
       <main>
         {/* Hero */}
-        <section className="relative isolate overflow-hidden bg-gradient-to-br from-brand-800 via-brand-900 to-brand-950 text-white">
+        <section className="landing-hero relative isolate overflow-hidden text-white">
           <svg aria-hidden className="parallax absolute -right-24 -top-10 -z-10 h-[130%] w-[70%] opacity-[0.09]" viewBox="0 0 600 700" preserveAspectRatio="xMidYMid slice">
             <g fill="none" stroke="white" strokeWidth="1.2">
               <circle cx="330" cy="300" r="120" />
@@ -96,13 +96,13 @@ export default async function LandingPage() {
               <path d="M120 430l35-30 35 30M215 360l30-26 30 26" />
             </g>
           </svg>
-          <div className="mx-auto grid max-w-6xl items-center gap-12 px-5 pb-20 pt-32 sm:px-8 lg:grid-cols-[1.1fr_0.9fr] lg:pb-28 lg:pt-40">
+          <div className="mx-auto grid max-w-6xl items-center gap-14 px-5 pb-20 pt-32 sm:px-8 lg:grid-cols-[1.08fr_0.92fr] lg:gap-16 lg:pb-28 lg:pt-40">
             <div className="animate-rise">
-              <p className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/8 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-brand-100"><Text>Township of Tomorrow · People &amp; Planet</Text></p>
-              <h1 className="mt-6 text-4xl font-extrabold leading-[1.08] text-white sm:text-5xl lg:text-[56px]"><Text>One app where people, businesses and nature </Text><span className="text-gold-300"><Text>thrive together</Text></span>.
+              <p className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-brand-100 shadow-sm backdrop-blur-md"><span aria-hidden className="size-1.5 rounded-full bg-gold-300" /><Text>Everyday impact, made local</Text></p>
+              <h1 className="mt-7 max-w-2xl text-4xl font-extrabold leading-[1.06] tracking-tight text-white sm:text-5xl lg:text-[60px]"><Text>Good things happen when a township </Text><span className="text-gold-300"><Text>moves together</Text></span>.
               </h1>
-              <p className="mt-6 max-w-xl text-lg leading-relaxed text-brand-100/90"><Text>SimeTown rewards everyday good actions with points that keep value inside the township. Every point is paid for before it is given.</Text></p>
-              <div className="mt-9 flex flex-wrap gap-3">
+              <p className="mt-6 max-w-xl text-[17px] leading-8 text-brand-100/90 sm:text-lg"><Text>SimeTown brings neighbours, local businesses and everyday services together—and rewards good actions with points that are paid for before they are given.</Text></p>
+              <div className="mt-8 flex flex-wrap gap-3">
                 <Button href={home ?? '/register'} variant="light" size="lg">
                   <Text>{home ? 'Open SimeTown' : 'Create a resident account'}</Text>
                   <ArrowRight className="size-4" aria-hidden />
@@ -114,9 +114,9 @@ export default async function LandingPage() {
             </div>
 
             {/* An original illustration of the resident's wallet, drawn in markup. */}
-            <div aria-hidden className="animate-rise mx-auto w-full max-w-sm [animation-delay:120ms] lg:mx-0 lg:justify-self-end">
-              <div className="rounded-2xl border border-white/15 bg-white/8 p-3 shadow-lg backdrop-blur-sm">
-                <div className="rounded-xl border border-white/70 bg-white/90 p-5 text-ink-800 shadow-md backdrop-blur-xl">
+            <div aria-hidden className="landing-wallet animate-rise mx-auto w-full max-w-sm [animation-delay:120ms] lg:mx-0 lg:justify-self-end">
+              <div className="rounded-[1.75rem] border border-white/20 bg-white/10 p-3 shadow-[0_28px_90px_rgb(0_0_0_/_0.28)] backdrop-blur-xl">
+                <div className="rounded-[1.35rem] border border-white/80 bg-white/90 p-6 text-ink-800 shadow-xl backdrop-blur-xl sm:p-7">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-medium text-ink-500"><Text>SimeTown Points</Text></p>
                     <span className="rounded-full bg-gold-50 px-2.5 py-0.5 text-xs font-semibold text-gold-700"><Text>100 pts = RM1</Text></span>
@@ -145,18 +145,18 @@ export default async function LandingPage() {
         </section>
 
         {/* How it works */}
-        <section className="mx-auto max-w-6xl px-5 py-20 sm:px-8">
+        <section className="mx-auto max-w-6xl px-5 py-24 sm:px-8 lg:py-28">
           <Reveal>
-            <p className="text-sm font-semibold uppercase tracking-[0.14em] text-brand-600"><Text>How it works</Text></p>
-            <h2 className="mt-2 max-w-2xl text-3xl font-bold sm:text-4xl"><Text>Four steps, and the money is always there first.</Text></h2>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-700"><Text>How it works</Text></p>
+            <h2 className="mt-3 max-w-2xl text-3xl font-bold leading-tight tracking-tight sm:text-4xl"><Text>Four simple steps. Every point funded first.</Text></h2>
           </Reveal>
           <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {STEPS.map((step, i) => (
               <Reveal key={step.n} index={i}>
-                <div className="h-full rounded-lg border border-ink-200 bg-white p-6 shadow-xs">
-                  <span className="grid size-9 place-items-center rounded-full bg-brand-700 font-display text-sm font-bold text-white"><Text>{step.n}</Text></span>
-                  <h3 className="mt-4 text-lg font-semibold"><Text>{step.title}</Text></h3>
-                  <p className="mt-1.5 text-[15px] leading-relaxed text-ink-600"><Text>{step.text}</Text></p>
+                <div className="glass-surface h-full rounded-2xl border p-6 shadow-sm transition-transform duration-300 ease-soft hover:-translate-y-1">
+                  <span className="grid size-10 place-items-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 font-display text-sm font-bold text-white shadow-sm"><Text>{step.n}</Text></span>
+                  <h3 className="mt-5 text-lg font-semibold tracking-tight"><Text>{step.title}</Text></h3>
+                  <p className="mt-2 text-[15px] leading-relaxed text-ink-600"><Text>{step.text}</Text></p>
                 </div>
               </Reveal>
             ))}
@@ -164,19 +164,19 @@ export default async function LandingPage() {
         </section>
 
         {/* Features */}
-        <section className="bg-ink-50 py-20">
-          <div className="mx-auto max-w-6xl space-y-14 px-5 sm:px-8">
+        <section className="border-y border-white/80 bg-white/35 py-24 sm:py-28">
+          <div className="mx-auto max-w-6xl space-y-16 px-5 sm:px-8">
             {FEATURES.map((group) => (
               <div key={group.layer}>
                 <Reveal>
-                  <p className="text-sm font-semibold uppercase tracking-[0.14em] text-brand-600"><Text>{group.layer}</Text></p>
-                  <h2 className="mt-2 text-2xl font-bold sm:text-3xl"><Text>{group.question}</Text></h2>
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-700"><Text>{group.layer}</Text></p>
+                  <h2 className="mt-3 max-w-3xl text-2xl font-bold leading-tight tracking-tight sm:text-3xl"><Text>{group.question}</Text></h2>
                 </Reveal>
                 <div className={`mt-7 grid gap-4 sm:grid-cols-2 ${group.items.length === 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
                   {group.items.map((item, i) => (
                     <Reveal key={item.name} index={i}>
-                      <article className="lift h-full rounded-lg border border-ink-200 bg-white p-5 shadow-xs">
-                        <span className="grid size-10 place-items-center rounded-md bg-brand-50 text-brand-700">
+                      <article className="glass-surface lift h-full rounded-2xl border p-5 shadow-sm sm:p-6">
+                        <span className="grid size-10 place-items-center rounded-xl bg-brand-100/80 text-brand-800">
                           <item.icon className="size-5" aria-hidden />
                         </span>
                         <h3 className="mt-4 text-base font-semibold">
@@ -193,12 +193,12 @@ export default async function LandingPage() {
         </section>
 
         {/* The rule */}
-        <section className="mx-auto max-w-6xl px-5 py-20 sm:px-8">
-          <div className="grid items-center gap-10 lg:grid-cols-2">
+        <section className="mx-auto max-w-6xl px-5 py-24 sm:px-8 lg:py-28">
+          <div className="grid items-center gap-12 lg:grid-cols-2">
             <Reveal>
-              <p className="text-sm font-semibold uppercase tracking-[0.14em] text-accent-600"><Text>The most important rule</Text></p>
-              <h2 className="mt-2 text-3xl font-bold sm:text-4xl"><Text>No pool, no points.</Text></h2>
-              <p className="mt-4 text-[17px] leading-relaxed text-ink-600"><Text>A point is given only after someone has put the money for it into a separate, locked pot: the reward float. That is why a shop can always be paid, and why SimeTown never earns from points residents fail to use.</Text></p>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-accent-600"><Text>The SimeTown promise</Text></p>
+              <h2 className="mt-3 text-3xl font-bold leading-tight tracking-tight sm:text-4xl"><Text>No pool, no points.</Text></h2>
+              <p className="mt-5 text-[17px] leading-8 text-ink-600"><Text>A point is given only after someone has put the money for it into a separate, locked pot: the reward float. That is why a shop can always be paid, and why SimeTown never earns from points residents fail to use.</Text></p>
             </Reveal>
             <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
               {[
@@ -207,7 +207,7 @@ export default async function LandingPage() {
                 ['100%', 'repaid to shops', 'Every week, with no fee for accepting points.'],
               ].map(([big, small, text], i) => (
                 <Reveal key={big} index={i}>
-                  <div className="h-full rounded-lg border border-ink-200 bg-white p-5 shadow-xs">
+                  <div className="glass-surface h-full rounded-2xl border p-5 shadow-sm">
                     <p className="font-display text-3xl font-bold text-brand-700"><Text>{big}</Text></p>
                     <p className="text-sm font-semibold text-ink-800"><Text>{small}</Text></p>
                     <p className="mt-2 text-sm text-ink-500"><Text>{text}</Text></p>
@@ -219,19 +219,20 @@ export default async function LandingPage() {
         </section>
 
         {/* Audiences */}
-        <section className="bg-gradient-to-br from-brand-800 to-brand-950 py-20 text-white">
+        <section className="landing-community py-24 text-white sm:py-28">
           <div className="mx-auto max-w-6xl px-5 sm:px-8">
             <Reveal>
-              <h2 className="text-3xl font-bold text-white sm:text-4xl"><Text>Three groups gain together.</Text></h2>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-gold-300"><Text>One township, shared progress</Text></p>
+              <h2 className="mt-3 text-3xl font-bold leading-tight tracking-tight text-white sm:text-4xl"><Text>When the community thrives, everyone does.</Text></h2>
             </Reveal>
             <div className="mt-9 grid gap-4 md:grid-cols-3">
               {AUDIENCES.map((a, i) => (
                 <Reveal key={a.title} index={i}>
-                  <div className="flex h-full flex-col rounded-lg border border-white/12 bg-white/6 p-6">
-                    <a.icon className="size-7 text-gold-300" aria-hidden />
-                    <h3 className="mt-4 text-lg font-semibold text-white"><Text>{a.title}</Text></h3>
-                    <p className="mt-1.5 flex-1 text-[15px] text-brand-100/90"><Text>{a.text}</Text></p>
-                    <Link href={a.href} className="group mt-5 inline-flex items-center gap-1.5 self-start rounded-md text-sm font-semibold text-white">
+                  <div className="flex h-full flex-col rounded-2xl border border-white/15 bg-white/[0.08] p-6 shadow-[inset_0_1px_0_rgb(255_255_255_/_0.12)] backdrop-blur-xl transition-colors duration-200 hover:bg-white/[0.12] sm:p-7">
+                    <span className="grid size-11 place-items-center rounded-xl bg-white/10 text-gold-300"><a.icon className="size-5" aria-hidden /></span>
+                    <h3 className="mt-5 text-lg font-semibold text-white"><Text>{a.title}</Text></h3>
+                    <p className="mt-2 flex-1 text-[15px] leading-relaxed text-brand-100/90"><Text>{a.text}</Text></p>
+                    <Link href={a.href} className="group mt-6 inline-flex items-center gap-1.5 self-start rounded-md text-sm font-semibold text-white">
                       <Text>{a.cta}</Text>
                       <ArrowRight className="size-4 transition-transform duration-200 ease-soft group-hover:translate-x-0.5" aria-hidden />
                     </Link>
@@ -243,7 +244,7 @@ export default async function LandingPage() {
         </section>
       </main>
 
-      <footer className="border-t border-ink-200 bg-white">
+      <footer className="border-t border-ink-200/80 bg-white/70 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-5 py-8 text-sm text-ink-500 sm:px-8 md:flex-row md:items-center md:justify-between">
           <Logo className="text-base" />
           <div className="max-w-2xl space-y-2 md:text-right">

@@ -99,11 +99,11 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
         title={compact ? item.label : undefined}
         className={cn(
           'group relative flex min-h-11 items-center gap-3 rounded-lg px-3 text-[15px] font-medium transition-colors duration-200',
-          active ? 'bg-white/12 text-white' : 'text-brand-100/80 hover:bg-white/8 hover:text-white',
+          active ? 'bg-brand-400/20 text-white shadow-[inset_0_1px_0_rgb(255_255_255_/_0.12)] ring-1 ring-inset ring-brand-300/20' : 'text-brand-100/80 hover:bg-white/8 hover:text-white',
           compact && 'justify-center px-0 lg:justify-start lg:px-3',
         )}
       >
-        <span aria-hidden className={cn('absolute left-0 h-5 w-[3px] rounded-r-full bg-accent-500 transition-opacity duration-200', active ? 'opacity-100' : 'opacity-0')} />
+        <span aria-hidden className={cn('absolute left-0 h-5 w-[3px] rounded-r-full bg-gold-300 transition-opacity duration-200', active ? 'opacity-100' : 'opacity-0')} />
         <item.icon className="size-5 shrink-0" aria-hidden />
         <span className={cn(compact && 'sr-only lg:not-sr-only')}>
           {t(item.label)}
@@ -119,7 +119,7 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[70] focus:rounded-md focus:bg-white focus:px-4 focus:py-2 focus:shadow-lg"><Text>Skip to content</Text></a>
 
       {/* Tablet rail and desktop sidebar */}
-      <aside className="no-print fixed inset-y-0 left-0 z-40 hidden w-20 flex-col border-r border-white/15 bg-gradient-to-b from-brand-900/85 to-brand-950/85 shadow-xl backdrop-blur-2xl md:flex lg:w-64">
+      <aside className="app-sidebar no-print fixed inset-y-0 left-0 z-40 hidden w-20 flex-col border-r border-white/15 bg-gradient-to-b from-brand-900/85 to-brand-950/85 shadow-xl backdrop-blur-2xl md:flex lg:w-64">
         <div className="flex h-16 items-center justify-center px-4 lg:justify-start">
           <Link href={root} aria-label="SimeTown home" className="rounded-md">
             <Logo tone="light" className="[&>span]:hidden lg:[&>span]:inline" />
@@ -131,7 +131,7 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
         </LocalizedNav>
         <div className="border-t border-white/10 p-3">
           <div className="flex items-center justify-center gap-3 lg:justify-start">
-            <span aria-hidden className="grid size-9 shrink-0 place-items-center rounded-full bg-white/12 text-sm font-semibold text-white"><Text>{initials}</Text></span>
+            <span aria-hidden className="grid size-9 shrink-0 place-items-center rounded-xl border border-white/15 bg-brand-400/20 text-sm font-semibold text-white shadow-[inset_0_1px_0_rgb(255_255_255_/_0.15)]"><Text>{initials}</Text></span>
             <div className="hidden min-w-0 flex-1 lg:block">
               <p className="truncate text-sm font-semibold text-white">{user.fullName}</p>
               <p className="truncate text-xs text-brand-200/70"><Text>{ROLE_LABELS[user.role]}</Text></p>
@@ -144,11 +144,11 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
       </aside>
 
       {/* Top bar */}
-      <header className="no-print sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-white/70 bg-white/65 px-4 shadow-[0_4px_20px_rgb(45_20_7_/_0.035)] backdrop-blur-2xl sm:px-6 lg:px-10">
+      <header className="app-topbar no-print sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-white/70 bg-white/65 px-4 shadow-[0_4px_20px_rgb(45_20_7_/_0.035)] backdrop-blur-2xl sm:px-6 lg:px-10">
         <Link href={root} aria-label="SimeTown home" className="rounded-md md:hidden">
           <Logo />
         </Link>
-        <p className="hidden text-sm font-medium text-ink-500 md:block">{t(NAV[area].title)}</p>
+        <p className="hidden items-center gap-2 text-sm font-semibold tracking-tight text-brand-900 md:flex"><span aria-hidden className="size-2 rounded-full bg-brand-500 shadow-[0_0_0_4px_rgb(232_111_32_/_0.12)]" />{t(NAV[area].title)}</p>
         <div className="flex items-center gap-1">
         <LocalizedButton
           type="button"

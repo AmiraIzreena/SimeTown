@@ -25,7 +25,7 @@ export function CardHeader({ title, description, action }: { title: string; desc
 
 export function PageHeader({ title, description, action }: { title: string; description?: ReactNode; action?: ReactNode }) {
   return (
-    <header className="mb-8 flex flex-wrap items-end justify-between gap-5 sm:mb-9">
+    <header className="page-heading mb-8 flex flex-wrap items-end justify-between gap-5 sm:mb-9">
       <div className="min-w-0">
         <h1 className="text-[28px] font-bold leading-tight tracking-tight sm:text-[32px]"><Text>{title}</Text></h1>
         {description && <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-ink-500"><Text>{description}</Text></p>}
