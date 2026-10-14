@@ -22,15 +22,17 @@ export function proxy(request: NextRequest) {
 
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
   const dev = process.env.NODE_ENV === 'development';
+  const googleMaps = Boolean(process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY);
   const csp = [
     `default-src 'self'`,
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${dev ? ` 'unsafe-eval'` : ''}`,
     // Stylesheets are our own files. Inline style *attributes* are allowed for computed widths (progress bars, charts).
-    dev ? `style-src 'self' 'unsafe-inline'` : `style-src 'self' 'nonce-${nonce}'`,
+    dev ? `style-src 'self' 'unsafe-inline'${googleMaps ? ' https://fonts.googleapis.com' : ''}` : `style-src 'self' 'nonce-${nonce}'${googleMaps ? ' https://fonts.googleapis.com' : ''}`,
     `style-src-attr 'unsafe-inline'`,
-    `img-src 'self' data: blob:`,
-    `font-src 'self'`,
-    `connect-src 'self'`,
+    `img-src 'self' data: blob:${googleMaps ? ' https://*.googleapis.com https://*.gstatic.com https://*.google.com https://*.googleusercontent.com' : ''}`,
+    `font-src 'self'${googleMaps ? ' https://fonts.gstatic.com' : ''}`,
+    `connect-src 'self'${googleMaps ? ' https://*.googleapis.com https://*.google.com https://*.gstatic.com data: blob:' : ''}`,
+    ...(googleMaps ? [`frame-src https://*.google.com`, `worker-src blob:`] : []),
     `object-src 'none'`,
     `base-uri 'self'`,
     `form-action 'self'`,

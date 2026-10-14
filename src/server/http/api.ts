@@ -1,5 +1,6 @@
 import { adminRoutes } from '../modules/admin/routes';
 import { aksesRoutes } from '../modules/akses/routes';
+import { assistantRoutes } from '../modules/assistant/routes';
 import { banjirRoutes } from '../modules/banjir/routes';
 import { campaignRoutes } from '../modules/campaigns/routes';
 import { communityRoutes } from '../modules/community/routes';
@@ -34,6 +35,7 @@ export const routes: RouteDef[] = [
   ...banjirRoutes,
   ...aksesRoutes,
   ...tamanRoutes,
+  ...assistantRoutes,
   ...adminRoutes,
 ];
 

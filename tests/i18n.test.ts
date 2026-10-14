@@ -41,7 +41,7 @@ describe('English and Bahasa Malaysia coverage', () => {
     expect(translateMessage('ms', '11 October 2026')).toBe('11 Oktober 2026');
     expect(translateMessage('ms', 'Sunday, 11 October')).toBe('Ahad, 11 Oktober');
     expect(translateMessage('ms', 'May')).toBe('May');
-    expect(translateMessage('ms', 'Nur Aisyah · Jalan Melur 2/KT2')).toBe('Nur Aisyah · Jalan Melur 2/KT2');
+    expect(translateMessage('ms', 'Nur Aisyah · Jalan Metafasa U16/171')).toBe('Nur Aisyah · Jalan Metafasa U16/171');
     expect(translateMessage('ms', 'constructor')).toBe('constructor');
     expect(translateMessage('ms', 'A box of books')).toBe('A box of books');
     expect(translateMessage('ms', 'Aisyah is happy')).toBe('Aisyah is happy');
@@ -54,4 +54,15 @@ describe('English and Bahasa Malaysia coverage', () => {
     expect(translateMessage('ms', 'https://example.test/pass/ABC')).toBe('https://example.test/pass/ABC');
     expect(translateMessage('en', 'Collect RM12.50 from Aisyah.')).toBe('Collect RM12.50 from Aisyah.');
   });
+});
+
+describe('translation coverage', () => {
+  it('has a Malay entry for every interface text, and passes every one through translation', async () => {
+    const { auditTranslations, ALLOWED } = await import('../scripts/i18n-audit');
+    const missing = auditTranslations()
+      .filter((f) => !ALLOWED.has(f.text))
+      .map((f) => `${f.file}:${f.line} [${f.kind}] ${f.text} (${f.why})`);
+    // Run `npm run i18n:audit` for the report; add the Malay entry or wrap the text in <Text>.
+    expect(missing).toEqual([]);
+  }, 60_000);
 });

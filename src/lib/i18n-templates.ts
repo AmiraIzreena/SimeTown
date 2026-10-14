@@ -314,8 +314,8 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
     "Tempah plot {0} ({1} m²)"
   ],
   [
-    "Salam! Here is your visitor pass for Taman SimeTown. Show the QR code at the main gate: {0}",
-    "Salam! Ini pas pelawat anda untuk Taman SimeTown. Tunjukkan kod QR di pintu utama: {0}"
+    "Salam! Here is your visitor pass for City of Elmina. Show the QR code at the main gate: {0}",
+    "Salam! Ini pas pelawat anda untuk City of Elmina. Tunjukkan kod QR di pintu utama: {0}"
   ],
   [
     "Up to {0} day{1} for this kind of pass.",
@@ -687,7 +687,7 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
   ],
   [
     "{0} is {1}",
-    "{0} ialah {1}"
+    "{0} kini {1}"
   ],
   [
     "Reward pool top-up · {0}",
@@ -840,5 +840,157 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
   [
     "Claim code {0}",
     "Kod tuntutan {0}"
+  ],
+  [
+    "Plot {0}, {1} m² (yours)",
+    "Plot {0}, {1} m² (milik anda)"
+  ],
+  [
+    "Plot {0}, {1} m² (taken)",
+    "Plot {0}, {1} m² (sudah diambil)"
+  ],
+  [
+    "Plot {0}, {1} m² (free)",
+    "Plot {0}, {1} m² (kosong)"
+  ],
+  [
+    "Plot {0} is yours until {1}.",
+    "Plot {0} milik anda sehingga {1}."
+  ],
+  [
+    "You are on the waiting list (since {0}). The township office draws names when plots are free.",
+    "Anda dalam senarai menunggu (sejak {0}). Pejabat perbandaran mencabut nama apabila ada plot kosong."
+  ],
+  [
+    "{0} free · {1} waiting. Join the list and you are in the next ballot.",
+    "{0} kosong · {1} menunggu. Sertai senarai dan anda masuk undian seterusnya."
+  ],
+  [
+    "{0} on the waiting list",
+    "{0} dalam senarai menunggu"
+  ],
+  [
+    "Ballot drawn: {0} plots given out, {1} still waiting.",
+    "Undian dicabut: {0} plot diberikan, {1} masih menunggu."
+  ],
+  [
+    "You won plot {0} at {1}",
+    "Anda memenangi plot {0} di {1}"
+  ],
+  [
+    "Still on the waiting list for {0}",
+    "Masih dalam senarai menunggu untuk {0}"
+  ],
+  [
+    "AI · {0}",
+    "AI · {0}"
+  ],
+  [
+    "Sources (checked {0})",
+    "Sumber (disemak {0})"
+  ],
+  [
+    "Answers are written by AI ({0}) from your own SimeTown data and checked facts, and can be wrong: check anything important. Your question and the details needed to answer it are sent to {1}. In danger, call 999. It never decides a safety alert.",
+    "Jawapan ditulis oleh AI ({0}) berdasarkan data SimeTown anda dan fakta yang telah disemak, dan mungkin salah: semak perkara penting. Soalan anda dan butiran yang diperlukan untuk menjawabnya dihantar kepada {1}. Jika dalam bahaya, hubungi 999. Ia tidak pernah memutuskan amaran keselamatan."
+  ],
+  [
+    "A {0} pass can last at most {1} hours.",
+    "Pas {0} boleh bertahan paling lama {1} jam."
+  ],
+  [
+    "{0} drop-offs",
+    "{0} hantaran"
+  ],
+  [
+    "{0} confirmed",
+    "{0} disahkan"
+  ],
+  [
+    "Hello, {0}!",
+    "Helo, {0}!"
+  ],
+  [
+    "{0} points",
+    "{0} mata"
+  ],
+  [
+    "{0} verified",
+    "{0} disahkan"
+  ],
+  [
+    "· {0} loop{1} complete",
+    "· {0} laluan selesai{1}"
+  ],
+  [
+    "Notifications, {0} unread",
+    "Pemberitahuan, {0} belum dibaca"
+  ],
+  [
+    "Confirmed: {0}",
+    "Disahkan: {0}"
+  ],
+  [
+    "Kitar recycling kiosk · {0}",
+    "Kiosk kitar semula Kitar · {0}"
+  ],
+  [
+    "Your passes: {0}. To make one, try “Make a visitor pass for Ali tomorrow”.",
+    "Pas anda: {0}. Untuk membuat pas, cuba “Buat pas pelawat untuk Ali esok”."
+  ],
+  [
+    "You have {0} points, worth {1}: {2} cash-backed and {3} offer points. You have saved {4} so far.",
+    "Anda mempunyai {0} mata, bernilai {1}: {2} disandarkan tunai dan {3} mata tawaran. Anda telah berjimat {4} setakat ini."
+  ],
+  [
+    "You can recycle at {0}. Each drop-off earns Impact XP.",
+    "Anda boleh kitar semula di {0}. Setiap hantaran memberi XP Impak."
+  ],
+  [
+    "You have plot {0} at {1} until {2}.",
+    "Anda mempunyai plot {0} di {1} sehingga {2}."
+  ],
+  [
+    "You are on the waiting list for {0}. Plots are given out by ballot.",
+    "Anda dalam senarai menunggu untuk {0}. Plot diberikan melalui undian."
+  ],
+  [
+    "{0} has {1} free plots and {2} people waiting. Plots are given out by ballot: join the list in Taman.",
+    "{0} mempunyai {1} plot kosong dan {2} orang menunggu. Plot diberikan melalui undian: sertai senarai dalam Taman."
+  ],
+  [
+    "If anyone is in danger, call 999 now. {0}",
+    "Jika sesiapa dalam bahaya, hubungi 999 sekarang. {0}"
+  ],
+  [
+    "That did not work: {0}",
+    "Itu tidak berjaya: {0}"
+  ],
+  [
+    "One visit pass for {0}, from {1} for {2} hours.",
+    "Pas satu lawatan untuk {0}, dari {1} selama {2} jam."
+  ],
+  [
+    "Delivery pass for {0}, from {1} for {2} hours.",
+    "Pas penghantaran untuk {0}, dari {1} selama {2} jam."
+  ],
+  [
+    "Event guest pass for {0}, from {1} for {2} hours.",
+    "Pas tetamu majlis untuk {0}, dari {1} selama {2} jam."
+  ],
+  [
+    "Send this question to the township office: “{0}”",
+    "Hantar soalan ini kepada pejabat perbandaran: “{0}”"
+  ],
+  [
+    "Done. {0} Pass code {1}. Share the link below with {2}; you can make a new link in Tamu any time.",
+    "Selesai. {0} Kod pas {1}. Kongsi pautan di bawah dengan {2}; anda boleh membuat pautan baharu dalam Tamu bila-bila masa."
+  ],
+  [
+    "{0} is normal: the water is at {1}%. I only repeat the official status; I never raise or end an alert.",
+    "{0} normal: paras air pada {1}%. Saya hanya mengulang status rasmi; saya tidak pernah menaikkan atau menamatkan amaran."
+  ],
+  [
+    "{0} is under a {1} alert, with water at {2}%. {3} If anyone is in danger, call 999.",
+    "{0} berada dalam status {1}, dengan paras air pada {2}%. {3} Jika sesiapa dalam bahaya, hubungi 999."
   ]
 ];

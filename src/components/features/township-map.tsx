@@ -5,6 +5,7 @@ import { LocalizedSvg } from '@/components/ui/localized-elements';
 
 import { useMemo } from 'react';
 import { cn } from '@/lib/cn';
+import { GoogleTownshipMap } from './google-township-map';
 
 export interface MapLoop {
   id: string;
@@ -26,15 +27,7 @@ export interface MapCheckpoint {
  * gate, a trip's route and where you are now. Drawn in the page (no map
  * tiles from a third party), so no location ever leaves the app to draw it.
  */
-export function TownshipMap({
-  loops,
-  checkpoints,
-  gate,
-  route = [],
-  here,
-  hits = [],
-  className,
-}: {
+type TownshipMapProps = {
   loops: MapLoop[];
   checkpoints: MapCheckpoint[];
   gate?: { name: string | null; lat: number; lng: number } | null;
@@ -42,7 +35,27 @@ export function TownshipMap({
   here?: { lat: number; lng: number } | null;
   hits?: string[];
   className?: string;
-}) {
+};
+
+export function TownshipMap(props: TownshipMapProps) {
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  const route = props.route ?? [];
+  const hits = props.hits ?? [];
+  const fallback = <LocalTownshipMap {...props} route={route} hits={hits} />;
+
+  if (!apiKey) return fallback;
+  return <GoogleTownshipMap {...props} apiKey={apiKey} route={route} hits={hits} fallback={fallback} />;
+}
+
+function LocalTownshipMap({
+  loops,
+  checkpoints,
+  gate,
+  route = [],
+  here,
+  hits = [],
+  className,
+}: TownshipMapProps) {
   const W = 640;
   const H = 400;
   const project = useMemo(() => {

@@ -557,7 +557,7 @@ export async function exportMyData(db: Db, actor: Actor) {
     db.query('SELECT created_at, title, body FROM notifications WHERE user_id = $1 ORDER BY id', [id]),
   ]);
   // Third-edition features: every table that holds something about this person.
-  const [offerPoints, visitorPasses, access, carers, activities, bills, recycling, sightings, garden] = await Promise.all([
+  const [offerPoints, visitorPasses, access, carers, activities, bills, recycling, sightings, garden, gardenApplications, assistant, assistantQuestions] = await Promise.all([
     db.query('SELECT earned_at, label, amount, remaining, redeemed, expires_at FROM offer_point_lots WHERE user_id = $1 ORDER BY earned_at', [id]),
     db.query('SELECT created_at, type, visitor_name, vehicle_no, valid_from, valid_until, status FROM visitor_passes WHERE host_user_id = $1 ORDER BY created_at', [id]),
     db.query('SELECT needs, simple_mode, read_aloud, flash_alerts, priority_help, priority_note, consent_at FROM access_profiles WHERE user_id = $1', [id]),
@@ -572,11 +572,22 @@ export async function exportMyData(db: Db, actor: Actor) {
     db.query('SELECT started_at, mode, status, accepted_count, rejected_count, accepted_g FROM kitar_sessions WHERE user_id = $1 OR claimed_by = $1 ORDER BY started_at', [id]),
     db.query('SELECT created_at, kind, species, location, note, status FROM wildlife_sightings WHERE user_id = $1 ORDER BY created_at', [id]),
     db.query(`SELECT r.day, g.name AS garden, r.done_at FROM garden_roster r JOIN gardens g ON g.id = r.garden_id WHERE r.user_id = $1 ORDER BY r.day`, [id]),
+    db.query(
+      `SELECT a.created_at, g.name AS garden, a.status, p.plot_no, a.decided_at FROM garden_applications a JOIN gardens g ON g.id = a.garden_id
+         LEFT JOIN garden_plots p ON p.id = a.plot_id WHERE a.user_id = $1 ORDER BY a.created_at`,
+      [id],
+    ),
+    db.query(
+      `SELECT c.title, c.created_at, m.role, m.content, m.link_href, m.created_at AS message_at
+         FROM assistant_conversations c JOIN assistant_messages m ON m.conversation_id = c.id WHERE c.user_id = $1 ORDER BY c.created_at, m.id`,
+      [id],
+    ),
+    db.query('SELECT created_at, question, status, answer, answered_at FROM assistant_handoffs WHERE user_id = $1 ORDER BY created_at', [id]),
   ]);
   await audit(db, id, 'DATA_EXPORTED', 'user', id);
   return {
     exportedAt: new Date().toISOString(), account, points, xp, sales, posts, responses, reports, dropoffs, checkins, readings, solar, notifications,
-    offerPoints, visitorPasses, access, carers, activities, bills, recycling, sightings, garden,
+    offerPoints, visitorPasses, access, carers, activities, bills, recycling, sightings, garden, gardenApplications, assistant, assistantQuestions,
   };
 }
 
@@ -614,6 +625,9 @@ export async function deleteAccount(db: Db, actor: Actor, password: string, now:
     await tx.query(`UPDATE kitar_sessions SET status = 'EXPIRED', closed_at = $2 WHERE user_id = $1 AND status = 'OPEN'`, [id, now]);
     await tx.query('UPDATE garden_plots SET holder_home_id = NULL, holder_user_id = NULL, booked_until = NULL WHERE holder_user_id = $1', [id]);
     await tx.query('DELETE FROM garden_roster WHERE user_id = $1 AND done_at IS NULL', [id]);
+    await tx.query(`UPDATE garden_applications SET status = 'WITHDRAWN', decided_at = $2 WHERE user_id = $1 AND status = 'WAITING'`, [id, now]);
+    await tx.query('DELETE FROM assistant_handoffs WHERE user_id = $1', [id]);
+    await tx.query('DELETE FROM assistant_conversations WHERE user_id = $1', [id]);
     await tx.query('DELETE FROM solar_leads WHERE user_id = $1', [id]);
     await tx.query('DELETE FROM notifications WHERE user_id = $1', [id]);
     await tx.query('DELETE FROM sessions WHERE user_id = $1', [id]);

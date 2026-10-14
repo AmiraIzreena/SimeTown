@@ -23,9 +23,10 @@ import { seedThirdEdition } from './seed-third-edition';
 
 /**
  * Demo data for local development and the hackathon demo. Everything here is
- * invented: the township, the people, the shops and the sponsor. Money and
- * points are created through the same services the app uses, so the ledger
- * and the float are consistent from the first screen.
+ * invented: the people, homes, shops and sponsor. The named township and its
+ * Gerak paths use the real City of Elmina and public park paths; no demo home
+ * represents a real resident or property record. Money and points are created
+ * through the same services the app uses, so the ledger stays consistent.
  */
 
 const DOMAIN = 'demo.kita.test';
@@ -57,18 +58,20 @@ async function main() {
   const daysAgo = (days: number, hour = 4) => new Date(Math.floor(now.getTime() / DAY) * DAY - days * DAY + hour * 3_600_000);
 
   // --- Township, zones, homes -------------------------------------------------
-  const township = (await one<{ id: string }>(db, `INSERT INTO townships (name) VALUES ('Taman SimeTown (demo township)') RETURNING id`))!.id;
+  const township = (await one<{ id: string }>(db, `INSERT INTO townships (name) VALUES ('City of Elmina (demo data)') RETURNING id`))!.id;
   const zones: Record<string, string> = {};
   for (const [name, route, point] of [
-    ['Zone A · Lakeside', 'Leave by Jalan Kenanga towards the main gate. Avoid the lake road.', 'Community hall, Level 1'],
-    ['Zone B · Central', 'Walk up Jalan Melur to the school field.', 'Primary school field'],
-    ['Zone C · Hillside', 'Stay on high ground along Jalan Teratai.', 'Hillside surau car park'],
+    // Areas follow City of Elmina's own precincts. The routes and assembly points are demo plans.
+    ['Elmina Valley 1 & 2', 'Leave by Persiaran Metafasa, away from Sungai Subang. Keep off the riverside paths.', 'Persiaran Metafasa at Jalan Metafasa U16/156'],
+    ['Elmina Valley 3, 4 & 5', 'Leave by Persiaran Elektron towards Persiaran Elmina. Keep off the Central Park riverside paths.', 'SJK (T) Ladang Rasak field'],
+    ['Elmina Gardens', 'Leave by Jalan Frekuensi U16/110 towards Persiaran Atmosfera. Keep off the lake path by Sungai Subang.', 'Surau Elmina Gardens car park'],
+    ['Elmina West', 'Leave by Persiaran Casuarina towards Persiaran Elmina.', 'Pangsapuri Harmoni Elmina car park'],
   ] as const) {
     zones[name] = (await one<{ id: string }>(db, 'INSERT INTO flood_zones (township_id, name, safe_route, assembly_point) VALUES ($1, $2, $3, $4) RETURNING id', [township, name, route, point]))!.id;
   }
-  // Addresses follow the pattern of SDP townships (house, street with its area code, precinct, postcode,
-  // city, state), but every street, precinct and building here is invented.
-  const POSTAL = { postcode: '41050', city: 'Klang', state: 'Selangor' };
+  // Real City of Elmina streets and precincts (Seksyen U16 Elmina East and U17 Elmina West, 40160 Shah Alam),
+  // as mapped in OpenStreetMap and used in property listings. The house numbers and the people are invented.
+  const POSTAL = { postcode: '40160', city: 'Shah Alam', state: 'Selangor' };
   const insertHome = async (ref: string, zone: string, a: { street: string; precinct: string; houseNo: string; building?: string }) =>
     (await one<{ id: string }>(
       db,
@@ -77,24 +80,25 @@ async function main() {
       [township, zones[zone], ref, a.street, a.precinct, a.houseNo, a.building ?? null, a.building ? 'HIGHRISE' : 'LANDED', POSTAL.postcode, POSTAL.city, POSTAL.state],
     ))!.id;
   const streets = [
-    ['Jalan Kenanga 1/KT1', 'Precinct Kenanga', 'KN', 'Zone A · Lakeside'],
-    ['Jalan Melur 2/KT2', 'Precinct Melur', 'ML', 'Zone B · Central'],
-    ['Jalan Cempaka 2/KT3', 'Precinct Melur', 'CP', 'Zone B · Central'],
-    ['Jalan Teratai 3/KT4', 'Precinct Teratai', 'TR', 'Zone C · Hillside'],
+    ['Jalan Metafasa U16/171', 'Elmina Valley 1', 'EV1', 'Elmina Valley 1 & 2'],
+    ['Jalan Metafasa U16/161', 'Elmina Valley 2', 'EV2', 'Elmina Valley 1 & 2'],
+    ['Jalan Metafasa U16/1N', 'Elmina Valley 3', 'EV3', 'Elmina Valley 3, 4 & 5'],
+    ['Jalan Frekuensi U16/115', 'Elmina Gardens', 'EG', 'Elmina Gardens'],
   ] as const;
   const homes: Record<string, string> = {};
   for (const [street, precinct, prefix, zone] of streets) {
     for (let n = 1; n <= 8; n++) {
-      // The property-record reference staff match against, such as KN-03; the address residents see is "No. 3, ...".
+      // The property-record reference staff match against, such as EV1-03; the address residents see is "No. 3, ...".
       const ref = `${prefix}-${String(n).padStart(2, '0')}`;
       homes[ref] = await insertHome(ref, zone, { street, precinct, houseNo: String(n) });
     }
   }
-  // A small high-rise block, to show block-floor-unit addresses.
+  // A few flats in Pangsapuri Harmoni Elmina, Sime Darby Property's affordable homes in Elmina West,
+  // to show block-floor-unit addresses.
   for (const floor of [1, 2, 3]) {
     for (const unit of [1, 2]) {
       const houseNo = `A-${String(floor).padStart(2, '0')}-${String(unit).padStart(2, '0')}`;
-      homes[`RK-${houseNo}`] = await insertHome(`RK-${houseNo}`, 'Zone B · Central', { street: 'Jalan Melur 2/KT2', precinct: 'Precinct Melur', houseNo, building: 'Residensi SimeTown, Block A' });
+      homes[`HM-${houseNo}`] = await insertHome(`HM-${houseNo}`, 'Elmina West', { street: 'Jalan Casuarina U17/56', precinct: 'Elmina West', houseNo, building: 'Pangsapuri Harmoni Elmina, Block A' });
     }
   }
 
@@ -127,37 +131,37 @@ async function main() {
   const staff = await user('TOWNSHIP_STAFF', 'Ravi Kumar', 'staff', { township_id: township });
   await user('HQ_ADMIN', 'Farah Aziz', 'hq');
 
-  const aisyah = await resident('Aisyah Rahman', 'aisyah', 'KN-01');
+  const aisyah = await resident('Aisyah Rahman', 'aisyah', 'EV1-01');
   const neighbours = [
-    await resident('Daniel Tan', 'daniel', 'KN-02'),
-    await resident('Priya Nair', 'priya', 'KN-05'),
-    await resident('Hafiz Ismail', 'hafiz', 'ML-01'),
-    await resident('Lim Mei Ling', 'meiling', 'ML-04'),
-    await resident('Siti Aminah', 'siti', 'CP-02'),
-    await resident('Arjun Singh', 'arjun', 'CP-06'),
-    await resident('Wong Kar Yan', 'karyan', 'TR-03'),
-    await resident('Zainab Yusof', 'zainab', 'TR-07'),
+    await resident('Daniel Tan', 'daniel', 'EV1-02'),
+    await resident('Priya Nair', 'priya', 'EV1-05'),
+    await resident('Hafiz Ismail', 'hafiz', 'EV2-01'),
+    await resident('Lim Mei Ling', 'meiling', 'EV2-04'),
+    await resident('Siti Aminah', 'siti', 'EV3-02'),
+    await resident('Arjun Singh', 'arjun', 'EV3-06'),
+    await resident('Wong Kar Yan', 'karyan', 'EG-03'),
+    await resident('Zainab Yusof', 'zainab', 'EG-07'),
   ];
   const everyone = [aisyah, ...neighbours];
-  await resident('Imran Hakim', 'imran', 'KN-01', 'PENDING', 'TENANT'); // waits for Aisyah, the owner, to confirm him
+  await resident('Imran Hakim', 'imran', 'EV1-01', 'PENDING', 'TENANT'); // waits for Aisyah, the owner, to confirm him
   // Waits for township staff. Registered before phone numbers were required, so she is asked to add one.
-  await resident('Grace Chong', 'grace', 'RK-A-02-01', 'PENDING', 'OWNER', { phone: null });
+  await resident('Grace Chong', 'grace', 'HM-A-02-01', 'PENDING', 'OWNER', { phone: null });
 
   // --- Shops and a sponsor ------------------------------------------------------
-  const shop = async (name: string, reg: string, category: string, login: string, contact: string, approve = true, poolSen = 0, lot = 'G-01') => {
+  const shop = async (name: string, reg: string, category: string, login: string, contact: string, approve = true, poolSen = 0, shopNo = '1') => {
     const id = (await one<{ id: string }>(
       db,
       `INSERT INTO merchants (township_id, name, registration_no, category, address_line, postcode, city, state)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-      [township, name, reg, category, `Lot ${lot}, SimeTown Square, Jalan Melur 2/KT2`, POSTAL.postcode, POSTAL.city, POSTAL.state],
+      [township, name, reg, category, `No. ${shopNo}, Jalan Eserina AB U16/AB, Elmina East`, POSTAL.postcode, POSTAL.city, POSTAL.state],
     ))!.id;
     if (approve) await setMerchantStatus(db, admin, id, 'ACTIVE', daysAgo(21));
     if (poolSen) await recordMerchantDeposit(db, admin, id, { amountSen: poolSen, bankRef: `DEMO-${reg}` }, daysAgo(20));
     return user('MERCHANT', contact, login, { township_id: township, merchant_id: id });
   };
-  const kafe = await shop('Kafe Seri Pagi', 'DEMO-0001', 'Food & drink', 'kafe', 'Lim Wei (Kafe Seri Pagi)', true, 50_000, 'G-03');
-  const kedai = await shop('Kedai Runcit Mesra', 'DEMO-0002', 'Groceries', 'kedai', 'Aminah Salleh (Kedai Runcit Mesra)', true, 30_000, 'G-07');
-  await shop('Bengkel Basikal Roda', 'DEMO-0003', 'Bicycle repair', 'bengkel', 'Kumar (Bengkel Basikal Roda)', false, 0, 'G-12');
+  const kafe = await shop('Kafe Seri Pagi', 'DEMO-0001', 'Food & drink', 'kafe', 'Lim Wei (Kafe Seri Pagi)', true, 50_000, '3');
+  const kedai = await shop('Kedai Runcit Mesra', 'DEMO-0002', 'Groceries', 'kedai', 'Aminah Salleh (Kedai Runcit Mesra)', true, 30_000, '7');
+  await shop('Bengkel Basikal Roda', 'DEMO-0003', 'Bicycle repair', 'bengkel', 'Kumar (Bengkel Basikal Roda)', false, 0, '12');
 
   const sponsorId = (await one<{ id: string }>(db, `INSERT INTO sponsors (name) VALUES ('Solar Cerah (demo sponsor)') RETURNING id`))!.id;
   await user('SPONSOR', 'Tan Hui Min (Solar Cerah)', 'sponsor', { sponsor_id: sponsorId });
@@ -184,11 +188,10 @@ async function main() {
   });
 
   // --- Kitar kiosks, Gerak loops ------------------------------------------------
-  await createKiosk(db, staff, { name: 'Kiosk Lakeside', location: 'Beside the Lakeside playground' });
-  await createKiosk(db, staff, { name: 'Kiosk Central', location: 'Community hall car park' });
+  await createKiosk(db, staff, { name: 'Kiosk Elmina Valley', location: 'Elmina Valley Central Park car park' });
+  await createKiosk(db, staff, { name: 'Kiosk Elmina Gardens', location: 'Beside Surau Elmina Gardens' });
   const kiosks = await db.query<{ code: string }>('SELECT code FROM kitar_kiosks ORDER BY name');
-  await createLoop(db, staff, { name: 'Lake Loop', description: 'A flat, shaded loop around the lake. Good for families.', mode: 'WALK', distanceM: 2_400, checkpoints: ['Lake gate', 'Boathouse'] });
-  await createLoop(db, staff, { name: 'Park Connector Ride', description: 'The cycling lane from Central to Hillside and back.', mode: 'CYCLE', distanceM: 5_200, checkpoints: ['Central plaza', 'Hillside lookout', 'School crossing'] });
+  await createLoop(db, staff, { name: 'Elmina Central Park Walk', description: 'A public walking route through Elmina Central Park and Elmina Gardens.', mode: 'WALK', distanceM: 2_400, checkpoints: ['Central Park entrance', 'Elmina Gardens turn'] });
   const loops = (await listLoopsForStaff(db, staff)) as unknown as { name: string; checkpoints: { code: string }[] }[];
 
   // --- Two weeks of township life -----------------------------------------------
@@ -223,29 +226,29 @@ async function main() {
   await runSettlement(db, admin.id, daysAgo(7, 9));
 
   // --- Jiran and Kongsi -----------------------------------------------------------
-  const gotongRoyong = await createPost(db, staff, { type: 'EVENT', title: 'Gotong-royong at the lake', body: 'Bring gloves and a water bottle. Breakfast is on the township.', location: 'Lake gate', startsAt: new Date(now.getTime() + 4 * DAY), capacity: 60 });
+  const gotongRoyong = await createPost(db, staff, { type: 'EVENT', title: 'Gotong-royong at the park', body: 'Bring gloves and a water bottle. Breakfast is on the township.', location: 'Elmina Central Park entrance', startsAt: new Date(now.getTime() + 4 * DAY), capacity: 60 });
   await createPost(db, neighbours[2]!, { type: 'EVENT', title: 'Sunday badminton, all levels', body: 'Friendly doubles. Spare rackets available.', location: 'Community hall court', startsAt: new Date(now.getTime() + 6 * DAY), capacity: 12 });
   for (const person of [neighbours[0]!, neighbours[1]!, neighbours[4]!]) await respondToPost(db, person, gotongRoyong.id);
-  const favour = await createPost(db, neighbours[3]!, { type: 'HELP', title: 'Help moving a bookshelf', body: 'One flight of stairs. Ten minutes with two people.', location: 'Jalan Melur' });
+  const favour = await createPost(db, neighbours[3]!, { type: 'HELP', title: 'Help moving a bookshelf', body: 'One flight of stairs. Ten minutes with two people.', location: 'Jalan Metafasa U16/161' });
   await respondToPost(db, neighbours[2]!, favour.id);
   await confirmResponse(db, neighbours[3]!, favour.id, neighbours[2]!.id, daysAgo(3));
-  await createPost(db, neighbours[6]!, { type: 'HELP', title: 'Can someone water my plants next week?', body: 'Away from Monday to Friday. A few pots on the porch.', location: 'Jalan Teratai' });
-  const stroller = await createPost(db, neighbours[4]!, { type: 'GIVE', title: 'Baby stroller, good condition', body: 'Our youngest has outgrown it. Free to a township family.', location: 'Jalan Cempaka' });
+  await createPost(db, neighbours[6]!, { type: 'HELP', title: 'Can someone water my plants next week?', body: 'Away from Monday to Friday. A few pots on the porch.', location: 'Jalan Frekuensi U16/115' });
+  const stroller = await createPost(db, neighbours[4]!, { type: 'GIVE', title: 'Baby stroller, good condition', body: 'Our youngest has outgrown it. Free to a township family.', location: 'Jalan Metafasa U16/1N' });
   await respondToPost(db, neighbours[1]!, stroller.id);
   await confirmResponse(db, neighbours[4]!, stroller.id, neighbours[1]!.id, daysAgo(5));
-  await createPost(db, neighbours[5]!, { type: 'LEND', title: 'Cordless drill to borrow', body: 'Comes with a set of bits. Please return within three days.', location: 'Jalan Cempaka' });
-  await createPost(db, neighbours[7]!, { type: 'GIVE', title: 'Box of children’s story books', body: 'About 20 books, ages 4 to 8, English and Bahasa Malaysia.', location: 'Jalan Teratai' });
+  await createPost(db, neighbours[5]!, { type: 'LEND', title: 'Cordless drill to borrow', body: 'Comes with a set of bits. Please return within three days.', location: 'Jalan Metafasa U16/1N' });
+  await createPost(db, neighbours[7]!, { type: 'GIVE', title: 'Box of children’s story books', body: 'About 20 books, ages 4 to 8, English and Bahasa Malaysia.', location: 'Jalan Frekuensi U16/115' });
 
   // --- Lapor ----------------------------------------------------------------------
   const report = (by: Actor, description: string, locationText: string, zone: string, at: Date) =>
     createReport(db, by, { description, locationText, zoneId: zones[zone] }, at);
-  const r1 = await report(neighbours[0]!, 'Lampu jalan tidak menyala sejak tiga malam', 'Jalan Kenanga, near house KN-04', 'Zone A · Lakeside', daysAgo(6));
+  const r1 = await report(neighbours[0]!, 'Lampu jalan tidak menyala sejak tiga malam', 'Jalan Metafasa U16/171, near No. 4', 'Elmina Valley 1 & 2', daysAgo(6));
   await updateReport(db, staff, r1.id, { status: 'RESOLVED', staffNote: 'Bulb replaced by the contractor.' }, daysAgo(4));
-  const r2 = await report(neighbours[4]!, 'Longkang tersumbat, air bertakung selepas hujan', 'Behind Jalan Cempaka shop row', 'Zone B · Central', daysAgo(3));
+  const r2 = await report(neighbours[4]!, 'Longkang tersumbat, air bertakung selepas hujan', 'Back lane behind Jalan Metafasa U16/1N', 'Elmina Valley 3, 4 & 5', daysAgo(3));
   await updateReport(db, staff, r2.id, { status: 'IN_PROGRESS', staffNote: 'Drain clearing booked for Thursday.' }, daysAgo(2));
-  await report(neighbours[6]!, 'Motorcycles parked across the wheelchair ramp at the surau', 'Hillside surau entrance', 'Zone C · Hillside', daysAgo(1));
-  await report(neighbours[3]!, 'Pothole on the bend, getting bigger', 'Jalan Melur, before the school', 'Zone B · Central', daysAgo(1, 7));
-  await report(aisyah, 'Rubbish left beside the recycling kiosk', 'Lakeside playground', 'Zone A · Lakeside', daysAgo(0, 1));
+  await report(neighbours[6]!, 'Motorcycles parked across the wheelchair ramp at the surau', 'Surau Elmina Gardens entrance', 'Elmina Gardens', daysAgo(1));
+  await report(neighbours[3]!, 'Pothole on the bend, getting bigger', 'Persiaran Metafasa, before SJK (T) Ladang Rasak', 'Elmina Valley 3, 4 & 5', daysAgo(1, 7));
+  await report(aisyah, 'Rubbish left beside the recycling kiosk', 'Kiosk Elmina Valley, Elmina Valley Central Park', 'Elmina Valley 1 & 2', daysAgo(0, 1));
 
   // --- Jimat: last month and the month before, typed in on the 3rd -------------------
   const firstOfMonth = (back: number) => new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - back, 3, 4));
@@ -258,9 +261,10 @@ async function main() {
   }
 
   // --- Banjir: a calm day ---------------------------------------------------------------
-  await recordLevel(db, { zoneId: zones['Zone A · Lakeside']!, levelPct: 42, actor: staff }, now);
-  await recordLevel(db, { zoneId: zones['Zone B · Central']!, levelPct: 18, actor: staff }, now);
-  await recordLevel(db, { zoneId: zones['Zone C · Hillside']!, levelPct: 9, actor: staff }, now);
+  await recordLevel(db, { zoneId: zones['Elmina Valley 1 & 2']!, levelPct: 42, actor: staff }, now);
+  await recordLevel(db, { zoneId: zones['Elmina Valley 3, 4 & 5']!, levelPct: 18, actor: staff }, now);
+  await recordLevel(db, { zoneId: zones['Elmina Gardens']!, levelPct: 9, actor: staff }, now);
+  await recordLevel(db, { zoneId: zones['Elmina West']!, levelPct: 6, actor: staff }, now);
 
   // --- Third edition: Tamu, Shop Offers, the smart machine, map tracking, Akses+, Taman ---------
   await seedThirdEdition(db, { passwordHash, now, log: () => undefined });
@@ -269,8 +273,8 @@ async function main() {
   if (!check.ok) throw new Error(`Seed left the float out of balance: ${check.issues.join(' ')}`);
 
   const rows = [
-    ['Resident', `aisyah@${DOMAIN}`, 'the main demo account; owner of No. 1, Jalan Kenanga 1/KT1'],
-    ['Resident (not yet confirmed)', `grace@${DOMAIN}`, 'A-02-01, Residensi SimeTown; asked to add a phone number'],
+    ['Resident', `aisyah@${DOMAIN}`, 'the main demo account; owner of No. 1, Jalan Metafasa U16/171, Elmina Valley 1'],
+    ['Resident (not yet confirmed)', `grace@${DOMAIN}`, 'A-02-01, Pangsapuri Harmoni Elmina; asked to add a phone number'],
     ['Resident', `daniel@${DOMAIN}`, 'a neighbour'],
     ['Shop', `kafe@${DOMAIN}`, 'Kafe Seri Pagi'],
     ['Shop', `kedai@${DOMAIN}`, 'Kedai Runcit Mesra'],

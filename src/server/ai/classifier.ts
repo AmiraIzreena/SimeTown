@@ -22,8 +22,6 @@ export interface ReportSuggestion {
   source: 'MODEL' | 'RULES';
 }
 
-const TIMEOUT_MS = 8_000;
-
 /** Reads the real file type from the first bytes, so a renamed file cannot pass as an image. */
 export function sniffImage(bytes: Uint8Array): Photo['mime'] | null {
   const starts = (...sig: number[]) => sig.every((b, i) => bytes[i] === b);
@@ -54,26 +52,59 @@ export function suggestReportByRules(description: string): ReportSuggestion {
 /** A picture or a PDF sent to the model with the question. */
 type Attachment = Photo | { mime: 'application/pdf'; bytes: Uint8Array };
 
-/** One call to the hosted model, in the Anthropic Messages format. Returns the model's text, or null on any failure. */
-async function askModel(instruction: string, text: string, file?: Attachment, maxTokens = 100): Promise<string | null> {
-  const config = getConfig();
-  if (config.AI_PROVIDER === 'none') return null;
+interface ModelRequest {
+  headers: Record<string, string>;
+  body: unknown;
+  /** Pulls the model's text out of the provider's reply. */
+  text: (data: unknown) => string | null | undefined;
+}
+
+/** The Anthropic Messages format. */
+function anthropicRequest(key: string, model: string, instruction: string, text: string, file: Attachment | undefined, maxTokens: number): ModelRequest {
   const content: unknown[] = [];
   if (file) {
     const source = { type: 'base64', media_type: file.mime, data: Buffer.from(file.bytes).toString('base64') };
     content.push(file.mime === 'application/pdf' ? { type: 'document', source } : { type: 'image', source });
   }
   content.push({ type: 'text', text });
+  return {
+    headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+    body: { model, max_tokens: maxTokens, system: instruction, messages: [{ role: 'user', content }] },
+    text: (data) => (data as { content?: { type: string; text?: string }[] }).content?.find((part) => part.type === 'text')?.text,
+  };
+}
+
+/** The OpenAI Chat Completions format: pictures as data URLs, a PDF bill as a file part. */
+function openaiRequest(key: string, model: string, instruction: string, text: string, file: Attachment | undefined, maxTokens: number): ModelRequest {
+  const content: unknown[] = [];
+  if (file) {
+    const dataUrl = `data:${file.mime};base64,${Buffer.from(file.bytes).toString('base64')}`;
+    content.push(file.mime === 'application/pdf' ? { type: 'file', file: { filename: 'bill.pdf', file_data: dataUrl } } : { type: 'image_url', image_url: { url: dataUrl } });
+  }
+  content.push({ type: 'text', text });
+  return {
+    headers: { authorization: `Bearer ${key}` },
+    body: { model, max_completion_tokens: maxTokens, messages: [{ role: 'system', content: instruction }, { role: 'user', content }] },
+    text: (data) => (data as { choices?: { message?: { content?: string | null } }[] }).choices?.[0]?.message?.content,
+  };
+}
+
+/** One call to the hosted model (Anthropic or OpenAI). Returns the model's text, or null on any failure. */
+async function askModel(instruction: string, text: string, file?: Attachment, maxTokens = 100): Promise<string | null> {
+  const config = getConfig();
+  if (config.AI_PROVIDER === 'none') return null;
+  const build = config.AI_PROVIDER === 'openai' ? openaiRequest : anthropicRequest;
+  // AI_MAX_OUTPUT_TOKENS, when set, replaces the small per-check budgets (reasoning models need room to think).
+  const request = build(config.AI_API_KEY!, config.AI_MODEL!, instruction, text, file, config.AI_MAX_OUTPUT_TOKENS ?? maxTokens);
   try {
     const response = await fetch(config.AI_API_URL!, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-api-key': config.AI_API_KEY!, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: config.AI_MODEL, max_tokens: maxTokens, system: instruction, messages: [{ role: 'user', content }] }),
-      signal: AbortSignal.timeout(TIMEOUT_MS),
+      headers: { 'content-type': 'application/json', ...request.headers },
+      body: JSON.stringify(request.body),
+      signal: AbortSignal.timeout(config.AI_TIMEOUT_SECONDS * 1000),
     });
     if (!response.ok) throw new Error(`AI service answered ${response.status}`);
-    const data = (await response.json()) as { content?: { type: string; text?: string }[] };
-    return data.content?.find((part) => part.type === 'text')?.text ?? null;
+    return request.text(await response.json()) ?? null;
   } catch (error) {
     log.warn('AI check unavailable, using the fallback', { error: String(error) });
     return null;

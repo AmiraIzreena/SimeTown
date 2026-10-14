@@ -45,10 +45,10 @@ describe('phone numbers and addresses', () => {
   });
 
   it('writes landed and high-rise addresses as Malaysian post is addressed', () => {
-    const base = { street: 'Jalan Kenanga 1/KT1', precinct: 'Precinct Kenanga', postcode: '41050', city: 'Klang', state: 'Selangor' };
-    expect(formatAddress({ ...base, property_type: 'LANDED', house_no: '12', building: null })).toBe('No. 12, Jalan Kenanga 1/KT1, Precinct Kenanga, 41050 Klang, Selangor');
-    expect(formatAddress({ ...base, property_type: 'HIGHRISE', house_no: 'A-03-07', building: 'Residensi KITA' })).toBe(
-      'A-03-07, Residensi KITA, Jalan Kenanga 1/KT1, Precinct Kenanga, 41050 Klang, Selangor',
+    const base = { street: 'Jalan Metafasa U16/171', precinct: 'Elmina Valley 1', postcode: '40160', city: 'Shah Alam', state: 'Selangor' };
+    expect(formatAddress({ ...base, property_type: 'LANDED', house_no: '12', building: null })).toBe('No. 12, Jalan Metafasa U16/171, Elmina Valley 1, 40160 Shah Alam, Selangor');
+    expect(formatAddress({ ...base, property_type: 'HIGHRISE', house_no: 'A-03-07', building: 'Pangsapuri Harmoni Elmina, Block A' })).toBe(
+      'A-03-07, Pangsapuri Harmoni Elmina, Block A, Jalan Metafasa U16/171, Elmina Valley 1, 40160 Shah Alam, Selangor',
     );
   });
 });

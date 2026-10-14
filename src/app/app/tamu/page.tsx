@@ -102,7 +102,7 @@ export default function TamuPage() {
   };
 
   const link = issued ? `${window.location.origin}/pass/${issued.token}` : '';
-  const message = issued ? `Salam! Here is your visitor pass for Taman SimeTown. Show the QR code at the main gate: ${link}` : '';
+  const message = issued ? `Salam! Here is your visitor pass for City of Elmina. Show the QR code at the main gate: ${link}` : '';
 
   return (
     <>

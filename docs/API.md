@@ -222,7 +222,8 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | Method | Path | Who | What it does |
 | --- | --- | --- | --- |
 | GET | `/taman` | RESIDENT | Gardens, plots, the watering roster and the wildlife log |
-| POST | `/taman/plots/:plotId/book` | RESIDENT | Book a garden plot for six months (one per home) |
+| POST | `/taman/gardens/:gardenId/apply` | RESIDENT | Join a garden's waiting list; plots are given out by ballot (one per home) |
+| POST | `/taman/applications/:applicationId/withdraw` | RESIDENT | Leave a waiting list |
 | POST | `/taman/plots/:plotId/release` | RESIDENT | Give a plot back |
 | POST | `/taman/roster` | RESIDENT | Take a day on a garden's watering roster |
 | POST | `/taman/watered` | RESIDENT | Scan the garden's code after watering |
@@ -231,7 +232,24 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | GET | `/admin/taman/sightings` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Sightings waiting to be confirmed |
 | POST | `/admin/taman/sightings/:sightingId` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Confirm or reject a sighting |
 | GET | `/admin/taman/gardens` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Gardens with their printable gate codes |
+| POST | `/admin/taman/gardens/:gardenId/ballot` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Draw the waiting list for a garden's free plots |
 | POST | `/admin/taman/gardens` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Add a community garden and its plots |
+
+## Assistant
+
+| Method | Path | Who | What it does |
+| --- | --- | --- | --- |
+| GET | `/assistant/status` | RESIDENT | Whether answers come from the AI or the rules, and your AI questions used today |
+| POST | `/assistant/ask` | RESIDENT | Ask the Assistant; it answers from your own data and checked township facts, and saves the turn |
+| POST | `/assistant/actions/:actionId/confirm` | RESIDENT | Yes: do what the Assistant proposed (a visitor pass, or sending a question to the office) |
+| POST | `/assistant/actions/:actionId/edit` | RESIDENT | Change the details of a proposal before saying Yes (the pass times, or the question for the office) |
+| POST | `/assistant/actions/:actionId/cancel` | RESIDENT | No: drop what the Assistant proposed |
+| GET | `/assistant/conversations` | RESIDENT | Your saved Assistant conversations, newest first |
+| GET | `/assistant/conversations/:conversationId` | RESIDENT | One of your conversations, with its messages |
+| POST | `/assistant/conversations/:conversationId/delete` | RESIDENT | Delete one of your conversations |
+| POST | `/assistant/conversations/delete-all` | RESIDENT | Delete all your conversations |
+| GET | `/admin/assistant/handoffs` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Questions residents sent to the township office through the Assistant |
+| POST | `/admin/assistant/handoffs/:handoffId/answer` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Answer a resident's question; the reply appears in their chat |
 
 ## SimeTown Insights
 
