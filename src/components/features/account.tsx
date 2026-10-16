@@ -5,6 +5,7 @@ import { Text } from '@/components/ui/localized-text';
 import { Download, LogOut, MapPin, Trash2 } from 'lucide-react';
 import { LocalizedLink as Link } from '@/components/ui/localized-elements';
 import { useState, type FormEvent } from 'react';
+import { AksesPage, AksesWizard, useAksesMode } from '@/components/features/akses-mode';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, PageHeader } from '@/components/ui/card';
 import { Modal } from '@/components/ui/dialog';
@@ -106,9 +107,17 @@ function ShopAddressCard({ me, onChanged }: { me: Me; onChanged: () => void }) {
 }
 
 /** Profile, address, password and personal-data rights (PDPA). The same screen for every role. */
-export function AccountPanel() {
+export function AccountPanel({ accessible = false }: { accessible?: boolean }) {
   const me = useApi<Me>('/me');
   const [deleting, setDeleting] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [profileStep, setProfileStep] = useState(0);
+  const [fullName, setFullName] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const [passwordStep, setPasswordStep] = useState(0);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
 
   const save = useAction((body: { fullName: string; phone: string }) => api.patch('/me', body), { success: 'Profile saved.', onSuccess: () => void me.mutate() });
   const password = useAction((body: { current: string; next: string }) => api.post('/me/password', body), { success: 'Password changed. Other devices have been signed out.' });
@@ -133,7 +142,23 @@ export function AccountPanel() {
         <Card>
           <CardHeader title="Profile" />
           <Async state={me} skeleton={<div className="p-5"><Skeleton className="h-40" /></div>}>
-            {(user) => (
+            {(user) => accessible ? (
+                <div className="space-y-4 p-5">
+                  <div className="flex flex-wrap gap-2">
+                    <Badge tone="brand"><Text>{ROLE_LABELS[user.role]}</Text></Badge>
+                    {user.role === 'RESIDENT' && <Badge tone={user.residencyStatus === 'VERIFIED' ? 'success' : 'warning'}><Text>{user.residencyStatus === 'VERIFIED' ? 'Home confirmed' : 'Home not confirmed yet'}</Text></Badge>}
+                  </div>
+                  <p className="text-lg"><strong><Text>Email</Text>:</strong> {user.email}</p>
+                  <p className="text-lg"><strong><Text>Full name</Text>:</strong> {user.fullName}</p>
+                  <p className="text-lg"><strong><Text>Phone</Text>:</strong> {user.phone ? formatPhone(user.phone) : <Text>Not set</Text>}</p>
+                  <Button size="lg" className="min-h-20 w-full text-xl" onClick={() => {
+                    setFullName(user.fullName);
+                    setPhoneNumber(user.phone ? formatPhone(user.phone) : '');
+                    setProfileStep(0);
+                    setProfileOpen(true);
+                  }}><Text>Edit profile one step at a time</Text></Button>
+                </div>
+              ) : (
               <form method="post" onSubmit={onProfile} className="space-y-4 p-5" noValidate>
                 <div className="flex flex-wrap gap-2">
                   <Badge tone="brand"><Text>{ROLE_LABELS[user.role]}</Text></Badge>
@@ -154,7 +179,7 @@ export function AccountPanel() {
                 />
                 <Button type="submit" pending={save.pending}><Text>Save profile</Text></Button>
               </form>
-            )}
+              )}
           </Async>
         </Card>
 
@@ -163,11 +188,17 @@ export function AccountPanel() {
 
         <Card>
           <CardHeader title="Password" description="Changing it signs you out everywhere else." />
+          {accessible ? (
+            <div className="p-5">
+              <Button size="lg" className="min-h-20 w-full text-xl" onClick={() => { setPasswordStep(0); setCurrentPassword(''); setNewPassword(''); setPasswordOpen(true); }}><Text>Change password one step at a time</Text></Button>
+            </div>
+          ) : (
           <form onSubmit={onPassword} method="post" className="space-y-4 p-5" noValidate>
             <Input label="Current password" name="current" type="password" autoComplete="current-password" required error={password.fields.current} />
             <Input label="New password" name="next" type="password" autoComplete="new-password" hint="At least 10 characters." required error={password.fields.next} />
             <Button type="submit" pending={password.pending}><Text>Change password</Text></Button>
           </form>
+          )}
         </Card>
 
         <Card>
@@ -235,6 +266,33 @@ export function AccountPanel() {
           <Input label="Enter your password to confirm" name="password" type="password" autoComplete="current-password" required />
         </form>
       </Modal>
+      {accessible && (
+        <>
+          <AksesWizard open={profileOpen} title="Edit profile" step={profileStep} total={2} onClose={() => setProfileOpen(false)} onBack={() => setProfileStep((step) => step - 1)} onNext={() => setProfileStep(1)} onSubmit={() => void save.run({ fullName: fullName.trim(), phone: phoneNumber }).then((result) => result && setProfileOpen(false))} pending={save.pending} submitLabel="Save profile">
+            {profileStep === 0 ? (
+              <Input label="Full name" labelClassName="!text-3xl !font-semibold" value={fullName} onChange={(event) => setFullName(event.target.value)} autoComplete="name" required error={save.fields.fullName} />
+            ) : (
+              <Input label="Phone number" labelClassName="!text-3xl !font-semibold" type="tel" inputMode="tel" value={phoneNumber} onChange={(event) => setPhoneNumber(event.target.value)} autoComplete="tel" required hint="A Malaysian mobile number, such as 012-345 6789." error={save.fields.phone} />
+            )}
+          </AksesWizard>
+          <AksesWizard open={passwordOpen} title="Change password" step={passwordStep} total={2} onClose={() => setPasswordOpen(false)} onBack={() => setPasswordStep((step) => step - 1)} onNext={() => setPasswordStep(1)} onSubmit={() => void password.run({ current: currentPassword, next: newPassword }).then((result) => result && setPasswordOpen(false))} pending={password.pending} submitLabel="Change password">
+            {passwordStep === 0 ? (
+              <Input label="Current password" labelClassName="!text-3xl !font-semibold" type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} required error={password.fields.current} />
+            ) : (
+              <Input label="New password" labelClassName="!text-3xl !font-semibold" type="password" autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} required hint="At least 10 characters." error={password.fields.next} />
+            )}
+          </AksesWizard>
+        </>
+      )}
     </>
+  );
+}
+
+export function ResidentAccountPanel() {
+  const akses = useAksesMode();
+  return (
+    <AksesPage profile={akses.profile} simple={akses.simple} largeText={akses.largeText} largeTargets={akses.largeTargets}>
+      <AccountPanel accessible={akses.guided} />
+    </AksesPage>
   );
 }

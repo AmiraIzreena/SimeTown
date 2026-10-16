@@ -4,11 +4,14 @@ import { Text } from '@/components/ui/localized-text';
 
 import { Bike, CheckCircle2, Circle, Footprints, Route } from 'lucide-react';
 import { useState } from 'react';
+import { AksesPage, AksesWizard, useAksesMode } from '@/components/features/akses-mode';
 import { CampaignCard } from '@/components/features/rewards';
 import { CodeEntry } from '@/components/features/scan';
 import { Tracker } from '@/components/features/tracker';
+import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, PageHeader, Stat } from '@/components/ui/card';
 import { Async, EmptyState, SkeletonList, SkeletonStats } from '@/components/ui/feedback';
+import { Input } from '@/components/ui/field';
 import { api } from '@/lib/api';
 import { formatKm, rewardMessage } from '@/lib/format';
 import { useAction, useApi } from '@/lib/hooks';
@@ -29,9 +32,11 @@ interface CheckIn {
 }
 
 export function GerakScreen({ scanned }: { scanned: string }) {
+  const akses = useAksesMode();
   const overview = useApi<Overview>('/gerak');
   const campaigns = useApi<Campaign[]>('/campaigns');
   const [code, setCode] = useState(scanned);
+  const [checkpointOpen, setCheckpointOpen] = useState(false);
 
   const scan = useAction(() => api.post<CheckIn>('/gerak/checkins', { code: code.trim() }), {
     onSuccess: () => {
@@ -45,7 +50,7 @@ export function GerakScreen({ scanned }: { scanned: string }) {
   const mobility = campaigns.data?.filter((c) => c.activity.startsWith('GERAK')) ?? [];
 
   return (
-    <>
+    <AksesPage profile={akses.profile} simple={akses.simple} largeText={akses.largeText} largeTargets={akses.largeTargets}>
       <PageHeader title="Gerak" description="Walk, run, cycle or wheel a township loop. Track it on the map and the checkpoints tick themselves, or scan the posters on the way." />
       <div className="space-y-6">
         <Async state={overview} skeleton={<SkeletonStats count={3} />}>
@@ -70,7 +75,9 @@ export function GerakScreen({ scanned }: { scanned: string }) {
         <Card>
           <CardHeader title="Or scan a checkpoint poster" description="The backup when GPS is weak. Scan every checkpoint of a loop on the same day." />
           <div className="p-5">
-            <CodeEntry label="Checkpoint code" value={code} onChange={setCode} onSubmit={() => void scan.run()} pending={scan.pending} error={scan.fields.code} action="Check in" />
+            {akses.guided ? (
+              <Button size="lg" className="min-h-20 w-full text-xl" onClick={() => setCheckpointOpen(true)}><Text>Enter checkpoint code</Text></Button>
+            ) : <CodeEntry label="Checkpoint code" value={code} onChange={setCode} onSubmit={() => void scan.run()} pending={scan.pending} error={scan.fields.code} action="Check in" />}
           </div>
         </Card>
 
@@ -119,6 +126,9 @@ export function GerakScreen({ scanned }: { scanned: string }) {
           </Async>
         </section>
       </div>
-    </>
+      {akses.guided && <AksesWizard open={checkpointOpen} title="Check in at a checkpoint" step={0} total={1} onClose={() => setCheckpointOpen(false)} onBack={() => undefined} onNext={() => undefined} onSubmit={() => void scan.run().then((result) => result && setCheckpointOpen(false))} pending={scan.pending} submitLabel="Check in">
+        <Input label="Checkpoint code" labelClassName="!text-3xl !font-semibold" value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder="e.g. GABC2345XY" maxLength={16} error={scan.fields.code} hint="Scan the poster with your camera, or type the code printed under it." />
+      </AksesWizard>}
+    </AksesPage>
   );
 }

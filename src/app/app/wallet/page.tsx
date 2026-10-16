@@ -3,6 +3,7 @@
 import { Text } from '@/components/ui/localized-text';
 
 import { Award, Clock, PiggyBank, QrCode as QrIcon, Store, Tag } from 'lucide-react';
+import { AksesPage, AksesReadAloud, useAksesMode } from '@/components/features/akses-mode';
 import { offerTerms } from '@/components/features/offers';
 import { useState } from 'react';
 import { PendingRedemption } from '@/components/features/rewards';
@@ -16,6 +17,7 @@ import { TabPanel, Tabs } from '@/components/ui/tabs';
 import { cn } from '@/lib/cn';
 import { formatDate, formatDateTime } from '@/lib/format';
 import { useApi, usePaged } from '@/lib/hooks';
+import { useT } from '@/lib/i18n';
 import type { SaleView } from '@/lib/types';
 import { formatPoints, formatRM } from '@/shared/domain';
 
@@ -72,6 +74,8 @@ interface OffersData {
 type Tab = 'history' | 'offers' | 'badges' | 'rules';
 
 export default function WalletPage() {
+  const t = useT();
+  const akses = useAksesMode();
   const wallet = useApi<Wallet>('/wallet', { refreshInterval: 5_000 });
   const history = usePaged<Movement>('/wallet/history?limit=15');
   const offers = useApi<OffersData>('/offers');
@@ -79,7 +83,7 @@ export default function WalletPage() {
   const [showCode, setShowCode] = useState(false);
 
   return (
-    <>
+    <AksesPage profile={akses.profile} simple={akses.simple} largeText={akses.largeText} largeTargets={akses.largeTargets}>
       <PageHeader title="Points & XP" description="Points are worth money at township shops. Impact XP has no money value: it is your record of good actions." />
       <Async state={wallet} skeleton={<Skeleton className="h-44 rounded-xl" />}>
         {(w) => (
@@ -95,6 +99,27 @@ export default function WalletPage() {
               />
             ))}
 
+            {akses.simple ? (
+              <Card className="space-y-5 border-brand-200 bg-brand-50 p-6">
+                <div>
+                  <p className="font-semibold text-ink-700"><Text>My points</Text></p>
+                  <p className="mt-2 font-display text-5xl font-bold tabular-nums text-ink-900"><CountUp value={w.totalPoints} /></p>
+                  <p className="mt-2 text-xl font-semibold"><Text>Worth </Text><Text>{formatRM(w.totalPoints)}</Text></p>
+                  <p className="mt-2"><Text>Cash-backed points: </Text><Text>{formatPoints(w.points)}</Text></p>
+                  <p><Text>Offer-backed points: </Text><Text>{formatPoints(w.offerPoints)}</Text></p>
+                  <p className="mt-4 font-semibold"><Text>Impact XP: </Text><Text>{w.xp}</Text><Text>. Level </Text><Text>{w.level.level}</Text></p>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  <Button size="lg" variant="light" onClick={() => setShowCode(true)}>
+                    <QrIcon className="size-5" aria-hidden /><Text>Show my code</Text>
+                  </Button>
+                  <AksesReadAloud
+                    profile={akses.profile}
+                    text={`${t('You have {n} points, worth {rm}.', { n: formatPoints(w.totalPoints), rm: formatRM(w.totalPoints) })} ${t('Impact XP')}: ${w.xp}. ${t('Level')} ${w.level.level}.`}
+                  />
+                </div>
+              </Card>
+            ) : (
             <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
               <div className="wallet-balance-card rounded-xl bg-gradient-to-br from-brand-700 to-brand-900 p-6 text-white shadow-sm">
                 <div className="flex flex-wrap items-start justify-between gap-4">
@@ -145,6 +170,7 @@ export default function WalletPage() {
                 </div>
               </Card>
             </div>
+            )}
 
             <Card className="flex flex-wrap items-center gap-5 border-gold-300/60 bg-gold-50 p-5">
               <span className="grid size-11 shrink-0 place-items-center rounded-full bg-white text-gold-700 shadow-xs">
@@ -354,6 +380,6 @@ export default function WalletPage() {
           </div>
         )}
       </Async>
-    </>
+    </AksesPage>
   );
 }

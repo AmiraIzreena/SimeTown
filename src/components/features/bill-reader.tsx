@@ -5,6 +5,7 @@ import { LocalizedDiv, LocalizedInput } from '@/components/ui/localized-elements
 
 import { CheckCircle2, Download, FileText, FileUp, ShieldCheck, Trash2, TriangleAlert, XCircle } from 'lucide-react';
 import { useState } from 'react';
+import { AksesWizard } from '@/components/features/akses-mode';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader } from '@/components/ui/card';
 import { Input, Select } from '@/components/ui/field';
@@ -75,13 +76,17 @@ function StepList({ steps }: { steps: Step[] }) {
  * the file-safety gate, then confirm or correct what was read. Unsure fields
  * are highlighted. Only the numbers are kept; the file never is.
  */
-export function BillReader({ onSaved }: { onSaved: () => void }) {
+export function BillReader({ onSaved, accessible = false }: { onSaved: () => void; accessible?: boolean }) {
   const toast = useToast();
   const bills = useApi<ConfirmedBill[]>('/jimat/bills');
   const [kind, setKind] = useState<BillKind>('ELECTRICITY');
   const [reading, setReading] = useState(false);
   const [refused, setRefused] = useState<{ message: string; steps: Step[] } | null>(null);
   const [result, setResult] = useState<ReadResult | null>(null);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploadStep, setUploadStep] = useState(0);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [confirmStep, setConfirmStep] = useState(0);
   const [usage, setUsage] = useState('');
   const [amount, setAmount] = useState('');
   const [month, setMonth] = useState('');
@@ -99,6 +104,8 @@ export function BillReader({ onSaved }: { onSaved: () => void }) {
       form.set('kind', kind);
       const r = await api.post<ReadResult>('/jimat/bills', form);
       setResult(r);
+      setConfirmStep(0);
+      setUploadOpen(false);
       const k = r.fields.kind.value ?? kind;
       setKind(k);
       setUsage(r.fields.usage.value === null ? '' : String(k === 'WATER' ? r.fields.usage.value / 1000 : r.fields.usage.value));
@@ -107,6 +114,7 @@ export function BillReader({ onSaved }: { onSaved: () => void }) {
     } catch (error) {
       if (error instanceof ApiError) setRefused({ message: error.message, steps: (error.details?.steps as Step[] | undefined) ?? [] });
       else toast.show('Could not read the file. Please try again.', 'error');
+      if (accessible) setUploadOpen(false);
     } finally {
       setReading(false);
     }
@@ -134,6 +142,17 @@ export function BillReader({ onSaved }: { onSaved: () => void }) {
   const discard = useAction(() => api.post(`/jimat/bills/${result!.billId}/discard`), { onSuccess: () => setResult(null), success: 'Discarded. Nothing was kept.' });
   const unsure = (f: Field<unknown> | undefined) => Boolean(f?.unsure);
   const canConfirm = result && Number.isFinite(usageNumber) && usage !== '' && amountSen !== null && month;
+  const nextConfirm = () => {
+    if (confirmStep === 0 && (!usage || !Number.isFinite(usageNumber) || usageNumber < 0)) {
+      toast.show('Enter a valid usage reading.', 'error');
+      return;
+    }
+    if (confirmStep === 1 && amountSen === null) {
+      toast.show('Enter an amount such as 149.11.', 'error');
+      return;
+    }
+    setConfirmStep((step) => step + 1);
+  };
 
   return (
     <Card>
@@ -146,7 +165,7 @@ export function BillReader({ onSaved }: { onSaved: () => void }) {
         }
       />
       <div className="space-y-5 p-5">
-        {!result && (
+        {!result && !accessible && (
           <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
             <LocalizedDiv className="flex flex-wrap gap-2" role="group" aria-label="Kind of bill">
               {(['ELECTRICITY', 'WATER'] as const).map((k) => (
@@ -166,6 +185,11 @@ export function BillReader({ onSaved }: { onSaved: () => void }) {
             </div>
           </div>
         )}
+        {!result && accessible && (
+          <Button size="lg" className="min-h-20 w-full text-xl" onClick={() => { setUploadStep(0); setUploadFile(null); setUploadOpen(true); }}>
+            <FileUp className="size-6" aria-hidden /><Text>Read a bill one step at a time</Text>
+          </Button>
+        )}
 
         {refused && (
           <div className="animate-rise space-y-3 rounded-lg border border-accent-200 bg-accent-50 p-4">
@@ -178,7 +202,7 @@ export function BillReader({ onSaved }: { onSaved: () => void }) {
           </div>
         )}
 
-        {result && (
+        {result && !accessible && (
           <div className="animate-rise grid gap-5 lg:grid-cols-[1fr_1.1fr]">
             <div className="space-y-4">
               <div className="rounded-lg bg-ink-50 p-4">
@@ -221,6 +245,65 @@ export function BillReader({ onSaved }: { onSaved: () => void }) {
               </div>
             </div>
           </div>
+        )}
+        {accessible && (
+          <>
+            <AksesWizard
+              open={uploadOpen}
+              title="Read a bill"
+              step={uploadStep}
+              total={2}
+              onClose={() => setUploadOpen(false)}
+              onBack={() => setUploadStep((step) => step - 1)}
+              onNext={() => setUploadStep(1)}
+              onSubmit={() => {
+                if (!uploadFile) {
+                  toast.show('Choose a bill photo or PDF first.', 'error');
+                  return;
+                }
+                void upload(uploadFile);
+              }}
+              pending={reading}
+              submitLabel="Read bill"
+            >
+              {uploadStep === 0 ? (
+                <div className="space-y-4">
+                  <p className="text-3xl font-semibold"><Text>Which bill do you want to read?</Text></p>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Button size="lg" variant={kind === 'ELECTRICITY' ? 'primary' : 'secondary'} className="min-h-24 whitespace-normal text-2xl" onClick={() => setKind('ELECTRICITY')}><Text>Electricity bill</Text></Button>
+                    <Button size="lg" variant={kind === 'WATER' ? 'primary' : 'secondary'} className="min-h-24 text-2xl" onClick={() => setKind('WATER')}><Text>Water bill</Text></Button>
+                  </div>
+                </div>
+              ) : (
+                <label className="flex min-h-40 cursor-pointer flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed border-brand-500 bg-brand-50 px-6 py-8 text-center text-2xl font-semibold text-brand-800">
+                  <FileUp className="size-12" aria-hidden />
+                  <Text>{uploadFile?.name ?? 'Choose a bill photo or PDF'}</Text>
+                  <LocalizedInput type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="sr-only" onChange={(event) => setUploadFile(event.target.files?.[0] ?? null)} />
+                </label>
+              )}
+            </AksesWizard>
+            {result && (
+              <AksesWizard open title="Confirm your bill" step={confirmStep} total={4} onClose={() => void discard.run()} onBack={() => setConfirmStep((step) => step - 1)} onNext={nextConfirm} onSubmit={() => void confirm.run()} pending={confirm.pending} submitLabel="Confirm and save">
+                {confirmStep < 3 ? (
+                  <div className="space-y-4">
+                    {confirmStep === 0 && <Input label={kind === 'WATER' ? 'Water used (m³)' : 'Electricity used (kWh)'} labelClassName="!text-3xl !font-semibold" value={usage} onChange={(event) => setUsage(event.target.value)} inputMode="decimal" hint={unsure(result.fields.usage) ? 'Please check' : 'Read from the bill'} error={confirm.fields.usage} />}
+                    {confirmStep === 1 && <Input label="Amount due (RM)" labelClassName="!text-3xl !font-semibold" value={amount} onChange={(event) => setAmount(event.target.value)} inputMode="decimal" hint={unsure(result.fields.amountSen) ? 'Please check' : 'Read from the bill'} error={confirm.fields.amountSen ?? (amount && amountSen === null ? 'Enter an amount such as 149.11.' : undefined)} />}
+                    {confirmStep === 2 && <Select label="The month it is for" labelClassName="!text-3xl !font-semibold" value={month} onChange={(event) => setMonth(event.target.value)} hint={unsure(result.fields.month) ? 'Please check' : 'From the billing period'} error={confirm.fields.month}>{months.map((m) => <option key={m} value={m}><Text>{formatMonth(m)}</Text></option>)}</Select>}
+                    {[result.fields.usage, result.fields.amountSen, result.fields.month].some(unsure) && <p className="rounded-md bg-warning-50 px-4 py-3 text-lg text-warning-700"><Text>Please check this value. It may not have been read correctly.</Text></p>}
+                    <p className="text-lg text-ink-600"><Text>The bill file is not kept.</Text></p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <p className="text-3xl font-semibold"><Text>Are these bill details correct?</Text></p>
+                    <p className="text-2xl"><Text>{kind === 'WATER' ? 'Water used' : 'Electricity used'}:</Text> {usage} {kind === 'WATER' ? 'm³' : 'kWh'}</p>
+                    <p className="text-2xl"><Text>Amount due:</Text> <Text>RM</Text> {amount}</p>
+                    <p className="text-2xl"><Text>Month:</Text> <Text>{formatMonth(month)}</Text></p>
+                    <Button size="lg" variant="danger" onClick={() => void discard.run()} disabled={discard.pending}><Trash2 className="size-5" aria-hidden /><Text>Discard bill</Text></Button>
+                  </div>
+                )}
+              </AksesWizard>
+            )}
+          </>
         )}
 
         {bills.data && bills.data.length > 0 && (

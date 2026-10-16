@@ -55,10 +55,10 @@ function Frame({ title, description, onClose, children, footer }: Omit<DialogPro
 }
 
 /** A centred dialog on larger screens and a bottom sheet on phones. */
-export function Modal({ open, wide, ...props }: DialogProps & { wide?: boolean }) {
+export function Modal({ open, wide, className, ...props }: DialogProps & { wide?: boolean; className?: string }) {
   const dialog = useDialog(open, props.onClose);
   return (
-    <LocalizedDialog {...dialog} className={cn('modal', wide && 'wide')} aria-label={props.title}>
+    <LocalizedDialog {...dialog} className={cn('modal', wide && 'wide', className)} aria-label={props.title}>
       {open && <Frame {...props} />}
     </LocalizedDialog>
   );

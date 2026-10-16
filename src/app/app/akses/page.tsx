@@ -3,7 +3,8 @@
 import { Text } from '@/components/ui/localized-text';
 
 import { Accessibility, HeartHandshake, Lock, MapPin, Plus, Trash2, TriangleAlert, UserRound, Volume2 } from 'lucide-react';
-import { useState, type FormEvent } from 'react';
+import { useContext, useState, type FormEvent } from 'react';
+import { AksesViewContext, AksesWizard, type AksesProfile } from '@/components/features/akses-mode';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, PageHeader } from '@/components/ui/card';
 import { ConfirmDialog, Modal } from '@/components/ui/dialog';
@@ -14,17 +15,8 @@ import { api } from '@/lib/api';
 import { timeAgo } from '@/lib/format';
 import { useAction, useApi } from '@/lib/hooks';
 import { speak, useLang } from '@/lib/i18n';
-import { ACCESS_NEEDS, ACCESS_NEED_LABELS, PLACE_KINDS, PLACE_KIND_LABELS, type AccessNeed, type PlaceKind } from '@/shared/domain';
+import { ACCESS_NEEDS, ACCESS_NEED_LABELS, PLACE_KINDS, PLACE_KIND_LABELS, type PlaceKind } from '@/shared/domain';
 
-interface Profile {
-  needs: AccessNeed[];
-  simpleMode: boolean;
-  readAloud: boolean;
-  flashAlerts: boolean;
-  priorityHelp: boolean;
-  priorityNote: string | null;
-  consentAt: string | null;
-}
 interface Carers {
   myCarers: { id: string; status: 'PENDING' | 'ACTIVE'; full_name: string }[];
   caringFor: { id: string; status: 'PENDING' | 'ACTIVE'; full_name: string; zone_name?: string; zone_status?: string; checked_in?: string | null }[];
@@ -44,21 +36,24 @@ const PLACE_STATUS = { VERIFIED: { label: 'Checked', tone: 'success' as const },
 /** Akses+ (proposal 6.6): tell the app your access needs once, and every feature adapts. */
 export default function AksesPage() {
   const lang = useLang();
-  const profile = useApi<Profile>('/me/access');
+  const profile = useApi<AksesProfile>('/me/access');
   const carers = useApi<Carers>('/carers');
   const places = useApi<Place[]>('/access-places');
-  const [draft, setDraft] = useState<Profile | null>(null);
+  const [draft, setDraft] = useState<AksesProfile | null>(null);
   const [consent, setConsent] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [suggesting, setSuggesting] = useState(false);
   const [blocked, setBlocked] = useState<Place | null>(null);
   const [carerCode, setCarerCode] = useState('');
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [wizardStep, setWizardStep] = useState(0);
+  const viewOverride = useContext(AksesViewContext);
 
   const p = draft ?? profile.data;
-  const edit = (change: Partial<Profile>) => p && setDraft({ ...p, ...change });
+  const edit = (change: Partial<AksesProfile>) => p && setDraft({ ...p, ...change });
   const save = useAction(
     () =>
-      api.post<Profile>('/me/access', {
+      api.post<AksesProfile>('/me/access', {
         needs: p!.needs,
         simpleMode: p!.simpleMode,
         readAloud: p!.readAloud,
@@ -75,7 +70,7 @@ export default function AksesPage() {
       success: 'Saved. The app now adapts to you.',
     },
   );
-  const remove = useAction(() => api.post<Profile>('/me/access/delete'), {
+  const remove = useAction(() => api.post<AksesProfile>('/me/access/delete'), {
     onSuccess: (cleared) => {
       setDraft(null);
       setConfirmDelete(false);
@@ -109,6 +104,7 @@ export default function AksesPage() {
   });
 
   const needsConsent = Boolean(p && (p.needs.length > 0 || p.priorityHelp) && !profile.data?.consentAt);
+  const guided = viewOverride ?? Boolean(profile.data?.simpleMode || profile.data?.needs.length);
 
   return (
     <>
@@ -126,6 +122,15 @@ export default function AksesPage() {
                       <Lock className="size-3.5" aria-hidden /><Text>Private</Text></Badge>
                   }
                 />
+                {guided ? (
+                  <div className="flex flex-wrap gap-3 p-5">
+                    <Button size="lg" className="min-h-20 flex-1 text-xl" onClick={() => { setDraft(profile.data ?? null); setWizardStep(0); setWizardOpen(true); }}>
+                      <Text>Update access needs one step at a time</Text>
+                    </Button>
+                    {profile.data?.consentAt && <Button size="lg" variant="ghost" onClick={() => setConfirmDelete(true)}><Trash2 className="size-5" aria-hidden /><Text>Delete my access needs</Text></Button>}
+                  </div>
+                ) : (
+                <>
                 <div className="grid gap-6 p-5 lg:grid-cols-2">
                   <fieldset className="space-y-2.5">
                     <legend className="mb-2 text-[15px] font-semibold text-ink-900"><Text>What applies to you? (optional)</Text></legend>
@@ -168,6 +173,45 @@ export default function AksesPage() {
                     )}
                   </div>
                 </div>
+                </>
+                )}
+                <AksesWizard
+                  open={wizardOpen}
+                  title="Akses+ preferences"
+                  step={wizardStep}
+                  total={5}
+                  onClose={() => setWizardOpen(false)}
+                  onBack={() => setWizardStep((step) => step - 1)}
+                  onNext={() => setWizardStep((step) => step + 1)}
+                  onSubmit={() => {
+                    if (needsConsent && !consent) return;
+                    void save.run().then((ok) => ok && setWizardOpen(false));
+                  }}
+                  pending={save.pending}
+                  submitLabel="Save"
+                >
+                  {wizardStep === 0 && (
+                    <fieldset className="space-y-3">
+                      <legend className="mb-3 text-3xl font-semibold"><Text>What support would help you?</Text></legend>
+                      {ACCESS_NEEDS.map((need) => <Checkbox key={need} label={ACCESS_NEED_LABELS[need]} checked={p.needs.includes(need)} onChange={(event) => edit({ needs: event.target.checked ? [...p.needs, need] : p.needs.filter((item) => item !== need) })} />)}
+                    </fieldset>
+                  )}
+                  {wizardStep === 1 && <Switch label="Simple Mode" hint="Four big buttons on your home screen: Help, Visitors, Flood, My points." checked={p.simpleMode} onChange={(value) => edit({ simpleMode: value })} />}
+                  {wizardStep === 2 && (
+                    <div>
+                      <Switch label="Read alerts aloud" hint="Flood warnings and Simple Mode are read out by your phone’s own voice." checked={p.readAloud} onChange={(value) => edit({ readAloud: value })} />
+                      <Button size="lg" variant="secondary" className="mt-4 min-h-16" onClick={() => speak(lang === 'ms' ? 'Ini contoh suara SimeTown.' : 'This is how SimeTown sounds when it reads aloud.', lang)}><Volume2 className="size-5" aria-hidden /><Text>Try it</Text></Button>
+                    </div>
+                  )}
+                  {wizardStep === 3 && <Switch label="Flash and vibrate for alerts" hint="For deaf and hard-of-hearing residents. One flash a second, within the safe limit." checked={p.flashAlerts} onChange={(value) => edit({ flashAlerts: value })} />}
+                  {wizardStep === 4 && (
+                    <div className="space-y-5">
+                      <Switch label="Priority help list for floods" hint="In a flood warning, staff phone homes on this list first." checked={p.priorityHelp} onChange={(value) => edit({ priorityHelp: value })} />
+                      {p.priorityHelp && <Input label="Anything staff should know (optional)" labelClassName="!text-3xl !font-semibold" value={p.priorityNote ?? ''} onChange={(event) => edit({ priorityNote: event.target.value })} maxLength={200} placeholder="e.g. Uses a walking frame; lives alone" />}
+                      {needsConsent && <Checkbox label="I agree that SimeTown keeps these access needs to adapt the app for me, and shows my name, address and note to duty staff during a flood alert if I join the priority list. I can delete them at any time." checked={consent} onChange={(event) => setConsent(event.target.checked)} error={save.fields.consent} />}
+                    </div>
+                  )}
+                </AksesWizard>
               </Card>
             )
           }

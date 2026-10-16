@@ -3,8 +3,9 @@
 import { Text } from '@/components/ui/localized-text';
 
 import { Droplets, Lightbulb, Sun, TrendingDown, TrendingUp, Zap } from 'lucide-react';
-import type { FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { BillReader } from '@/components/features/bill-reader';
+import { AksesPage, AksesWizard, useAksesMode } from '@/components/features/akses-mode';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, PageHeader } from '@/components/ui/card';
 import { BarChart } from '@/components/ui/charts';
@@ -56,8 +57,15 @@ function Change({ label, pct, icon: Icon }: { label: string; pct: number | null;
 }
 
 export default function JimatPage() {
+  const akses = useAksesMode();
   const overview = useApi<Overview>('/jimat');
   const months = openMonths();
+  const [guidedOpen, setGuidedOpen] = useState(false);
+  const [guidedStep, setGuidedStep] = useState(0);
+  const [guidedMonth, setGuidedMonth] = useState(months[0]!);
+  const [guidedKwh, setGuidedKwh] = useState('');
+  const [guidedM3, setGuidedM3] = useState('');
+  const [guidedError, setGuidedError] = useState('');
   const submit = useAction(
     (body: { month: string; electricityKwh: number; waterLitres: number }) => api.post<{ saved: boolean; reward: ActionRewardView }>('/jimat/readings', body),
     {
@@ -75,9 +83,31 @@ export default function JimatPage() {
     const data = Object.fromEntries(new FormData(form)) as Record<string, string>;
     void submit.run({ month: data.month!, electricityKwh: Math.round(Number(data.kwh)), waterLitres: Math.round(Number(data.m3) * 1000) }).then((ok) => ok && form.reset());
   };
+  const nextGuided = () => {
+    if (guidedStep === 1 && (!guidedKwh || !Number.isFinite(Number(guidedKwh)) || Number(guidedKwh) < 0)) {
+      setGuidedError('Please enter a valid electricity reading.');
+      return;
+    }
+    setGuidedError('');
+    setGuidedStep((step) => step + 1);
+  };
+  const saveGuided = () => {
+    if (!guidedM3 || !Number.isFinite(Number(guidedM3)) || Number(guidedM3) < 0) {
+      setGuidedError('Please enter a valid water reading.');
+      return;
+    }
+    void submit.run({ month: guidedMonth, electricityKwh: Math.round(Number(guidedKwh)), waterLitres: Math.round(Number(guidedM3) * 1000) }).then((ok) => {
+      if (ok) {
+        setGuidedOpen(false);
+        setGuidedStep(0);
+        setGuidedKwh('');
+        setGuidedM3('');
+      }
+    });
+  };
 
   return (
-    <>
+    <AksesPage profile={akses.profile} simple={akses.simple} largeText={akses.largeText} largeTargets={akses.largeTargets}>
       <PageHeader title="Jimat" description="Read your electricity and water bills from a photo or PDF, or type the readings, and see how your home’s use changes. Savings read from bills can earn offer-backed points." />
       <div className="space-y-6">
         <Async state={overview} skeleton={<Skeleton className="h-64 rounded-lg" />}>
@@ -125,10 +155,15 @@ export default function JimatPage() {
           )}
         </Async>
 
-        <BillReader onSaved={() => void overview.mutate()} />
+        <BillReader onSaved={() => void overview.mutate()} accessible={akses.guided} />
 
         <Card>
           <CardHeader title="Or type your readings" description="One entry per home per month, for this month or last month. Typed readings earn Impact XP only." />
+          {akses.guided ? (
+            <div className="p-5">
+              <Button size="lg" className="min-h-20 w-full text-xl" onClick={() => { setGuidedStep(0); setGuidedOpen(true); }}><Text>Enter readings one at a time</Text></Button>
+            </div>
+          ) : (
           <form method="post" onSubmit={onSubmit} className="grid gap-4 p-5 sm:grid-cols-4 sm:items-start" noValidate>
             <Select label="Month" name="month" defaultValue={months[0]} error={submit.fields.month}>
               {months.map((m) => (
@@ -141,6 +176,7 @@ export default function JimatPage() {
             <Input label="Water (m³)" name="m3" inputMode="decimal" type="number" min={0} max={10000} step={0.1} required error={submit.fields.waterLitres} />
             <Button type="submit" pending={submit.pending} className="sm:mt-[26px]"><Text>Save readings</Text></Button>
           </form>
+          )}
         </Card>
 
         <Card className="flex flex-wrap items-center justify-between gap-4 p-5">
@@ -164,6 +200,19 @@ export default function JimatPage() {
           )}
         </Card>
       </div>
-    </>
+      {akses.guided && (
+        <AksesWizard open={guidedOpen} title="Enter your readings" step={guidedStep} total={3} onClose={() => setGuidedOpen(false)} onBack={() => setGuidedStep((step) => step - 1)} onNext={nextGuided} onSubmit={saveGuided} pending={submit.pending} submitLabel="Save readings">
+          {guidedStep === 0 ? (
+            <Select label="Month" labelClassName="!text-3xl !font-semibold" value={guidedMonth} onChange={(event) => setGuidedMonth(event.target.value)}>
+              {months.map((month) => <option key={month} value={month}><Text>{formatMonth(month)}</Text></option>)}
+            </Select>
+          ) : guidedStep === 1 ? (
+            <Input label="Electricity (kWh)" labelClassName="!text-3xl !font-semibold" type="number" min={0} max={100000} step={1} inputMode="numeric" value={guidedKwh} onChange={(event) => { setGuidedKwh(event.target.value); setGuidedError(''); }} error={guidedError || submit.fields.electricityKwh} />
+          ) : (
+            <Input label="Water (m³)" labelClassName="!text-3xl !font-semibold" type="number" min={0} max={10000} step={0.1} inputMode="decimal" value={guidedM3} onChange={(event) => { setGuidedM3(event.target.value); setGuidedError(''); }} error={guidedError || submit.fields.waterLitres} />
+          )}
+        </AksesWizard>
+      )}
+    </AksesPage>
   );
 }

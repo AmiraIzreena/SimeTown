@@ -2,7 +2,9 @@
 
 import { Text } from '@/components/ui/localized-text';
 
-import { DoorOpen, Droplets, LifeBuoy, Volume2, Wallet, type LucideIcon } from 'lucide-react';
+import {
+  Accessibility, Bike, Bot, DoorOpen, Droplets, HandHeart, House, LifeBuoy, Recycle, Repeat2, Sprout, TriangleAlert, UserRound, Volume2, Wallet, Zap, type LucideIcon,
+} from 'lucide-react';
 import { LocalizedLink as Link } from '@/components/ui/localized-elements';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -35,6 +37,19 @@ export function SimpleHome({ onFullApp }: { onFullApp: () => void }) {
     { label: t('Visitors'), icon: DoorOpen, href: '/app/tamu', tone: 'bg-brand-700 text-white hover:bg-brand-800' },
     { label: t('Flood'), icon: Droplets, href: '/app/banjir', tone: myZone && myZone.status !== 'NORMAL' ? 'bg-warning-600 text-white hover:bg-warning-700' : 'bg-[#1f5f8b] text-white hover:bg-[#184b6e]' },
     { label: t('My points'), icon: Wallet, href: '/app/wallet', tone: 'bg-gold-500 text-ink-900 hover:bg-gold-300' },
+  ];
+  const moreTiles: { label: string; icon: LucideIcon; href: string }[] = [
+    { label: 'Kitar', icon: Recycle, href: '/app/kitar' },
+    { label: 'Gerak', icon: Bike, href: '/app/gerak' },
+    { label: 'Lapor', icon: TriangleAlert, href: '/app/lapor' },
+    { label: 'Neighbours', icon: HandHeart, href: '/app/jiran' },
+    { label: 'Share', icon: Repeat2, href: '/app/kongsi' },
+    { label: 'Save energy', icon: Zap, href: '/app/jimat' },
+    { label: 'Garden', icon: Sprout, href: '/app/taman' },
+    { label: 'Akses+', icon: Accessibility, href: '/app/akses' },
+    { label: 'Assistant', icon: Bot, href: '/app/assistant' },
+    { label: 'Home services', icon: House, href: '/app/home-services' },
+    { label: 'Account', icon: UserRound, href: '/app/account' },
   ];
 
   return (
@@ -74,6 +89,21 @@ export function SimpleHome({ onFullApp }: { onFullApp: () => void }) {
           );
         })}
       </div>
+      <section aria-labelledby="more-services-title" className="space-y-3">
+        <h2 id="more-services-title" className="text-xl font-bold">{t('More services')}</h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {moreTiles.map((tile) => (
+            <Link
+              key={tile.href}
+              href={tile.href}
+              className="flex min-h-20 items-center gap-4 rounded-xl border-2 border-ink-200 bg-white px-5 py-4 text-xl font-bold text-ink-900 shadow-xs transition-colors hover:border-brand-500 hover:bg-brand-50"
+            >
+              <tile.icon className="size-8 shrink-0 text-brand-700" aria-hidden />
+              <Text>{tile.label}</Text>
+            </Link>
+          ))}
+        </div>
+      </section>
       <ConfirmDialog open={asking} onClose={() => setAsking(false)} onConfirm={() => void sos.run()} title={t('Call the guardhouse now?')} confirmLabel={t('Send SOS')} destructive pending={sos.pending}>
         <p><Text>A guard is told your address at once. In a medical emergency, also call 999.</Text></p>
       </ConfirmDialog>

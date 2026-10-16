@@ -7,6 +7,7 @@ import { Bot, Building2, Copy, ExternalLink, History, Plus, Send, ShieldAlert, T
 import { LocalizedLink as Link } from '@/components/ui/localized-elements';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { AssistantActionCard, type AssistantAction } from '@/components/features/assistant-action';
+import { AksesPage, useAksesMode } from '@/components/features/akses-mode';
 import { PreviewBadge } from '@/components/features/preview';
 import { Button } from '@/components/ui/button';
 import { Card, PageHeader } from '@/components/ui/card';
@@ -74,6 +75,7 @@ const SUGGESTIONS = ['Is my area flooding?', 'How many points do I have?', 'Make
  * pass a question to the township office, whose reply comes back here.
  */
 export default function AssistantPage() {
+  const akses = useAksesMode();
   const lang = useLang();
   const [messages, setMessages] = useState<Message[]>(GREETING);
   const [input, setInput] = useState('');
@@ -174,7 +176,7 @@ export default function AssistantPage() {
 
   const s = status.data;
   return (
-    <>
+    <AksesPage profile={akses.profile} simple={akses.simple} largeText={akses.largeText} largeTargets={akses.largeTargets}>
       <PageHeader
         title="SimeTown Assistant"
         description="Ask about City of Elmina, Sime Darby Property and your own SimeTown account, in English or Bahasa Malaysia. It acts only after you confirm, and hands over to the township office when unsure."
@@ -269,15 +271,16 @@ export default function AssistantPage() {
         <div className="border-t border-ink-100 p-4">
           <div className="mb-3 flex flex-wrap gap-2">
             {SUGGESTIONS.map((q) => (
-              <button key={q} type="button" onClick={() => void ask(translate(lang, q))} className="rounded-full border border-ink-200 bg-white px-3 py-1.5 text-sm text-ink-700 hover:border-brand-500 hover:text-brand-800">
+              <button key={q} type="button" onClick={() => void ask(translate(lang, q))} className={cn('rounded-full border border-ink-200 bg-white px-3 py-1.5 text-sm text-ink-700 hover:border-brand-500 hover:text-brand-800', akses.guided && 'min-h-16 rounded-xl px-5 text-lg font-semibold')}>
                 <Text>{q}</Text>
               </button>
             ))}
           </div>
+          {akses.guided && <p className="mb-2 text-2xl font-semibold"><Text>What would you like to ask?</Text></p>}
           <form method="post" onSubmit={submit} className="flex gap-2">
             <label htmlFor="ask" className="sr-only"><Text>Your question</Text></label>
-            <LocalizedInput id="ask" value={input} onChange={(event) => setInput(event.target.value)} maxLength={1000} placeholder="Ask about the township…" className="control flex-1" autoComplete="off" />
-            <Button type="submit" disabled={!input.trim() || thinking}>
+            <LocalizedInput id="ask" value={input} onChange={(event) => setInput(event.target.value)} maxLength={1000} placeholder="Ask about the township…" className={cn('control flex-1', akses.guided && 'min-h-20 text-2xl')} autoComplete="off" />
+            <Button type="submit" size={akses.guided ? 'lg' : 'md'} disabled={!input.trim() || thinking}>
               <Send className="size-4" aria-hidden /><Text>Ask</Text></Button>
           </form>
           <p className="mt-3 flex items-start gap-1.5 text-xs text-ink-500">
@@ -295,6 +298,6 @@ export default function AssistantPage() {
       <ConfirmDialog open={confirmClear} onClose={() => setConfirmClear(false)} onConfirm={() => void clearAll.run()} title="Delete all your chats?" confirmLabel="Delete all" destructive pending={clearAll.pending}>
         <Text>Every saved conversation is removed from your account. This cannot be undone.</Text>
       </ConfirmDialog>
-    </>
+    </AksesPage>
   );
 }

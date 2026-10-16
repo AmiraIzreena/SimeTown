@@ -8,7 +8,7 @@ import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 import { useHydrated } from '@/lib/use-hydrated';
 
-type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'light';
+type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'light' | 'success';
 type Size = 'sm' | 'md' | 'lg';
 
 const base =
@@ -22,6 +22,7 @@ const variants: Record<Variant, string> = {
   ghost: 'text-ink-700 hover:bg-ink-100',
   danger: 'bg-accent-600 text-white shadow-xs hover:bg-accent-700',
   light: 'bg-white text-brand-800 shadow-sm hover:bg-brand-50',
+  success: 'bg-success-700 text-white shadow-xs hover:bg-success-600',
 };
 
 const sizes: Record<Size, string> = {

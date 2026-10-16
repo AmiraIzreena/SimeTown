@@ -3,6 +3,7 @@
 import { Text } from '@/components/ui/localized-text';
 
 import { CalendarDays, Flag, MapPin, Plus, Users } from 'lucide-react';
+import { AksesPage, useAksesMode } from '@/components/features/akses-mode';
 import { useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, PageHeader } from '@/components/ui/card';
@@ -13,6 +14,7 @@ import { TabPanel, Tabs } from '@/components/ui/tabs';
 import { api } from '@/lib/api';
 import { formatDateTime, rewardMessage, timeAgo } from '@/lib/format';
 import { useAction, usePaged } from '@/lib/hooks';
+import { useT } from '@/lib/i18n';
 import type { ActionRewardView } from '@/lib/types';
 import type { PostType } from '@/shared/domain';
 
@@ -53,6 +55,7 @@ export interface BoardKind {
  * same in each: post, neighbours respond, the author confirms, XP is given.
  */
 export function PostsBoard({ title, description, kinds }: { title: string; description: string; kinds: BoardKind[] }) {
+  const akses = useAksesMode();
   const [type, setType] = useState<PostType>(kinds[0]!.type);
   const kind = kinds.find((k) => k.type === type)!;
   const posts = usePaged<Post>(`/posts?type=${type}&limit=12`);
@@ -68,12 +71,12 @@ export function PostsBoard({ title, description, kinds }: { title: string; descr
   const close = useAction((id: string) => api.post(`/posts/${id}/close`), { onSuccess: reload, success: 'Closed.' });
 
   return (
-    <>
+    <AksesPage profile={akses.profile} simple={akses.simple} largeText={akses.largeText} largeTargets={akses.largeTargets}>
       <PageHeader
         title={title}
         description={description}
         action={
-          <Button onClick={() => setCreating(true)}>
+          <Button size={akses.simple ? 'lg' : 'md'} onClick={() => setCreating(true)}>
             <Plus className="size-4" aria-hidden />
             <Text>{kind.create}</Text>
           </Button>
@@ -90,9 +93,9 @@ export function PostsBoard({ title, description, kinds }: { title: string; descr
             <Text>{kind.empty}</Text>
           </EmptyState>
         ) : (
-          <div className={`grid gap-4 md:grid-cols-2 ${title === 'Jiran' ? 'community-post-grid' : 'sharing-post-grid'}`}>
+          <div className={`grid gap-4 ${akses.simple ? '' : 'md:grid-cols-2'} ${title === 'Jiran' ? 'community-post-grid' : 'sharing-post-grid'}`}>
             {posts.items.map((post, index) => (
-              <Card key={post.id} className="post-card-enter flex flex-col p-5" style={{ animationDelay: `${Math.min(index, 8) * 60}ms` }}>
+              <Card key={post.id} className={`post-card-enter flex flex-col ${akses.simple ? 'p-6' : 'p-5'}`} style={{ animationDelay: `${Math.min(index, 8) * 60}ms` }}>
                 <div className="flex flex-wrap items-center gap-2">
                   {post.by_township && <Badge tone="brand"><Text>Township</Text></Badge>}
                   {post.is_mine && <Badge><Text>Yours</Text></Badge>}
@@ -102,8 +105,8 @@ export function PostsBoard({ title, description, kinds }: { title: string; descr
                     {post.author_name} · <Text>{timeAgo(post.created_at)}</Text>
                   </span>
                 </div>
-                <h3 className="mt-3 text-[17px] font-semibold">{post.title}</h3>
-                <p className="mt-1 flex-1 whitespace-pre-line text-[15px] text-ink-600">{post.body}</p>
+                <h3 className={`mt-3 font-semibold ${akses.simple ? 'text-xl' : 'text-[17px]'}`}>{post.title}</h3>
+                <p className={`mt-1 flex-1 whitespace-pre-line text-ink-600 ${akses.simple ? 'text-lg' : 'text-[15px]'}`}>{post.body}</p>
                 <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-ink-500">
                   {post.starts_at && (
                     <span className="inline-flex items-center gap-1.5">
@@ -132,7 +135,7 @@ export function PostsBoard({ title, description, kinds }: { title: string; descr
                         {r.status === 'CONFIRMED' ? (
                           <Badge tone="success"><Text>Confirmed</Text></Badge>
                         ) : (
-                          <Button size="sm" variant="secondary" onClick={() => confirm.run(post.id, r.user_id)} disabled={confirm.pending}>
+                          <Button size={akses.simple ? 'lg' : 'sm'} variant="secondary" onClick={() => confirm.run(post.id, r.user_id)} disabled={confirm.pending}>
                             <Text>{kind.confirm}</Text>
                           </Button>
                         )}
@@ -144,13 +147,13 @@ export function PostsBoard({ title, description, kinds }: { title: string; descr
                 <div className="mt-4 flex flex-wrap items-center gap-2">
                   {post.is_mine ? (
                     post.status === 'OPEN' && (
-                      <Button size="sm" variant="ghost" onClick={() => close.run(post.id)} disabled={close.pending}><Text>Close</Text></Button>
+                      <Button size={akses.simple ? 'lg' : 'sm'} variant="ghost" onClick={() => close.run(post.id)} disabled={close.pending}><Text>Close</Text></Button>
                     )
                   ) : post.my_response ? (
                     <Badge tone={post.my_response === 'CONFIRMED' ? 'success' : 'brand'}><Text>{post.my_response === 'CONFIRMED' ? 'Confirmed' : kind.responded}</Text></Badge>
                   ) : (
                     post.status === 'OPEN' && (
-                      <Button size="sm" onClick={() => respond.run(post.id)} disabled={respond.pending}>
+                      <Button size={akses.simple ? 'lg' : 'sm'} onClick={() => respond.run(post.id)} disabled={respond.pending}>
                         <Text>{kind.respond}</Text>
                       </Button>
                     )
@@ -171,56 +174,94 @@ export function PostsBoard({ title, description, kinds }: { title: string; descr
         )}
       </TabPanel>
 
-      <CreatePost kind={kind} open={creating} onClose={() => setCreating(false)} onCreated={reload} />
+      <CreatePost kind={kind} open={creating} accessible={akses.guided} onClose={() => setCreating(false)} onCreated={reload} />
       <FlagPost post={flagging} onClose={() => setFlagging(null)} onFlagged={reload} />
-    </>
+    </AksesPage>
   );
 }
 
-function CreatePost({ kind, open, onClose, onCreated }: { kind: BoardKind; open: boolean; onClose: () => void; onCreated: () => void }) {
+function CreatePost({ kind, open, accessible, onClose, onCreated }: { kind: BoardKind; open: boolean; accessible: boolean; onClose: () => void; onCreated: () => void }) {
+  const t = useT();
+  const [step, setStep] = useState(0);
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [location, setLocation] = useState('');
+  const [startsAt, setStartsAt] = useState('');
+  const [capacity, setCapacity] = useState('');
+  const [guidedError, setGuidedError] = useState('');
+  const steps = kind.type === 'EVENT' ? ['title', 'body', 'location', 'startsAt', 'capacity'] as const : ['title', 'body', 'location'] as const;
+  const currentStep = steps[step];
+  const close = () => {
+    setStep(0);
+    setTitle('');
+    setBody('');
+    setLocation('');
+    setStartsAt('');
+    setCapacity('');
+    setGuidedError('');
+    onClose();
+  };
   const create = useAction((body: Record<string, unknown>) => api.post('/posts', body), {
     success: 'Posted.',
     onSuccess: () => {
       onCreated();
-      onClose();
+      close();
     },
   });
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const form = Object.fromEntries(new FormData(event.currentTarget)) as Record<string, string>;
     void create.run({
       type: kind.type,
-      title: form.title,
-      body: form.body,
-      location: form.location || undefined,
-      startsAt: form.startsAt ? new Date(form.startsAt).toISOString() : undefined,
-      capacity: form.capacity ? Number(form.capacity) : undefined,
+      title: title.trim(),
+      body: body.trim(),
+      location: location.trim() || undefined,
+      startsAt: startsAt ? new Date(startsAt).toISOString() : undefined,
+      capacity: capacity ? Number(capacity) : undefined,
     });
+  };
+  const next = () => {
+    const invalid = currentStep === 'title' && !title.trim()
+      ? 'Please enter a title.'
+      : currentStep === 'body' && !body.trim()
+        ? 'Please enter details.'
+        : currentStep === 'startsAt' && !startsAt
+          ? 'Please choose a date and time.'
+          : '';
+    if (invalid) {
+      setGuidedError(invalid);
+      return;
+    }
+    setGuidedError('');
+    setStep((current) => Math.min(current + 1, steps.length - 1));
   };
   const f = create.fields;
   return (
     <Modal
       open={open}
-      onClose={onClose}
+      wide={accessible}
+      className={accessible ? 'guided-modal' : undefined}
+      onClose={close}
       title={kind.create}
-      description={kind.xpNote}
+      description={accessible ? t('Question {step} of {total}', { step: step + 1, total: steps.length }) : kind.xpNote}
       footer={
         <>
-          <Button variant="secondary" onClick={onClose}><Text>Cancel</Text></Button>
-          <Button type="submit" form="create-post" pending={create.pending}><Text>Post</Text></Button>
+          {accessible && step > 0 && <Button size="lg" variant="secondary" onClick={() => setStep((current) => current - 1)}><Text>Back</Text></Button>}
+          <Button size={accessible ? 'lg' : 'md'} variant="secondary" onClick={close}><Text>Cancel</Text></Button>
+          {accessible && step < steps.length - 1 ? (
+            <Button size="lg" onClick={next}><Text>Next</Text></Button>
+          ) : (
+            <Button size={accessible ? 'lg' : 'md'} type="submit" form="create-post" pending={create.pending}><Text>Post</Text></Button>
+          )}
         </>
       }
     >
+      {accessible && <p className="mb-4 text-base text-ink-600"><Text>{kind.xpNote}</Text></p>}
       <form method="post" id="create-post" onSubmit={submit} className="space-y-4" noValidate>
-        <Input label="Title" name="title" maxLength={100} required error={f.title} />
-        <Textarea label="Details" name="body" maxLength={1000} required error={f.body} />
-        <Input label="Where (optional)" name="location" maxLength={120} error={f.location} />
-        {kind.type === 'EVENT' && (
-          <div className="grid grid-cols-2 gap-3">
-            <Input label="Date and time" name="startsAt" type="datetime-local" required error={f.startsAt} />
-            <Input label="Places (optional)" name="capacity" type="number" min={1} inputMode="numeric" error={f.capacity} />
-          </div>
-        )}
+        {(!accessible || currentStep === 'title') && <Input label="Title" labelClassName={accessible ? '!text-3xl !font-semibold' : undefined} name="title" value={title} onChange={(event) => { setTitle(event.target.value); setGuidedError(''); }} maxLength={100} required error={guidedError || f.title} />}
+        {(!accessible || currentStep === 'body') && <Textarea label="Details" labelClassName={accessible ? '!text-3xl !font-semibold' : undefined} name="body" value={body} onChange={(event) => { setBody(event.target.value); setGuidedError(''); }} maxLength={1000} required error={guidedError || f.body} />}
+        {(!accessible || currentStep === 'location') && <Input label="Where (optional)" labelClassName={accessible ? '!text-3xl !font-semibold' : undefined} name="location" value={location} onChange={(event) => setLocation(event.target.value)} maxLength={120} error={f.location} />}
+        {kind.type === 'EVENT' && (!accessible || currentStep === 'startsAt') && <Input label="Date and time" labelClassName={accessible ? '!text-3xl !font-semibold' : undefined} name="startsAt" type="datetime-local" value={startsAt} onChange={(event) => { setStartsAt(event.target.value); setGuidedError(''); }} required error={guidedError || f.startsAt} />}
+        {kind.type === 'EVENT' && (!accessible || currentStep === 'capacity') && <Input label="Places (optional)" labelClassName={accessible ? '!text-3xl !font-semibold' : undefined} name="capacity" type="number" value={capacity} onChange={(event) => setCapacity(event.target.value)} min={1} inputMode="numeric" error={f.capacity} />}
       </form>
     </Modal>
   );
