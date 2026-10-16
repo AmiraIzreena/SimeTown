@@ -53,7 +53,9 @@ export const ALLOWED = new Set([
   'Akses+', 'Banjir', 'Gerak', 'Jimat', 'Jiran', 'Kitar', 'Kongsi', 'Lapor', 'Tamu', 'Taman', 'SimeTown', 'SimeTown Home', 'SimeTown Recycle',
   'Google Maps', 'Sime Darby Property', 'Kafe Seri Pagi', 'Kedai Runcit Mesra', 'SimeTown · Township App for all',
   // Words and templates that are identical in Malay.
-  'SOS', 'SOS ·', 'Status', 'Poster', 'Plot {0}', 'AI · {0}', '{0} kWh', ', minimum {0}',
+  'SOS', 'SOS ·', 'Status', 'Planet', 'Menu',
+  // Demo sponsor and shop names, and image sizes.
+  'XP', 'Demo', 'Solar Cerah', 'Basikal Bersama', 'Kopi Hijau', 'Kitar Plus Recyclers', 'Tuai Segar Market', 'Nurseri Rimbun', 'Aktif Elmina Fitness', 'Roti Desa Bakery', 'Farmasi Elmina Sihat', 'Dobi Bersih Laundry', 'Kedai Bunga Melati', 'Perkakasan Jaya', 'Bengkel Basikal Roda', '(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw', '(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw', 'Puan Rahmah', '(min-width: 1024px) 58vw, 100vw', 'Poster', 'Plot {0}', 'AI · {0}', '{0} kWh', ', minimum {0}',
   // Already Malay, on purpose: the place name, a Malay suggestion and the Malay voice sample.
   'Tasik', 'Bila kutipan sampah?', 'Ini contoh suara SimeTown.',
   // The language switch always names the other language in that language.
@@ -64,7 +66,7 @@ export const ALLOWED = new Set([
   'Google Maps loaded without the maps library.', 'Google Maps could not be loaded.', 'An HMAC-SHA256 signature in hex.',
   'The AI service sent an empty answer.', 'The AI did not finish within {0} steps.',
   'One action at a time. The resident is already being asked to confirm another.', '(The township office replied:) {0}',
-  '(prefers-reduced-motion: reduce)',
+  '(prefers-reduced-motion: reduce)', '(min-width: 1024px) 64vw, 100vw', '(min-width: 1024px) 55vw, 100vw',
 ]);
 
 export function auditTranslations(ROOT = process.cwd()): Finding[] {

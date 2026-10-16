@@ -16,6 +16,7 @@ import { cn } from '@/lib/cn';
 import { formatDate, timeAgo } from '@/lib/format';
 import { useAction, useApi } from '@/lib/hooks';
 import { speak, translate, useLang } from '@/lib/i18n';
+import { DEMO_MODE } from '@/lib/demo';
 
 type LinkTo = { href: string; label: string };
 interface Source {
@@ -177,7 +178,7 @@ export default function AssistantPage() {
       <PageHeader
         title="SimeTown Assistant"
         description="Ask about City of Elmina, Sime Darby Property and your own SimeTown account, in English or Bahasa Malaysia. It acts only after you confirm, and hands over to the township office when unsure."
-        action={s && <PreviewBadge><Text>{s.mode === 'AI' ? `AI · ${s.provider}` : 'Rule-based answers'}</Text></PreviewBadge>}
+        action={DEMO_MODE && s ? <PreviewBadge><Text>{s.mode === 'AI' ? `AI · ${s.provider}` : 'Rule-based answers'}</Text></PreviewBadge> : undefined}
       />
       <div className="mb-3 flex items-center justify-between gap-2 lg:hidden">
         <Button variant="secondary" size="sm" onClick={() => setShowHistory((v) => !v)} aria-expanded={showHistory}>

@@ -8,6 +8,7 @@ import { headers } from 'next/headers';
 import type { ReactNode } from 'react';
 import { ToastProvider } from '@/components/ui/toast';
 import { LanguageProvider } from '@/components/ui/language';
+import { DemoMarker } from '@/components/features/demo-marker';
 
 
 //changes the name from 'SimeTown' to SimeTown
@@ -26,7 +27,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   return (
     <html lang="en">
       <body>
-        <LanguageProvider><ToastProvider><Text>{children}</Text></ToastProvider></LanguageProvider>
+        <LanguageProvider><ToastProvider><Text>{children}</Text><DemoMarker /></ToastProvider></LanguageProvider>
       </body>
     </html>
   );

@@ -157,7 +157,7 @@ export function BillReader({ onSaved }: { onSaved: () => void }) {
             </LocalizedDiv>
             <div className="flex flex-wrap gap-2">
               <a href={`/api/v1/jimat/sample-bill?kind=${kind}`} className="inline-flex min-h-11 items-center gap-2 rounded-md px-3 text-sm font-semibold text-brand-700 hover:bg-brand-50" download>
-                <Download className="size-4" aria-hidden /><Text>Sample bill (demo)</Text></a>
+                <Download className="size-4" aria-hidden /><Text>Sample bill</Text></a>
               <label className={cn('inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md bg-brand-700 px-4 text-[15px] font-semibold text-white shadow-xs transition-colors duration-200 hover:bg-brand-800', reading && 'pointer-events-none opacity-60')}>
                 <FileUp className="size-4" aria-hidden />
                 <Text>{reading ? 'Checking and reading…' : 'Upload photo or PDF'}</Text>
@@ -190,7 +190,7 @@ export function BillReader({ onSaved }: { onSaved: () => void }) {
                 <p className="mb-2 flex items-center gap-2 text-sm text-ink-600">
                   <FileText className="size-4" aria-hidden />
                   <Text>{SOURCE[result.source]}</Text>
-                  <Text>{result.source === 'NONE' && (result.aiAvailable ? ': the picture could not be read.' : ': picture reading needs the AI service, which is off in this demo.')}</Text>
+                  <Text>{result.source === 'NONE' && (result.aiAvailable ? ': the picture could not be read.' : ': picture reading is not available right now. Upload the PDF or type the readings.')}</Text>
                 </p>
                 {result.checks.length > 0 ? <StepList steps={result.checks} /> : <p className="text-sm text-ink-500"><Text>The checks run once the numbers are known.</Text></p>}
               </div>

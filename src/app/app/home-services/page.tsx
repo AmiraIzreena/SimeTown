@@ -29,9 +29,9 @@ const SERVICES = [
 export default function HomeServicesPage() {
   return (
     <>
-      <PageHeader title="SimeTown Home" description="Home services from people Sime Darby Property trusts: a home logbook, bookings with contractor passes, and resale and rental inside the township." action={<PreviewBadge><Text>Mock-up · planned for the pilot</Text></PreviewBadge>} />
+      <PageHeader title="SimeTown Home" description="Home services from people Sime Darby Property trusts: a home logbook, bookings with contractor passes, and resale and rental inside the township." action={<PreviewBadge><Text>Coming soon</Text></PreviewBadge>} />
       <div className="space-y-6">
-        <SimulatedNote><Text>This screen shows how SimeTown Home would work. Nothing can be booked, bought or sold yet, and every record, listing and launch on it is invented for the demo.</Text></SimulatedNote>
+        <SimulatedNote><Text>SimeTown Home is not open yet. The records, listings and launches below are examples.</Text></SimulatedNote>
 
         <div className="home-service-grid grid gap-6 lg:grid-cols-2">
           <Card>
@@ -63,7 +63,7 @@ export default function HomeServicesPage() {
                   <p className="mt-2 text-[15px] font-semibold text-ink-900"><Text>{s.title}</Text></p>
                   <p className="mt-1 text-sm text-ink-600"><Text>{s.text}</Text></p>
                   <Button size="sm" variant="secondary" className="mt-3" disabled>
-                    <CalendarCheck className="size-4" aria-hidden /><Text>Book (in the pilot)</Text></Button>
+                    <CalendarCheck className="size-4" aria-hidden /><Text>Booking opens soon</Text></Button>
                 </div>
               ))}
             </div>
@@ -100,7 +100,7 @@ export default function HomeServicesPage() {
               <h2 className="mt-3 text-xl font-bold text-white"><Text>A new phase is coming to the township</Text></h2>
               <p className="mt-2 text-[15px] text-brand-100"><Text>Residents and their families see new launches first. Engaged residents are the warmest leads for Sime Darby Property, and SimeTown Home is where they would hear first.</Text></p>
               <Button variant="light" className="mt-5" disabled>
-                <KeyRound className="size-4" aria-hidden /><Text>Register interest (in the pilot)</Text></Button>
+                <KeyRound className="size-4" aria-hidden /><Text>Registration opens soon</Text></Button>
             </div>
           </Card>
         </div>

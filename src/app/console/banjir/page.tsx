@@ -164,7 +164,7 @@ function ZoneAgent({ zone, agent, onChange }: { zone: AgentZone; agent: Agent; o
         )}
 
         <div className="space-y-3">
-          <p className="text-sm font-semibold text-ink-900"><Text>Feed the agent (prototype)</Text></p>
+          <p className="text-sm font-semibold text-ink-900"><Text>Test signals</Text></p>
           <label className="block text-sm font-medium text-ink-700">
             <span className="flex items-center gap-1.5">
               <Gauge className="size-4" aria-hidden /><Text> Drain water-level sensor: </Text><Text>{sensor}</Text>%
@@ -288,7 +288,7 @@ export default function FloodAgentPage() {
     <>
       <PageHeader title="Flood agent" description="Numbers and fixed rules decide the flood level; the AI only reads pictures and fills in the message. Two signals must agree before the highest alert goes out by itself." />
       <div className="space-y-6">
-        <SimulatedNote><Text>The drain sensors, CCTV and rain gauge are simulated. The camera readings come from a fixed test set with known water levels. The rules, drafts, timers and messages are the real ones.</Text></SimulatedNote>
+        <SimulatedNote><Text>Test mode: sensor, CCTV and rain readings are entered here by hand. The agent’s rules, drafts, timers and messages run as normal.</Text></SimulatedNote>
         <Async state={agent}>
           {(a) =>
             a.zones.length === 0 ? (

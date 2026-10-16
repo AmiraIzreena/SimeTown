@@ -94,10 +94,10 @@ Open two browser windows (one normal, one private) so you can be the resident an
 10. **Shop Offers.** As the grocer, the counter now has *Customer wants to use your Shop Offer*
     (RM2 off, all day). Aisyah confirms on her phone, pays RM18 of a RM20 bill, and the shop's
     statement shows the 10% success fee. *Shop Offers* in the shop's menu sets terms and budgets.
-11. **Gerak map tracking.** In *Gerak*, switch on *Demo: play back a route* and tap *Start*: the
+11. **Gerak map tracking.** In *Gerak*, switch on *Test mode: play back a route instead of GPS* and tap *Start*: the
     trip follows the Elmina Central Park Walk on the map, checkpoints tick themselves, then *Finish*. On a phone
     outdoors, leave the demo switch off and real GPS is used.
-12. **Jimat bill reading.** In *Jimat* → *Read a bill*, download *Sample bill (demo)*, then upload it:
+12. **Jimat bill reading.** In *Jimat* → *Read a bill*, download *Sample bill*, then upload it:
     every step of the file-safety gate is shown, the numbers are read from the PDF, you confirm,
     and the file is never stored.
 13. **Tamu.** As Aisyah, create a pass and share it (WhatsApp, SMS or link). Open the link in a

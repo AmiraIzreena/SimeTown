@@ -1,6 +1,7 @@
 /** Templates for application-generated messages; interpolated personal values stay unchanged. */
 export const messageTemplates: readonly (readonly [string, string])[] = [
   ["Photo: {0}", "Foto: {0}"],
+  ["{0} challenges a year", "{0} cabaran setahun"],
   [
     "{0} min ago",
     "{0} min lalu"

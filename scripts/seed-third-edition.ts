@@ -329,6 +329,29 @@ export async function seedThirdEdition(
       "Sponsors: Green Champion, Township Partner and Community Friend tiers.",
     );
   }
+  // Taglines written before the township was renamed.
+  await db.query(
+    `UPDATE sponsors SET tagline = replace(replace(tagline, 'Taman KITA', 'City of Elmina'), 'Taman SimeTown', 'City of Elmina')
+      WHERE tagline LIKE '%Taman KITA%' OR tagline LIKE '%Taman SimeTown%'`,
+  );
+  // More demo sponsors for the public Sponsors & Partners page, added once.
+  let added = 0;
+  for (const [name, tier, category, tagline] of [
+    ["Kitar Plus Recyclers (demo sponsor)", "TOWNSHIP_PARTNER", "Recycling", "Every bottle back into a bottle"],
+    ["Aktif Elmina Fitness (demo sponsor)", "TOWNSHIP_PARTNER", "Health and fitness", "Move more, together, every morning"],
+    ["Tuai Segar Market (demo sponsor)", "COMMUNITY_FRIEND", "Fresh produce", "Grown in Selangor, sold on your street"],
+    ["Nurseri Rimbun (demo sponsor)", "COMMUNITY_FRIEND", "Gardening", "Native seedlings for every community plot"],
+  ] as const) {
+    if (await one(db, `SELECT 1 FROM sponsors WHERE name = $1`, [name])) continue;
+    const sponsor = await one<{ id: string }>(
+      db,
+      `INSERT INTO sponsors (name, tagline) VALUES ($1, $2) RETURNING id`,
+      [name, tagline],
+    );
+    await setSponsorTier(db, hq, sponsor!.id, { tier, bankRef: `DEMO-TIER-${randomCode(6)}`, category }, daysAgo(7));
+    added++;
+  }
+  if (added) log(`Sponsors: ${added} more demo sponsors for the public page.`);
 
   // --- Shop Offers: what the shops promise this month -----------------------------------
   if (

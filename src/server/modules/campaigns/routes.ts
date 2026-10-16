@@ -74,6 +74,11 @@ export const campaignRoutes = [
     handler: (c) => tiers.publicPartners(c.db, c.now),
   }),
   route({
+    method: 'GET', path: '/public/challenges', tag: 'SimeTown Partner Hub', summary: 'The Challenges page: live funded challenges and the actions that earn Impact XP (no budgets, no people)', auth: 'public',
+    rateLimit: { limit: 120, windowSec: 60, by: 'ip' },
+    handler: (c) => campaigns.publicChallenges(c.db, c.now),
+  }),
+  route({
     method: 'GET', path: '/sponsored', tag: 'SimeTown Partner Hub', summary: 'One labelled sponsored banner for the home screen (never on safety screens)', auth: 'session', roles: ['RESIDENT'],
     handler: (c) => tiers.sponsoredBanner(c.db, c.now),
   }),

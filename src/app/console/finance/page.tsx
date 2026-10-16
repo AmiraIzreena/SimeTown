@@ -16,6 +16,7 @@ import { formatDate, formatDateTime, parseRM } from '@/lib/format';
 import { useAction, useApi } from '@/lib/hooks';
 import type { Me } from '@/lib/types';
 import { ADMINS, formatPoints, formatRM } from '@/shared/domain';
+import { DEMO_MODE } from '@/lib/demo';
 
 type Tab = 'float' | 'payments' | 'corrections';
 interface FloatOverview {
@@ -200,7 +201,7 @@ function PaymentsTab({ isAdmin }: { isAdmin: boolean }) {
         <div>
           <p className="text-sm font-medium text-ink-500"><Text>Owed to shops now</Text></p>
           <p className="font-display text-3xl font-bold tabular-nums text-ink-900"><Text>{formatRM(due)}</Text></p>
-          <p className="mt-1 text-sm text-ink-500"><Text>Shops are paid 100% of the points they accept, every week. In this prototype the payment is a statement entry, not a bank transfer.</Text></p>
+          <p className="mt-1 text-sm text-ink-500"><Text>Shops are paid 100% of the points they accept, every week.</Text>{DEMO_MODE && <> <Text>Demo environment: payments are recorded, not sent.</Text></>}</p>
         </div>
         {isAdmin && (
           <Button onClick={() => setConfirming(true)} disabled={due === 0}><Text>Run settlement</Text></Button>

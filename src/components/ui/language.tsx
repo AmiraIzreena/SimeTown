@@ -31,8 +31,10 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   const lang = useLang();
   const pathname = usePathname();
   const signedArea = /^\/(app|console|merchant|sponsor|guard)(\/|$)/.test(pathname);
+  // These pages carry the switch in their top bar.
+  const hasTopBar = ['/', '/offer', '/shops', '/challenges', '/sponsorship', '/status', '/guest'].includes(pathname);
   useEffect(() => { document.documentElement.lang = lang; }, [lang]);
-  return <>{children}{!signedArea && <div className="no-print fixed bottom-4 right-4 z-50"><LanguageSwitch /></div>}</>;
+  return <>{children}{!signedArea && !hasTopBar && <div className="no-print fixed bottom-4 right-4 z-50"><LanguageSwitch /></div>}</>;
 }
 
 /** Restore the account preference, unless the person has just switched it themselves. */

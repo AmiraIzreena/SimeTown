@@ -18,6 +18,10 @@ const nextConfig: NextConfig = {
   // Database drivers are loaded by Node at run time, not bundled.
   serverExternalPackages: ['pg', '@electric-sql/pglite'],
   experimental: { optimizePackageImports: ['lucide-react'] },
+  // The Partners page became the sponsors section of Sponsors & Partners; keep old links and posters working.
+  async redirects() {
+    return [{ source: '/partners', destination: '/sponsorship#sponsors', permanent: true }];
+  },
   async headers() {
     return [
       { source: '/:path*', headers: securityHeaders },

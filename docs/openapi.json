@@ -3631,6 +3631,33 @@
         }
       }
     },
+    "/api/v1/public/challenges": {
+      "get": {
+        "tags": [
+          "SimeTown Partner Hub"
+        ],
+        "summary": "The Challenges page: live funded challenges and the actions that earn Impact XP (no budgets, no people)",
+        "description": "Anyone.",
+        "operationId": "getPublicChallenges",
+        "parameters": [],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/sponsored": {
       "get": {
         "tags": [

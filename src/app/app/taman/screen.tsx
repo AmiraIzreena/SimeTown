@@ -18,6 +18,7 @@ import { useT } from '@/lib/i18n';
 import { shrinkPhoto } from '@/lib/image';
 import type { ActionRewardView } from '@/lib/types';
 import { WILDLIFE_KINDS, WILDLIFE_KIND_LABELS, type WildlifeKind } from '@/shared/domain';
+import { DEMO_MODE } from '@/lib/demo';
 
 interface Overview {
   today: string;
@@ -189,7 +190,7 @@ export function TamanScreen({ scanned }: { scanned: string }) {
                             </div>
                           )}
                         </div>
-                        <p className="text-xs text-ink-500"><Text>Demo data: these plot numbers, holders and the waiting list are examples, not the real garden’s allocation.</Text></p>
+                        {DEMO_MODE && <p className="text-xs text-ink-500"><Text>Sample plots, holders and waiting list.</Text></p>}
                         <div>
                           <p className="mb-2 text-sm font-semibold text-ink-900"><Text>Watering roster, next 7 days</Text></p>
                           <div className="grid grid-cols-7 gap-1.5">

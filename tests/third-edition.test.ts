@@ -19,7 +19,7 @@ import { createKiosk } from '@/server/modules/kitar/service';
 import { runJob } from '@/server/modules/admin/service';
 import { addSighting, applyForPlot, createGarden, decideSighting, markWatered, runBallot, withdrawApplication } from '@/server/modules/taman/service';
 import { createPass, logWalkIn, publicPass, replyToWalkIn, scanPass, tamuOverview } from '@/server/modules/tamu/service';
-import { T0, at, expectFloatBalanced, freshDb, makeHome, makeResident, makeWorld, type World } from './helpers';
+import { T0, at, expectFloatBalanced, freshDb, makeCampaign, makeHome, makeResident, makeWorld, type World } from './helpers';
 
 /** The features added for the proposal's third edition, one business rule at a time. */
 
@@ -408,5 +408,24 @@ describe('sponsor tiers', () => {
     const partners = await call('GET', '/public/partners');
     expect(partners.data.map((g: { tier: string }) => g.tier)).toEqual(['TITLE_PARTNER', 'COMMUNITY_FRIEND']);
     expect((await call('POST', `/admin/sponsors/${a!.id}/tier`, { as: w.admin, body: { tier: 'COMMUNITY_FRIEND', bankRef: 'X-1' } })).status).toBe(403);
+  });
+});
+
+describe('public Challenges page', () => {
+  it('lists only live funded challenges and the XP actions, with no budgets or people', async () => {
+    const live = await makeCampaign(w, { title: 'Live recycling week', rewardPoints: 250 });
+    await makeCampaign(w, { title: 'Draft only' }, false);
+    await makeCampaign(w, { title: 'Starts next month', startsAt: at(20), endsAt: at(40) });
+    clock.now = T0;
+    const res = await call('GET', '/public/challenges');
+    expect(res.status).toBe(200);
+    const titles = res.data.challenges.map((c: { title: string }) => c.title);
+    expect(titles).toContain('Live recycling week');
+    expect(titles).not.toContain('Draft only');
+    expect(titles).not.toContain('Starts next month');
+    const card = res.data.challenges.find((c: { id: string }) => c.id === live);
+    expect(card).toMatchObject({ reward_points: 250, funder: 'Sime Darby Property', activity: 'KITAR_DROPOFF' });
+    expect(Object.keys(card)).not.toContain('budget_sen');
+    expect(res.data.everyday.some((a: { activity: string; xp: number }) => a.activity === 'KITAR_DROPOFF' && a.xp > 0)).toBe(true);
   });
 });

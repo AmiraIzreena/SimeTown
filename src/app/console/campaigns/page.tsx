@@ -55,7 +55,7 @@ function SponsorTiers({ isHq }: { isHq: boolean }) {
   const today = new Date().toISOString().slice(0, 10);
   return (
     <Card className="mt-8">
-      <CardHeader title="Sponsors and tiers" description="Sponsors join in four tiers. Tier names and fees are placeholders to test with real brands in the pilot." />
+      <CardHeader title="Sponsors and tiers" description="Sponsors join in one of four yearly tiers." />
       <Async state={sponsors}>
         {(list) => (
           <ul className="divide-y divide-ink-100">

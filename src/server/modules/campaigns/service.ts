@@ -158,6 +158,30 @@ const CAMPAIGN_LIST = `
     LEFT JOIN ledger_accounts a ON a.campaign_id = c.id AND a.kind = 'FUNDER_POOL'`;
 
 /**
+ * The public Challenges page: every live, funded challenge and every action
+ * that earns Impact XP. Titles, rewards and funders only: no budgets, pools or
+ * anything about a person.
+ */
+export async function publicChallenges(db: Db, now: Date) {
+  const challenges = await db.query(
+    `SELECT c.id, c.title, c.description, c.activity, r.label AS activity_label, c.goal_metric, c.goal_target, r.quantity_unit,
+            c.reward_points, c.per_person_cap, c.ends_at, coalesce(s.name, 'Sime Darby Property') AS funder, t.name AS township
+       FROM campaigns c
+       JOIN activity_rules r ON r.activity = c.activity
+       JOIN townships t ON t.id = c.township_id
+       LEFT JOIN sponsors s ON s.id = c.sponsor_id
+      WHERE c.status = 'FUNDED' AND c.starts_at <= $1 AND c.ends_at > $1
+      ORDER BY c.ends_at`,
+    [now],
+  );
+  const everyday = await db.query(
+    `SELECT activity, label, xp, quantity_unit, daily_cap_person, offer_points, offer_per_quantity
+       FROM activity_rules WHERE xp > 0 ORDER BY xp DESC, label`,
+  );
+  return { challenges, everyday };
+}
+
+/**
  * Residents see live campaigns in their township with their own progress.
  * Sponsors see only their own. Staff see their township's; HQ sees all.
  */

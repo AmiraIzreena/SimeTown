@@ -17,7 +17,7 @@ type Settings = Record<string, number | string | boolean>;
 const GROUPS: { title: string; description: string; fields: { key: string; label: string; hint?: string; scale?: number }[] }[] = [
   {
     title: 'Earning and spending',
-    description: 'The rule card residents see. Rates are assumptions to test in the pilot.',
+    description: 'The rule card residents see, and the limits behind it.',
     fields: [
       { key: 'points_per_ringgit', label: 'Points per RM1 paid at a shop' },
       { key: 'issuance_fee_bps', label: 'Service fee charged to the funder (%)', hint: 'Of the value of points given.', scale: 100 },
@@ -42,7 +42,7 @@ const GROUPS: { title: string; description: string; fields: { key: string; label
     title: 'Shop Offers',
     description: 'Offer-backed points come only from what shops pledge each month: no pledge, no points.',
     fields: [
-      { key: 'offer_points_monthly_home', label: 'Offer-backed points per home per month', hint: 'From verified green actions. The proposal’s example is 800 (RM8).' },
+      { key: 'offer_points_monthly_home', label: 'Offer-backed points per home per month', hint: 'From verified green actions, for example 800 (RM8).' },
       { key: 'offer_success_fee_bps', label: 'Success fee on an offer used (%)', hint: 'Of the discount, charged to the shop only when an offer is used.', scale: 100 },
     ],
   },
@@ -51,7 +51,7 @@ const GROUPS: { title: string; description: string; fields: { key: string; label
     description: 'Flood lines, moderation and the smallest group a sponsor may see.',
     fields: [
       { key: 'flood_warning_pct', label: 'Flood warning line (%)' },
-      { key: 'flood_danger_pct', label: 'Flood danger line (%)', hint: 'Our own demo rule; set with the drainage team in a pilot.' },
+      { key: 'flood_danger_pct', label: 'Flood danger line (%)', hint: 'Agree this level with the drainage team.' },
       { key: 'flag_hide_threshold', label: 'Flags that hide a post' },
       { key: 'min_group_size', label: 'Smallest group shown to a sponsor' },
     ],

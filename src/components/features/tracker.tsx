@@ -212,7 +212,7 @@ export function Tracker({ onFinished }: { onFinished: () => void }) {
       <CardHeader
         title="Track a walk, run or ride"
         description="Tap Start and follow your trip on the map. Checkpoints tick themselves as you pass; the QR code on the post is the backup."
-        action={activity ? <Badge tone="brand"><Text>{activity.simulated ? 'Demo playback' : 'Tracking'}</Text></Badge> : undefined}
+        action={activity ? <Badge tone="brand"><Text>{activity.simulated ? 'Test playback' : 'Tracking'}</Text></Badge> : undefined}
       />
       <div className="space-y-4 p-5">
         <Async state={map}>
@@ -289,7 +289,7 @@ export function Tracker({ onFinished }: { onFinished: () => void }) {
                         ))}
                       </Select>
                       {m.simulationAllowed && demo && (
-                        <Select label="Demo route" value={demoLoop || m.loops[0]?.id || ''} onChange={(event) => setDemoLoop(event.target.value)}>
+                        <Select label="Test route" value={demoLoop || m.loops[0]?.id || ''} onChange={(event) => setDemoLoop(event.target.value)}>
                           {m.loops.map((l) => (
                             <option key={l.id} value={l.id}>
                               {l.name}
@@ -298,12 +298,12 @@ export function Tracker({ onFinished }: { onFinished: () => void }) {
                         </Select>
                       )}
                     </div>
-                    {m.simulationAllowed && <Switch label="Demo: play back a route instead of GPS" hint="For showing the feature indoors. Refused in production." checked={demo} onChange={setDemo} />}
+                    {m.simulationAllowed && <Switch label="Test mode: play back a route instead of GPS" hint="For testing indoors. Not available in production." checked={demo} onChange={setDemo} />}
                     <Button size="lg" onClick={() => void start()} pending={busy}>
                       <Play className="size-4" aria-hidden /><Text>Start</Text></Button>
                   </div>
                 )}
-                {activity?.simulated && <SimulatedNote><Text>Demo playback: positions follow the drawn loop instead of the phone’s GPS. The server applies the same fair-play checks.</Text></SimulatedNote>}
+                {activity?.simulated && <SimulatedNote><Text>Test playback: positions follow the drawn loop instead of GPS. The same fair-play checks apply.</Text></SimulatedNote>}
               </>
             );
           }}

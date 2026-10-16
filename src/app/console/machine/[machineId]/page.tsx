@@ -75,7 +75,7 @@ export default function MachineScreenPage({ params }: { params: Promise<{ machin
 
   return (
     <>
-      <PageHeader title="Smart machine screen" description="What the recycling machine shows on its own screen. Open this on a tablet beside the kiosk for the demo." />
+      <PageHeader title="Smart machine screen" description="What the recycling machine shows on its own screen. Open it on the tablet beside the kiosk." />
       <Async state={screen}>
         {(s) => {
           const joinUrl = `${window.location.origin}/app/kitar/machine?m=${s.machine.id}&c=${s.screen.code}`;
@@ -165,7 +165,7 @@ export default function MachineScreenPage({ params }: { params: Promise<{ machin
               </div>
 
               <div className="space-y-4">
-                <SimulatedNote><Text>The machine is simulated. These controls stand in for its camera, barcode reader and scale. The records they make, and the signature checks, are the ones a real machine’s would go through.</Text></SimulatedNote>
+                <SimulatedNote><Text>Test controls: these stand in for the camera, barcode reader and scale. Records and signature checks run as normal.</Text></SimulatedNote>
                 <Card>
                   <CardHeader title="Camera: read a SimeTown QR" description="Stands in for the machine reading a resident’s code." />
                   <form

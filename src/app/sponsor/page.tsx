@@ -36,7 +36,7 @@ function TierCard() {
             title={t.tierLabel}
             description={t.until ? `Your tier runs until ${formatDate(t.until)}${t.category ? ` · category: ${t.category}` : ''}.` : 'Sponsors outside a tier run one-off challenges with a campaign fee.'}
             action={
-              <Button href="/partners" variant="secondary" size="sm">
+              <Button href="/sponsorship#sponsors" variant="secondary" size="sm">
                 <ExternalLink className="size-4" aria-hidden /><Text>Partners page</Text></Button>
             }
           />

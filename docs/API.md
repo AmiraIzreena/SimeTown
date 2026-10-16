@@ -91,6 +91,7 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | POST | `/admin/sponsors/:sponsorId/tier` | HQ_ADMIN | Record a yearly tier payment and give the sponsor that tier (SDP HQ) |
 | GET | `/sponsor/tier` | SPONSOR | My tier, its benefits and challenges used this year |
 | GET | `/public/partners` | Public | The Partners page: sponsors with a current tier (names only) |
+| GET | `/public/challenges` | Public | The Challenges page: live funded challenges and the actions that earn Impact XP (no budgets, no people) |
 | GET | `/sponsored` | RESIDENT | One labelled sponsored banner for the home screen (never on safety screens) |
 
 ## Jiran & Kongsi

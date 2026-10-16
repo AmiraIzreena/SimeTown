@@ -10,6 +10,7 @@ import { DataTable } from '@/components/ui/table';
 import { formatDate } from '@/lib/format';
 import { useApi } from '@/lib/hooks';
 import { formatPoints, formatRM } from '@/shared/domain';
+import { DEMO_MODE } from '@/lib/demo';
 
 interface Statements {
   dueThisWeekSen: number;
@@ -52,7 +53,7 @@ export default function StatementsPage() {
                 ]}
               />
             )}
-            <p className="text-sm text-ink-500"><Text>In this prototype the payment is a statement entry: no bank transfer is sent.</Text></p>
+            {DEMO_MODE && <p className="text-sm text-ink-500"><Text>Demo environment: payments are recorded, not sent.</Text></p>}
           </div>
         )}
       </Async>
