@@ -11,7 +11,7 @@ import { SiteHeader } from '@/components/shell/site-header';
 import { CountUp } from '@/components/ui/count-up';
 import { Reveal } from '@/components/ui/reveal';
 import { currentActor } from '@/server/auth/guard';
-import { ROLE_HOME, SPONSOR_TIER_INFO, SPONSOR_TIERS } from '@/shared/domain';
+import { PENERAJU_TIERS, PUBLIC_SPONSOR_TIERS, ROLE_HOME, SPONSOR_TIER_INFO } from '@/shared/domain';
 
 export const metadata: Metadata = {
   title: 'Sponsors & Partners',
@@ -22,7 +22,7 @@ const STEPS: { icon: LucideIcon; title: string; text: string }[] = [
   { icon: Award, title: 'Choose a tier', text: 'A yearly tier gives your brand a place on this page and a set number of challenges.' },
   { icon: HandCoins, title: 'Fund a challenge', text: 'Your budget goes into a locked pool before any resident earns a single point from it.' },
   { icon: BadgeCheck, title: 'Residents take part', text: 'Every action is verified by a machine, a QR code or staff before a point is given.' },
-  { icon: ChartColumn, title: 'See the results', text: 'You get grouped results, never a list of people. Whatever is not used is refunded.' },
+  { icon: ChartColumn, title: 'See the results', text: 'You get grouped results, never a list of people. Unused reward money is refunded; tier and campaign fees are not.' },
 ];
 
 /** Where a sponsor's RM20,000 challenge goes (proposal, worked example 3). */
@@ -68,7 +68,7 @@ export default async function SponsorshipPage() {
             <div>
               <p style={{ '--i': 0 } as CSSProperties} className="text-xs font-bold uppercase tracking-[0.2em] text-gold-300"><Text>{'Sponsors & Partners'}</Text></p>
               <h1 style={{ '--i': 1 } as CSSProperties} className="mt-4 max-w-2xl text-4xl font-extrabold leading-[1.08] tracking-tight text-white sm:text-5xl"><Text>The organisations behind a greener township</Text></h1>
-              <p style={{ '--i': 2 } as CSSProperties} className="mt-5 max-w-xl text-[17px] leading-8 text-white/80"><Text>Sponsors pay for challenges residents complete in the real world, and every unused ringgit comes back. Partners bring a service, equipment or expertise that helps run the township.</Text></p>
+              <p style={{ '--i': 2 } as CSSProperties} className="mt-5 max-w-xl text-[17px] leading-8 text-white/80"><Text>Sponsors buy a yearly tier to promote their brand in the app, and can fund challenges residents complete in the real world. Tier and campaign fees are not refunded; unused reward money comes back. Partners bring a service, equipment or expertise that helps run the township.</Text></p>
               <div style={{ '--i': 3 } as CSSProperties} className="mt-8 flex flex-wrap gap-3">
                 <Link href="#sponsors" className="site-cta px-6 py-3 text-base"><Text>Meet our sponsors</Text><ArrowRight className="size-4" aria-hidden /></Link>
                 <Link href="#partners" className="inline-flex items-center gap-2 rounded-full border border-white/25 px-6 py-3 text-base font-semibold text-white transition-colors duration-200 hover:bg-white/10"><Text>Our partners</Text></Link>
@@ -78,7 +78,7 @@ export default async function SponsorshipPage() {
               {[
                 { value: 100, suffix: '%', label: 'of every challenge pool funded before points are given' },
                 { value: 0, suffix: '', label: 'names shared with sponsors: grouped results only' },
-                { value: 4, suffix: '', label: 'sponsor tiers, one brand per category at the top' },
+                { value: 3, suffix: '', label: 'sponsor tiers, one brand per category at the top' },
               ].map((stat) => (
                 <div key={stat.label} className="rounded-2xl border border-white/12 bg-white/[0.06] p-4 backdrop-blur-xl">
                   <dt className="sr-only"><Text>{stat.label}</Text></dt>
@@ -161,17 +161,17 @@ export default async function SponsorshipPage() {
               <h2 className="mt-3 max-w-2xl text-3xl font-bold leading-tight tracking-tight sm:text-4xl"><Text>A tier for every size of business</Text></h2>
               <p className="mt-4 max-w-2xl text-[15px] leading-relaxed text-ink-600"><Text>Tier fees are separate from challenge budgets, which go into each challenge’s own locked pool.</Text></p>
             </Reveal>
-            <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              {SPONSOR_TIERS.map((tier, i) => {
+            <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {PUBLIC_SPONSOR_TIERS.map((tier, i) => {
                 const info = SPONSOR_TIER_INFO[tier];
-                const top = tier === 'TITLE_PARTNER';
+                const top = PENERAJU_TIERS.includes(tier);
                 return (
                   <Reveal key={tier} index={i}>
                     <article className={`tier-card relative flex h-full flex-col rounded-3xl border p-6 ${top ? 'is-featured border-transparent text-white' : 'glass-surface shadow-sm'}`}>
-                      {top && <span className="absolute right-5 top-5 rounded-full bg-gold-300 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-brand-950"><Text>One per township</Text></span>}
+                      {top && <span className="absolute right-5 top-5 rounded-full bg-gold-300 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-brand-950"><Text>One per category</Text></span>}
                       <p className={`text-xs font-bold uppercase tracking-[0.18em] ${top ? 'text-gold-300' : 'text-brand-700'}`}>0{i + 1}</p>
                       <h3 className={`mt-2 text-xl font-bold ${top ? 'text-white' : ''}`}><Text>{info.label}</Text></h3>
-                      <p className={`mt-4 font-display text-3xl font-bold ${top ? 'text-white' : 'text-ink-900'}`}>{rm(info.feeSen)}<span className={`text-sm font-medium ${top ? 'text-white/70' : 'text-ink-500'}`}> <Text>a year</Text></span></p>
+                      <p className={`mt-4 font-display text-3xl font-bold ${top ? 'text-white' : 'text-ink-900'}`}>{rm(info.feeSen)}{info.feeToSen ? `–${rm(info.feeToSen)}` : ''}<span className={`text-sm font-medium ${top ? 'text-white/70' : 'text-ink-500'}`}> <Text>a year</Text></span></p>
                       <p className={`mt-1 text-sm ${top ? 'text-white/70' : 'text-ink-500'}`}><Text>{info.challenges === null ? 'Unlimited challenges' : info.challenges === 1 ? 'One challenge a year' : `${info.challenges} challenges a year`}</Text></p>
                       <ul className={`mt-5 flex-1 space-y-2.5 border-t pt-5 text-sm ${top ? 'border-white/15 text-white/85' : 'border-ink-100 text-ink-700'}`}>
                         {info.benefits.map((benefit) => (

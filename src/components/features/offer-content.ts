@@ -49,7 +49,7 @@ export const FEATURES: OfferGroup[] = [
     question: 'Tools for shops, sponsors and Sime Darby Property',
     items: [
       { icon: Store, name: 'SimeTown Merchant', gloss: 'Shops', text: 'Give and accept points, and set your own Shop Offer with a monthly budget you control.' },
-      { icon: Megaphone, name: 'SimeTown Partner Hub', gloss: 'Sponsors', text: 'Four sponsor tiers, and challenges with a fixed budget. Whatever is not used is refunded.' },
+      { icon: Megaphone, name: 'SimeTown Partner Hub', gloss: 'Sponsors', text: 'Three sponsor tiers, and challenges with a fixed budget. Unused reward money is refunded; fees are not.' },
       { icon: Gauge, name: 'SimeTown Insights', gloss: 'SDP', text: 'What the township achieved, in totals only, with the float matched to the sen.' },
       { icon: House, name: 'SimeTown Home', gloss: 'Preview', text: 'A home logbook, trusted home services with contractor passes, and early previews of launches.' },
     ],

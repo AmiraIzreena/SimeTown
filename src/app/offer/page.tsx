@@ -34,7 +34,7 @@ const LAYER_NOTES: Record<string, string> = {
 const WHO: { icon: LucideIcon; title: string; gets: string[] }[] = [
   { icon: Wallet, title: 'Residents', gets: ['One account and one points balance', 'Savings at township shops', 'Flood warnings and visitor passes', 'Simple Mode and read-aloud if you need them'] },
   { icon: Store, title: 'Township shops', gets: ['Free to list', 'Paid 100% of every point accepted, every week', 'Shop Offers with a budget you set', 'Weekly statements'] },
-  { icon: Megaphone, title: 'Sponsors', gets: ['Challenges with a fixed budget', 'Unused money refunded', 'Grouped results, never personal data', 'Partner tiers on a public page'] },
+  { icon: Megaphone, title: 'Sponsors', gets: ['Challenges with a fixed budget', 'Unused reward money refunded, fees are not', 'Grouped results, never personal data', 'Partner tiers on a public page'] },
   { icon: DoorOpen, title: 'Guards', gets: ['Scan visitor passes at the gate', 'Answer walk-ins with the resident', 'SOS calls and patrol rounds', 'Flood task list'] },
   { icon: Gauge, title: 'Sime Darby Property', gets: ['Township results in totals only', 'The float matched to the sen', 'A monthly impact report', 'Flood agent and report queue'] },
 ];

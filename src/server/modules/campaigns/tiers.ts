@@ -28,10 +28,10 @@ export async function setSponsorTier(db: Db, actor: Actor, sponsorId: string, in
     const today = (await one<{ d: string }>(tx, `SELECT ($1::timestamptz AT TIME ZONE $2)::date::text AS d`, [now, tz]))!.d;
     const category = input.category ?? sponsor.category;
 
-    // One Title Partner; one Green Champion (or Title Partner) per category. A lapsed holder makes way.
+    // One Peneraju per category; only one at the RM120,000 level (TITLE_PARTNER). A lapsed holder makes way.
     if (input.tier === 'TITLE_PARTNER') {
       const holder = await one<{ id: string; tier_until: string | null }>(tx, `SELECT id, tier_until::text AS tier_until FROM sponsors WHERE tier = 'TITLE_PARTNER' AND id <> $1 FOR UPDATE`, [sponsorId]);
-      if (holder && holder.tier_until && holder.tier_until >= today) throw conflict('TIER_TAKEN', 'There is already a Title Partner this year.');
+      if (holder && holder.tier_until && holder.tier_until >= today) throw conflict('TIER_TAKEN', 'There is already a Peneraju at RM120,000 this year.');
       if (holder) await tx.query(`UPDATE sponsors SET tier = 'NONE' WHERE id = $1`, [holder.id]);
     }
     if ((input.tier === 'GREEN_CHAMPION' || input.tier === 'TITLE_PARTNER') && category) {
@@ -100,7 +100,17 @@ export async function publicPartners(db: Db, now: Date) {
     [now.toISOString().slice(0, 10)],
   );
   const order: SponsorTier[] = ['TITLE_PARTNER', 'GREEN_CHAMPION', 'TOWNSHIP_PARTNER', 'COMMUNITY_FRIEND'];
-  return order.map((tier) => ({ tier, label: SPONSOR_TIER_INFO[tier].label, sponsors: rows.filter((r) => r.tier === tier) })).filter((g) => g.sponsors.length > 0);
+  // Both Peneraju price levels share a label, so they form one group, the RM120,000 holder first.
+  const groups: { tier: SponsorTier; label: string; sponsors: typeof rows }[] = [];
+  for (const tier of order) {
+    const sponsors = rows.filter((r) => r.tier === tier);
+    if (sponsors.length === 0) continue;
+    const label = SPONSOR_TIER_INFO[tier].label;
+    const same = groups.find((g) => g.label === label);
+    if (same) same.sponsors.push(...sponsors);
+    else groups.push({ tier, label, sponsors });
+  }
+  return groups;
 }
 
 /**
