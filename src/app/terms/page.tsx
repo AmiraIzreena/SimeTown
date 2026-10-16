@@ -99,7 +99,7 @@ const sections: LegalSection[] = [
     id: 'sponsors',
     title: 'Sponsors and campaigns',
     body: (
-      <p><Text>Sponsors fund challenges with a fixed budget paid in advance. Rewards stop when the budget is used, and any unused budget is refunded when the campaign closes. Sponsors receive grouped results only, never details of individual residents, unless a resident chooses to share them.</Text></p>
+      <p><Text>Sponsors fund challenges with a fixed budget paid in advance. Rewards stop when the budget is used, and any unused reward money is refunded when the campaign closes. Tier fees and campaign fees are not refundable. Sponsors receive grouped results only, never details of individual residents, unless a resident chooses to share them.</Text></p>
     ),
   },
   {

@@ -128,33 +128,41 @@ export type HostReply = (typeof HOST_REPLIES)[number];
 
 // --- Sponsors -----------------------------------------------------------------
 
+// The stored codes predate the three-tier proposal and are kept so the shared
+// database needs no migration: Peneraju is sold at two prices, stored as
+// GREEN_CHAMPION (RM60,000) and TITLE_PARTNER (RM120,000, one at a time).
 export const SPONSOR_TIERS = ['COMMUNITY_FRIEND', 'TOWNSHIP_PARTNER', 'GREEN_CHAMPION', 'TITLE_PARTNER'] as const;
 export type SponsorTier = (typeof SPONSOR_TIERS)[number];
-/** The proposal's four tiers (section 12). Fees are placeholders to test with real brands in the pilot. */
-export const SPONSOR_TIER_INFO: Record<SponsorTier, { label: string; feeSen: number; challenges: number | null; benefits: string[] }> = {
+/** The tiers shown to the public, one card each. */
+export const PUBLIC_SPONSOR_TIERS: readonly SponsorTier[] = ['COMMUNITY_FRIEND', 'TOWNSHIP_PARTNER', 'GREEN_CHAMPION'];
+export const PENERAJU_TIERS: readonly SponsorTier[] = ['GREEN_CHAMPION', 'TITLE_PARTNER'];
+const PENERAJU_BENEFITS = ['Everything in Rakan Township', 'The only brand in its category', 'Naming rights on a flagship programme', 'Branding on every machine', 'First position on the guest page', 'One in-app pop-up a quarter, never email, SMS or push (from the pilot)', 'A joint yearly impact report', 'First right to renew'];
+/** The proposal's three tiers (Appendix D.2). Fees are placeholders to test with real brands in the pilot. */
+export const SPONSOR_TIER_INFO: Record<SponsorTier, { label: string; feeSen: number; feeToSen?: number; challenges: number | null; benefits: string[] }> = {
   COMMUNITY_FRIEND: {
-    label: 'Community Friend',
+    label: 'Rakan Komuniti',
     feeSen: 600_000,
     challenges: 1,
-    benefits: ['Logo on the Partners page', 'One sponsored challenge a year', 'One booth day at a township event', 'An impact certificate'],
+    benefits: ['Logo on the Partners page', 'One sponsored challenge a year', 'One booth day at a township event', 'An impact certificate', 'Can register as a point-redemption partner', 'About RM2,000 a year when bundled into an SDP retail lease'],
   },
   TOWNSHIP_PARTNER: {
-    label: 'Township Partner',
-    feeSen: 1_800_000,
+    label: 'Rakan Township',
+    feeSen: 2_000_000,
     challenges: 4,
-    benefits: ['Everything in Community Friend', 'A rotating banner on the guest page and home screen', 'Four challenges a year', 'Screen time on the recycling machines', 'Four booth days', 'A grouped report each quarter'],
+    benefits: ['Everything in Rakan Komuniti', 'A rotating banner on the guest page and home screen', 'Four challenges a year', 'Screen time on the recycling machines', 'Four booth days', 'A grouped report each quarter', 'A swipeable voucher ad slot (from the pilot)', 'Priority placement in the shop directory (from the pilot)'],
   },
   GREEN_CHAMPION: {
-    label: 'Green Champion',
-    feeSen: 4_800_000,
+    label: 'Peneraju',
+    feeSen: 6_000_000,
+    feeToSen: 12_000_000,
     challenges: null,
-    benefits: ['Everything in Township Partner', 'The only brand in its category', 'Its name on one Gerak loop or street league', 'Its design on two recycling machines', 'Twelve booth days or a pop-up space', 'Boost weeks it funds', 'A staff volunteer day'],
+    benefits: PENERAJU_BENEFITS,
   },
   TITLE_PARTNER: {
-    label: 'Title Partner',
+    label: 'Peneraju',
     feeSen: 12_000_000,
     challenges: null,
-    benefits: ['Everything in Green Champion', '“Presented by” naming for a yearly Green Month', 'First position on the guest page', 'Branding on every machine', 'A joint yearly impact report', 'First right to renew'],
+    benefits: PENERAJU_BENEFITS,
   },
 };
 

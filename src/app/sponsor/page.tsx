@@ -79,7 +79,7 @@ export default function SponsorPage() {
   const [report, setReport] = useState<Campaign | null>(null);
   return (
     <>
-      <PageHeader title="Your campaigns" description="Each campaign has a fixed budget paid up front. Whatever is not given out is refunded when it closes." />
+      <PageHeader title="Your campaigns" description="Each campaign has a fixed budget paid up front. Unused reward money is refunded when it closes; tier and campaign fees are not." />
       <TierCard />
       <Async state={campaigns}>
         {(list) =>

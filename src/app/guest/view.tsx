@@ -104,7 +104,7 @@ export function GuestView() {
   const township = status.data?.[0];
   const zones = status.data?.flatMap((tw) => tw.zones) ?? [];
   const alerts = zones.filter((z) => z.status !== 'NORMAL');
-  const title = partners.data?.find((g) => g.label === 'Title Partner')?.sponsors[0] ?? partners.data?.[0]?.sponsors[0];
+  const title = partners.data?.find((g) => g.label === 'Peneraju')?.sponsors[0] ?? partners.data?.[0]?.sponsors[0];
   const sponsorName = title?.name.replace(/\s*\(demo sponsor\)\s*$/i, '');
 
   const floodLine = !status.data ? t('Checking the flood status…')

@@ -55,7 +55,7 @@ function SponsorTiers({ isHq }: { isHq: boolean }) {
   const today = new Date().toISOString().slice(0, 10);
   return (
     <Card className="mt-8">
-      <CardHeader title="Sponsors and tiers" description="Sponsors join in one of four yearly tiers." />
+      <CardHeader title="Sponsors and tiers" description="Sponsors join in one of three yearly tiers. Peneraju is RM60,000 or RM120,000, by category." />
       <Async state={sponsors}>
         {(list) => (
           <ul className="divide-y divide-ink-100">
@@ -128,7 +128,7 @@ function SponsorTiers({ isHq }: { isHq: boolean }) {
             ))}
           </ul>
           <Input name="bankRef" label="Bank reference" required maxLength={60} error={save.fields.bankRef} />
-          <Input name="category" label="Category (for exclusivity)" defaultValue={editing?.category ?? ''} maxLength={60} error={save.fields.category} hint="One Green Champion per category, and one Title Partner." />
+          <Input name="category" label="Category (for exclusivity)" defaultValue={editing?.category ?? ''} maxLength={60} error={save.fields.category} hint="One Peneraju per category, and only one at RM120,000." />
           <Input name="tagline" label="Banner text" defaultValue={editing?.tagline ?? ''} maxLength={120} error={save.fields.tagline} hint="Shown labelled “Sponsored”, never on safety screens." />
         </form>
       </Modal>
