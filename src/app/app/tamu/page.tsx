@@ -4,6 +4,7 @@ import { Text } from '@/components/ui/localized-text';
 
 import { Copy, DoorOpen, LifeBuoy, MessageCircle, Send, ShieldCheck, UserRound } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
+import { AksesPage, AksesReadAloud, useAksesMode } from '@/components/features/akses-mode';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, PageHeader } from '@/components/ui/card';
 import { ConfirmDialog, Modal } from '@/components/ui/dialog';
@@ -61,6 +62,7 @@ const DEFAULT_HOURS: Record<PassType, number> = { ONE_VISIT: 12, DELIVERY: 4, EV
 
 export default function TamuPage() {
   const t = useT();
+  const akses = useAksesMode();
   const toast = useToast();
   const overview = useApi<Overview>('/tamu', { refreshInterval: 10_000 });
   const [type, setType] = useState<PassType>('ONE_VISIT');
@@ -68,6 +70,11 @@ export default function TamuPage() {
   const [until, setUntil] = useState(() => localInput(new Date(Date.now() + DEFAULT_HOURS.ONE_VISIT * 3_600_000)));
   const [issued, setIssued] = useState<(Issued & { visitorName: string }) | null>(null);
   const [askSos, setAskSos] = useState(false);
+  const [guidedOpen, setGuidedOpen] = useState(false);
+  const [guidedStep, setGuidedStep] = useState(0);
+  const [guidedName, setGuidedName] = useState('');
+  const [guidedVehicle, setGuidedVehicle] = useState('');
+  const [guidedError, setGuidedError] = useState('');
 
   const create = useAction(
     (body: { type: PassType; visitorName: string; vehicleNo?: string }) => api.post<Issued>('/tamu/passes', { ...body, validFrom: fromLocalInput(from), validUntil: fromLocalInput(until) }),
@@ -100,20 +107,45 @@ export default function TamuPage() {
     setType(next);
     setUntil(localInput(new Date(fromLocalInput(from).getTime() + DEFAULT_HOURS[next] * 3_600_000)));
   };
+  const startGuidedPass = () => {
+    setGuidedStep(0);
+    setGuidedName('');
+    setGuidedVehicle('');
+    setGuidedError('');
+    setGuidedOpen(true);
+  };
+  const finishGuidedPass = async () => {
+    const visitorName = guidedName.trim();
+    if (!visitorName) {
+      setGuidedError(t('Please enter the visitor name.'));
+      return;
+    }
+    const result = await create.run({ type, visitorName, vehicleNo: guidedVehicle.trim() || undefined });
+    if (result) {
+      setIssued({ ...result, visitorName });
+      setGuidedOpen(false);
+    }
+  };
 
   const link = issued ? `${window.location.origin}/pass/${issued.token}` : '';
   const message = issued ? `Salam! Here is your visitor pass for City of Elmina. Show the QR code at the main gate: ${link}` : '';
+  const spokenSummary = overview.data
+    ? `${overview.data.waiting.length} ${t('Someone is at the main gate')}. ${overview.data.passes.length} ${t('visitor passes')}. ${overview.data.sos ? t('An SOS is active with the guardhouse.') : ''}`
+    : t('Visitor passes and the guardhouse');
 
   return (
-    <>
+    <AksesPage profile={akses.profile} simple={akses.simple} largeText={akses.largeText} largeTargets={akses.largeTargets}>
       <PageHeader
         title={t('Tamu')}
         description="Send a visitor a pass by link; they need no app. The guard scans it at the main gate and you are told the moment they arrive."
         action={
-          <Button variant="danger" onClick={() => setAskSos(true)}>
-            <LifeBuoy className="size-4" aria-hidden />
-            {t('SOS to the guardhouse')}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button size="lg" variant="danger" onClick={() => setAskSos(true)}>
+              <LifeBuoy className="size-5" aria-hidden />
+              {t('SOS to the guardhouse')}
+            </Button>
+            <AksesReadAloud profile={akses.profile} text={spokenSummary} />
+          </div>
         }
       />
       <div className="space-y-6">
@@ -145,9 +177,16 @@ export default function TamuPage() {
           </Card>
         ))}
 
-        <div className="grid gap-6 lg:grid-cols-[1fr_1.1fr]">
+        <div className={akses.simple ? 'grid gap-6' : 'grid gap-6 lg:grid-cols-[1fr_1.1fr]'}>
           <Card>
             <CardHeader title={t('New visitor pass')} description="No identity card is ever asked for: a name and, if they drive, a vehicle number." />
+            {akses.guided ? (
+              <div className="p-5">
+                <Button size="lg" className="min-h-20 w-full text-xl" onClick={startGuidedPass}>
+                  <DoorOpen className="size-6" aria-hidden /><Text>Create a visitor pass</Text>
+                </Button>
+              </div>
+            ) : (
             <form method="post" onSubmit={submit} className="space-y-4 p-5" noValidate>
               <Select label={t('Kind of visit')} value={type} onChange={(event) => onType(event.target.value as PassType)}>
                 {PASS_TYPES.map((p) => (
@@ -168,6 +207,7 @@ export default function TamuPage() {
                 {t('Create pass')}
               </Button>
             </form>
+            )}
           </Card>
 
           <Card>
@@ -289,6 +329,95 @@ export default function TamuPage() {
       <ConfirmDialog open={askSos} onClose={() => setAskSos(false)} onConfirm={() => void sos.run()} title={t('Call the guardhouse now?')} confirmLabel={t('Send SOS')} destructive pending={sos.pending}>
         <p><Text>The guards and the township team are told your address at once. In a medical emergency, also call 999.</Text></p>
       </ConfirmDialog>
-    </>
+      <Modal
+        open={guidedOpen}
+        wide
+        className="guided-modal"
+        onClose={() => setGuidedOpen(false)}
+        title="New visitor pass"
+        description={t('Question {step} of {total}', { step: guidedStep + 1, total: 6 })}
+        footer={
+          guidedStep > 0 ? (
+            <>
+              <Button size="lg" variant="secondary" onClick={() => setGuidedStep((step) => step - 1)}><Text>Back</Text></Button>
+              {guidedStep < 5 ? (
+                <>
+                  {guidedStep === 3 && <Button size="lg" variant="ghost" onClick={() => { setGuidedError(''); setGuidedStep(4); }}><Text>Skip</Text></Button>}
+                  <Button size="lg" onClick={() => {
+                    if (guidedStep === 2 && !guidedName.trim()) {
+                      setGuidedError(t('Please enter the visitor name.'));
+                      return;
+                    }
+                    setGuidedError('');
+                    setGuidedStep((step) => step + 1);
+                  }}><Text>Next</Text></Button>
+                </>
+              ) : (
+                <Button size="lg" pending={create.pending} onClick={() => void finishGuidedPass()}>
+                  <Send className="size-5" aria-hidden /><Text>Create pass</Text>
+                </Button>
+              )}
+            </>
+          ) : (
+            <Button size="lg" variant="secondary" onClick={() => setGuidedOpen(false)}><Text>Cancel</Text></Button>
+          )
+        }
+      >
+        <div className="flex min-h-64 flex-col justify-center gap-5">
+          {guidedStep === 0 ? (
+            <>
+              <p className="text-center text-5xl font-bold text-ink-900"><Text>Is someone coming?</Text></p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Button size="lg" variant="success" className="min-h-32 text-4xl" onClick={() => setGuidedStep(1)}><Text>Yes</Text></Button>
+                <Button size="lg" variant="danger" className="min-h-32 text-4xl" onClick={() => setGuidedOpen(false)}><Text>No</Text></Button>
+              </div>
+            </>
+          ) : guidedStep === 1 ? (
+            <Select label="Kind of visit" labelClassName="!text-3xl !font-semibold" value={type} onChange={(event) => onType(event.target.value as PassType)}>
+              {PASS_TYPES.map((passType) => (
+                <option key={passType} value={passType}>
+                  <Text>{PASS_TYPE_INFO[passType].label}</Text>
+                  <Text>{PASS_TYPE_INFO[passType].entries === 1 ? ' (one entry)' : ''}</Text>
+                </option>
+              ))}
+            </Select>
+          ) : guidedStep === 2 ? (
+            <Input
+              label="Visitor name"
+              labelClassName="!text-3xl !font-semibold"
+              value={guidedName}
+              onChange={(event) => { setGuidedName(event.target.value); setGuidedError(''); }}
+              placeholder="e.g. Puan Rahmah"
+              required
+              maxLength={80}
+              error={guidedError || create.fields.visitorName}
+            />
+          ) : guidedStep === 3 ? (
+            <Input
+              label="Vehicle number (optional)"
+              labelClassName="!text-3xl !font-semibold"
+              value={guidedVehicle}
+              onChange={(event) => setGuidedVehicle(event.target.value)}
+              placeholder="e.g. BKL 2408"
+              maxLength={12}
+              autoCapitalize="characters"
+              error={create.fields.vehicleNo}
+            />
+          ) : guidedStep === 4 ? (
+            <Input type="datetime-local" label="From" labelClassName="!text-3xl !font-semibold" value={from} onChange={(event) => setFrom(event.target.value)} error={create.fields.validFrom} />
+          ) : (
+            <Input
+              type="datetime-local"
+              label="Until"
+              labelClassName="!text-3xl !font-semibold"
+              value={until}
+              onChange={(event) => setUntil(event.target.value)}
+              error={create.fields.validUntil}
+              hint={`Up to ${PASS_TYPE_INFO[type].maxDays} day${PASS_TYPE_INFO[type].maxDays === 1 ? '' : 's'} for this kind of pass.`}
+            />
+          )}
+        </div>
+      </Modal>
+    </AksesPage>
   );
 }

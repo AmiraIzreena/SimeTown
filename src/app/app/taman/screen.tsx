@@ -5,6 +5,7 @@ import { LocalizedInput } from '@/components/ui/localized-elements';
 
 import { Bird, Camera, Droplet, Leaf, Repeat2, Shovel, Sprout } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
+import { AksesPage, AksesWizard, useAksesMode } from '@/components/features/akses-mode';
 import { CodeEntry } from '@/components/features/scan';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, PageHeader, Stat } from '@/components/ui/card';
@@ -46,10 +47,19 @@ const addDays = (iso: string, n: number) => {
 const dayLabel = (iso: string) => new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-MY', { weekday: 'short', day: 'numeric', timeZone: 'UTC' });
 
 export function TamanScreen({ scanned }: { scanned: string }) {
+  const akses = useAksesMode();
   const overview = useApi<Overview>('/taman');
   const t = useT();
   const [code, setCode] = useState(scanned);
   const [photo, setPhoto] = useState<File | null>(null);
+  const [sightingOpen, setSightingOpen] = useState(false);
+  const [sightingStep, setSightingStep] = useState(0);
+  const [sightingKind, setSightingKind] = useState<WildlifeKind>('BIRD');
+  const [species, setSpecies] = useState('');
+  const [sightingLocation, setSightingLocation] = useState('');
+  const [sightingNote, setSightingNote] = useState('');
+  const [sightingError, setSightingError] = useState('');
+  const [wateringOpen, setWateringOpen] = useState(false);
   const refresh = () => void overview.mutate();
 
   const apply = useAction((gardenId: string) => api.post(`/taman/gardens/${gardenId}/apply`), { onSuccess: refresh, success: 'You are on the waiting list. You will hear when the ballot is drawn.' });
@@ -85,9 +95,32 @@ export function TamanScreen({ scanned }: { scanned: string }) {
     delete fields.photo;
     void sight.run(fields).then((ok) => ok && element.reset());
   };
+  const nextSighting = () => {
+    if (sightingStep === 1 && !species.trim()) {
+      setSightingError('Please enter what you saw.');
+      return;
+    }
+    if (sightingStep === 2 && !sightingLocation.trim()) {
+      setSightingError('Please enter where you saw it.');
+      return;
+    }
+    setSightingError('');
+    setSightingStep((step) => step + 1);
+  };
+  const submitGuidedSighting = () => {
+    void sight.run({ kind: sightingKind, species: species.trim(), location: sightingLocation.trim(), note: sightingNote }).then((ok) => {
+      if (ok) {
+        setSightingOpen(false);
+        setSightingStep(0);
+        setSpecies('');
+        setSightingLocation('');
+        setSightingNote('');
+      }
+    });
+  };
 
   return (
-    <>
+    <AksesPage profile={akses.profile} simple={akses.simple} largeText={akses.largeText} largeTargets={akses.largeTargets}>
       <PageHeader
         title="Taman"
         description="Community gardens and more nature in the township. Apply for a plot, take a day on the watering roster, and log the birds and insects you spot."
@@ -121,7 +154,9 @@ export function TamanScreen({ scanned }: { scanned: string }) {
         <Card>
           <CardHeader title="Watered today?" description="Scan the code on the garden gate after watering. It earns Impact XP and offer-backed points." />
           <div className="p-5">
-            <CodeEntry label="Garden code" value={code} onChange={setCode} onSubmit={() => void watered.run()} pending={watered.pending} error={watered.fields.code} action="I watered" />
+            {akses.guided ? (
+              <Button size="lg" className="min-h-20 w-full text-xl" onClick={() => setWateringOpen(true)}><Text>Enter garden code</Text></Button>
+            ) : <CodeEntry label="Garden code" value={code} onChange={setCode} onSubmit={() => void watered.run()} pending={watered.pending} error={watered.fields.code} action="I watered" />}
           </div>
         </Card>
 
@@ -226,6 +261,11 @@ export function TamanScreen({ scanned }: { scanned: string }) {
         <div className="grid gap-6 lg:grid-cols-2">
           <Card>
             <CardHeader title="Log a sighting" description="Birds, butterflies, frogs and native plants. Staff confirm each one before it joins the log." />
+            {akses.guided ? (
+              <div className="p-5">
+                <Button size="lg" className="min-h-20 w-full text-xl" onClick={() => { setSightingStep(0); setSightingOpen(true); }}><Bird className="size-6" aria-hidden /><Text>Log a sighting one step at a time</Text></Button>
+              </div>
+            ) : (
             <form method="post" onSubmit={submitSighting} className="space-y-4 p-5" noValidate>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Select name="kind" label="What kind" defaultValue="BIRD">
@@ -249,6 +289,7 @@ export function TamanScreen({ scanned }: { scanned: string }) {
                   <Bird className="size-4" aria-hidden /><Text>Log sighting</Text></Button>
               </div>
             </form>
+            )}
           </Card>
           <Card>
             <CardHeader title="The township’s wildlife log" description="Confirmed sightings. No names: the log is about the wildlife." />
@@ -290,6 +331,32 @@ export function TamanScreen({ scanned }: { scanned: string }) {
           </Card>
         </div>
       </div>
-    </>
+      {akses.guided && (
+        <>
+          <AksesWizard open={wateringOpen} title="Watered today?" step={0} total={1} onClose={() => setWateringOpen(false)} onBack={() => undefined} onNext={() => undefined} onSubmit={() => { void watered.run().then((result) => result && setWateringOpen(false)); }} pending={watered.pending} submitLabel="I watered">
+            <Input label="Garden code" labelClassName="!text-3xl !font-semibold" value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder="e.g. GABC2345XY" maxLength={16} error={watered.fields.code} hint="Scan the poster with your camera, or type the code printed under it." />
+          </AksesWizard>
+          <AksesWizard open={sightingOpen} title="Log a sighting" step={sightingStep} total={5} onClose={() => setSightingOpen(false)} onBack={() => setSightingStep((step) => step - 1)} onNext={nextSighting} onSubmit={submitGuidedSighting} pending={sight.pending} submitLabel="Log sighting">
+            {sightingStep === 0 ? (
+              <Select label="What kind" labelClassName="!text-3xl !font-semibold" value={sightingKind} onChange={(event) => setSightingKind(event.target.value as WildlifeKind)}>
+                {WILDLIFE_KINDS.map((kind) => <option key={kind} value={kind}><Text>{WILDLIFE_KIND_LABELS[kind]}</Text></option>)}
+              </Select>
+            ) : sightingStep === 1 ? (
+              <Input label="What you saw" labelClassName="!text-3xl !font-semibold" value={species} onChange={(event) => { setSpecies(event.target.value); setSightingError(''); }} placeholder="e.g. Oriental magpie-robin" maxLength={80} error={sightingError || sight.fields.species} />
+            ) : sightingStep === 2 ? (
+              <Input label="Where you saw it" labelClassName="!text-3xl !font-semibold" value={sightingLocation} onChange={(event) => { setSightingLocation(event.target.value); setSightingError(''); }} placeholder="e.g. Lake, near the boathouse" maxLength={120} error={sightingError || sight.fields.location} />
+            ) : sightingStep === 3 ? (
+              <Textarea label="Note (optional)" labelClassName="!text-3xl !font-semibold" value={sightingNote} onChange={(event) => setSightingNote(event.target.value)} rows={3} maxLength={300} />
+            ) : (
+              <label className="flex min-h-24 cursor-pointer items-center gap-4 rounded-xl border-2 border-dashed border-ink-300 px-6 py-5 text-2xl font-semibold text-ink-700 hover:border-brand-500 hover:bg-brand-50/40">
+                <Camera className="size-8 shrink-0 text-ink-500" aria-hidden />
+                <span className="min-w-0 flex-1"><Text>{photo ? `Photo: ${photo.name}` : 'Add a photo (optional)'}</Text></span>
+                <LocalizedInput type="file" accept="image/*" capture="environment" className="sr-only" onChange={(event) => setPhoto(event.target.files?.[0] ?? null)} />
+              </label>
+            )}
+          </AksesWizard>
+        </>
+      )}
+    </AksesPage>
   );
 }

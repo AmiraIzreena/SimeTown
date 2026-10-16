@@ -144,6 +144,95 @@
 }
 
 @layer components {
+  @media (min-width: 768px) {
+    .akses-shell {
+      padding-left: 18rem !important;
+    }
+    .akses-shell .app-sidebar {
+      width: 18rem !important;
+    }
+    .akses-shell .app-sidebar a {
+      justify-content: flex-start !important;
+      min-height: 3.5rem;
+      padding-inline: 0.75rem !important;
+      font-size: 1.125rem;
+    }
+    .akses-shell .app-sidebar a > span:last-child {
+      position: static !important;
+      width: auto !important;
+      height: auto !important;
+      overflow: visible !important;
+      clip: auto !important;
+      white-space: normal !important;
+    }
+    .akses-shell .app-sidebar a > span:last-child span {
+      font-size: 1rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .akses-shell {
+      padding-left: 20rem !important;
+    }
+    .akses-shell .app-sidebar {
+      width: 20rem !important;
+    }
+  }
+
+  #main.akses-view {
+    max-width: 96rem;
+    font-size: 1.25rem;
+    line-height: 1.7;
+  }
+
+  #main.akses-view :is(p, li, dt, dd, label, summary) {
+    font-size: max(1.25rem, 1em) !important;
+    line-height: 1.65;
+  }
+
+  #main.akses-view h1 {
+    font-size: clamp(2.5rem, 4vw, 3.75rem);
+    line-height: 1.15;
+  }
+
+  #main.akses-view h2 {
+    font-size: clamp(1.75rem, 2.5vw, 2.5rem);
+    line-height: 1.2;
+  }
+
+  #main.akses-view h3 {
+    font-size: clamp(1.5rem, 2vw, 2rem);
+    line-height: 1.25;
+  }
+
+  #main.akses-view :is(button, [role='tab'], input, select, textarea, a) {
+    min-height: 4rem;
+    font-size: max(1.25rem, 1em) !important;
+  }
+
+  #main.akses-view .control {
+    min-height: 4.5rem;
+    padding-inline: 1.25rem;
+    font-size: 1.5rem !important;
+  }
+
+  #main.akses-view :is(.card, [class*='rounded-xl']) {
+    padding: clamp(1.25rem, 2.5vw, 2rem);
+  }
+
+  #main.akses-view :is(.text-xs, .text-sm, .text-\[15px\]) {
+    font-size: 1.125rem !important;
+  }
+
+  .akses-large-text :is(p, li, dt, dd, label) {
+    font-size: max(1.125rem, 1em);
+    line-height: 1.65;
+  }
+
+  .akses-large-targets :is(button, [role='tab'], input, select, textarea) {
+    min-height: 3.5rem;
+    font-size: 1.125rem;
+  }
   /* Shared control surface for inputs, selects and text areas. */
   .control {
     @apply w-full rounded-md border border-ink-200 bg-white px-3.5 text-[15px] text-ink-900 shadow-xs
@@ -367,6 +456,48 @@
   dialog.modal.wide {
     width: min(100% - 2rem, 46rem);
   }
+  dialog.modal.guided-modal {
+    width: min(94vw, 76rem);
+    height: min(82dvh, 54rem);
+    max-height: 92dvh;
+  }
+  dialog.modal.guided-modal > div {
+    height: 100%;
+  }
+  dialog.modal.guided-modal > div > div:first-child {
+    padding: 1.5rem 2rem;
+  }
+  dialog.modal.guided-modal h2 {
+    font-size: 1.75rem;
+  }
+  dialog.modal.guided-modal > div > div:first-child p {
+    font-size: 1.25rem;
+  }
+  dialog.modal.guided-modal > div > div:first-child > button {
+    width: 3.5rem;
+    height: 3.5rem;
+  }
+  dialog.modal.guided-modal > div > div:nth-child(2) {
+    justify-content: center;
+    padding: clamp(2rem, 5vw, 5rem);
+  }
+  dialog.modal.guided-modal label {
+    font-size: clamp(1.5rem, 2vw, 2rem);
+  }
+  dialog.modal.guided-modal .control {
+    min-height: 6rem;
+    padding-inline: 1.5rem;
+    font-size: clamp(1.5rem, 2.2vw, 2.25rem);
+  }
+  dialog.modal.guided-modal > div > div:last-child {
+    gap: 1rem;
+    padding: 1.25rem 2rem;
+  }
+  dialog.modal.guided-modal > div > div:last-child button {
+    min-height: 4.5rem;
+    padding-inline: 2rem;
+    font-size: 1.5rem;
+  }
   dialog.drawer {
     @apply m-0 h-dvh max-h-none w-[min(88vw,22rem)] max-w-none border-0 p-0 text-ink-800 shadow-lg;
     background: rgb(255 255 255 / 0.93);
@@ -392,6 +523,18 @@
     dialog.modal {
       @apply mb-0 w-full max-w-none rounded-b-none border-x-0 border-b-0;
       max-height: 92dvh;
+    }
+    dialog.modal.guided-modal {
+      height: 88dvh;
+      min-height: 78dvh;
+    }
+    dialog.modal.guided-modal .control {
+      min-height: 5rem;
+      font-size: 1.5rem;
+    }
+    dialog.modal.guided-modal > div > div:last-child button {
+      min-height: 3.75rem;
+      font-size: 1.25rem;
     }
     dialog.modal[open] {
       animation: var(--animate-sheet);

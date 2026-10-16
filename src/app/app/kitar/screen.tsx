@@ -5,6 +5,7 @@ import { LocalizedInput } from '@/components/ui/localized-elements';
 
 import { Camera, Cpu, QrCode as QrIcon, Recycle, Scale, Ticket, UserRound, Users } from 'lucide-react';
 import { LiveMachineSession } from '@/components/features/machine-session';
+import { AksesPage, AksesWizard, useAksesMode } from '@/components/features/akses-mode';
 import { Badge } from '@/components/ui/card';
 import { useState } from 'react';
 import { CampaignCard } from '@/components/features/rewards';
@@ -35,11 +36,16 @@ interface Overview {
 const MACHINE_STATUS = { ONLINE: { label: 'Open', tone: 'success' as const }, FULL: { label: 'Full: use the kiosk', tone: 'warning' as const }, OFFLINE: { label: 'Offline', tone: 'neutral' as const } };
 
 export function KitarScreen({ scanned }: { scanned: string }) {
+  const akses = useAksesMode();
   const overview = useApi<Overview>('/kitar');
   const campaigns = useApi<Campaign[]>('/campaigns');
   const [material, setMaterial] = useState<Material | null>(null);
   const [kioskCode, setKioskCode] = useState(scanned);
   const [weight, setWeight] = useState('');
+  const [dropOpen, setDropOpen] = useState(false);
+  const [dropStep, setDropStep] = useState(0);
+  const [dropError, setDropError] = useState('');
+  const [claimOpen, setClaimOpen] = useState(false);
 
   const identify = useAction(
     async (file: File) => {
@@ -57,6 +63,8 @@ export function KitarScreen({ scanned }: { scanned: string }) {
     onSuccess: () => {
       setMaterial(null);
       setWeight('');
+      setDropOpen(false);
+      setDropStep(0);
       void overview.mutate();
       void campaigns.mutate();
     },
@@ -71,10 +79,22 @@ export function KitarScreen({ scanned }: { scanned: string }) {
     },
     success: (r) => `Claimed ${formatKg(r.grams)}. ${rewardMessage(r.reward, 'Thank you for recycling.')} Guest recycling earns XP only.`,
   });
+  const nextDrop = () => {
+    if (dropStep === 0 && !material) {
+      setDropError('Please choose what you recycled.');
+      return;
+    }
+    if (dropStep === 1 && kioskCode.trim().length < 6) {
+      setDropError('Please enter the kiosk code.');
+      return;
+    }
+    setDropError('');
+    setDropStep((step) => step + 1);
+  };
   const recycling = campaigns.data?.filter((c) => c.activity === 'KITAR_DROPOFF') ?? [];
 
   return (
-    <>
+    <AksesPage profile={akses.profile} simple={akses.simple} largeText={akses.largeText} largeTargets={akses.largeTargets}>
       <PageHeader title="Kitar" description="Recycle at a smart machine that recognises, counts and weighs each item, or drop off at a kiosk. Every drop-off earns Impact XP." />
       <div className="space-y-6">
         <Async state={overview} skeleton={<SkeletonStats count={3} />}>
@@ -148,23 +168,26 @@ export function KitarScreen({ scanned }: { scanned: string }) {
               </li>
             </ol>
           </div>
-          <form
-            method="post"
-            className="flex flex-wrap items-end gap-3 border-t border-ink-100 p-5"
-            onSubmit={(event) => {
-              event.preventDefault();
-              void claim.run();
-            }}
-          >
+          {akses.guided ? (
+            <div className="border-t border-ink-100 p-5">
+              <Button size="lg" className="min-h-16 w-full text-xl" onClick={() => setClaimOpen(true)}><Text>Claim guest recycling</Text></Button>
+            </div>
+          ) : (
+          <form method="post" className="flex flex-wrap items-end gap-3 border-t border-ink-100 p-5" onSubmit={(event) => { event.preventDefault(); void claim.run(); }}>
             <Input label="Claim guest recycling" value={claimCode} onChange={(event) => setClaimCode(event.target.value.toUpperCase())} placeholder="8-letter code from the machine" autoComplete="off" spellCheck={false} maxLength={16} className="min-w-0 flex-1 basis-56" error={claim.fields.code} hint="Recycled before you joined, or with a guest? Enter the code the machine gave." />
             <Button type="submit" variant="secondary" pending={claim.pending} disabled={claimCode.trim().length < 6} className="mb-[26px]">
               <Ticket className="size-4" aria-hidden /><Text>Claim</Text></Button>
           </form>
+          )}
         </Card>
 
         <Card>
           <CardHeader title="No machine nearby? Record a kiosk drop-off" description="Three short steps. The weight you enter earns Impact XP; a machine’s weighing is needed for offer-backed points." />
-          <div className="space-y-7 p-5">
+          {akses.guided ? (
+            <div className="p-5">
+              <Button size="lg" className="min-h-20 w-full text-xl" onClick={() => { setDropStep(0); setDropError(''); setDropOpen(true); }}><Text>Record a kiosk drop-off</Text></Button>
+            </div>
+          ) : <div className="space-y-7 p-5">
             <fieldset>
               <legend className="mb-3 flex w-full flex-wrap items-center justify-between gap-3 text-[15px] font-semibold text-ink-900">
                 <span><Text>1. What is it?</Text></span>
@@ -200,7 +223,7 @@ export function KitarScreen({ scanned }: { scanned: string }) {
               <Input label="3. Weight (kg)" value={weight} onChange={(event) => setWeight(event.target.value)} inputMode="decimal" placeholder="e.g. 0.5" error={drop.fields.weightG ?? (grams > 20_000 ? 'One drop-off can be up to 20 kg.' : undefined)} hint="Use the scale at the kiosk." />
             </div>
             <Button size="lg" onClick={() => void drop.run()} pending={drop.pending} disabled={!ready}><Text>Record drop-off</Text></Button>
-          </div>
+          </div>}
         </Card>
 
         <Card>
@@ -231,6 +254,28 @@ export function KitarScreen({ scanned }: { scanned: string }) {
           </Async>
         </Card>
       </div>
-    </>
+      {akses.guided && (
+        <>
+          <AksesWizard open={dropOpen} title="Record a kiosk drop-off" step={dropStep} total={3} onClose={() => setDropOpen(false)} onBack={() => setDropStep((step) => step - 1)} onNext={nextDrop} onSubmit={() => void drop.run().then((result) => result && setDropOpen(false))} pending={drop.pending} submitLabel="Record drop-off">
+            {dropStep === 0 ? (
+              <fieldset className="space-y-4">
+                <legend className="text-3xl font-semibold"><Text>What did you recycle?</Text></legend>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {MATERIALS.map((item) => <Button key={item} size="lg" variant={material === item ? 'primary' : 'secondary'} className="min-h-20 whitespace-normal text-xl" onClick={() => { setMaterial(item); setDropError(''); }}><Text>{MATERIAL_INFO[item].label}</Text></Button>)}
+                </div>
+                {dropError && <p role="alert" className="text-lg text-accent-700"><Text>{dropError}</Text></p>}
+              </fieldset>
+            ) : dropStep === 1 ? (
+              <Input label="Kiosk code" labelClassName="!text-3xl !font-semibold" value={kioskCode} onChange={(event) => { setKioskCode(event.target.value.toUpperCase()); setDropError(''); }} placeholder="e.g. KABC2345XY" autoCapitalize="characters" autoComplete="off" spellCheck={false} maxLength={16} error={dropError || drop.fields.kioskCode} hint="Scan the kiosk’s poster, or type the code on it." />
+            ) : (
+              <Input label="Weight (kg)" labelClassName="!text-3xl !font-semibold" value={weight} onChange={(event) => { setWeight(event.target.value); setDropError(''); }} inputMode="decimal" placeholder="e.g. 0.5" error={drop.fields.weightG ?? (grams > 20_000 ? 'One drop-off can be up to 20 kg.' : dropError)} hint="Use the scale at the kiosk." />
+            )}
+          </AksesWizard>
+          <AksesWizard open={claimOpen} title="Claim guest recycling" step={0} total={1} onClose={() => setClaimOpen(false)} onBack={() => undefined} onNext={() => undefined} onSubmit={() => void claim.run().then((result) => result && setClaimOpen(false))} pending={claim.pending} submitLabel="Claim">
+            <Input label="Code from the recycling machine" labelClassName="!text-3xl !font-semibold" value={claimCode} onChange={(event) => setClaimCode(event.target.value.toUpperCase())} placeholder="8-letter code" maxLength={16} error={claim.fields.code} />
+          </AksesWizard>
+        </>
+      )}
+    </AksesPage>
   );
 }

@@ -3,7 +3,7 @@
 import { Text } from '@/components/ui/localized-text';
 import { LocalizedButton, LocalizedNav } from '@/components/ui/localized-elements';
 
-import { Bell, Languages, LogOut, Menu } from 'lucide-react';
+import { Accessibility, Bell, Languages, LogOut, Menu } from 'lucide-react';
 import { LocalizedLink as Link } from '@/components/ui/localized-elements';
 import { usePathname } from 'next/navigation';
 import { useState, type ReactNode } from 'react';
@@ -20,10 +20,16 @@ import { NotificationsDrawer, type NotificationList } from './notifications';
 import { ProfileCompletion } from './profile-completion';
 import { reloadTo } from '@/lib/navigate';
 import { AccountLanguage, persistLanguage } from '@/components/ui/language';
+import { AksesViewContext } from '@/components/features/akses-mode';
 
 export interface ShellUser {
   fullName: string;
   role: Role;
+}
+
+interface AccessProfile {
+  needs: ('MOBILITY' | 'VISION' | 'HEARING' | 'COGNITIVE' | 'ELDERLY')[];
+  simpleMode: boolean;
 }
 
 const isActive = (pathname: string, item: NavItem, root: string) => (item.href === root ? pathname === root : pathname === item.href || pathname.startsWith(`${item.href}/`));
@@ -73,6 +79,8 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
   const [menuOpen, setMenuOpen] = useState(false);
   const [inboxOpen, setInboxOpen] = useState(false);
   const inbox = useApi<NotificationList>('/notifications', { refreshInterval: 30_000 });
+  const access = useApi<AccessProfile>(area === 'resident' ? '/me/access' : null);
+  const [accessibleOverride, setAccessibleOverride] = useState<boolean | null>(null);
   const t = useT();
   const lang = useLang();
   const switchLang = () => {
@@ -88,6 +96,8 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
   const needsMore = items.length > primary.length;
   const initials = user.fullName.split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase();
   const motion = pageMotion(pathname);
+  const savedAccessible = Boolean(access.data?.simpleMode || access.data?.needs.length);
+  const accessible = area === 'resident' && (accessibleOverride ?? savedAccessible);
 
   const link = (item: NavItem, compact: boolean) => {
     const active = isActive(pathname, item, root);
@@ -114,7 +124,8 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
   };
 
   return (
-    <div className="min-h-dvh md:pl-20 lg:pl-64">
+    <AksesViewContext.Provider value={area === 'resident' ? accessibleOverride : null}>
+    <div className={cn('min-h-dvh md:pl-20 lg:pl-64', accessible && 'akses-shell')}>
       <AccountLanguage />
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[70] focus:rounded-md focus:bg-white focus:px-4 focus:py-2 focus:shadow-lg"><Text>Skip to content</Text></a>
 
@@ -150,6 +161,20 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
         </Link>
         <p className="hidden items-center gap-2 text-sm font-semibold tracking-tight text-brand-900 md:flex"><span aria-hidden className="size-2 rounded-full bg-brand-500 shadow-[0_0_0_4px_rgb(232_111_32_/_0.12)]" />{t(NAV[area].title)}</p>
         <div className="flex items-center gap-1">
+        {area === 'resident' && (
+          <LocalizedButton
+            type="button"
+            onClick={() => setAccessibleOverride(!accessible)}
+            aria-pressed={accessible}
+            className={cn(
+              'inline-flex min-h-11 items-center gap-1.5 rounded-md px-3 text-sm font-semibold transition-colors duration-200',
+              accessible ? 'bg-brand-700 text-white hover:bg-brand-800' : 'text-ink-700 hover:bg-ink-100',
+            )}
+          >
+            <Accessibility className="size-[18px]" aria-hidden />
+            <span><Text>{accessible ? 'Standard view' : 'Accessible view'}</Text></span>
+          </LocalizedButton>
+        )}
         <LocalizedButton
           type="button"
           onClick={switchLang}
@@ -173,7 +198,7 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
 
       {(area === 'resident' || area === 'console' || area === 'guard') && <AlertTakeover href={area === 'resident' ? '/app/banjir' : area === 'guard' ? '/guard' : '/console/banjir'} />}
 
-      <main id="main" className="mx-auto w-full max-w-7xl px-4 pb-28 pt-7 sm:px-6 md:pb-14 md:pt-9 lg:px-10 lg:pt-10">
+      <main id="main" className={cn('mx-auto w-full max-w-7xl px-4 pb-28 pt-7 sm:px-6 md:pb-14 md:pt-9 lg:px-10 lg:pt-10', accessible && 'akses-view')}>
         <ProfileCompletion accountHref={`${root}/account`} />
         {/* A short fade-and-rise when moving between screens. */}
         <div key={pathname} className={cn('animate-rise', motion)}>
@@ -219,5 +244,6 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
 
       <NotificationsDrawer open={inboxOpen} onClose={() => setInboxOpen(false)} list={inbox.data} onRead={() => void inbox.mutate()} />
     </div>
+    </AksesViewContext.Provider>
   );
 }

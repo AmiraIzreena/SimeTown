@@ -3,6 +3,7 @@
 import { Text } from '@/components/ui/localized-text';
 
 import { Clock, ExternalLink, HeartPulse, MapPin, Megaphone, Navigation, ShieldCheck } from 'lucide-react';
+import { AksesPage, AksesReadAloud, useAksesMode } from '@/components/features/akses-mode';
 import { FloodBadge, LevelGauge } from '@/components/features/flood';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, PageHeader } from '@/components/ui/card';
@@ -17,6 +18,7 @@ import type { BanjirOverview } from '@/lib/types';
 
 export default function BanjirPage() {
   const t = useT();
+  const akses = useAksesMode();
   const overview = useApi<BanjirOverview>('/banjir', { refreshInterval: 15_000 });
   const checkin = useAction((status: 'SAFE' | 'NEED_HELP') => api.post('/banjir/checkin', { status }), {
     onSuccess: () => void overview.mutate(),
@@ -24,7 +26,7 @@ export default function BanjirPage() {
   });
   const mine = overview.data?.zones.find((z) => z.id === overview.data?.myZoneId);
   return (
-    <>
+    <AksesPage profile={akses.profile} simple={akses.simple} largeText={akses.largeText} largeTargets={akses.largeTargets}>
       <PageHeader
         title="Banjir"
         description="Water levels by zone, from drain sensors and camera readings checked by the Banjir agent. Two signals must agree before the highest alert goes out by itself."
@@ -35,7 +37,7 @@ export default function BanjirPage() {
           </Button>
         }
       />
-      {mine && mine.status !== 'NORMAL' && (
+      {!akses.simple && mine && mine.status !== 'NORMAL' && (
         <Card className={cn('mb-5 p-5', mine.status === 'DANGER' ? 'border-accent-200 bg-accent-50' : 'border-warning-600/30 bg-warning-50')}>
           <p className="font-display text-lg font-bold text-ink-900"><Text>{overview.data?.myCheckin ? (overview.data.myCheckin === 'SAFE' ? 'You checked in safe.' : 'You asked for help. The team has been told.') : 'Let the township team know how you are.'}</Text></p>
           <div className="mt-3 flex flex-wrap gap-2">
@@ -54,6 +56,45 @@ export default function BanjirPage() {
         {(o) =>
           o.zones.length === 0 ? (
             <EmptyState title="No flood zones set up"><Text>The township team has not added any zones yet.</Text></EmptyState>
+          ) : akses.simple ? (
+            <div className="space-y-4">
+              {[...o.zones]
+                .sort((a, b) => Number(b.id === o.myZoneId) - Number(a.id === o.myZoneId))
+                .map((zone) => {
+                  const isMine = zone.id === o.myZoneId;
+                  const statusText = zone.status === 'DANGER' ? 'Flood danger in your area. Leave by the safe route.' : zone.status === 'WARNING' ? 'Flood warning in your area.' : 'Your area is safe right now.';
+                  const checkinText = o.myCheckin === 'SAFE' ? 'You checked in safe.' : o.myCheckin === 'NEED_HELP' ? 'You asked for help. The team has been told.' : 'Let the township team know how you are.';
+                  const spoken = `${isMine ? t(statusText) : `${zone.name}: ${t(zone.status)}`}. ${t('Safe route')}: ${zone.safe_route}. ${t('Assembly point')}: ${zone.assembly_point}.`;
+                  return (
+                    <Card key={zone.id} className={cn('space-y-4 p-6', zone.status === 'DANGER' && 'border-accent-300 bg-accent-50', zone.id === o.myZoneId && zone.status !== 'DANGER' && 'border-brand-300')} aria-live={isMine ? 'polite' : undefined}>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <h2 className="text-2xl font-bold">{zone.name}</h2>
+                        {isMine && <Badge tone="brand"><Text>Your zone</Text></Badge>}
+                        <FloodBadge status={zone.status} />
+                      </div>
+                      <p className="text-xl font-semibold text-ink-900"><Text>{isMine ? statusText : zone.status === 'DANGER' ? 'Flood danger' : zone.status === 'WARNING' ? 'Flood warning' : 'Normal'}</Text></p>
+                      <p className="font-display text-4xl font-bold tabular-nums text-ink-900"><Text>{zone.level_pct}</Text>%</p>
+                      <p><strong><Text>Safe route</Text>:</strong> <Text>{zone.safe_route}</Text></p>
+                      <p><strong><Text>Assembly point</Text>:</strong> <Text>{zone.assembly_point}</Text></p>
+                      {isMine && zone.status !== 'NORMAL' && (
+                        <div className="space-y-3 border-t border-ink-200 pt-4">
+                          <p className="font-semibold"><Text>{checkinText}</Text></p>
+                          <div className="flex flex-wrap gap-3">
+                            <Button size="lg" onClick={() => void checkin.run('SAFE')} pending={checkin.pending} variant={o.myCheckin === 'SAFE' ? 'secondary' : 'primary'}>
+                              <ShieldCheck className="size-5" aria-hidden />{t("I'm safe")}
+                            </Button>
+                            <Button size="lg" onClick={() => void checkin.run('NEED_HELP')} disabled={checkin.pending} variant="danger">
+                              <HeartPulse className="size-5" aria-hidden /><Text>I need help</Text>
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                      {isMine && <AksesReadAloud profile={akses.profile} text={spoken} />}
+                    </Card>
+                  );
+                })}
+              <p className="text-sm text-ink-600"><Text>Updates every few seconds.</Text></p>
+            </div>
           ) : (
             <div className="space-y-4">
               <p className="text-sm text-ink-500"><Text>Warning at </Text><Text>{o.warningPct}</Text><Text>% · Danger at </Text><Text>{o.dangerPct}</Text><Text>% · updates every few seconds</Text></p>
@@ -113,6 +154,6 @@ export default function BanjirPage() {
           )
         }
       </Async>
-    </>
+    </AksesPage>
   );
 }

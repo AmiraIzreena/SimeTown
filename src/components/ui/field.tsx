@@ -9,13 +9,14 @@ interface FieldProps {
   hint?: ReactNode;
   error?: string;
   className?: string;
+  labelClassName?: string;
 }
 
 /** Label, control, hint and error wired together for screen readers. */
-function Shell({ label, hint, error, className, id, children }: FieldProps & { id: string; children: ReactNode }) {
+function Shell({ label, hint, error, className, labelClassName, id, children }: FieldProps & { id: string; children: ReactNode }) {
   return (
     <div className={cn('space-y-1.5', className)}>
-      <label htmlFor={id} className="block text-sm font-medium text-ink-700">
+      <label htmlFor={id} className={cn('block text-sm font-medium text-ink-700', labelClassName)}>
         <Text>{label}</Text>
       </label>
       <Text>{children}</Text>
@@ -40,19 +41,19 @@ const noteProps = (id: string, hint: unknown, error?: string) => ({
   'aria-describedby': hint || error ? `${id}-note` : undefined,
 });
 
-export function Input({ label, hint, error, className, ...rest }: FieldProps & InputHTMLAttributes<HTMLInputElement>) {
+export function Input({ label, hint, error, className, labelClassName, ...rest }: FieldProps & InputHTMLAttributes<HTMLInputElement>) {
   const id = useId();
   return (
-    <Shell {...{ label, hint, error, className, id }}>
+    <Shell {...{ label, hint, error, className, labelClassName, id }}>
       <LocalizedInput className="control" {...noteProps(id, hint, error)} {...rest} />
     </Shell>
   );
 }
 
-export function Select({ label, hint, error, className, children, ...rest }: FieldProps & SelectHTMLAttributes<HTMLSelectElement>) {
+export function Select({ label, hint, error, className, labelClassName, children, ...rest }: FieldProps & SelectHTMLAttributes<HTMLSelectElement>) {
   const id = useId();
   return (
-    <Shell {...{ label, hint, error, className, id }}>
+    <Shell {...{ label, hint, error, className, labelClassName, id }}>
       <LocalizedSelect className="control pr-9" {...noteProps(id, hint, error)} {...rest}>
         <Text>{children}</Text>
       </LocalizedSelect>
@@ -80,10 +81,10 @@ export function Checkbox({ label, error, className, ...rest }: { label: ReactNod
   );
 }
 
-export function Textarea({ label, hint, error, className, ...rest }: FieldProps & TextareaHTMLAttributes<HTMLTextAreaElement>) {
+export function Textarea({ label, hint, error, className, labelClassName, ...rest }: FieldProps & TextareaHTMLAttributes<HTMLTextAreaElement>) {
   const id = useId();
   return (
-    <Shell {...{ label, hint, error, className, id }}>
+    <Shell {...{ label, hint, error, className, labelClassName, id }}>
       <LocalizedTextarea className="control min-h-24 py-2.5" rows={3} {...noteProps(id, hint, error)} {...rest} />
     </Shell>
   );

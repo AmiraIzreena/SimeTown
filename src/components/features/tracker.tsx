@@ -5,6 +5,7 @@ import { Text } from '@/components/ui/localized-text';
 import { Flag, LocateFixed, Play, ShieldCheck, Square, Timer } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { SimulatedNote } from '@/components/features/preview';
+import { AksesWizard, useAksesMode } from '@/components/features/akses-mode';
 import { TownshipMap, type MapCheckpoint, type MapLoop } from '@/components/features/township-map';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader } from '@/components/ui/card';
@@ -81,6 +82,7 @@ const minutes = (s: number) => `${Math.floor(s / 60)} min`;
  * the server, not here.
  */
 export function Tracker({ onFinished }: { onFinished: () => void }) {
+  const akses = useAksesMode();
   const toast = useToast();
   const map = useApi<MapData>('/gerak/map');
   const [mode, setMode] = useState<GerakMode>('WALK');
@@ -93,6 +95,8 @@ export function Tracker({ onFinished }: { onFinished: () => void }) {
   const [hits, setHits] = useState<string[]>([]);
   const [finished, setFinished] = useState<Finished | null>(null);
   const [busy, setBusy] = useState(false);
+  const [guidedOpen, setGuidedOpen] = useState(false);
+  const [guidedStep, setGuidedStep] = useState(0);
   const buffer = useRef<Point[]>([]);
   const timers = useRef<{ watch?: number; flush?: number; play?: number }>({});
 
@@ -187,6 +191,8 @@ export function Tracker({ onFinished }: { onFinished: () => void }) {
       setProgress(null);
       setActivity({ id: a.id, simulated: demo, startedAt });
       follow(a.id, demo, startedAt, loop);
+      setGuidedOpen(false);
+      setGuidedStep(0);
     } catch (error) {
       toast.show(error instanceof ApiError ? error.message : 'Could not start. Please try again.', 'error');
     } finally {
@@ -280,6 +286,11 @@ export function Tracker({ onFinished }: { onFinished: () => void }) {
                         {finished.tooFastM > 0 && <p className="mt-1 text-sm text-ink-700"><Text>{formatKm(finished.tooFastM)}</Text><Text> above the speed band for this activity did not count.</Text></p>}
                       </div>
                     )}
+                    {akses.guided ? (
+                      <Button size="lg" className="min-h-20 w-full text-xl" onClick={() => { setGuidedStep(0); setGuidedOpen(true); }}>
+                        <Play className="size-5" aria-hidden /><Text>Start an activity step by step</Text>
+                      </Button>
+                    ) : <>
                     <div className="grid gap-4 sm:grid-cols-2">
                       <Select label="Activity" value={mode} onChange={(event) => setMode(event.target.value as GerakMode)} hint={`Fair play: parts faster than ${GERAK_MODE_INFO[mode].maxSpeedKmh} km/h do not count.`}>
                         {GERAK_MODES.map((g) => (
@@ -301,6 +312,7 @@ export function Tracker({ onFinished }: { onFinished: () => void }) {
                     {m.simulationAllowed && <Switch label="Demo: play back a route instead of GPS" hint="For showing the feature indoors. Refused in production." checked={demo} onChange={setDemo} />}
                     <Button size="lg" onClick={() => void start()} pending={busy}>
                       <Play className="size-4" aria-hidden /><Text>Start</Text></Button>
+                    </>}
                   </div>
                 )}
                 {activity?.simulated && <SimulatedNote><Text>Demo playback: positions follow the drawn loop instead of the phone’s GPS. The server applies the same fair-play checks.</Text></SimulatedNote>}
@@ -317,6 +329,37 @@ export function Tracker({ onFinished }: { onFinished: () => void }) {
             <Timer className="mt-0.5 size-4 shrink-0 text-brand-600" aria-hidden /><Text>In a phone browser, tracking works while the screen is on.</Text></li>
         </ul>
       </div>
+      {akses.guided && (
+        <AksesWizard open={guidedOpen} title="Start an activity" step={guidedStep} total={3} onClose={() => setGuidedOpen(false)} onBack={() => setGuidedStep((step) => step - 1)} onNext={() => setGuidedStep((step) => step + 1)} onSubmit={() => void start()} pending={busy} submitLabel="Start">
+          {guidedStep === 0 ? (
+            <Select label="What activity are you doing?" labelClassName="!text-3xl !font-semibold" value={mode} onChange={(event) => setMode(event.target.value as GerakMode)}>
+              {GERAK_MODES.map((item) => <option key={item} value={item}><Text>{GERAK_MODE_INFO[item].label}</Text></option>)}
+            </Select>
+          ) : guidedStep === 1 && map.data?.simulationAllowed ? (
+            <div className="space-y-4">
+              <p className="text-3xl font-semibold"><Text>Are you indoors and want to try the demo route?</Text></p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Button size="lg" variant={demo ? 'success' : 'secondary'} className="min-h-24 text-2xl" onClick={() => setDemo(true)}><Text>Yes, use demo</Text></Button>
+                <Button size="lg" variant={!demo ? 'danger' : 'secondary'} className="min-h-24 text-2xl" onClick={() => setDemo(false)}><Text>No, use GPS</Text></Button>
+              </div>
+            </div>
+          ) : guidedStep === 1 ? (
+            <div className="space-y-3">
+              <p className="text-3xl font-semibold"><Text>Ready to start tracking your activity?</Text></p>
+              <p className="text-xl text-ink-600"><Text>Your location is used only while the activity is running.</Text></p>
+            </div>
+          ) : demo && map.data?.simulationAllowed ? (
+            <Select label="Choose a demo route" labelClassName="!text-3xl !font-semibold" value={demoLoop || map.data.loops[0]?.id || ''} onChange={(event) => setDemoLoop(event.target.value)}>
+              {map.data.loops.map((loop) => <option key={loop.id} value={loop.id}>{loop.name}</option>)}
+            </Select>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-3xl font-semibold"><Text>Ready to start tracking your activity?</Text></p>
+              <p className="text-xl text-ink-600"><Text>Your location is used only while the activity is running.</Text></p>
+            </div>
+          )}
+        </AksesWizard>
+      )}
     </Card>
   );
 }
