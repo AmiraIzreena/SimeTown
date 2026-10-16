@@ -238,7 +238,7 @@ export interface HomeAddress {
   property_type: 'LANDED' | 'HIGHRISE';
   /** A house number ("12"), or a high-rise unit in block-floor-unit form ("A-03-07"). */
   house_no: string | null;
-  /** High-rise only: the building, such as "Residensi SimeTown". */
+  /** High-rise only: the building, such as "Pangsapuri Harmoni Elmina, Block A". */
   building: string | null;
   street: string;
   /** The precinct or phase inside the township, such as "Elmina Valley 2". */
@@ -252,7 +252,7 @@ export interface HomeAddress {
 export const isCompleteAddress = (a: HomeAddress) =>
   Boolean(a.house_no && a.street && a.postcode && a.city && a.state && (a.property_type === 'LANDED' || a.building));
 
-/** The first line, for lists: "No. 12, Jalan Kenanga 1/KT1" or "A-03-07, Residensi SimeTown". */
+/** The first line, for lists: "No. 12, Jalan Metafasa U16/171" or "A-03-07, Pangsapuri Harmoni Elmina, Block A". */
 export const shortAddress = (a: HomeAddress) =>
   a.property_type === 'HIGHRISE' ? [a.house_no, a.building].filter(Boolean).join(', ') : [a.house_no && `No. ${a.house_no}`, a.street].filter(Boolean).join(', ');
 
@@ -260,8 +260,8 @@ export const shortAddress = (a: HomeAddress) =>
  * A home written as Malaysian post is addressed, in the order Sime Darby Property
  * townships are laid out: house (or unit and building), street, precinct or phase,
  * then postcode, city and state.
- *   No. 12, Jalan Kenanga 1/KT1, Precinct Kenanga, 41050 Klang, Selangor
- *   A-03-07, Residensi SimeTown, Jalan Melur 2/KT2, Precinct Melur, 41050 Klang, Selangor
+ *   No. 12, Jalan Metafasa U16/171, Elmina Valley 1, 40160 Shah Alam, Selangor
+ *   A-03-07, Pangsapuri Harmoni Elmina, Block A, Jalan Casuarina U17/56, Elmina West, 40160 Shah Alam, Selangor
  */
 export function formatAddress(a: HomeAddress): string {
   const first = a.property_type === 'HIGHRISE' ? [a.house_no, a.building] : [a.house_no && `No. ${a.house_no}`];

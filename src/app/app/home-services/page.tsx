@@ -79,8 +79,8 @@ export default function HomeServicesPage() {
             <CardHeader title="Resale and rental inside the township" description="Listings from residents, seen by residents first." />
             <ul className="divide-y divide-ink-100">
               {[
-                { title: 'Terrace house, 4 bedrooms (sample listing)', text: 'Precinct Melur · for rent', icon: House },
-                { title: 'Residensi SimeTown, 3 bedrooms (sample listing)', text: 'Block A, mid floor · for sale', icon: Building },
+                { title: 'Terrace house, 4 bedrooms (sample listing)', text: 'Elmina Valley 2 · for rent', icon: House },
+                { title: 'Pangsapuri Harmoni Elmina, 3 bedrooms (sample listing)', text: 'Block A, mid floor · for sale', icon: Building },
               ].map((l) => (
                 <li key={l.title} className="flex items-center gap-3 px-5 py-3.5">
                   <span className="grid size-10 shrink-0 place-items-center rounded-md bg-gold-50 text-gold-700">

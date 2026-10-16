@@ -10,4 +10,6 @@ Application copy uses English source strings with Malay entries in `src/lib/i18n
 - Render user-authored reports, posts, names, addresses, campaign descriptions and other free text verbatim. This feature translates the interface, not people's submissions.
 - Do not translate database enum values, API payloads, IDs, links or input values.
 
+Run `npm run i18n:audit` to list any interface text without a Malay entry, or shown without passing through translation (pages, components, server errors and notifications, the Assistant's answers and flood messages). The test suite runs the same audit, so new English-only text fails the build; words that are meant to be the same in both languages are listed in `ALLOWED` in `scripts/i18n-audit.ts`. A sentence or a date inside a templated message ("Water is at 92%.", "Tue, 3 Nov") is translated too, while text written by people or the township, such as a safe route, stays as written.
+
 Run `npm.cmd run check` to validate types, lint and tests. `tests/i18n.test.ts` checks role navigation, domain labels, template placeholders, dynamic messages and preservation of personal values. Browser checks should also cover language switching on populated forms, saved preferences, mobile dialogs and every role. Use an isolated database for interactive tests.

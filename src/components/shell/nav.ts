@@ -1,5 +1,5 @@
 import {
-  Accessibility, Bike, Bot, Building2, ClipboardList, DoorOpen, Droplets, Gauge, HandHeart, History, Home, House, Landmark, Leaf, Megaphone, MapPin,
+  Accessibility, Bike, Bot, Building2, ClipboardList, DoorOpen, Droplets, Gauge, HandHeart, History, Home, House, Landmark, Leaf, Megaphone, MapPin, MessageCircleQuestionMark,
   Receipt, Recycle, Repeat2, ScrollText, Settings, ShieldAlert, Sprout, Store, Tag, TriangleAlert, UserRound, Users, Wallet, Zap, type LucideIcon,
 } from 'lucide-react';
 import { ADMINS, type Role } from '@/shared/domain';
@@ -67,6 +67,7 @@ export const NAV: Record<Area, { title: string; items: NavItem[] }> = {
     items: [
       { href: '/console', label: 'Insights', icon: Gauge, primary: true },
       { href: '/console/reports', label: 'Reports', icon: ClipboardList, primary: true },
+      { href: '/console/assistant', label: 'Assistant questions', icon: MessageCircleQuestionMark },
       { href: '/console/banjir', label: 'Flood agent', icon: Droplets, primary: true },
       { href: '/console/campaigns', label: 'Campaigns & sponsors', icon: Megaphone },
       { href: '/console/people', label: 'People', icon: Users },

@@ -18,10 +18,15 @@ const schema = z
     TRUSTED_PROXY_HOPS: z.coerce.number().int().min(1).max(5).default(1),
     CRON_SECRET: z.string().min(32).optional(),
     SENSOR_INGEST_TOKEN: z.string().min(32).optional(),
-    AI_PROVIDER: z.enum(['none', 'anthropic']).default('none'),
+    AI_PROVIDER: z.enum(['none', 'anthropic', 'openai']).default('none'),
     AI_API_URL: z.url().optional(),
     AI_API_KEY: z.string().min(1).optional(),
     AI_MODEL: z.string().min(1).optional(),
+    // Reasoning models spend hidden tokens before they answer: raise both for them.
+    AI_MAX_OUTPUT_TOKENS: z.coerce.number().int().min(100).max(32_000).optional(),
+    AI_TIMEOUT_SECONDS: z.coerce.number().int().min(2).max(120).default(8),
+    // Questions each resident may ask the AI Assistant in 24 hours (cost control). Rule answers do not count.
+    AI_ASSISTANT_DAILY_LIMIT: z.coerce.number().int().min(1).max(2_000).default(100),
     LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
   })
   .superRefine((env, ctx) => {
@@ -36,14 +41,20 @@ const schema = z
     if (hosted && env.TRUST_PROXY === 'none') {
       ctx.addIssue({ code: 'custom', path: ['TRUST_PROXY'], message: 'set to cloudflare or forwarded outside development (see docs/DEPLOYMENT.md)' });
     }
-    if (env.AI_PROVIDER !== 'none' && !(env.AI_API_URL && env.AI_API_KEY && env.AI_MODEL)) {
-      ctx.addIssue({ code: 'custom', path: ['AI_PROVIDER'], message: 'AI_API_URL, AI_API_KEY and AI_MODEL are required when AI_PROVIDER is set' });
+    if (env.AI_PROVIDER !== 'none' && !(env.AI_API_KEY && env.AI_MODEL)) {
+      ctx.addIssue({ code: 'custom', path: ['AI_PROVIDER'], message: 'AI_API_KEY and AI_MODEL are required when AI_PROVIDER is set' });
     }
   });
 
 export type Config = z.infer<typeof schema> & { appOrigin: string; secureCookies: boolean; dbSsl: boolean };
 
 let cached: Config | undefined;
+
+/** Each provider's own endpoint, used when AI_API_URL is not set (set it for a proxy or a compatible service). */
+const AI_DEFAULT_URLS = {
+  anthropic: 'https://api.anthropic.com/v1/messages',
+  openai: 'https://api.openai.com/v1/chat/completions',
+} as const;
 
 /** Validates a set of environment variables. Exported for tests; the app uses `getConfig()`. */
 export function parseConfig(source: Record<string, string | undefined>): Config {
@@ -56,6 +67,7 @@ export function parseConfig(source: Record<string, string | undefined>): Config 
   const env = parsed.data;
   return {
     ...env,
+    AI_API_URL: env.AI_API_URL ?? (env.AI_PROVIDER === 'none' ? undefined : AI_DEFAULT_URLS[env.AI_PROVIDER]),
     appOrigin: new URL(env.APP_URL).origin,
     secureCookies: env.APP_URL.startsWith('https://'),
     dbSsl: (env.DB_SSL ?? (env.APP_ENV === 'development' ? 'disable' : 'require')) === 'require',

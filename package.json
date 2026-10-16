@@ -20,6 +20,7 @@
     "bootstrap": "tsx scripts/bootstrap.ts",
     "job": "tsx scripts/job.ts",
     "docs:api": "tsx scripts/gen-api-docs.ts",
+    "i18n:audit": "tsx scripts/i18n-audit.ts",
     "check": "npm run lint && npm run typecheck && npm run test"
   },
   "dependencies": {

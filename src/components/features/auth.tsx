@@ -159,7 +159,7 @@ export function ShopAddressFields({ fields, initial }: { fields: Record<string, 
   return (
     <fieldset className="space-y-4">
       <legend className="text-sm font-medium text-ink-700"><Text>Shop address</Text></legend>
-      <Input label="Lot, building and street" name="addressLine" placeholder="e.g. Lot G-05, SimeTown Square, Jalan Melur 2/KT2" autoComplete="street-address" defaultValue={initial?.addressLine ?? ''} required error={fields.addressLine} />
+      <Input label="Lot, building and street" name="addressLine" placeholder="e.g. No. 5-1, Jalan Eserina AB U16/AB, Elmina East" autoComplete="street-address" defaultValue={initial?.addressLine ?? ''} required error={fields.addressLine} />
       <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-3">
         <Input label="Postcode" name="postcode" inputMode="numeric" maxLength={5} autoComplete="postal-code" defaultValue={initial?.postcode ?? ''} required error={fields.postcode} />
         <Input label="City" name="city" autoComplete="address-level2" defaultValue={initial?.city ?? ''} required error={fields.city} />

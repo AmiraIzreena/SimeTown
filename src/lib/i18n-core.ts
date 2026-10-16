@@ -9,19 +9,28 @@ const lookup = (dictionary: Record<string, string>, key: string) => Object.hasOw
 const escapeRegex = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const templates = messageTemplates.map(([english, ms]) => {
   const ids: string[] = [];
+  /** Placeholders limited to a fixed list of application words: their value is translated too. */
+  const fixed = new Set<string>();
   const parts = english.split(/(\{\d+\})/g);
   const pattern = parts.map((part) => {
     if (/^\{\d+\}$/.test(part)) {
       ids.push(part.slice(1, -1));
       // These short templates would otherwise match ordinary personal sentences.
       if (english.startsWith('{0} of {1}')) return '([\\d,.]+)';
-      if (english === '{0} is {1}' && part === '{1}') return '(normal|warning|danger|offline|online)';
-      if (english === '{0} in {1}.{2}' && part === '{0}') return '(Warning|Danger|Flood warning|Flood danger)';
+      if (english === '{0} is {1}' && part === '{1}') return fixed.add(part.slice(1, -1)), '(normal|warning|danger|offline|online|full)';
+      if (english === '{0} in {1}.{2}' && part === '{0}') return fixed.add(part.slice(1, -1)), '(Warning|Danger|Flood warning|Flood danger|Update: flood warning continues|Update: flood danger continues)';
       return '(.*?)';
     }
     return escapeRegex(part);
   }).join('');
-  return { pattern: new RegExp(`^${pattern}$`, 's'), ids, ms, specificity: english.replace(/\{\d+\}/g, '').length };
+  return {
+    pattern: new RegExp(`^${pattern}$`, 's'),
+    ids,
+    fixed,
+    ms,
+    // A template whose placeholder only takes listed words is the most precise match, so it goes first.
+    specificity: english.replace(/\{\d+\}/g, '').length + (fixed.size ? 1_000 : 0),
+  };
 }).sort((a, b) => b.specificity - a.specificity);
 
 const calendarWords: Record<string, string> = {
@@ -30,6 +39,10 @@ const calendarWords: Record<string, string> = {
   January: 'Januari', February: 'Februari', March: 'Mac', April: 'April', May: 'Mei', June: 'Jun', July: 'Julai', August: 'Ogos', September: 'September', October: 'Oktober', November: 'November', December: 'Disember',
   Jan: 'Jan', Feb: 'Feb', Mar: 'Mac', Apr: 'Apr', Jun: 'Jun', Jul: 'Jul', Aug: 'Ogo', Sept: 'Sep', Sep: 'Sep', Oct: 'Okt', Nov: 'Nov', Dec: 'Dis',
 };
+
+/** Only date-shaped application values, never a person's name such as May. */
+const dateShaped = (text: string) =>
+  /^(?:(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*,? )?\d{1,2} [A-Z][a-z]+(?: \d{4})?(?:,? (?:at )?\d{1,2}:\d{2}(?: ?[ap]m)?)?$/.test(text) || /^[A-Z][a-z]+ \d{4}$/.test(text);
 
 function translateGenerated(text: string): string | undefined {
   const validation = /^Too (small|big): expected (string|number|array) to have ([<>]=)(\d+) (characters|items)$/.exec(text);
@@ -40,16 +53,22 @@ function translateGenerated(text: string): string | undefined {
   const relative = /^(\d+) (min|h|d) ago$/.exec(text);
   if (relative) return `${relative[1]} ${{ min: 'min', h: 'j', d: 'hari' }[relative[2]!]} lalu`;
   // Only date-shaped application values, never a person's name such as May.
-  if (/^(?:(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*,? )?\d{1,2} [A-Z][a-z]+(?: \d{4})?(?:,? (?:at )?\d{1,2}:\d{2}(?: ?[ap]m)?)?$/.test(text) || /^[A-Z][a-z]+ \d{4}$/.test(text)) {
+  if (dateShaped(text)) {
     return text.replace(/[A-Za-z]+/g, word => calendarWords[word] ?? word);
   }
-  for (const { pattern, ids, ms } of templates) {
+  for (const { pattern, ids, fixed, ms } of templates) {
     const match = pattern.exec(text);
     if (!match) continue;
     const semanticValues = new Set(['normal', 'warning', 'danger', 'low', 'medium', 'high', 'urgent', 'tomorrow from 9am', 'from now', 'in progress', 'resolved', 'rejected', 'closed', 's']);
     const values = Object.fromEntries(ids.map((id, i) => {
       const value = match[i + 1] ?? '';
-      return [id, value === 's' ? '' : semanticValues.has(value) ? (extraMalay[value] ?? malay[value] ?? value) : value];
+      if (value === 's') return [id, ''];
+      if (semanticValues.has(value) || fixed.has(id)) return [id, extraMalay[value] ?? malay[value] ?? value];
+      // A whole application sentence ("Water is at 92%.") or a date ("Tue, 3 Nov, 3:00 pm") inside a
+      // message is translated as well; anything not in the catalogue, such as a township's own
+      // safe-route text, stays as written.
+      if ((/\s/.test(value.trim()) && /[.!?]$/.test(value.trim())) || dateShaped(value.trim())) return [id, translateMessage('ms', value)];
+      return [id, value];
     }));
     return ms.replace(/\{(\d+)\}/g, (_, id: string) => values[id] ?? '');
   }

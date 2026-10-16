@@ -17,7 +17,7 @@ import { confirmBill, parseBillText, readBill } from '@/server/modules/jimat/bil
 import { claimGuestSession, createMachine, itemText, joinFromScreen, machineScreen, simulateFinish, simulateItem, simulateStart } from '@/server/modules/kitar/machine';
 import { createKiosk } from '@/server/modules/kitar/service';
 import { runJob } from '@/server/modules/admin/service';
-import { bookPlot, createGarden, decideSighting, addSighting, markWatered } from '@/server/modules/taman/service';
+import { addSighting, applyForPlot, createGarden, decideSighting, markWatered, runBallot, withdrawApplication } from '@/server/modules/taman/service';
 import { createPass, logWalkIn, publicPass, replyToWalkIn, scanPass, tamuOverview } from '@/server/modules/tamu/service';
 import { T0, at, expectFloatBalanced, freshDb, makeHome, makeResident, makeWorld, type World } from './helpers';
 
@@ -358,12 +358,35 @@ describe('Akses+ (BR32) and Taman', () => {
     expect((await respondToCarerInvite(db, carer, link.id, true, T0)).status).toBe('ACTIVE');
   });
 
-  it('books one plot per home, records watering by the garden code, and gives XP for confirmed sightings', async () => {
+  it('gives plots out by ballot, one per home, and keeps the rest on the waiting list', async () => {
+    const { id: gardenId } = await createGarden(db, w.staff, { name: 'Ballot Garden', location: 'Central park', plots: 2, plotSizeM2: 4 });
+    const applicants = [await makeResident(w), await makeResident(w), await makeResident(w)];
+    await expect(runBallot(db, w.staff, gardenId, T0)).rejects.toMatchObject({ code: 'NO_APPLICANTS' });
+    const applications = [];
+    for (const r of applicants) applications.push(await applyForPlot(db, r, gardenId, T0));
+    await expect(applyForPlot(db, applicants[0]!, gardenId, T0)).rejects.toMatchObject({ code: 'ALREADY_APPLIED' });
+
+    expect(await runBallot(db, w.staff, gardenId, T0)).toEqual({ allocated: 2, stillWaiting: 1, freePlotsLeft: 0 });
+    const holders = await db.query<{ holder_user_id: string }>('SELECT holder_user_id FROM garden_plots WHERE garden_id = $1 AND holder_home_id IS NOT NULL', [gardenId]);
+    expect(new Set(holders.map((h) => h.holder_user_id)).size).toBe(2);
+    const loser = applicants.find((r) => !holders.some((h) => h.holder_user_id === r.id))!;
+    const winner = applicants.find((r) => r.id !== loser.id)!;
+    await expect(applyForPlot(db, winner, gardenId, T0)).rejects.toMatchObject({ code: 'ONE_PLOT' });
+    await expect(runBallot(db, w.staff, gardenId, T0)).rejects.toMatchObject({ code: 'NO_FREE_PLOTS' });
+    const inbox = await db.query<{ user_id: string; title: string }>(`SELECT user_id, title FROM notifications WHERE title LIKE '%Ballot Garden'`);
+    expect(inbox.filter((n) => n.title.startsWith('You won plot'))).toHaveLength(2);
+    expect(inbox.find((n) => n.user_id === loser.id)?.title).toBe('Still on the waiting list for Ballot Garden');
+
+    // The resident who was not drawn can leave the list, and only their own home's entry.
+    const loserApp = applications[applicants.indexOf(loser)]!;
+    await expect(withdrawApplication(db, winner, loserApp.id, T0)).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    await withdrawApplication(db, loser, loserApp.id, T0);
+    expect((await one<{ waiting: number }>(db, `SELECT count(*)::int AS waiting FROM garden_applications WHERE garden_id = $1 AND status = 'WAITING'`, [gardenId]))!.waiting).toBe(0);
+  });
+
+  it('records watering by the garden code, and gives XP for confirmed sightings', async () => {
     const { id: gardenId } = await createGarden(db, w.staff, { name: 'Test Garden', location: 'By the lake', plots: 2, plotSizeM2: 6 });
-    const plots = await db.query<{ id: string }>('SELECT id FROM garden_plots WHERE garden_id = $1 ORDER BY plot_no', [gardenId]);
     const resident = await makeResident(w);
-    await bookPlot(db, resident, plots[0]!.id, T0);
-    await expect(bookPlot(db, resident, plots[1]!.id, T0)).rejects.toMatchObject({ code: 'ONE_PLOT' });
     const code = (await one<{ code: string }>(db, 'SELECT code FROM gardens WHERE id = $1', [gardenId]))!.code;
     expect((await markWatered(db, resident, code, T0)).reward.xp).toBe(15);
     const sighting = await addSighting(db, resident, { kind: 'BIRD', species: 'Oriental magpie-robin', location: 'Lake' }, T0);

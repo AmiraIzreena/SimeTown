@@ -1,4 +1,5 @@
 import type { Db } from '../db/client';
+import { deleteOldConversations } from './assistant/service';
 import { deleteOldVisitorRecords } from './tamu/service';
 
 /**
@@ -9,6 +10,7 @@ import { deleteOldVisitorRecords } from './tamu/service';
  *   Gerak   detailed routes: 30 days; an activity left running is closed (BR24)
  *   Jimat   bills read but never confirmed: 1 day (the file itself is never kept, BR25)
  *   Kitar   machine sessions nobody finished: closed after 15 minutes
+ *   Assistant  conversations: 90 days after the last message
  */
 export async function retentionCleanup(db: Db, now: Date): Promise<Record<string, number>> {
   const visitors = await deleteOldVisitorRecords(db, now);
@@ -28,6 +30,7 @@ export async function retentionCleanup(db: Db, now: Date): Promise<Record<string
       WHERE status = 'OPEN' AND last_activity_at < $1::timestamptz - interval '15 minutes' RETURNING id`,
     [now],
   );
+  const conversations = await deleteOldConversations(db, now);
   return {
     visitorEntriesDeleted: visitors.entries,
     visitorPassesDeleted: visitors.passes,
@@ -35,5 +38,6 @@ export async function retentionCleanup(db: Db, now: Date): Promise<Record<string
     activitiesClosed: abandoned.length,
     unconfirmedBillsDeleted: bills.length,
     machineSessionsClosed: sessions.length,
+    assistantConversationsDeleted: conversations,
   };
 }

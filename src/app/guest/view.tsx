@@ -29,7 +29,7 @@ export function GuestView() {
   const title = partners.data?.find((g) => g.label === 'Title Partner')?.sponsors[0] ?? partners.data?.[0]?.sponsors[0];
 
   return (
-    <PublicFrame title="Visiting Taman SimeTown" intro="No account needed. Check the flood status, recycle as a guest at a smart machine, and use the visitor pass your host sends you.">
+    <PublicFrame title="Visiting City of Elmina" intro="No account needed. Check the flood status, recycle as a guest at a smart machine, and use the visitor pass your host sends you.">
       <div className="grid gap-4 md:grid-cols-3">
         <Card className="p-5">
           <span className={alerts.length ? 'grid size-11 place-items-center rounded-md bg-warning-50 text-warning-700' : 'grid size-11 place-items-center rounded-md bg-success-50 text-success-700'}>

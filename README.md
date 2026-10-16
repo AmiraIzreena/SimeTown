@@ -71,7 +71,7 @@ Open two browser windows (one normal, one private) so you can be the resident an
    (Codes: sign in as staff → *Kiosks & trails* → *Poster*. Scanning the poster's QR code opens the
    page with the code filled in.) She earns Impact XP; during a funded challenge she also earns
    points, and the screen says which sponsor paid.
-2. **Gerak.** Scan both checkpoints of *Lake Loop* on the same day to complete it.
+2. **Gerak.** Scan both checkpoints of *Elmina Central Park Walk* on the same day to complete it.
 3. **SimeTown Merchant.** As the café, enter Aisyah's member code (her wallet → *Show my code*) and a
    RM20 bill: she earns 20 points. As the grocer, enter RM20 and switch on *Customer wants to use
    points* → 300. Aisyah's phone asks her to confirm; the grocer's screen updates by itself and its
@@ -80,7 +80,7 @@ Open two browser windows (one normal, one private) so you can be the resident an
    staff see it in their queue and can correct the suggestion (the correction is logged).
 5. **Jiran and Kongsi.** Join the gotong-royong; give away an item and confirm the handover.
 6. **Jimat.** Enter this month's electricity and water readings and see the change from last month.
-7. **Banjir.** As staff, open *Flood sensors* and drag Zone A · Lakeside past 90%. Within 15 seconds
+7. **Banjir.** As staff, open *Flood sensors* and drag Elmina Valley 1 & 2 past 90%. Within 15 seconds
    a danger warning takes over Aisyah's screen with the safe route.
 8. **SimeTown Insights.** The SDP dashboard has changed all day, with the float matched to the sen.
 
@@ -95,7 +95,7 @@ Open two browser windows (one normal, one private) so you can be the resident an
     (RM2 off, all day). Aisyah confirms on her phone, pays RM18 of a RM20 bill, and the shop's
     statement shows the 10% success fee. *Shop Offers* in the shop's menu sets terms and budgets.
 11. **Gerak map tracking.** In *Gerak*, switch on *Demo: play back a route* and tap *Start*: the
-    trip follows the Lake Loop on the map, checkpoints tick themselves, then *Finish*. On a phone
+    trip follows the Elmina Central Park Walk on the map, checkpoints tick themselves, then *Finish*. On a phone
     outdoors, leave the demo switch off and real GPS is used.
 12. **Jimat bill reading.** In *Jimat* → *Read a bill*, download *Sample bill (demo)*, then upload it:
     every step of the file-safety gate is shown, the numbers are read from the PDF, you confirm,
@@ -109,8 +109,11 @@ Open two browser windows (one normal, one private) so you can be the resident an
     countdown. Residents check in "I'm safe"; the priority help list appears for duty staff.
     The public page is at `/status`.
 15. **Akses+, Taman, Assistant, SimeTown Home, Bahasa Malaysia.** Sign in as Zainab for Simple Mode.
-    Taman books plots and logs wildlife (staff confirm under *Nature & access*). The Assistant and
-    SimeTown Home are labelled previews. The *EN/BM* switch in the top bar changes the language.
+    Taman puts residents on a garden's waiting list (staff run the ballot under *Kiosks, machines & trails*) and
+    logs wildlife (staff confirm under *Nature & access*). Ask the Assistant “What homes is Sime Darby
+    selling in Elmina?” or “Make a visitor pass for Ali tomorrow”, then answer the question it hands over
+    under *Assistant questions* as staff. SimeTown Home is a labelled preview. The *EN/BM* switch in the
+    top bar changes the language.
 
 ---
 
@@ -121,7 +124,7 @@ Open two browser windows (one normal, one private) so you can be the resident an
 | Core | SimeTown ID | Register against a unit, staff or owner confirms the home, seven roles (with Guard), invitations, guest pages (`/guest`, `/status`, `/partners`), English and Bahasa Malaysia (partial) |
 | Core | Points & XP | One balance with two kinds of backing (cash in the float; shops' monthly pledges), "You saved", every amount in ringgit, history, levels, badges, street league, confirm-on-phone |
 | Core | Today card | Changes through the day: flood level, a visitor at the gate or expected, a shop offer nearby, collection day |
-| Core | SimeTown Assistant | **Preview**: fixed answers from the resident's own data in English or Malay, a visitor pass after confirming, never decides an alert |
+| Core | SimeTown Assistant | An AI agent (OpenAI or Anthropic) that answers from the resident's own data and checked facts about City of Elmina, with sources; makes a visitor pass or hands a question to the township office only after the resident confirms; never decides an alert. Without an AI key, fixed rules answer from the same tools |
 | People | Tamu | Visitor passes by link (no app for the visitor), guard screen with camera scan, walk-ins with Expected / Not expected / Call me, SOS, patrol rounds, flood task list, 90-day deletion |
 | People | Akses+ | Private access needs with consent, Simple Mode, read-aloud, flashing alerts, carer links, step-free places, priority help list for floods |
 | People | Jiran | Events with places, help board, XP when the organiser or asker confirms |
@@ -131,7 +134,7 @@ Open two browser windows (one normal, one private) so you can be the resident an
 | Planet | Kongsi | Give away and lend, XP on confirmed handover |
 | Planet | Jimat | Bill reading behind a file-safety gate (PDF text, or the AI service for photos), confirm with unsure fields marked, same bill only once, file never stored; typed readings, tips, leak alert, solar request |
 | Planet | Banjir | The agent: sensor, CCTV test pictures, rain gauge and resident reports; two signals must agree; one-signal drafts with 3- and 5-minute windows; 15-minute updates; four-line messages; check-ins; public status page |
-| Planet | Taman | Garden plots (one per home), watering roster proved by the garden code, wildlife log confirmed by staff, share the harvest in Kongsi |
+| Planet | Taman | Garden plots by ballot from a waiting list (one per home), watering roster proved by the garden code, wildlife log confirmed by staff, share the harvest in Kongsi |
 | Business | SimeTown Merchant | Shop Offers with the shop's own terms and monthly cap, 10% success fee, new and returning customers, Akses-friendly badge; give and accept points, refunds, weekly statement |
 | Business | SimeTown Partner Hub | Four sponsor tiers with a public Partners page and one labelled banner; campaigns with a prefunded pool and grouped results |
 | Business | SimeTown Insights | 30-day totals, the float against what it owes, machine uptime, offer pledges, visitors, flood alerts, barriers fixed on time, nature; printable monthly report |
@@ -141,8 +144,7 @@ Also built because a real system needs them: moderation of flagged posts, the da
 weekly settlement, points expiry and reminders, two-person approval for balance corrections, an
 audit trail, adjustable programme rules, data download and account deletion.
 
-**Shown as previews, and labelled so:** SimeTown Assistant (fixed rules, no language model yet) and
-SimeTown Home (a mock-up: nothing can be booked or sold).
+**Shown as a preview, and labelled so:** SimeTown Home (a mock-up: nothing can be booked or sold).
 
 **Simulated, and labelled so in the app:** no real money moves (deposits and settlements are
 ledger entries an admin records); the recycling machine is a tablet page whose buttons stand in for

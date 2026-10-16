@@ -14,8 +14,13 @@ export const tamanRoutes = [
     handler: (c) => taman.tamanOverview(c.db, c.actor, c.now),
   }),
   route({
-    method: 'POST', path: '/taman/plots/:plotId/book', tag: 'Taman', summary: 'Book a garden plot for six months (one per home)', auth: 'session', roles: ['RESIDENT'], body: emptyBody,
-    handler: (c) => taman.bookPlot(c.db, c.actor, c.params.plotId!, c.now),
+    method: 'POST', path: '/taman/gardens/:gardenId/apply', tag: 'Taman', summary: "Join a garden's waiting list; plots are given out by ballot (one per home)", auth: 'session', roles: ['RESIDENT'], body: emptyBody,
+    rateLimit: { limit: 10, windowSec: 3600, by: 'user' },
+    handler: (c) => taman.applyForPlot(c.db, c.actor, c.params.gardenId!, c.now),
+  }),
+  route({
+    method: 'POST', path: '/taman/applications/:applicationId/withdraw', tag: 'Taman', summary: 'Leave a waiting list', auth: 'session', roles: ['RESIDENT'], body: emptyBody,
+    handler: (c) => taman.withdrawApplication(c.db, c.actor, c.params.applicationId!, c.now),
   }),
   route({
     method: 'POST', path: '/taman/plots/:plotId/release', tag: 'Taman', summary: 'Give a plot back', auth: 'session', roles: ['RESIDENT'], body: emptyBody,
@@ -63,6 +68,10 @@ export const tamanRoutes = [
   route({
     method: 'GET', path: '/admin/taman/gardens', tag: 'Taman', summary: 'Gardens with their printable gate codes', auth: 'session', roles: STAFF,
     handler: (c) => taman.listGardensForStaff(c.db, c.actor),
+  }),
+  route({
+    method: 'POST', path: '/admin/taman/gardens/:gardenId/ballot', tag: 'Taman', summary: "Draw the waiting list for a garden's free plots", auth: 'session', roles: STAFF, body: emptyBody,
+    handler: (c) => taman.runBallot(c.db, c.actor, c.params.gardenId!, c.now),
   }),
   route({
     method: 'POST', path: '/admin/taman/gardens', tag: 'Taman', summary: 'Add a community garden and its plots', auth: 'session', roles: STAFF,

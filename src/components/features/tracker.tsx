@@ -224,10 +224,16 @@ export function Tracker({ onFinished }: { onFinished: () => void }) {
               <>
                 <TownshipMap loops={m.loops} checkpoints={m.checkpoints} gate={m.gate} route={route} here={activity ? here : null} hits={activity ? hits : (m.active?.hits ?? [])} />
                 <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-ink-500">
-                  <span className="flex items-center gap-1.5">
-                    <span aria-hidden className="h-1 w-5 rounded bg-brand-500" /><Text> Walking loop</Text></span>
-                  <span className="flex items-center gap-1.5">
-                    <span aria-hidden className="h-1 w-5 rounded border-t-2 border-dashed border-gold-500" /><Text> Cycling loop</Text></span>
+                  {m.loops.some((loop) => loop.mode === 'WALK') && (
+                    <span className="flex items-center gap-1.5">
+                      <span aria-hidden className="h-1 w-5 rounded bg-[#23817d]" /><Text> Walking loop</Text>
+                    </span>
+                  )}
+                  {m.loops.some((loop) => loop.mode === 'CYCLE') && (
+                    <span className="flex items-center gap-1.5">
+                      <span aria-hidden className="h-1 w-5 rounded border-t-2 border-dashed border-gold-500" /><Text> Cycling loop</Text>
+                    </span>
+                  )}
                   <span className="flex items-center gap-1.5">
                     <span aria-hidden className="h-1 w-5 rounded bg-accent-600" /> <Text>{activity ? 'This trip' : 'Your last trip (trimmed near home)'}</Text>
                   </span>

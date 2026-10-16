@@ -1,7 +1,7 @@
 'use client';
 
 import { Text } from '@/components/ui/localized-text';
-import { LocalizedButton, LocalizedInput } from '@/components/ui/localized-elements';
+import { LocalizedInput } from '@/components/ui/localized-elements';
 
 import { Bird, Camera, Droplet, Leaf, Repeat2, Shovel, Sprout } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
@@ -14,6 +14,7 @@ import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { formatDate, rewardMessage, timeAgo } from '@/lib/format';
 import { useAction, useApi } from '@/lib/hooks';
+import { useT } from '@/lib/i18n';
 import { shrinkPhoto } from '@/lib/image';
 import type { ActionRewardView } from '@/lib/types';
 import { WILDLIFE_KINDS, WILDLIFE_KIND_LABELS, type WildlifeKind } from '@/shared/domain';
@@ -21,10 +22,14 @@ import { WILDLIFE_KINDS, WILDLIFE_KIND_LABELS, type WildlifeKind } from '@/share
 interface Overview {
   today: string;
   rosterDays: number;
+  plotMonths: number;
   gardens: {
     id: string;
     name: string;
     location: string;
+    waiting: number;
+    freePlots: number;
+    myApplication: { id: string; created_at: string } | null;
     plots: { id: string; plot_no: string; size_m2: number; taken: boolean; mine: boolean; booked_until: string | null }[];
     roster: { day: string; mine: boolean; done: boolean }[];
   }[];
@@ -42,11 +47,13 @@ const dayLabel = (iso: string) => new Date(`${iso}T00:00:00Z`).toLocaleDateStrin
 
 export function TamanScreen({ scanned }: { scanned: string }) {
   const overview = useApi<Overview>('/taman');
+  const t = useT();
   const [code, setCode] = useState(scanned);
   const [photo, setPhoto] = useState<File | null>(null);
   const refresh = () => void overview.mutate();
 
-  const book = useAction((id: string) => api.post(`/taman/plots/${id}/book`), { onSuccess: refresh, success: 'Plot booked for six months. Happy growing!' });
+  const apply = useAction((gardenId: string) => api.post(`/taman/gardens/${gardenId}/apply`), { onSuccess: refresh, success: 'You are on the waiting list. You will hear when the ballot is drawn.' });
+  const withdraw = useAction((id: string) => api.post(`/taman/applications/${id}/withdraw`), { onSuccess: refresh, success: 'You have left the waiting list.' });
   const release = useAction((id: string) => api.post(`/taman/plots/${id}/release`), { onSuccess: refresh, success: 'Plot given back.' });
   const take = useAction((gardenId: string, day: string) => api.post('/taman/roster', { gardenId, day }), { onSuccess: refresh, success: 'You are on the watering roster.' });
   const watered = useAction(() => api.post<{ garden: string; reward: ActionRewardView }>('/taman/watered', { code: code.trim() }), {
@@ -83,7 +90,7 @@ export function TamanScreen({ scanned }: { scanned: string }) {
     <>
       <PageHeader
         title="Taman"
-        description="Community gardens and more nature in the township. Book a plot, take a day on the watering roster, and log the birds and insects you spot."
+        description="Community gardens and more nature in the township. Apply for a plot, take a day on the watering roster, and log the birds and insects you spot."
         action={
           <Button href="/app/kongsi" variant="secondary">
             <Repeat2 className="size-4" aria-hidden /><Text>Share your harvest</Text></Button>
@@ -93,9 +100,15 @@ export function TamanScreen({ scanned }: { scanned: string }) {
         <Async state={overview} skeleton={<SkeletonStats count={3} />}>
           {(o) => {
             const myPlot = o.gardens.flatMap((g) => g.plots.filter((p) => p.mine).map((p) => ({ ...p, garden: g.name })))[0];
+            const waiting = o.gardens.some((g) => g.myApplication);
             return (
               <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
-                <Stat label="Your plot" value={myPlot ? `${myPlot.garden.split(' ')[0]} · ${myPlot.plot_no}` : 'None yet'} icon={Shovel} hint={myPlot?.booked_until ? `Until ${formatDate(myPlot.booked_until)}` : 'One plot per home'} />
+                <Stat
+                  label="Your plot"
+                  value={myPlot ? `Plot ${myPlot.plot_no}` : waiting ? 'Waiting list' : 'None yet'}
+                  icon={Shovel}
+                  hint={myPlot?.booked_until ? `Until ${formatDate(myPlot.booked_until)}` : waiting ? 'Plots are given out by ballot' : 'One plot per home'}
+                />
                 <Stat label="Your sightings" value={o.mySightings.length} icon={Bird} hint={`${o.mySightings.filter((s) => s.status === 'CONFIRMED').length} confirmed`} />
                 <div className="col-span-2 lg:col-span-1">
                   <Stat label="Species seen in the township" value={o.speciesCount} icon={Leaf} tone="gold" hint="Confirmed by staff" />
@@ -120,32 +133,63 @@ export function TamanScreen({ scanned }: { scanned: string }) {
               <div className="grid gap-6 lg:grid-cols-2">
                 {o.gardens.map((g) => {
                   const days = Array.from({ length: 7 }, (_, i) => addDays(o.today, i + 1));
+                  const mine = g.plots.find((p) => p.mine);
+                  const homeHasPlot = o.gardens.some((x) => x.plots.some((p) => p.mine));
+                  const homeWaiting = o.gardens.some((x) => x.myApplication);
                   return (
                     <Card key={g.id}>
                       <CardHeader title={g.name} description={g.location} />
                       <div className="space-y-5 p-5">
                         <div>
                           <p className="mb-2 text-sm font-semibold text-ink-900"><Text>Plots</Text></p>
-                          <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
+                          <ul className="grid grid-cols-4 gap-2 sm:grid-cols-6">
                             {g.plots.map((p) => (
-                              <LocalizedButton
+                              <li
                                 key={p.id}
-                                type="button"
-                                disabled={(p.taken && !p.mine) || book.pending || release.pending}
-                                onClick={() => (p.mine ? void release.run(p.id) : void book.run(p.id))}
-                                title={p.mine ? 'Your plot: tap to give it back' : p.taken ? 'Booked' : `Book plot ${p.plot_no} (${p.size_m2} m²)`}
+                                title={
+                                  p.mine
+                                    ? t(`Plot ${p.plot_no}, ${p.size_m2} m² (yours)`)
+                                    : p.taken
+                                      ? t(`Plot ${p.plot_no}, ${p.size_m2} m² (taken)`)
+                                      : t(`Plot ${p.plot_no}, ${p.size_m2} m² (free)`)
+                                }
                                 className={cn(
-                                  'flex aspect-square flex-col items-center justify-center rounded-md border text-xs font-semibold transition-colors duration-200',
-                                  p.mine ? 'border-brand-600 bg-brand-600 text-white' : p.taken ? 'border-success-600/20 bg-success-50 text-success-700' : 'border-dashed border-ink-300 bg-white text-ink-600 hover:border-brand-500',
+                                  'flex aspect-square flex-col items-center justify-center rounded-md border text-xs font-semibold',
+                                  p.mine ? 'border-brand-600 bg-brand-600 text-white' : p.taken ? 'border-success-600/20 bg-success-50 text-success-700' : 'border-dashed border-ink-300 bg-white text-ink-600',
                                 )}
                               >
                                 <Sprout className="size-4" aria-hidden />
                                 <Text>{p.plot_no}</Text>
-                              </LocalizedButton>
+                                <span className="font-normal opacity-80"><Text>{`${p.size_m2} m²`}</Text></span>
+                              </li>
                             ))}
-                          </div>
-                          <p className="mt-2 text-xs text-ink-500"><Text>Tap a free plot to book it for six months. Green plots are taken; yours is dark.</Text></p>
+                          </ul>
+                          <p className="mt-2 text-xs text-ink-500"><Text>Plots are given out by ballot, one per home, for six months. Green plots are taken; yours is dark.</Text></p>
                         </div>
+                        <div className="rounded-md bg-ink-50 p-4 text-sm text-ink-700">
+                          {mine ? (
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                              <p><Text>{`Plot ${mine.plot_no} is yours until ${formatDate(mine.booked_until!)}.`}</Text></p>
+                              <Button variant="secondary" size="sm" pending={release.pending} onClick={() => void release.run(mine.id)}>
+                                <Text>Give it back</Text></Button>
+                            </div>
+                          ) : g.myApplication ? (
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                              <p><Text>{`You are on the waiting list (since ${formatDate(g.myApplication.created_at)}). The township office draws names when plots are free.`}</Text></p>
+                              <Button variant="secondary" size="sm" pending={withdraw.pending} onClick={() => void withdraw.run(g.myApplication!.id)}>
+                                <Text>Leave the list</Text></Button>
+                            </div>
+                          ) : homeHasPlot || homeWaiting ? (
+                            <p><Text>One plot, and one waiting list, per home.</Text></p>
+                          ) : (
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                              <p><Text>{`${g.freePlots} free · ${g.waiting} waiting. Join the list and you are in the next ballot.`}</Text></p>
+                              <Button size="sm" pending={apply.pending} onClick={() => void apply.run(g.id)}>
+                                <Shovel className="size-4" aria-hidden /><Text>Apply for a plot</Text></Button>
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-xs text-ink-500"><Text>Demo data: these plot numbers, holders and the waiting list are examples, not the real garden’s allocation.</Text></p>
                         <div>
                           <p className="mb-2 text-sm font-semibold text-ink-900"><Text>Watering roster, next 7 days</Text></p>
                           <div className="grid grid-cols-7 gap-1.5">
