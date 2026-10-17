@@ -98,10 +98,10 @@ function TodayCard({ wallet }: { wallet?: WalletOverview }) {
   const offer = offers.data?.offers.find((o) => o.usable);
   if (offer) {
     const covered = (wallet?.offerPoints ?? 0) >= offer.discountSen;
-    moments.push({ key: 'offer', icon: Tag, tone: 'bg-gold-50 text-gold-700', title: `${offer.merchantName}: ${offer.title}`, text: covered ? `Your offer points cover it now (${formatPoints(offer.discountSen)} points).` : `${formatPoints(offer.discountSen)} offer points. Recycle at the smart machine or take a tracked walk to earn them.`, href: '/app/wallet' });
+    moments.push({ key: 'offer', icon: Tag, tone: 'bg-gold-50 text-gold-700', title: `${offer.merchantName}: ${offer.title}`, text: covered ? `Your offer points cover it now (${formatPoints(offer.discountSen)} points).` : `${formatPoints(offer.discountSen)} offer points. Recycle at a kiosk bin or take a tracked walk to earn them.`, href: '/app/wallet' });
   }
-  if (COLLECTION_DAYS.includes((weekday + 1) % 7)) moments.push({ key: 'collection', icon: Recycle, tone: 'bg-brand-50 text-brand-700', title: 'Recycling collection tomorrow', text: 'Put out paper and cans tonight, or drop them at a smart machine for XP.', href: '/app/kitar' });
-  else if (COLLECTION_DAYS.includes(weekday)) moments.push({ key: 'collection', icon: Recycle, tone: 'bg-brand-50 text-brand-700', title: 'Recycling collection today', text: 'Bins go out before 8am. Missed it? The smart machines are open all day.', href: '/app/kitar' });
+  if (COLLECTION_DAYS.includes((weekday + 1) % 7)) moments.push({ key: 'collection', icon: Recycle, tone: 'bg-brand-50 text-brand-700', title: 'Recycling collection tomorrow', text: 'Put out paper and cans tonight, or drop them in a kiosk bin for XP.', href: '/app/kitar' });
+  else if (COLLECTION_DAYS.includes(weekday)) moments.push({ key: 'collection', icon: Recycle, tone: 'bg-brand-50 text-brand-700', title: 'Recycling collection today', text: 'Bins go out before 8am. Missed it? The recycling kiosks are open daily, 8:00 AM to 10:00 PM.', href: '/app/kitar' });
   if (hour >= 6 && hour < 10) moments.push({ key: 'walk', icon: Bike, tone: 'bg-brand-50 text-brand-700', title: 'A cool morning at Elmina Central Park', text: 'Tap Start in Gerak; the checkpoints tick themselves.', href: '/app/gerak' });
 
   return (

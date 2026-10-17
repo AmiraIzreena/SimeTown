@@ -68,13 +68,13 @@ export default function PlacesPage() {
   const [poster, setPoster] = useState<Poster | null>(null);
   return (
     <>
-      <PageHeader title="Kiosks, machines & trails" description="Smart recycling machines, kiosks, trail checkpoints, garden gates and patrol points. Each printed code proves someone was there." />
+      <PageHeader title="Kiosks, bins & trails" description="Kiosk bins, kiosks, trail checkpoints, garden gates and patrol points. Each printed code proves someone was there." />
       <Tabs<Tab>
         label="Places"
         value={tab}
         onChange={setTab}
         items={[
-          { key: 'machines', label: 'Smart machines' },
+          { key: 'machines', label: 'Kiosk bins' },
           { key: 'kiosks', label: 'Kitar kiosks' },
           { key: 'loops', label: 'Gerak loops' },
           { key: 'gardens', label: 'Taman gardens' },
@@ -252,7 +252,7 @@ function Machines() {
     <Async state={machines}>
       {(list) =>
         list.length === 0 ? (
-          <EmptyState icon={Cpu} title="No smart machines yet"><Text>An admin puts a machine at a kiosk. Its signing key is made on the server and never shown here.</Text></EmptyState>
+          <EmptyState icon={Cpu} title="No kiosk bins yet"><Text>An admin puts a bin at a kiosk. Its signing key is made on the server and never shown here.</Text></EmptyState>
         ) : (
           <div className="grid gap-4 md:grid-cols-2">
             {list.map((m) => (
@@ -268,7 +268,7 @@ function Machines() {
                 <p className="mt-2 text-sm text-ink-500"><Text>Last 24 hours: </Text><Text>{m.sessions_today}</Text><Text> session</Text><Text>{m.sessions_today === 1 ? '' : 's'}</Text> · <Text>{formatKg(m.grams_today)}</Text>
                 </p>
                 <Button href={`/console/machine/${m.id}`} variant="secondary" size="sm" className="mt-4">
-                  <MonitorSmartphone className="size-4" aria-hidden /><Text>Open the machine screen</Text></Button>
+                  <MonitorSmartphone className="size-4" aria-hidden /><Text>Open the bin screen</Text></Button>
               </Card>
             ))}
           </div>

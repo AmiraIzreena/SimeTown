@@ -121,10 +121,7 @@ export const extraMalay: Record<string, string> = {
   'Sponsors join in one of four yearly tiers.': 'Penaja menyertai salah satu daripada empat peringkat tahunan.',
   'Shops are paid 100% of the points they accept, every week.': 'Kedai dibayar 100% bagi mata yang diterima, setiap minggu.',
   'Demo environment: payments are recorded, not sent.': 'Persekitaran demo: bayaran direkodkan, tidak dihantar.',
-  'What the recycling machine shows on its own screen. Open it on the tablet beside the kiosk.': 'Paparan pada skrin mesin kitar semula sendiri. Buka pada tablet di sebelah kiosk.',
-  'Test controls: these stand in for the camera, barcode reader and scale. Records and signature checks run as normal.': 'Kawalan ujian: ini menggantikan kamera, pembaca kod bar dan penimbang. Rekod dan semakan tandatangan berjalan seperti biasa.',
   'The rule card residents see, and the limits behind it.': 'Kad peraturan yang dilihat penduduk, dan had di sebaliknya.',
-  'From verified green actions, for example 800 (RM8).': 'Daripada tindakan hijau yang disahkan, contohnya 800 (RM8).',
   'Agree this level with the drainage team.': 'Persetujui paras ini dengan pasukan saliran.',
   'Shops across City of Elmina that give and accept SimeTown Points.': 'Kedai di seluruh City of Elmina yang memberi dan menerima Mata SimeTown.',
   'Current sponsors, highest tier first.': 'Penaja semasa, peringkat tertinggi dahulu.',
@@ -179,7 +176,6 @@ export const extraMalay: Record<string, string> = {
   'Visitor pass': 'Pas pelawat',
   'Your host sends you a link by WhatsApp or SMS. Open it and show the QR code at the main gate. No app, and no identity card.': 'Tuan rumah menghantar pautan melalui WhatsApp atau SMS. Bukanya dan tunjukkan kod QR di pintu pagar utama. Tiada aplikasi, dan tiada kad pengenalan.',
   'Recycle as a guest': 'Kitar semula sebagai tetamu',
-  'Tap “Recycle as guest” on any smart machine. You get a claim code: join SimeTown within 14 days to claim the Impact XP. Guests are not tracked.': 'Ketik “Kitar semula sebagai tetamu” pada mana-mana mesin pintar. Anda mendapat kod tuntutan: sertai SimeTown dalam masa 14 hari untuk menuntut XP Impak. Tetamu tidak dijejak.',
   'Flood status': 'Status banjir',
   'Check every zone’s water level before you travel, with the safe route and meeting point for each zone.': 'Semak paras air setiap zon sebelum anda bertolak, bersama laluan selamat dan tempat berkumpul bagi setiap zon.',
   'Open the status page': 'Buka halaman status',
@@ -226,15 +222,10 @@ export const extraMalay: Record<string, string> = {
   'zones': 'zon',
   // Landing: How it works.
   'One good action, one local sale. Every point funded first.': 'Satu tindakan baik, satu jualan tempatan. Setiap mata dibiayai terlebih dahulu.',
-  'Follow one resident through a real SimeTown transaction, from the recycling machine to the shop’s weekly payout.': 'Ikuti seorang penduduk melalui satu transaksi SimeTown sebenar, dari mesin kitar semula hingga bayaran mingguan kepada kedai.',
-  'Aisyah drops 8 bottles into a smart recycling machine in Elmina Central Park. Camera, barcode and scale must all agree before anything counts.': 'Aisyah memasukkan 8 botol ke dalam mesin kitar semula pintar di Elmina Central Park. Kamera, kod bar dan penimbang mesti bersetuju sebelum apa-apa dikira.',
   'She earns Impact XP at once. Because a sponsor funded this month’s challenge, 300 points land too, with the funder named.': 'Dia mendapat XP Impak serta-merta. Kerana penaja membiayai cabaran bulan ini, 300 mata turut diterima, bersama nama pembiayanya.',
   'At Kedai Runcit Mesra her bill is RM20. She uses 300 points for RM3 off, and confirms on her own phone. Points cover up to 30% of a bill.': 'Di Kedai Runcit Mesra bilnya RM20. Dia menggunakan 300 mata untuk potongan RM3, dan mengesahkan di telefonnya sendiri. Mata boleh menampung sehingga 30% daripada bil.',
   'Every week the reward float pays the shop in full for the points it accepted. The float always equals the points residents hold, to the sen.': 'Setiap minggu dana ganjaran membayar kedai sepenuhnya bagi mata yang diterimanya. Dana sentiasa sama dengan mata yang dipegang penduduk, hingga ke sen.',
-  'Camera': 'Kamera',
-  'Barcode': 'Kod bar',
   'Scale': 'Penimbang',
-  'Record signed by machine EV-01 · Elmina Central Park': 'Rekod ditandatangani oleh mesin EV-01 · Elmina Central Park',
   'worth RM11.19 at township shops': 'bernilai RM11.19 di kedai perbandaran',
   'Kitar Challenge complete': 'Cabaran Kitar selesai',
   'Funded by Solar Cerah, a township sponsor': 'Dibiayai oleh Solar Cerah, penaja perbandaran',
@@ -250,7 +241,6 @@ export const extraMalay: Record<string, string> = {
   'How SimeTown works, step by step': 'Cara SimeTown berfungsi, langkah demi langkah',
   'Live from the prototype': 'Terus dari prototaip',
   'Follow the money': 'Ikuti aliran wang',
-  'Verified by machine, signed record': 'Disahkan mesin, rekod ditandatangani',
   'Paid into the float before it is given': 'Dibayar ke dalam dana sebelum diberikan',
   'Township shop': 'Kedai perbandaran',
   'Confirmed on the resident’s phone': 'Disahkan di telefon penduduk',
@@ -275,8 +265,6 @@ export const extraMalay: Record<string, string> = {
   'Challenges': 'Cabaran',
   'Live challenges from Sime Darby Property and sponsors, and the everyday actions that earn Impact XP.': 'Cabaran semasa daripada Sime Darby Property dan penaja, serta tindakan harian yang memberi XP Impak.',
   'Do the activity': 'Lakukan aktiviti',
-  'Recycle at a smart machine, finish a park loop, water a garden or help a neighbour.': 'Kitar semula di mesin pintar, habiskan laluan taman, siram kebun atau bantu jiran.',
-  'A machine, a QR checkpoint, GPS or a staff member confirms it. There is no form to fill in.': 'Mesin, pusat semak QR, GPS atau kakitangan mengesahkannya. Tiada borang perlu diisi.',
   'XP and points arrive': 'XP dan mata diterima',
   'Impact XP is added at once. When a challenge goal is met, its points land with the funder named.': 'XP Impak ditambah serta-merta. Apabila sasaran cabaran dicapai, matanya diterima bersama nama pembiayanya.',
   'Do good. Earn XP. Unlock rewards.': 'Buat kebaikan. Kumpul XP. Buka ganjaran.',
@@ -336,7 +324,6 @@ export const extraMalay: Record<string, string> = {
   'Fund a challenge': 'Biayai cabaran',
   'Your budget goes into a locked pool before any resident earns a single point from it.': 'Bajet anda dimasukkan ke dalam dana terkunci sebelum mana-mana penduduk memperoleh walau satu mata daripadanya.',
   'Residents take part': 'Penduduk menyertai',
-  'Every action is verified by a machine, a QR code or staff before a point is given.': 'Setiap tindakan disahkan oleh mesin, kod QR atau kakitangan sebelum mata diberikan.',
   'See the results': 'Lihat keputusan',
   'You get grouped results, never a list of people. Whatever is not used is refunded.': 'Anda menerima keputusan berkumpulan, bukan senarai nama. Baki yang tidak digunakan dipulangkan.',
   'SimeTown campaign fee': 'Fi kempen SimeTown',
@@ -400,7 +387,6 @@ export const extraMalay: Record<string, string> = {
   'Connectivity and flood sensors, cost shared': 'Sambungan dan sensor banjir, kos dikongsi',
   'A real township showcase for their network': 'Pameran sebenar rangkaian mereka di perbandaran',
   'Licensed recycler': 'Pengitar semula berlesen',
-  'Collects from the smart recycling machines': 'Mengutip dari mesin kitar semula pintar',
   'Clean, sorted material with signed weights': 'Bahan bersih dan diasingkan dengan berat yang ditandatangani',
   'Conservation partner': 'Rakan pemuliharaan',
   'Confirms wildlife sightings and plans native planting': 'Mengesahkan pemerhatian hidupan liar dan merancang penanaman pokok asli',
@@ -472,4 +458,238 @@ export const extraMalay: Record<string, string> = {
   'Unused reward money refunded, fees are not': 'Wang ganjaran tidak digunakan dipulangkan, yuran tidak',
   'Three sponsor tiers, and challenges with a fixed budget. Unused reward money is refunded; fees are not.': 'Tiga peringkat penaja dan cabaran dengan bajet tetap. Wang ganjaran tidak digunakan dipulangkan; yuran tidak.',
   'Sponsors fund challenges with a fixed budget paid in advance. Rewards stop when the budget is used, and any unused reward money is refunded when the campaign closes. Tier fees and campaign fees are not refundable. Sponsors receive grouped results only, never details of individual residents, unless a resident chooses to share them.': 'Penaja membiayai cabaran dengan bajet tetap prabayar. Ganjaran berhenti apabila bajet habis dan baki wang ganjaran dipulangkan apabila kempen ditutup. Yuran peringkat dan yuran kempen tidak dipulangkan. Penaja hanya menerima hasil berkumpulan, bukan butiran individu, kecuali penduduk memilih untuk berkongsi.',
+  // Kitar: an item refused because the bin takes one material only.
+  'This bin is for Plastic, PET only.': 'Tong ini untuk Plastik, PET sahaja.',
+  'This bin is for Plastic, other only.': 'Tong ini untuk Plastik, lain-lain sahaja.',
+  'This bin is for Paper and cardboard only.': 'Tong ini untuk Kertas dan kadbod sahaja.',
+  'This bin is for Glass only.': 'Tong ini untuk Kaca sahaja.',
+  'This bin is for Aluminium and tins only.': 'Tong ini untuk Aluminium dan tin sahaja.',
+  'This bin is for E-waste only.': 'Tong ini untuk Sisa elektronik sahaja.',
+  'This bin is for Clothes and textiles only.': 'Tong ini untuk Pakaian dan tekstil sahaja.',
+  'This bin is for Used cooking oil only.': 'Tong ini untuk Minyak masak terpakai sahaja.',
+  // Kitar: why a bin did not count an item (shown in the live session).
+  'One session can take up to 20 kg.': 'Satu sesi boleh menerima sehingga 20 kg.',
+  // Kitar hub: tabs.
+  'Transaction': 'Transaksi',
+  'Map': 'Peta',
+  'About': 'Perihal',
+  'Kitar hub': 'Hab Kitar',
+  'Recycle now': 'Kitar semula sekarang',
+  // Kitar hub: summary.
+  'Points are savings. XP is progress.': 'Mata ialah penjimatan. XP ialah kemajuan.',
+  'Points take money off your bill at township shops (100 points = RM1). They cannot be turned into cash. XP has no money value: it shows the good you have done.': 'Mata mengurangkan bil anda di kedai perbandaran (100 mata = RM1). Mata tidak boleh ditukar kepada wang tunai. XP tiada nilai wang: ia menunjukkan kebaikan yang telah anda lakukan.',
+  'Your points': 'Mata anda',
+  'Your XP': 'XP anda',
+  'Recycled this month': 'Dikitar semula bulan ini',
+  // Native review needed: the goal bar wording.
+  'Next goal: {points} points (worth {rm} in shop offers)': 'Matlamat seterusnya: {points} mata (bernilai {rm} untuk tawaran kedai)',
+  'Progress to your next points goal': 'Kemajuan ke matlamat mata seterusnya',
+  '{n} more points to go.': '{n} mata lagi.',
+  // Kitar hub: limits and points paused.
+  'Points are paused for everyone': 'Mata dihentikan sementara untuk semua',
+  'The township is checking the points account. Recycling still earns XP, and points will start again once the check is done.': 'Perbandaran sedang menyemak akaun mata. Kitar semula masih memberi XP, dan mata akan bermula semula selepas semakan selesai.',
+  'Points per kg are paused this month': 'Mata sekilogram dihentikan sementara bulan ini',
+  'Township shops have no more points to give this month. Recycling still earns XP, and points start again when shops add new offers.': 'Kedai perbandaran tiada lagi mata untuk diberi bulan ini. Kitar semula masih memberi XP, dan mata bermula semula apabila kedai menambah tawaran baharu.',
+  'Your home has its points for this month': 'Rumah anda telah menerima mata untuk bulan ini',
+  'Your home has earned the most points per kg allowed this month. Recycling still earns XP until next month.': 'Rumah anda telah memperoleh had maksimum mata sekilogram bulan ini. Kitar semula masih memberi XP sehingga bulan depan.',
+  'Your limits': 'Had anda',
+  'Only trips within these limits earn XP and points. The points limit is shared by everyone in your home.': 'Hanya perjalanan dalam had ini memberi XP dan mata. Had mata dikongsi oleh semua penghuni rumah anda.',
+  'Your trips today': 'Perjalanan anda hari ini',
+  'Trips from your home this month': 'Perjalanan dari rumah anda bulan ini',
+  'Points per kg for your home this month': 'Mata sekilogram untuk rumah anda bulan ini',
+  '{used} of {max} trips': '{used} daripada {max} perjalanan',
+  '{used} of {max} points': '{used} daripada {max} mata',
+  // Kitar hub: rates.
+  'Points per kg, by material': 'Mata sekilogram, mengikut bahan',
+  'Rates are not available yet. Recycling still earns XP.': 'Kadar belum tersedia. Kitar semula masih memberi XP.',
+  'Rate to be confirmed': 'Kadar belum disahkan',
+  'XP only': 'XP sahaja',
+  '{n} points per kg ({rm})': '{n} mata sekilogram ({rm})',
+  '{kg} this month': '{kg} bulan ini',
+  // Kitar hub: the Recycle now sheet.
+  'Full': 'Penuh',
+  'Step 1 of 2': 'Langkah 1 daripada 2',
+  'Step 2 of 2': 'Langkah 2 daripada 2',
+  'No bins in your township yet': 'Belum ada tong di perbandaran anda',
+  'Choose the site': 'Pilih lokasi',
+  'Choose the bin': 'Pilih tong',
+  'Any material': 'Semua bahan',
+  'This bin takes any material. What are you recycling?': 'Tong ini menerima semua bahan. Apakah yang anda kitar semula?',
+  'This bin takes {material} only.': 'Tong ini menerima {material} sahaja.',
+  'Scan the code on the bin’s screen': 'Imbas kod pada skrin tong',
+  'Open your phone camera and point it at the code on the bin’s screen. The code changes every 30 seconds, so scan it at the bin.': 'Buka kamera telefon anda dan halakan pada kod di skrin tong. Kod bertukar setiap 30 saat, jadi imbas di tong itu.',
+  'Your result appears on this page when the bin finishes.': 'Keputusan anda dipaparkan di halaman ini apabila tong selesai.',
+  'You have used {used} of {max} trips today. More trips today earn no XP or points.': 'Anda telah menggunakan {used} daripada {max} perjalanan hari ini. Perjalanan lain hari ini tidak memberi XP atau mata.',
+  'Your home has used {used} of {max} trips this month. More trips this month earn no XP or points.': 'Rumah anda telah menggunakan {used} daripada {max} perjalanan bulan ini. Perjalanan lain bulan ini tidak memberi XP atau mata.',
+  // Kitar hub: the Map tab.
+  'Kitar locations': 'Lokasi Kitar',
+  'Map of recycling kiosks in Elmina': 'Peta kiosk kitar semula di Elmina',
+  '{name}, coming soon': '{name}, akan datang',
+  'Open daily, 8:00 AM to 10:00 PM': 'Dibuka setiap hari, 8:00 pagi hingga 10:00 malam',
+  '8:00 AM to 10:00 PM': '8:00 pagi hingga 10:00 malam',
+  'Open daily': 'Dibuka setiap hari',
+  'Serves: {areas}': 'Kawasan dilayani: {areas}',
+  'Location coming soon': 'Lokasi akan diumumkan',
+  'Beside Surau Elmina Gardens': 'Di sebelah Surau Elmina Gardens',
+  'Elmina Valley Central Park car park': 'Tempat letak kereta Elmina Valley Central Park',
+  'Each bin takes one type of item. Scan the code on the bin’s screen to start.': 'Setiap tong menerima satu jenis barang. Imbas kod pada skrin tong untuk bermula.',
+  'Bins at this kiosk': 'Tong di kiosk ini',
+  'Recycle here': 'Kitar semula di sini',
+  'This kiosk is not open yet. The township is still choosing its site.': 'Kiosk ini belum dibuka. Pihak perbandaran masih memilih lokasinya.',
+  // Kitar hub: the About tab.
+  'Illustration of a recycling kiosk with coloured bins': 'Ilustrasi kiosk kitar semula dengan tong berwarna',
+  'Illustration of a recycling kiosk': 'Ilustrasi kiosk kitar semula',
+  'Recycling kiosks': 'Kiosk kitar semula',
+  'Open daily from 8:00 AM to 10:00 PM at every location.': 'Dibuka setiap hari dari 8:00 pagi hingga 10:00 malam di setiap lokasi.',
+  'Scan the code on the bin’s screen.': 'Imbas kod pada skrin tong.',
+  'It changes every 30 seconds. Each bin takes one material, such as paper or aluminium.': 'Kod bertukar setiap 30 saat. Setiap tong menerima satu bahan, seperti kertas atau aluminium.',
+  'Put your items in the bin.': 'Masukkan barang anda ke dalam tong.',
+  'and get an 8-letter code. A resident can claim it within 14 days, for XP only.': 'dan mendapat kod 8 huruf. Penduduk boleh menuntutnya dalam masa 14 hari, untuk XP sahaja.',
+  'Accepted items': 'Barang yang diterima',
+  'Plastic (PET and other), paper and cardboard, glass, aluminium and tins, e-waste, clothes and textiles, and used cooking oil. Items must be empty, dry and rinsed.': 'Plastik (PET dan lain-lain), kertas dan kadbod, kaca, aluminium dan tin, sisa elektronik, pakaian dan tekstil, serta minyak masak terpakai. Barang mestilah kosong, kering dan dibilas.',
+  'Spending points': 'Membelanjakan mata',
+  'Points per kg are spent on a member shop’s live Shop Offer, on the shop’s own terms: its discount and minimum spend. Other points, from campaigns and purchases, can be spent from 100 points (RM1), in whole ringgit, on up to 30% of one bill. You pay the rest as normal. You always confirm on your own phone. Points cannot be turned into cash or sent to another person.': 'Mata sekilogram dibelanjakan pada Tawaran Kedai yang aktif di kedai ahli, mengikut syarat kedai itu sendiri: diskaun dan perbelanjaan minimumnya. Mata lain, daripada kempen dan pembelian, boleh dibelanjakan mulai 100 mata (RM1), dalam ringgit penuh, sehingga 30% daripada satu bil. Anda membayar bakinya seperti biasa. Anda sentiasa mengesahkan pada telefon anda sendiri. Mata tidak boleh ditukar kepada wang tunai atau dihantar kepada orang lain.',
+  'Got it': 'Baiklah',
+  // Kitar hub: the Transaction tab (guest code, How it works, typed drop-off section).
+  'I have a guest code': 'Saya ada kod tetamu',
+  'Claim a guest code': 'Tuntut kod tetamu',
+  'Code from the kiosk': 'Kod daripada kiosk',
+  '8-letter code from the kiosk': 'Kod 8 huruf daripada kiosk',
+  'Recycled before you joined, or with a guest? Enter the code the kiosk gave. Guest recycling earns XP only.': 'Mengitar semula sebelum anda menyertai, atau bersama tetamu? Masukkan kod yang diberi oleh kiosk. Kitar semula tetamu memberi XP sahaja.',
+  'Step by step': 'Langkah demi langkah',
+  'Get your items ready.': 'Sediakan barang anda.',
+  'Empty, dry and rinse them. Sort by type: paper, plastic, glass, metal and so on.': 'Kosongkan, keringkan dan bilas barang. Asingkan mengikut jenis: kertas, plastik, kaca, logam dan sebagainya.',
+  'Find your kiosk.': 'Cari kiosk anda.',
+  'See the About tab for the locations. Each kiosk takes one type of item, so go to the one for your material.': 'Lihat tab Perihal untuk lokasi. Setiap kiosk menerima satu jenis barang, jadi pergi ke kiosk untuk bahan anda.',
+  'Tap Recycle now': 'Ketik Kitar semula sekarang',
+  'and scan the code on the bin’s screen.': 'dan imbas kod pada skrin tong.',
+  'See your reward.': 'Lihat ganjaran anda.',
+  'You get points for every kg and 20 XP for the trip. Your goal bar moves forward.': 'Anda mendapat mata bagi setiap kg dan 20 XP untuk perjalanan itu. Bar matlamat anda bergerak ke hadapan.',
+  'Spend your points.': 'Belanjakan mata anda.',
+  'Use them at a member shop and confirm on your own phone.': 'Gunakan mata di kedai ahli dan sahkan pada telefon anda sendiri.',
+  'Recycling as a visitor? Get a guest code from the kiosk and keep your 8-letter code. A resident can claim it within 14 days, for XP only.': 'Mengitar semula sebagai pelawat? Dapatkan kod tetamu daripada kiosk dan simpan kod 8 huruf anda. Penduduk boleh menuntutnya dalam masa 14 hari, untuk XP sahaja.',
+  'What you earn': 'Apa yang anda peroleh',
+  'Recycling kiosk': 'Kiosk kitar semula',
+  'Points per kg': 'Mata sekilogram',
+  'by material': 'mengikut bahan',
+  'Guest code': 'Kod tetamu',
+  'Recycled as a visitor? Enter your code within 14 days.': 'Mengitar semula sebagai pelawat? Masukkan kod anda dalam masa 14 hari.',
+  'No points': 'Tiada mata',
+  // Kitar page without the typed drop-off form. Native review needed.
+  'Recycle at a kiosk. Each bin has a scale that sends the weight by itself, so you never type it. Every drop-off earns Impact XP.': 'Kitar semula di kiosk. Setiap tong ada penimbang yang menghantar berat dengan sendiri, jadi anda tidak perlu menaipnya. Setiap serahan memberi XP Impak.',
+  'No bins with a scale in this township yet.': 'Belum ada tong berpenimbang di perbandaran ini.',
+  'No bins with a scale at this kiosk yet.': 'Belum ada tong berpenimbang di kiosk ini.',
+  'Bins with a scale will be listed here once the township sets them up.': 'Tong berpenimbang akan disenaraikan di sini setelah perbandaran menyediakannya.',
+  'This bin cannot be used right now. Choose another bin.': 'Tong ini tidak boleh digunakan sekarang. Pilih tong lain.',
+  'Each material earns its own rate for every kg a bin weighs.': 'Setiap bahan mempunyai kadar sendiri bagi setiap kg yang ditimbang oleh tong.',
+  // Kitar wording: kiosk, bin and scale. Entries marked "native review" need a native speaker.
+  'Kiosk bins with a scale': 'Tong kiosk dengan penimbang', // native review
+  'A 30-second stop: the bin’s scale sends the weight by itself, so there is nothing to type. Drop-offs weighed by a bin can also earn offer-backed points.': 'Hanya 30 saat: penimbang tong menghantar berat dengan sendiri, jadi tiada apa-apa untuk ditaip. Serahan yang ditimbang oleh tong juga boleh memperoleh mata bersandarkan tawaran.', // native review
+  'Recycled before you joined, or with a guest? Enter the code the kiosk gave.': 'Mengitar semula sebelum anda menyertai, atau bersama tetamu? Masukkan kod yang diberi oleh kiosk.',
+  'Kitar · recycle at a bin': 'Kitar · kitar semula di tong',
+  'The bin’s scale weighs your items and sends the weight by itself. Nothing to type.': 'Penimbang tong menimbang barang anda dan menghantar beratnya dengan sendiri. Tiada apa-apa untuk ditaip.',
+  'This link is not complete. Scan the code on the bin’s screen again.': 'Pautan ini tidak lengkap. Imbas kod pada skrin tong sekali lagi.',
+  'Please scan the code on the bin again.': 'Sila imbas kod pada tong sekali lagi.',
+  'Could not start at the bin': 'Tidak dapat bermula di tong',
+  'Connecting to the bin…': 'Menyambung ke tong…',
+  'Put your items in the bin. Each weight appears below when the scale sends it.': 'Masukkan barang anda ke dalam tong. Setiap berat dipaparkan di bawah apabila penimbang menghantarnya.', // native review
+  'Put your items in the bin. The scale weighs them and sends the weight by itself.': 'Masukkan barang anda ke dalam tong. Penimbang menimbangnya dan menghantar berat dengan sendiri.',
+  'Every weight came from the bin’s scale.': 'Setiap berat datang daripada penimbang tong.',
+  'Put your items in the bin. Its scale weighs them and sends the weight by itself. You never type a weight.': 'Masukkan barang anda ke dalam tong. Penimbangnya menimbang dan menghantar berat dengan sendiri. Anda tidak perlu menaip berat.',
+  'Nothing is weighed on your phone. Only the weight the bin’s scale sends counts.': 'Tiada apa-apa ditimbang di telefon anda. Hanya berat yang dihantar oleh penimbang tong dikira.',
+  'Its scale weighs them and sends the weight by itself, so nobody types it.': 'Penimbangnya menimbang dan menghantar berat dengan sendiri, jadi tiada sesiapa yang menaipnya.',
+  'Use the bin for your material. Its scale weighs your items and sends the weight for you.': 'Gunakan tong untuk bahan anda. Penimbangnya menimbang barang anda dan menghantar beratnya untuk anda.',
+  'Its scale weighs them and sends the weight by itself, so you never type it.': 'Penimbangnya menimbang dan menghantar berat dengan sendiri, jadi anda tidak perlu menaipnya.',
+  'Why did my item not count?': 'Mengapa barang saya tidak dikira?',
+  'An item may not count when it is wet, greasy, mixed with other materials, or not the material that bin takes. Empty, dry and rinse items, and use the bin for your material.': 'Barang mungkin tidak dikira jika basah, berminyak, bercampur dengan bahan lain, atau bukan bahan yang diterima oleh tong itu. Kosongkan, keringkan dan bilas barang, dan gunakan tong untuk bahan anda.', // native review
+  'This bin is full. Please use another bin.': 'Tong ini penuh. Sila guna tong lain.',
+  'This bin is offline.': 'Tong ini di luar talian.',
+  'Someone is using this bin. Please wait a moment.': 'Seseorang sedang menggunakan tong ini. Sila tunggu sebentar.',
+  'That code has changed. Scan the code on the bin’s screen again.': 'Kod itu telah bertukar. Imbas kod pada skrin tong sekali lagi.',
+  'The bin did not take this item.': 'Tong tidak menerima barang ini.',
+  'This item is not the material this bin takes.': 'Barang ini bukan bahan yang diterima oleh tong ini.',
+  'This item could not be checked.': 'Barang ini tidak dapat disemak.', // native review
+  'Start a session at the bin first.': 'Mulakan sesi di tong dahulu.',
+  'Scan the code on the bin again.': 'Imbas kod pada tong sekali lagi.',
+  // Wording pass 2: kiosk, bin and scale across the app. Every entry below: native review.
+  'Put out paper and cans tonight, or drop them in a kiosk bin for XP.': 'Keluarkan kertas dan tin malam ini, atau masukkan ke dalam tong kiosk untuk XP.', // native review
+  'Bins go out before 8am. Missed it? The recycling kiosks are open daily, 8:00 AM to 10:00 PM.': 'Letakkan tong di luar sebelum 8 pagi. Terlepas? Kiosk kitar semula dibuka setiap hari, 8:00 pagi hingga 10:00 malam.', // native review
+  'Earn them from verified green actions: recycling at a kiosk bin, tracked walks and rides, watering a community garden, and lower bills read by Jimat.': 'Peroleh melalui aktiviti hijau yang disahkan: kitar semula di tong kiosk, berjalan dan berbasikal yang dijejak, menyiram kebun komuniti, dan bil lebih rendah yang dibaca oleh Jimat.', // native review
+  'Recycle at a kiosk bin, finish a park loop, water a garden or help a neighbour.': 'Kitar semula di tong kiosk, habiskan laluan taman, siram kebun atau bantu jiran.', // native review
+  'A bin’s scale, a QR checkpoint, GPS or a staff member confirms it. There is no form to fill in.': 'Penimbang tong, pusat semak QR, GPS atau kakitangan mengesahkannya. Tiada borang perlu diisi.', // native review
+  'Tap “Recycle as guest” on the screen of any kiosk bin. You get a claim code: join SimeTown within 14 days to claim the Impact XP. Guests are not tracked.': 'Ketik “Kitar semula sebagai tetamu” pada skrin mana-mana tong kiosk. Anda mendapat kod tuntutan: sertai SimeTown dalam masa 14 hari untuk menuntut XP Impak. Tetamu tidak dijejak.', // native review
+  'Follow one resident through a real SimeTown transaction, from the recycling kiosk to the shop’s weekly payout.': 'Ikuti seorang penduduk melalui satu transaksi SimeTown sebenar, dari kiosk kitar semula hingga bayaran mingguan kepada kedai.', // native review
+  'Aisyah drops 8 bottles into the plastic bin at the Elmina Valley kiosk. The bin’s scale weighs them and sends the weight by itself.': 'Aisyah memasukkan 8 botol ke dalam tong plastik di kiosk Elmina Valley. Penimbang tong menimbangnya dan menghantar berat dengan sendiri.', // native review
+  'Weighed by the bin’s scale, signed record': 'Ditimbang oleh penimbang tong, rekod ditandatangani', // native review
+  'Bin': 'Tong', // native review
+  'Plastic (PET)': 'Plastik (PET)', // native review
+  'Weight sent': 'Berat dihantar', // native review
+  'By itself': 'Dengan sendiri', // native review
+  'Kiosk bin': 'Tong kiosk', // native review
+  'Weight sent by bin EV-01 · Elmina Valley kiosk': 'Berat dihantar oleh tong EV-01 · kiosk Elmina Valley', // native review
+  'Each kiosk bin has a scale that weighs your items, sends the weight by itself and signs every record.': 'Setiap tong kiosk ada penimbang yang menimbang barang anda, menghantar berat dengan sendiri dan menandatangani setiap rekod.', // native review
+  'Every action is verified by a bin’s scale, a QR code or staff before a point is given.': 'Setiap tindakan disahkan oleh penimbang tong, kod QR atau kakitangan sebelum mata diberikan.', // native review
+  'Collects from the kiosk bins': 'Mengutip dari tong kiosk', // native review
+  'Bin status updated.': 'Status tong dikemas kini.', // native review
+  'Kiosk bin screen': 'Skrin tong kiosk', // native review
+  'What a kiosk bin shows on its own screen. Open it on the tablet beside the kiosk.': 'Paparan pada skrin tong kiosk sendiri. Buka pada tablet di sebelah kiosk.', // native review
+  'This bin is full': 'Tong ini penuh', // native review
+  'Code to start recycling at this bin': 'Kod untuk mula mengitar semula di tong ini', // native review
+  'Or show your SimeTown QR to the bin': 'Atau tunjukkan QR SimeTown anda kepada tong', // native review
+  'Test controls: these stand in for the bin’s scale and code reader. Records and signature checks run as normal.': 'Kawalan ujian: ini menggantikan penimbang dan pembaca kod tong. Rekod dan semakan tandatangan berjalan seperti biasa.', // native review
+  'Read a SimeTown QR': 'Baca QR SimeTown', // native review
+  'Stands in for the bin reading a resident’s code.': 'Menggantikan tong yang membaca kod penduduk.', // native review
+  'The item must be the bin’s material and a likely weight, or it does not count.': 'Barang mesti bahan tong itu dan beratnya munasabah; jika tidak, ia tidak dikira.', // native review
+  'What the bin reports': 'Apa yang dilaporkan tong', // native review
+  'Item accepted': 'Barang diterima', // native review
+  'Wrong material for this bin': 'Bahan salah untuk tong ini', // native review
+  'Bin cannot take this item': 'Tong tidak boleh menerima barang ini', // native review
+  'Bin status': 'Status tong', // native review
+  'Kiosks, bins & trails': 'Kiosk, tong & laluan', // native review
+  'Kiosk bins, kiosks, trail checkpoints, garden gates and patrol points. Each printed code proves someone was there.': 'Tong kiosk, kiosk, pusat semak laluan, pintu kebun dan titik rondaan. Setiap kod bercetak membuktikan kehadiran seseorang.', // native review
+  'Kiosk bins': 'Tong kiosk', // native review
+  'No kiosk bins yet': 'Belum ada tong kiosk', // native review
+  'An admin puts a bin at a kiosk. Its signing key is made on the server and never shown here.': 'Pentadbir menempatkan tong di kiosk. Kunci tandatangannya dijana pada pelayan dan tidak dipaparkan di sini.', // native review
+  'Open the bin screen': 'Buka skrin tong', // native review
+  // Kitar map (OpenStreetMap). Every entry below: native review.
+  'Tap a pin or a kiosk card to see its bins.': 'Ketik pin atau kad kiosk untuk melihat tongnya.', // native review
+  'Pin positions are approximate.': 'Kedudukan pin adalah anggaran.', // native review
+  'Show on map': 'Tunjuk pada peta', // native review
+  'Zoom in': 'Zum masuk', // native review
+  'Zoom out': 'Zum keluar', // native review
+  // Kitar: material colours, the monthly ring and the How it works link. Every entry below: native review.
+  'Nothing recycled yet this month': 'Belum ada kitar semula bulan ini', // native review
+  'Recycled this month, by material': 'Dikitar semula bulan ini, mengikut bahan', // native review
+  'New here? See how it works': 'Baru di sini? Lihat cara ia berfungsi', // native review
+  // Kitar About tab: the two new Good to know tiles. Every entry below: native review.
+  'How Kitar works': 'Cara Kitar berfungsi', // native review
+  'Limits and rules': 'Had dan peraturan', // native review
+  // Kitar test mode (local demos only). Every entry below: native review.
+  'Test mode is off.': 'Mod ujian dimatikan.', // native review
+  'Enter a weight more than 0 kg, up to 20 kg.': 'Masukkan berat lebih daripada 0 kg, sehingga 20 kg.', // native review
+  'Choose a material.': 'Pilih bahan.', // native review
+  'This bin takes a different material. Choose the bin for your material.': 'Tong ini menerima bahan lain. Pilih tong untuk bahan anda.', // native review
+  'Bin not found.': 'Tong tidak dijumpai.', // native review
+  'Kitar test entry': 'Entri ujian Kitar', // native review
+  'For demos only. Nothing is weighed: you type the weight. The entry is saved and labelled as a test entry.': 'Untuk demo sahaja. Tiada apa-apa ditimbang: anda menaip beratnya. Entri disimpan dan dilabel sebagai entri ujian.', // native review
+  'Weight (kg)': 'Berat (kg)', // native review
+  'e.g. 1.2': 'cth. 1.2', // native review
+  'Points are paused for everyone right now, so this entry earns XP only.': 'Mata dihentikan sementara untuk semua sekarang, jadi entri ini memberi XP sahaja.', // native review
+  'Shops have no points left to give this month, so this entry earns XP only.': 'Kedai tiada lagi mata untuk diberi bulan ini, jadi entri ini memberi XP sahaja.', // native review
+  'Your home has reached its points limit this month, so this entry earns XP only.': 'Rumah anda telah mencapai had mata bulan ini, jadi entri ini memberi XP sahaja.', // native review
+  'You have used all your trips for now, so this entry earns no XP or points.': 'Anda telah menggunakan semua perjalanan buat masa ini, jadi entri ini tidak memberi XP atau mata.', // native review
+  'This material earns XP only.': 'Bahan ini memberi XP sahaja.', // native review
+  '{kg} × {rate} points per kg = {points} points ({rm}) + {xp} XP': '{kg} × {rate} mata sekilogram = {points} mata ({rm}) + {xp} XP', // native review
+  'Your home has {n} points left this month, so the points are capped.': 'Rumah anda ada {n} mata lagi bulan ini, jadi mata dihadkan.', // native review
+  'If shops have only a few points left this month, you may get fewer. A Kitar Challenge reward may be added on top.': 'Jika kedai hanya ada sedikit mata lagi bulan ini, anda mungkin mendapat kurang. Ganjaran Cabaran Kitar mungkin ditambah.', // native review
+  'Save practice entry': 'Simpan entri latihan', // native review
+  'Saved as a test entry. You now have {points} points and {xp} XP.': 'Disimpan sebagai entri ujian. Anda kini ada {points} mata dan {xp} XP.', // native review
+  'Test entry saved.': 'Entri ujian disimpan.', // native review
+  'No XP or points this time.': 'Tiada XP atau mata kali ini.', // native review
+  'Test entry': 'Entri ujian', // native review
+  // Kitar: the Manual recycle (practice) dialog. Every entry below: native review.
+  'Manual recycle (practice)': 'Kitar semula manual (latihan)', // native review
+  'Test mode': 'Mod ujian', // native review
+  'Choose the kiosk': 'Pilih kiosk', // native review
+  'Choose the material': 'Pilih bahan', // native review
 };

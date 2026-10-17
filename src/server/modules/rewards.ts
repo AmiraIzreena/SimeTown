@@ -46,6 +46,8 @@ interface ActionInput {
   offerEligible?: boolean;
   /** Impact XP only, never points: a guest recycling session claimed later (BR23). */
   xpOnly?: boolean;
+  /** What the action is worth in offer-backed points, when the feature works it out itself (Kitar bins, per material). */
+  offerWorth?: number;
 }
 
 export async function recordAction(tx: Queryable, input: ActionInput): Promise<ActionReward> {
@@ -85,7 +87,7 @@ export async function recordAction(tx: Queryable, input: ActionInput): Promise<A
         userId: user.id,
         homeId: user.homeId,
         townshipId: user.townshipId,
-        points: offerPointsFor(rule, input.quantity ?? 1),
+        points: input.offerWorth ?? offerPointsFor(rule, input.quantity ?? 1),
         ref: `${activity}:${input.ref}`,
         label: `${rule.label} · backed by township shop offers`,
         now,

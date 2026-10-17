@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/field';
 import { api } from '@/lib/api';
 import { useAction, useApi } from '@/lib/hooks';
 import type { Me } from '@/lib/types';
+import { formatPoints, formatRM, HOME_OFFER_POINTS_DEFAULT } from '@/shared/domain';
 
 type Settings = Record<string, number | string | boolean>;
 
@@ -42,7 +43,7 @@ const GROUPS: { title: string; description: string; fields: { key: string; label
     title: 'Shop Offers',
     description: 'Offer-backed points come only from what shops pledge each month: no pledge, no points.',
     fields: [
-      { key: 'offer_points_monthly_home', label: 'Offer-backed points per home per month', hint: 'From verified green actions, for example 800 (RM8).' },
+      { key: 'offer_points_monthly_home', label: 'Offer-backed points per home per month', hint: `From verified green actions, for example ${formatPoints(HOME_OFFER_POINTS_DEFAULT)} (${formatRM(HOME_OFFER_POINTS_DEFAULT)}).` },
       { key: 'offer_success_fee_bps', label: 'Success fee on an offer used (%)', hint: 'Of the discount, charged to the shop only when an offer is used.', scale: 100 },
     ],
   },

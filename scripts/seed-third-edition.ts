@@ -416,12 +416,12 @@ export async function seedThirdEdition(
       [township.id],
     );
     machine = await createMachine(db, admin, {
-      name: "Smart machine · Elmina Valley",
+      name: "Mixed recycling bin · Elmina Valley",
       kioskId: valleyKiosk!.id,
     });
     if (gardensKiosk)
       await createMachine(db, admin, {
-        name: "Smart machine · Elmina Gardens",
+        name: "Mixed recycling bin · Elmina Gardens",
         kioskId: gardensKiosk.id,
       });
     const session = async (who: Actor | null, at: Date, items: Material[]) => {

@@ -8,6 +8,7 @@ import { readForm, readPhoto } from '../../http/uploads';
 import { zScanCode } from '../gerak/routes';
 import * as machine from './machine';
 import * as kitar from './service';
+import { recordTestEntry } from './test-entry';
 
 const zSignature = z.string().regex(/^[0-9a-fA-F]{64}$/, 'An HMAC-SHA256 signature in hex.');
 
@@ -42,15 +43,24 @@ export const kitarRoutes = [
     handler: (c) => kitar.createKiosk(c.db, c.actor, c.body),
   }),
 
+  route({
+    method: 'POST', path: '/kitar/test-entry', tag: 'Kitar', summary: 'Kitar test mode (local demos only): a practice entry, marked TEST and audited', auth: 'session', roles: ['RESIDENT'],
+    body: z.object({
+      machineId: zId,
+      material: z.enum(MATERIALS),
+      weightG: z.number().int().min(1, 'Enter a weight more than 0 kg, up to 20 kg.').max(20_000, 'Enter a weight more than 0 kg, up to 20 kg.'),
+    }),
+    handler: (c) => recordTestEntry(c.db, c.actor, c.body, c.now),
+  }),
   // --- The smart recycling machine (BR23) ---------------------------------------
   route({
-    method: 'POST', path: '/kitar/machine/join', tag: 'Kitar', summary: "Start recycling at a machine by scanning the code on its screen", auth: 'session', roles: ['RESIDENT'],
+    method: 'POST', path: '/kitar/machine/join', tag: 'Kitar', summary: "Start recycling at a bin by scanning the code on its screen", auth: 'session', roles: ['RESIDENT'],
     rateLimit: { limit: 30, windowSec: 600, by: 'user' },
-    body: z.object({ machineId: zId, code: z.string().trim().min(10).max(40).regex(/^[A-Za-z0-9_-]+$/, 'Scan the machine again.') }),
+    body: z.object({ machineId: zId, code: z.string().trim().min(10).max(40).regex(/^[A-Za-z0-9_-]+$/, 'Scan the code on the bin again.') }),
     handler: (c) => machine.joinFromScreen(c.db, c.actor, c.body, c.now),
   }),
   route({
-    method: 'GET', path: '/kitar/machine/session', tag: 'Kitar', summary: 'My recycling session at a machine, live, and its result', auth: 'session', roles: ['RESIDENT'],
+    method: 'GET', path: '/kitar/machine/session', tag: 'Kitar', summary: 'My recycling session at a bin, live, and its result', auth: 'session', roles: ['RESIDENT'],
     handler: (c) => machine.myMachineSession(c.db, c.actor, c.now),
   }),
   route({
@@ -60,46 +70,51 @@ export const kitarRoutes = [
     handler: (c) => machine.claimGuestSession(c.db, c.actor, c.body.code, c.now),
   }),
   route({
-    method: 'GET', path: '/admin/kitar/machines', tag: 'Kitar', summary: 'Recycling machines, their state and today’s use', auth: 'session', roles: STAFF,
+    method: 'GET', path: '/admin/kitar/machines', tag: 'Kitar', summary: 'Kiosk bins, their state and today’s use', auth: 'session', roles: STAFF,
     handler: (c) => machine.listMachines(c.db, c.actor, c.now),
   }),
   route({
-    method: 'POST', path: '/admin/kitar/machines', tag: 'Kitar', summary: 'Put a recycling machine at a kiosk', auth: 'session', roles: ADMINS,
-    body: z.object({ name: zText(80, 3), kioskId: zId }),
+    method: 'POST', path: '/admin/kitar/machines', tag: 'Kitar', summary: 'Put a bin at a kiosk', auth: 'session', roles: ADMINS,
+    body: z.object({ name: zText(80, 3), kioskId: zId, material: z.enum(MATERIALS).nullable().optional() }),
     handler: (c) => machine.createMachine(c.db, c.actor, c.body),
   }),
   route({
-    method: 'POST', path: '/admin/kitar/machines/:machineId/status', tag: 'Kitar', summary: 'Mark a machine online, full or offline', auth: 'session', roles: STAFF,
+    method: 'POST', path: '/admin/kitar/machines/:machineId/status', tag: 'Kitar', summary: 'Mark a bin online, full or offline', auth: 'session', roles: STAFF,
     body: z.object({ status: z.enum(['ONLINE', 'FULL', 'OFFLINE']) }),
     handler: (c) => machine.setMachineStatus(c.db, c.actor, c.params.machineId!, c.body.status, c.now),
   }),
   route({
-    method: 'GET', path: '/admin/kitar/machines/:machineId/screen', tag: 'Kitar', summary: "Prototype: the machine's screen (rotating code and the session in progress)", auth: 'session', roles: STAFF,
+    method: 'POST', path: '/admin/kitar/machines/:machineId/material', tag: 'Kitar', summary: 'Set the one material a bin takes, or null for any material', auth: 'session', roles: ADMINS,
+    body: z.object({ material: z.enum(MATERIALS).nullable() }),
+    handler: (c) => machine.setMachineMaterial(c.db, c.actor, c.params.machineId!, c.body.material),
+  }),
+  route({
+    method: 'GET', path: '/admin/kitar/machines/:machineId/screen', tag: 'Kitar', summary: "Prototype: the bin's screen (rotating code and the session in progress)", auth: 'session', roles: STAFF,
     handler: (c) => machine.machineScreen(c.db, c.actor, c.params.machineId!, c.now),
   }),
   route({
-    method: 'POST', path: '/admin/kitar/machines/:machineId/start', tag: 'Kitar', summary: 'Prototype: the machine reads a SimeTown QR, or a guest taps "Recycle as guest"', auth: 'session', roles: STAFF,
+    method: 'POST', path: '/admin/kitar/machines/:machineId/start', tag: 'Kitar', summary: 'Prototype: the bin reads a SimeTown QR, or a guest taps "Recycle as guest"', auth: 'session', roles: STAFF,
     body: z.object({ mode: z.enum(['MEMBER_QR', 'GUEST']), memberCode: z.string().trim().min(6).max(12).regex(/^[A-Za-z0-9]+$/).optional() }),
     handler: (c) => machine.simulateStart(c.db, c.actor, c.params.machineId!, c.body, c.now),
   }),
   route({
-    method: 'POST', path: '/admin/kitar/machines/:machineId/items', tag: 'Kitar', summary: "Prototype: the machine's camera, barcode reader and scale report one item", auth: 'session', roles: STAFF,
+    method: 'POST', path: '/admin/kitar/machines/:machineId/items', tag: 'Kitar', summary: "Prototype: the bin's scale reports one item", auth: 'session', roles: STAFF,
     rateLimit: { limit: 240, windowSec: 60, by: 'user' },
     body: z.object({ material: z.enum(MATERIALS), outcome: z.enum(['ACCEPT', 'WRONG_MATERIAL', 'NOT_TAKEN']).default('ACCEPT') }),
     handler: (c) => machine.simulateItem(c.db, c.actor, c.params.machineId!, c.body, c.now),
   }),
   route({
-    method: 'POST', path: '/admin/kitar/machines/:machineId/finish', tag: 'Kitar', summary: "Prototype: the machine signs its summary and closes the session", auth: 'session', roles: STAFF, body: emptyBody,
+    method: 'POST', path: '/admin/kitar/machines/:machineId/finish', tag: 'Kitar', summary: "Prototype: the bin signs its summary and closes the session", auth: 'session', roles: STAFF, body: emptyBody,
     handler: (c) => machine.simulateFinish(c.db, c.actor, c.params.machineId!, c.now),
   }),
   route({
-    method: 'POST', path: '/ingest/kitar/start', tag: 'Kitar', summary: 'Device: start a session (SimeTown QR read, or guest); signed by the machine', auth: 'machine',
+    method: 'POST', path: '/ingest/kitar/start', tag: 'Kitar', summary: 'Device: start a session (SimeTown QR read, or guest); signed by the bin', auth: 'machine',
     rateLimit: { limit: 120, windowSec: 60, by: 'ip' },
     body: z.object({ machineId: zId, mode: z.enum(['MEMBER_QR', 'GUEST']), memberCode: z.string().trim().min(6).max(12).regex(/^[A-Za-z0-9]+$/).nullable(), ts: z.iso.datetime(), signature: zSignature }),
     handler: (c) => machine.ingestStart(c.db, c.body, c.now),
   }),
   route({
-    method: 'POST', path: '/ingest/kitar/items', tag: 'Kitar', summary: 'Device: one item recognised, counted and weighed; signed by the machine', auth: 'machine',
+    method: 'POST', path: '/ingest/kitar/items', tag: 'Kitar', summary: 'Device: one item weighed by the bin’s scale; signed by the bin', auth: 'machine',
     rateLimit: { limit: 600, windowSec: 60, by: 'ip' },
     body: z.object({
       machineId: zId, sessionId: zId, seq: z.number().int().min(1).max(1000), material: z.enum(MATERIALS), cameraMaterial: z.enum(MATERIALS).nullable(),
@@ -108,7 +123,7 @@ export const kitarRoutes = [
     handler: (c) => machine.ingestItem(c.db, c.body, c.now),
   }),
   route({
-    method: 'POST', path: '/ingest/kitar/finish', tag: 'Kitar', summary: "Device: the session's summary, which must match the items; signed by the machine", auth: 'machine',
+    method: 'POST', path: '/ingest/kitar/finish', tag: 'Kitar', summary: "Device: the session's summary, which must match the items; signed by the bin", auth: 'machine',
     rateLimit: { limit: 120, windowSec: 60, by: 'ip' },
     body: z.object({
       machineId: zId, sessionId: zId, acceptedCount: z.number().int().min(0).max(1000), rejectedCount: z.number().int().min(0).max(1000),

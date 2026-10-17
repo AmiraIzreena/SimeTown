@@ -1370,3 +1370,18 @@ dialog.flash-alert[open] {
     background: white;
   }
 }
+
+/* Kitar map (Leaflet). Pins are divIcons drawn with utility classes; these rules remove
+   Leaflet's default white box, keep a visible keyboard focus, and use the app's font. */
+.kitar-pin {
+  background: none;
+  border: 0;
+}
+.kitar-pin:focus-visible {
+  outline: 2px solid var(--color-ink-900);
+  outline-offset: 2px;
+  border-radius: 9999px;
+}
+.leaflet-container {
+  font: inherit;
+}

@@ -38,9 +38,15 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
     "Your offer points cover it now ({0} points).",
     "Mata tawaran anda kini mencukupi ({0} mata)."
   ],
+  // native review
+  // native review
   [
-    "{0} offer points. Recycle at the smart machine or take a tracked walk to earn them.",
-    "{0} mata tawaran. SimeTown Recycle semula di mesin pintar atau jejak berjalan untuk memperolehnya."
+    "From verified green actions, for example {0} ({1}).",
+    "Daripada tindakan hijau yang disahkan, contohnya {0} ({1})."
+  ],
+  [
+    "{0} offer points. Recycle at a kiosk bin or take a tracked walk to earn them.",
+    "{0} mata tawaran. Kitar semula di tong kiosk atau buat jalan kaki yang dijejak untuk memperolehnya."
   ],
   [
     "at {0}",
@@ -285,14 +291,6 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
   [
     "{0} scanned. {1} more to finish {2}. {3}",
     "{0} diimbas. {1} lagi untuk melengkapkan {2}. {3}"
-  ],
-  [
-    "Looks like {0}. Change it below if that is wrong.",
-    "Kelihatan seperti {0}. Tukar di bawah jika salah."
-  ],
-  [
-    "Recorded at {0}. {1}",
-    "Direkodkan di {0}. {1}"
   ],
   [
     "Claimed {0}. {1} Guest recycling earns XP only.",
@@ -665,6 +663,15 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
   [
     "The weight does not match {0}.",
     "Berat tidak sepadan dengan {0}."
+  ],
+  [
+    "This bin is for {0} only.",
+    "Tong ini untuk {0} sahaja."
+  ],
+  // native review
+  [
+    "Test entry recorded at {0}",
+    "Entri ujian direkodkan di {0}"
   ],
   [
     "Recycling recorded at {0}",

@@ -8,6 +8,7 @@ import { randomCode } from '../identity/service';
 import { notify } from '../notifications';
 import { recordAction, rewardUserById, type ActionReward } from '../rewards';
 import { resolveTownship } from '../townships';
+import { offerWorthByMaterial } from './rates';
 
 /**
  * Kitar and the smart recycling machine (proposal 6.1, BR23).
@@ -97,10 +98,12 @@ interface MachineRow {
   name: string;
   secret: string;
   status: 'ONLINE' | 'FULL' | 'OFFLINE';
+  /** The one material this bin takes; null takes any material. */
+  material: Material | null;
 }
 
 async function loadMachine(q: Queryable, machineId: string, lock = false): Promise<MachineRow> {
-  const m = await one<MachineRow>(q, `SELECT id, township_id, kiosk_id, name, secret, status FROM kitar_machines WHERE id = $1 ${lock ? 'FOR UPDATE' : ''}`, [machineId]);
+  const m = await one<MachineRow>(q, `SELECT id, township_id, kiosk_id, name, secret, status, material FROM kitar_machines WHERE id = $1 ${lock ? 'FOR UPDATE' : ''}`, [machineId]);
   if (!m) throw notFound('Machine');
   return m;
 }
@@ -132,11 +135,11 @@ interface SessionRow {
  * first; a session in use by someone else means the machine is busy.
  */
 async function openSession(tx: Queryable, machine: MachineRow, userId: string | null, mode: SessionRow['mode'], now: Date): Promise<string> {
-  if (machine.status !== 'ONLINE') throw ruleViolation('MACHINE_UNAVAILABLE', machine.status === 'FULL' ? 'This machine is full. Please use the kiosk or another machine.' : 'This machine is offline.');
+  if (machine.status !== 'ONLINE') throw ruleViolation('MACHINE_UNAVAILABLE', machine.status === 'FULL' ? 'This bin is full. Please use another bin.' : 'This bin is offline.');
   const open = await one<SessionRow>(tx, `SELECT id, user_id, last_activity_at FROM kitar_sessions WHERE machine_id = $1 AND status = 'OPEN' FOR UPDATE`, [machine.id]);
   if (open) {
     if (userId && open.user_id === userId) return open.id;
-    if (now.getTime() - open.last_activity_at.getTime() < SESSION_IDLE_MS) throw conflict('MACHINE_BUSY', 'Someone is using this machine. Please wait a moment.');
+    if (now.getTime() - open.last_activity_at.getTime() < SESSION_IDLE_MS) throw conflict('MACHINE_BUSY', 'Someone is using this bin. Please wait a moment.');
     await tx.query(`UPDATE kitar_sessions SET status = 'EXPIRED', closed_at = $2 WHERE id = $1`, [open.id, now]);
   }
   const row = await one<{ id: string }>(
@@ -160,9 +163,9 @@ export async function joinFromScreen(db: Db, actor: Actor, input: { machineId: s
       const expected = screenCode(machine.secret, machine.id, w);
       return expected.length === input.code.length && timingSafeEqual(Buffer.from(expected), Buffer.from(input.code));
     });
-    if (!valid) throw ruleViolation('SCREEN_CODE_OLD', 'That code has changed. Scan the machine’s screen again.');
+    if (!valid) throw ruleViolation('SCREEN_CODE_OLD', 'That code has changed. Scan the code on the bin’s screen again.');
     const sessionId = await openSession(tx, machine, resident.id, 'SCREEN_QR', now);
-    return { sessionId, machine: machine.name };
+    return { sessionId, machine: machine.name, material: machine.material };
   });
 }
 
@@ -193,12 +196,19 @@ export async function ingestStart(db: Db, record: StartRecord & { signature: str
 
 // --- Items ---------------------------------------------------------------------------
 
-/** Camera, barcode and weight must agree, or the item does not count (proposal 6.1). */
-export function itemVerdict(r: Pick<ItemRecord, 'material' | 'cameraMaterial' | 'barcodeOk' | 'weightG' | 'accepted'>): { accepted: boolean; reason: string | null } {
+/**
+ * Camera, barcode and weight must agree, or the item does not count (proposal 6.1).
+ * A bin set to one material counts only that material; a bin with none takes any.
+ */
+export function itemVerdict(
+  r: Pick<ItemRecord, 'material' | 'cameraMaterial' | 'barcodeOk' | 'weightG' | 'accepted'>,
+  binMaterial: Material | null = null,
+): { accepted: boolean; reason: string | null } {
   const [min, max] = ITEM_WEIGHT[r.material];
-  if (!r.accepted) return { accepted: false, reason: 'The machine did not take this item.' };
-  if (r.cameraMaterial !== r.material) return { accepted: false, reason: 'The camera saw a different material.' };
-  if (!r.barcodeOk) return { accepted: false, reason: 'The barcode did not match.' };
+  if (!r.accepted) return { accepted: false, reason: 'The bin did not take this item.' };
+  if (binMaterial && r.material !== binMaterial) return { accepted: false, reason: `This bin is for ${MATERIAL_INFO[binMaterial].label} only.` };
+  if (r.cameraMaterial !== r.material) return { accepted: false, reason: 'This item is not the material this bin takes.' };
+  if (!r.barcodeOk) return { accepted: false, reason: 'This item could not be checked.' };
   if (r.weightG < min || r.weightG > max) return { accepted: false, reason: `The weight does not match ${MATERIAL_INFO[r.material].label.toLowerCase()}.` };
   return { accepted: true, reason: null };
 }
@@ -207,7 +217,8 @@ async function storeItem(tx: Queryable, machine: MachineRow, record: ItemRecord,
   const session = await one<SessionRow>(tx, `SELECT * FROM kitar_sessions WHERE id = $1 AND machine_id = $2 FOR UPDATE`, [record.sessionId, machine.id]);
   if (!session || session.status !== 'OPEN') throw notFound('Session');
   if (session.accepted_count + session.rejected_count >= MAX_SESSION_ITEMS) throw ruleViolation('SESSION_FULL', 'This session has reached its item limit. Finish and start again.');
-  let verdict = itemVerdict(record);
+  // A wrong-material item is stored as refused, not thrown away, so the bin's signed summary still matches.
+  let verdict = itemVerdict(record, machine.material);
   if (verdict.accepted && session.accepted_g + record.weightG > MAX_SESSION_GRAMS) verdict = { accepted: false, reason: 'One session can take up to 20 kg.' };
   const inserted = await tx.query(
     `INSERT INTO kitar_items (session_id, seq, material, camera_material, barcode_ok, weight_g, accepted, reason, signature, created_at)
@@ -267,19 +278,46 @@ async function finishSession(tx: Queryable, machine: MachineRow, record: Summary
 
 const hashClaim = (code: string) => createHash('sha256').update(`kitar-claim:${code.trim().toUpperCase()}`).digest('hex');
 
-/** Stores the drop-off (one row per material, for street totals) and gives XP, campaign points and offer-backed points. */
-async function creditDropOff(
+/**
+ * Whether kitar_dropoffs has the TEST label column (migration 016). A lookup, not a query that might fail: inside a
+ * transaction a failed query aborts the whole transaction in Postgres, even when the error is caught.
+ */
+export async function hasDropoffSource(q: Queryable): Promise<boolean> {
+  return Boolean(
+    await one(q, `SELECT 1 FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'kitar_dropoffs' AND column_name = 'source'`),
+  );
+}
+
+/**
+ * Stores the drop-off (one row per material, for street totals) and gives XP, campaign points and offer-backed points.
+ * A finished bin session and a guest claim call it with no `test`. Kitar test mode (test-entry.ts) passes `test`, so a
+ * practice entry is labelled TEST and goes through exactly the same reward and limit code.
+ */
+export async function creditDropOff(
   tx: Queryable,
-  machine: MachineRow,
-  sessionId: string,
+  machine: Pick<MachineRow, 'kiosk_id' | 'name'>,
+  sessionId: string | null,
   userId: string,
   byMaterial: { material: Material; grams: number }[],
   grams: number,
   now: Date,
   guestClaim: boolean,
+  test?: { ref: string; labelled: boolean; dropoffIds: string[] },
 ): Promise<ActionReward | null> {
   if (grams === 0) return null;
   for (const m of byMaterial) {
+    if (test) {
+      // With migration 016 the row itself says TEST; without it, the audit entry lists these ids instead.
+      const row = await one<{ id: string }>(
+        tx,
+        test.labelled
+          ? `INSERT INTO kitar_dropoffs (kiosk_id, user_id, material, weight_g, created_at, source) VALUES ($1, $2, $3, $4, $5, 'TEST') RETURNING id`
+          : 'INSERT INTO kitar_dropoffs (kiosk_id, user_id, material, weight_g, created_at) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+        [machine.kiosk_id, userId, m.material, m.grams, now],
+      );
+      test.dropoffIds.push(row!.id);
+      continue;
+    }
     await tx.query('INSERT INTO kitar_dropoffs (kiosk_id, user_id, material, weight_g, created_at, session_id) VALUES ($1, $2, $3, $4, $5, $6)', [
       machine.kiosk_id,
       userId,
@@ -291,11 +329,13 @@ async function creditDropOff(
   }
   const user = await rewardUserById(tx, userId);
   if (!user) return null;
-  // A signed machine record is the strongest proof Kitar has, so it may earn offer-backed points. A guest's claim earns XP only (BR23).
-  const reward = await recordAction(tx, { user, activity: 'KITAR_DROPOFF', ref: `machine:${sessionId}`, quantity: grams, now, offerEligible: !guestClaim, xpOnly: guestClaim });
+  // A signed machine record is the strongest proof Kitar has, so it may earn offer-backed points,
+  // at each material's own rate. A guest's claim earns XP only (BR23).
+  const offerWorth = guestClaim ? undefined : await offerWorthByMaterial(tx, byMaterial);
+  const reward = await recordAction(tx, { user, activity: 'KITAR_DROPOFF', ref: test ? test.ref : `machine:${sessionId}`, quantity: grams, now, offerEligible: !guestClaim, xpOnly: guestClaim, offerWorth });
   const kg = (grams / 1000).toLocaleString('en-MY', { maximumFractionDigits: 2 });
   await notify(tx, [userId], {
-    title: `Recycling recorded at ${machine.name}`,
+    title: test ? `Test entry recorded at ${machine.name}` : `Recycling recorded at ${machine.name}`,
     body: reward.skipped ? `${kg} kg recorded. You have reached today’s recycling limit for rewards.` : `${kg} kg recorded: +${reward.xp} XP${reward.points ? `, +${reward.points} points` : ''}${reward.offerPoints ? `, +${reward.offerPoints} offer points` : ''}.`,
     link: '/app/kitar',
   });
@@ -338,9 +378,9 @@ export async function claimGuestSession(db: Db, actor: Actor, code: string, now:
 /** What the resident's phone shows while they recycle, and the result once the machine finishes. */
 export async function myMachineSession(db: Db, actor: Actor, now: Date) {
   const resident = requireVerifiedResident(actor);
-  const session = await one<SessionRow & { machine: string; reward: ActionReward | null; closed_at: Date | null }>(
+  const session = await one<SessionRow & { machine: string; machine_material: Material | null; reward: ActionReward | null; closed_at: Date | null }>(
     db,
-    `SELECT s.*, m.name AS machine FROM kitar_sessions s JOIN kitar_machines m ON m.id = s.machine_id
+    `SELECT s.*, m.name AS machine, m.material AS machine_material FROM kitar_sessions s JOIN kitar_machines m ON m.id = s.machine_id
       WHERE s.user_id = $1 AND s.started_at > $2::timestamptz - interval '30 minutes' ORDER BY s.started_at DESC LIMIT 1`,
     [resident.id, now],
   );
@@ -349,6 +389,7 @@ export async function myMachineSession(db: Db, actor: Actor, now: Date) {
   return {
     id: session.id,
     machine: session.machine,
+    material: session.machine_material,
     status: session.status,
     acceptedCount: session.accepted_count,
     rejectedCount: session.rejected_count,
@@ -378,7 +419,7 @@ export async function machineScreen(db: Db, actor: Actor, machineId: string, now
   const items = session ? await db.query('SELECT seq, material, weight_g, accepted, reason FROM kitar_items WHERE session_id = $1 ORDER BY seq', [session.id]) : [];
   const kiosk = await one<{ name: string; location: string }>(db, 'SELECT name, location FROM kitar_kiosks WHERE id = $1', [machine.kiosk_id]);
   return {
-    machine: { id: machine.id, name: machine.name, status: machine.status, kiosk: kiosk!.name, location: kiosk!.location },
+    machine: { id: machine.id, name: machine.name, status: machine.status, material: machine.material, kiosk: kiosk!.name, location: kiosk!.location },
     // The resident's phone opens this link from the QR code: the code inside is only good for about a minute.
     screen: { code: screenCode(machine.secret, machine.id, window), expiresInMs: (window + 1) * WINDOW_MS - now.getTime() },
     session: session
@@ -418,7 +459,7 @@ export async function simulateItem(db: Db, actor: Actor, machineId: string, inpu
       `SELECT s.id, (SELECT count(*)::int FROM kitar_items i WHERE i.session_id = s.id) AS n FROM kitar_sessions s WHERE s.machine_id = $1 AND s.status = 'OPEN'`,
       [machine.id],
     );
-    if (!session) throw ruleViolation('NO_SESSION', 'Start a session on the machine first.');
+    if (!session) throw ruleViolation('NO_SESSION', 'Start a session at the bin first.');
     const [min, max] = ITEM_WEIGHT[input.material];
     const other = MATERIALS.find((m) => m !== input.material)!;
     const record: ItemRecord = {
@@ -471,10 +512,23 @@ export async function setMachineStatus(db: Db, actor: Actor, machineId: string, 
   });
 }
 
+/** Admins set the one material a bin takes, or clear it (null: any material). Not while someone is recycling at it. */
+export async function setMachineMaterial(db: Db, actor: Actor, machineId: string, material: Material | null) {
+  return db.tx(async (tx) => {
+    const machine = await staffMachine(tx, actor, machineId, true);
+    if (await one(tx, `SELECT 1 FROM kitar_sessions WHERE machine_id = $1 AND status = 'OPEN'`, [machine.id])) {
+      throw conflict('MACHINE_BUSY', 'Someone is using this bin. Please wait a moment.');
+    }
+    await tx.query('UPDATE kitar_machines SET material = $2 WHERE id = $1', [machine.id, material]);
+    await audit(tx, actor.id, 'MACHINE_MATERIAL', 'kitar_machine', machine.id, { from: machine.material, to: material });
+    return { material };
+  });
+}
+
 /** Machines with today's use and their state, for staff and for Insights ("machine uptime"). */
 export async function listMachines(db: Db, actor: Actor, now: Date) {
   return db.query(
-    `SELECT m.id, m.name, m.status, m.last_seen_at, k.name AS kiosk,
+    `SELECT m.id, m.name, m.status, m.material, m.last_seen_at, k.name AS kiosk,
             (SELECT count(*)::int FROM kitar_sessions s WHERE s.machine_id = m.id AND s.status = 'DONE' AND s.closed_at > $2::timestamptz - interval '24 hours') AS sessions_today,
             (SELECT coalesce(sum(s.accepted_g), 0)::int FROM kitar_sessions s WHERE s.machine_id = m.id AND s.status = 'DONE' AND s.closed_at > $2::timestamptz - interval '24 hours') AS grams_today
        FROM kitar_machines m JOIN kitar_kiosks k ON k.id = m.kiosk_id
@@ -486,13 +540,16 @@ export async function listMachines(db: Db, actor: Actor, now: Date) {
 /** The machines a resident can use, for the Kitar screen. */
 export async function machinesForResident(q: Queryable, townshipId: string) {
   return q.query(
-    `SELECT m.id, m.name, m.status, k.location FROM kitar_machines m JOIN kitar_kiosks k ON k.id = m.kiosk_id WHERE m.township_id = $1 ORDER BY m.name`,
+    `SELECT m.id, m.name, m.status, m.material, k.location, k.id AS kiosk_id, k.name AS kiosk FROM kitar_machines m JOIN kitar_kiosks k ON k.id = m.kiosk_id WHERE m.township_id = $1 ORDER BY m.name`,
     [townshipId],
   );
 }
 
-/** Puts a machine at a kiosk. Its signing key is made here and never leaves the server, except to the device itself at set-up. */
-export async function createMachine(db: Db, actor: Actor, input: { name: string; kioskId: string }) {
+/**
+ * Puts a machine at a kiosk. Its signing key is made here and never leaves the server, except to the device itself at set-up.
+ * A bin can be set to one material; without one it takes any material.
+ */
+export async function createMachine(db: Db, actor: Actor, input: { name: string; kioskId: string; material?: Material | null }) {
   return db.tx(async (tx) => {
     const townshipId = await resolveTownship(tx, actor);
     const kiosk = await one(tx, 'SELECT 1 FROM kitar_kiosks WHERE id = $1 AND township_id = $2', [input.kioskId, townshipId]);
@@ -502,10 +559,10 @@ export async function createMachine(db: Db, actor: Actor, input: { name: string;
     }
     const row = await one<{ id: string }>(
       tx,
-      'INSERT INTO kitar_machines (township_id, kiosk_id, name, secret) VALUES ($1, $2, $3, $4) RETURNING id',
-      [townshipId, input.kioskId, input.name, randomBytes(32).toString('hex')],
+      'INSERT INTO kitar_machines (township_id, kiosk_id, name, secret, material) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+      [townshipId, input.kioskId, input.name, randomBytes(32).toString('hex'), input.material ?? null],
     );
-    await audit(tx, actor.id, 'MACHINE_CREATED', 'kitar_machine', row!.id, { name: input.name });
+    await audit(tx, actor.id, 'MACHINE_CREATED', 'kitar_machine', row!.id, { name: input.name, material: input.material ?? null });
     return { id: row!.id };
   });
 }

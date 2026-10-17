@@ -71,11 +71,11 @@ export default function MachineScreenPage({ params }: { params: Promise<{ machin
       refresh();
     },
   });
-  const status = useAction((next: Screen['machine']['status']) => api.post(`/admin/kitar/machines/${machineId}/status`, { status: next }), { onSuccess: refresh, success: 'Machine status updated.' });
+  const status = useAction((next: Screen['machine']['status']) => api.post(`/admin/kitar/machines/${machineId}/status`, { status: next }), { onSuccess: refresh, success: 'Bin status updated.' });
 
   return (
     <>
-      <PageHeader title="Smart machine screen" description="What the recycling machine shows on its own screen. Open it on the tablet beside the kiosk." />
+      <PageHeader title="Kiosk bin screen" description="What a kiosk bin shows on its own screen. Open it on the tablet beside the kiosk." />
       <Async state={screen}>
         {(s) => {
           const joinUrl = `${window.location.origin}/app/kitar/machine?m=${s.machine.id}&c=${s.screen.code}`;
@@ -93,7 +93,7 @@ export default function MachineScreenPage({ params }: { params: Promise<{ machin
                   {s.machine.status !== 'ONLINE' ? (
                     <>
                       <Power className="size-14 text-brand-200" aria-hidden />
-                      <p className="mt-4 text-2xl font-bold"><Text>{s.machine.status === 'FULL' ? 'This machine is full' : 'Out of service'}</Text></p>
+                      <p className="mt-4 text-2xl font-bold"><Text>{s.machine.status === 'FULL' ? 'This bin is full' : 'Out of service'}</Text></p>
                       <p className="mt-2 text-brand-100"><Text>Please use the kiosk at </Text><Text>{s.machine.location}</Text>.</p>
                     </>
                   ) : s.session ? (
@@ -147,7 +147,7 @@ export default function MachineScreenPage({ params }: { params: Promise<{ machin
                     <>
                       <p className="text-2xl font-bold"><Text>Scan with SimeTown to start</Text></p>
                       <div className="mt-5 rounded-2xl bg-white p-3">
-                        <QrCode value={joinUrl} size={210} label="Code to start recycling at this machine" />
+                        <QrCode value={joinUrl} size={210} label="Code to start recycling at this bin" />
                       </div>
                       <div className="mt-4 h-1.5 w-56 overflow-hidden rounded-full bg-white/15" aria-hidden>
                         <div className="h-full bg-gold-300 transition-[width] duration-1000 ease-linear" style={{ width: `${Math.max(0, Math.min(100, (s.screen.expiresInMs / 30_000) * 100))}%` }} />
@@ -155,7 +155,7 @@ export default function MachineScreenPage({ params }: { params: Promise<{ machin
                       <p className="mt-2 text-xs text-brand-200"><Text>A new code every 30 seconds</Text></p>
                       <div className="mt-6 flex flex-wrap justify-center gap-2 text-sm">
                         <span className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5">
-                          <QrIcon className="size-4" aria-hidden /><Text> Or show your SimeTown QR to the camera</Text></span>
+                          <QrIcon className="size-4" aria-hidden /><Text> Or show your SimeTown QR to the bin</Text></span>
                         <button type="button" onClick={() => void start.run({ mode: 'GUEST' })} className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 font-semibold hover:bg-white/20">
                           <UserRound className="size-4" aria-hidden /><Text> Recycle as guest</Text></button>
                       </div>
@@ -165,9 +165,9 @@ export default function MachineScreenPage({ params }: { params: Promise<{ machin
               </div>
 
               <div className="space-y-4">
-                <SimulatedNote><Text>Test controls: these stand in for the camera, barcode reader and scale. Records and signature checks run as normal.</Text></SimulatedNote>
+                <SimulatedNote><Text>Test controls: these stand in for the bin’s scale and code reader. Records and signature checks run as normal.</Text></SimulatedNote>
                 <Card>
-                  <CardHeader title="Camera: read a SimeTown QR" description="Stands in for the machine reading a resident’s code." />
+                  <CardHeader title="Read a SimeTown QR" description="Stands in for the bin reading a resident’s code." />
                   <form
                     method="post"
                     className="flex flex-wrap items-end gap-3 p-5"
@@ -181,12 +181,12 @@ export default function MachineScreenPage({ params }: { params: Promise<{ machin
                   </form>
                 </Card>
                 <Card>
-                  <CardHeader title="Drop an item" description="Camera, barcode and weight must agree, or the item is returned." action={<Badge tone={s.session ? 'success' : 'neutral'}><Text>{s.session ? 'Session open' : 'Start a session first'}</Text></Badge>} />
+                  <CardHeader title="Drop an item" description="The item must be the bin’s material and a likely weight, or it does not count." action={<Badge tone={s.session ? 'success' : 'neutral'}><Text>{s.session ? 'Session open' : 'Start a session first'}</Text></Badge>} />
                   <div className="space-y-4 p-5">
-                    <Select label="What the sensors report" value={outcome} onChange={(event) => setOutcome(event.target.value as Outcome)}>
-                      <option value="ACCEPT"><Text>All agree: item accepted</Text></option>
-                      <option value="WRONG_MATERIAL"><Text>Camera sees a different material</Text></option>
-                      <option value="NOT_TAKEN"><Text>Machine cannot take this item</Text></option>
+                    <Select label="What the bin reports" value={outcome} onChange={(event) => setOutcome(event.target.value as Outcome)}>
+                      <option value="ACCEPT"><Text>Item accepted</Text></option>
+                      <option value="WRONG_MATERIAL"><Text>Wrong material for this bin</Text></option>
+                      <option value="NOT_TAKEN"><Text>Bin cannot take this item</Text></option>
                     </Select>
                     <div className="grid grid-cols-2 gap-2">
                       {MATERIALS.map((m) => (
@@ -199,7 +199,7 @@ export default function MachineScreenPage({ params }: { params: Promise<{ machin
                   </div>
                 </Card>
                 <Card>
-                  <CardHeader title="Machine status" description="Bin-full and offline alerts go to township staff." />
+                  <CardHeader title="Bin status" description="Bin-full and offline alerts go to township staff." />
                   <div className="flex flex-wrap gap-2 p-5">
                     {(['ONLINE', 'FULL', 'OFFLINE'] as const).map((st) => (
                       <Button key={st} size="sm" variant={s.machine.status === st ? 'primary' : 'secondary'} onClick={() => void status.run(st)} disabled={status.pending || s.machine.status === st}>

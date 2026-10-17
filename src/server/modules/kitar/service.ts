@@ -1,23 +1,27 @@
 import { randomUUID } from 'node:crypto';
 import type { Material } from '@/shared/domain';
-import { one, type Db } from '../../db/client';
+import { one, type Db, type Queryable } from '../../db/client';
 import { requireVerifiedResident, type Actor } from '../../auth/actor';
 import { getConfig } from '../../config';
 import { conflict, notFound, ruleViolation } from '../../errors';
 import { audit } from '../audit';
 import { randomCode } from '../identity/service';
-import { recordAction } from '../rewards';
-import { getSettings, startOf } from '../settings';
+import { currentMonth } from '../offers/service';
+import { recordAction, type RewardUser } from '../rewards';
+import { getSettings, startOf, type Settings } from '../settings';
 import { resolveTownship } from '../townships';
-import { machinesForResident } from './machine';
+import { hasDropoffSource, machinesForResident } from './machine';
+import { testEntryEnabled } from './test-entry';
+import { listRates } from './rates';
 
 /** Kitar: check the material, then record the drop-off at a township kiosk. */
 
 export async function kitarOverview(db: Db, actor: Actor, now: Date) {
   const resident = requireVerifiedResident(actor);
-  const tz = (await getSettings(db)).timezone;
+  const settings = await getSettings(db);
+  const tz = settings.timezone;
   const month = startOf('month', '$2', '$3');
-  const [mine, street, recent, kiosks, machines] = await Promise.all([
+  const [mine, street, recent, kiosks, machines, byMaterial, rates, limits, points] = await Promise.all([
     one<{ month_g: number; all_g: number; drops: number }>(
       db,
       `SELECT coalesce(sum(weight_g) FILTER (WHERE created_at >= ${month}), 0)::int AS month_g,
@@ -34,13 +38,16 @@ export async function kitarOverview(db: Db, actor: Actor, now: Date) {
          FROM homes h WHERE h.id = $1`,
       [resident.homeId, now, tz],
     ),
-    db.query(
-      `SELECT d.id, d.material, d.weight_g, d.created_at, k.name AS kiosk
-         FROM kitar_dropoffs d JOIN kitar_kiosks k ON k.id = d.kiosk_id WHERE d.user_id = $1 ORDER BY d.created_at DESC LIMIT 10`,
-      [resident.id],
-    ),
+    recentDropOffs(db, resident.id),
     db.query(`SELECT id, name, location FROM kitar_kiosks WHERE township_id = $1 AND active ORDER BY name`, [resident.townshipId]),
     machinesForResident(db, resident.townshipId),
+    db.query<{ material: Material; grams: number }>(
+      `SELECT material, sum(weight_g)::int AS grams FROM kitar_dropoffs WHERE user_id = $1 AND created_at >= ${month} GROUP BY material`,
+      [resident.id, now, tz],
+    ),
+    listRates(db),
+    kitarLimits(db, resident, now, settings),
+    pointsStatus(db, resident, now, settings),
   ]);
   return {
     monthGrams: mine!.month_g,
@@ -52,7 +59,92 @@ export async function kitarOverview(db: Db, actor: Actor, now: Date) {
     kiosks,
     machines,
     photoCheck: getConfig().AI_PROVIDER !== 'none',
+    rates,
+    monthGramsByMaterial: Object.fromEntries(byMaterial.map((m) => [m.material, m.grams])) as Partial<Record<Material, number>>,
+    limits,
+    points,
+    // Only on a local demo (pglite in development): the XP a trip earns, for the practice preview. Never sent otherwise.
+    ...(testEntryEnabled(getConfig()) ? { testEntry: { xp: (await one<{ xp: number }>(db, `SELECT xp FROM activity_rules WHERE activity = 'KITAR_DROPOFF'`))!.xp } } : {}),
   };
+}
+
+/**
+ * The resident's last 10 drop-offs. `test` marks a practice entry from Kitar test mode: from the
+ * row's TEST label (migration 016), or, on a database without 016, from the KITAR_TEST_ENTRY audit
+ * entry that lists the row's id.
+ */
+async function recentDropOffs(db: Db, userId: string) {
+  const test = (await hasDropoffSource(db))
+    ? `d.source = 'TEST'`
+    : `EXISTS (SELECT 1 FROM audit_log a WHERE a.action = 'KITAR_TEST_ENTRY' AND a.actor_user_id = d.user_id AND a.detail -> 'dropoffIds' @> jsonb_build_array(d.id::text))`;
+  return db.query(
+    `SELECT d.id, d.material, d.weight_g, d.created_at, k.name AS kiosk, ${test} AS test
+       FROM kitar_dropoffs d JOIN kitar_kiosks k ON k.id = d.kiosk_id WHERE d.user_id = $1 ORDER BY d.created_at DESC LIMIT 10`,
+    [userId],
+  );
+}
+
+/**
+ * Recycling trips and the home's offer-backed points this month, counted the way
+ * `recordAction` and `giveOfferPoints` count them (BR6), so the screen never says
+ * a trip will count when it will not.
+ */
+async function kitarLimits(db: Db, resident: RewardUser, now: Date, settings: Settings) {
+  const [rule, used, home] = await Promise.all([
+    one<{ daily_cap_person: number; monthly_cap_home: number }>(db, `SELECT daily_cap_person, monthly_cap_home FROM activity_rules WHERE activity = 'KITAR_DROPOFF'`),
+    one<{ today: number; month_home: number }>(
+      db,
+      `SELECT count(*) FILTER (WHERE e.user_id = $1 AND e.created_at >= ${startOf('day', '$3', '$4')})::int AS today,
+              count(*)::int AS month_home
+         FROM xp_events e JOIN users u ON u.id = e.user_id
+        WHERE u.home_id = $2 AND e.activity = 'KITAR_DROPOFF' AND e.created_at >= ${startOf('month', '$3', '$4')}`,
+      [resident.id, resident.homeId, now, settings.timezone],
+    ),
+    homeOfferPoints(db, resident.homeId, now, settings.timezone),
+  ]);
+  return {
+    tripsToday: used!.today,
+    tripsPerDay: rule!.daily_cap_person,
+    homeTripsMonth: used!.month_home,
+    homeTripsPerMonth: rule!.monthly_cap_home,
+    homePointsMonth: home,
+    homePointsMax: settings.offer_points_monthly_home,
+  };
+}
+
+/** Offer-backed points every member of the home has earned this month, from any action (the household limit is shared). */
+async function homeOfferPoints(q: Queryable, homeId: string, now: Date, tz: string): Promise<number> {
+  const month = await currentMonth(q, now, tz);
+  const row = await one<{ used: number }>(
+    q,
+    `SELECT coalesce(sum(l.amount), 0)::int AS used FROM offer_point_lots l JOIN users u ON u.id = l.user_id
+      WHERE u.home_id = $1 AND l.source = 'ACTION' AND l.pledge_month = $2`,
+    [homeId, month],
+  );
+  return row!.used;
+}
+
+/**
+ * Whether a bin trip can earn points per kg right now, and if not, why: only the
+ * reason, never the shops' amounts. Checked in the order `giveOfferPoints` applies
+ * them. A material with a rate of 0 is shown on its own rate instead.
+ */
+async function pointsStatus(db: Db, resident: RewardUser, now: Date, settings: Settings): Promise<{ status: 'ON' | 'PROGRAMME_PAUSED' | 'NO_PROMISES' | 'HOME_LIMIT' }> {
+  if (settings.issuance_paused) return { status: 'PROGRAMME_PAUSED' };
+  const month = await currentMonth(db, now, settings.timezone);
+  // Promises not made yet this month count too: the first award of the month makes them (ensurePledges).
+  const promises = await one<{ promised: number; issued: number }>(
+    db,
+    `SELECT (SELECT coalesce(sum(p.budget_sen), 0) FROM offer_pledges p WHERE p.township_id = $1 AND p.month = $2::date)
+          + (SELECT coalesce(sum(o.monthly_budget_sen), 0) FROM shop_offers o JOIN merchants m ON m.id = o.merchant_id
+              WHERE m.township_id = $1 AND o.status = 'ACTIVE' AND m.status = 'ACTIVE'
+                AND NOT EXISTS (SELECT 1 FROM offer_pledges p WHERE p.offer_id = o.id AND p.month = $2::date)) AS promised,
+            coalesce((SELECT issued_points FROM offer_months WHERE township_id = $1 AND month = $2::date), 0) AS issued`,
+    [resident.townshipId, month],
+  );
+  if (Number(promises!.promised) - Number(promises!.issued) <= 0) return { status: 'NO_PROMISES' };
+  if ((await homeOfferPoints(db, resident.homeId, now, settings.timezone)) >= settings.offer_points_monthly_home) return { status: 'HOME_LIMIT' };
+  return { status: 'ON' };
 }
 
 /**

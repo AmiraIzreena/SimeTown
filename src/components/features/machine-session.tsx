@@ -9,6 +9,7 @@ import { formatKg, rewardMessage } from '@/lib/format';
 import { useApi } from '@/lib/hooks';
 import type { ActionRewardView } from '@/lib/types';
 import { MATERIAL_INFO, type Material } from '@/shared/domain';
+import { MaterialIcon } from './kitar/materials';
 
 export interface MachineSession {
   id: string;
@@ -36,7 +37,7 @@ export function LiveMachineSession({ onDone }: { onDone?: () => void }) {
     <Card className={cn('animate-rise', s.status === 'OPEN' ? 'machine-session-live border-brand-300' : s.status === 'DONE' ? 'border-success-600/30' : '')}>
       <CardHeader
         title={s.status === 'OPEN' ? `Recycling at ${s.machine}` : s.status === 'DONE' ? `Recorded at ${s.machine}` : 'Session closed'}
-        description={s.status === 'OPEN' ? 'Drop items in one by one. The machine checks each with its camera, barcode reader and scale.' : 'Every item came from a record the machine signed.'}
+        description={s.status === 'OPEN' ? 'Put your items in the bin. The scale weighs them and sends the weight by itself.' : 'Every weight came from the bin’s scale.'}
         action={
           <Badge tone={s.status === 'OPEN' ? 'brand' : s.status === 'DONE' ? 'success' : 'neutral'}>
             {s.status === 'OPEN' ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : <Cpu className="size-3.5" aria-hidden />}
@@ -64,9 +65,10 @@ export function LiveMachineSession({ onDone }: { onDone?: () => void }) {
             <li key={item.seq} className="flex items-center justify-between gap-3 px-5 py-2.5 text-sm">
               <span className="flex min-w-0 items-center gap-2">
                 {item.accepted ? <CheckCircle2 className="size-4 shrink-0 text-success-700" aria-hidden /> : <XCircle className="size-4 shrink-0 text-accent-600" aria-hidden />}
+                <MaterialIcon material={item.material} size="sm" />
                 <span className="min-w-0">
                   <span className="font-medium text-ink-900"><Text>{MATERIAL_INFO[item.material].label}</Text></span>
-                  {item.reason && <span className="block text-xs text-ink-500">{item.reason}</span>}
+                  {item.reason && <span className="block text-xs text-ink-500"><Text>{item.reason}</Text></span>}
                 </span>
               </span>
               <span className="shrink-0 tabular-nums text-ink-600"><Text>{item.weight_g}</Text><Text> g</Text></span>

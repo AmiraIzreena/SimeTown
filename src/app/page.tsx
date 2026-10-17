@@ -69,7 +69,7 @@ export default async function LandingPage() {
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-700"><Text>How it works</Text></p>
               <h2 className="mt-3 max-w-2xl text-3xl font-bold leading-tight tracking-tight sm:text-4xl"><Text>One good action, one local sale. Every point funded first.</Text></h2>
             </div>
-            <p className="max-w-sm text-[15px] leading-relaxed text-ink-600"><Text>Follow one resident through a real SimeTown transaction, from the recycling machine to the shop’s weekly payout.</Text></p>
+            <p className="max-w-sm text-[15px] leading-relaxed text-ink-600"><Text>Follow one resident through a real SimeTown transaction, from the recycling kiosk to the shop’s weekly payout.</Text></p>
           </Reveal>
           <Reveal className="mt-12">
             <HowItWorks />

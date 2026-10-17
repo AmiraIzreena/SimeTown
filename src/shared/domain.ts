@@ -300,3 +300,10 @@ export function formatPhone(e164: string): string {
 export const formatRM = (sen: number) =>
   `RM${(sen / 100).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 export const formatPoints = (points: number) => points.toLocaleString('en-MY');
+
+/**
+ * The default monthly limit of offer-backed points per home (BR6; raised from 800 to 1000 for now).
+ * The live limit is the setting program_settings.offer_points_monthly_home, which SDP HQ can change;
+ * migration 015 gives it this default. Used here only where a page states the default.
+ */
+export const HOME_OFFER_POINTS_DEFAULT = 1_000;

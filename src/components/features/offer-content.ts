@@ -35,7 +35,7 @@ export const FEATURES: OfferGroup[] = [
     layer: 'Planet',
     question: 'Making sustainable living easy and worth doing',
     items: [
-      { icon: Recycle, name: 'SimeTown Recycle', gloss: 'Recycle', text: 'A smart machine recognises, counts and weighs each item, and signs every record.' },
+      { icon: Recycle, name: 'SimeTown Recycle', gloss: 'Recycle', text: 'Each kiosk bin has a scale that weighs your items, sends the weight by itself and signs every record.' },
       { icon: Repeat2, name: 'Kongsi', gloss: 'Share', text: 'Give away or lend things instead of throwing them out.' },
       { icon: Zap, name: 'Jimat', gloss: 'Save', text: 'Upload a bill: it is checked for safety, read, and confirmed by you. Leak alerts and tips.' },
       { icon: Droplets, name: 'Banjir', gloss: 'Flood', text: 'Sensors and camera AI, two signals must agree, a person checks the rest, and a safe route.' },

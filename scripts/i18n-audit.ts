@@ -56,6 +56,8 @@ export const ALLOWED = new Set([
   'SOS', 'SOS ·', 'Status', 'Planet', 'Menu',
   // Demo sponsor and shop names, and image sizes.
   'XP', 'Demo', 'Solar Cerah', 'Basikal Bersama', 'Kopi Hijau', 'Kitar Plus Recyclers', 'Tuai Segar Market', 'Nurseri Rimbun', 'Aktif Elmina Fitness', 'Roti Desa Bakery', 'Farmasi Elmina Sihat', 'Dobi Bersih Laundry', 'Kedai Bunga Melati', 'Perkakasan Jaya', 'Bengkel Basikal Roda', '(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw', '(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw', 'Puan Rahmah', '(min-width: 1024px) 58vw, 100vw', 'Poster', 'Plot {0}', 'AI · {0}', '{0} kWh', ', minimum {0}',
+  // Elmina place names and kiosk names (Kitar Map tab), the same in Malay.
+  'Elmina Gardens', 'Elmina Valley', 'Elmina Valley 1', 'Elmina Valley 2', 'Elmina Green', 'Elmina West', 'Kiosk Elmina Gardens', 'Kiosk Elmina Valley',
   // Already Malay, on purpose: the place name, a Malay suggestion and the Malay voice sample.
   'Tasik', 'Bila kutipan sampah?', 'Ini contoh suara SimeTown.',
   // The language switch always names the other language in that language.

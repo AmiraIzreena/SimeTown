@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { JoinMachine } from './join';
 
-export const metadata: Metadata = { title: 'Kitar · smart machine' };
+export const metadata: Metadata = { title: 'Kitar · recycle at a bin' };
 
 /** The machine's screen shows a QR code that opens this page; anything else in the address is ignored. */
 export default async function MachineJoinPage({ searchParams }: { searchParams: Promise<{ m?: string; c?: string }> }) {

@@ -2,7 +2,7 @@
 
 import { Text } from '@/components/ui/localized-text';
 import { LocalizedDiv } from '@/components/ui/localized-elements';
-import { ArrowRight, Barcode, Camera, Check, Coins, Landmark, Recycle, Scale, ShieldCheck, Smartphone, Store, Wallet, type LucideIcon } from 'lucide-react';
+import { ArrowRight, Check, Coins, Landmark, Recycle, Scale, ShieldCheck, Smartphone, Store, Wallet, type LucideIcon } from 'lucide-react';
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
 import { cn } from '@/lib/cn';
 import { formatRM } from '@/shared/domain';
@@ -16,7 +16,7 @@ import { formatRM } from '@/shared/domain';
 const DURATION = 6500;
 
 const STEPS: { key: string; icon: LucideIcon; title: string; who: string; text: string; proof: string }[] = [
-  { key: 'do', icon: Recycle, title: 'Do', who: 'Resident', text: 'Aisyah drops 8 bottles into a smart recycling machine in Elmina Central Park. Camera, barcode and scale must all agree before anything counts.', proof: 'Verified by machine, signed record' },
+  { key: 'do', icon: Recycle, title: 'Do', who: 'Resident', text: 'Aisyah drops 8 bottles into the plastic bin at the Elmina Valley kiosk. The bin’s scale weighs them and sends the weight by itself.', proof: 'Weighed by the bin’s scale, signed record' },
   { key: 'earn', icon: Coins, title: 'Earn', who: 'Sponsor-funded', text: 'She earns Impact XP at once. Because a sponsor funded this month’s challenge, 300 points land too, with the funder named.', proof: 'Paid into the float before it is given' },
   { key: 'spend', icon: Smartphone, title: 'Spend', who: 'Township shop', text: 'At Kedai Runcit Mesra her bill is RM20. She uses 300 points for RM3 off, and confirms on her own phone. Points cover up to 30% of a bill.', proof: 'Confirmed on the resident’s phone' },
   { key: 'settle', icon: Landmark, title: 'Settle', who: 'Sime Darby Property', text: 'Every week the reward float pays the shop in full for the points it accepted. The float always equals the points residents hold, to the sen.', proof: 'Reconciled daily, settled weekly' },
@@ -24,14 +24,14 @@ const STEPS: { key: string; icon: LucideIcon; title: string; who: string; text: 
 
 function DoScreen() {
   const checks: { icon: LucideIcon; label: string; value: string }[] = [
-    { icon: Camera, label: 'Camera', value: 'PET bottle' },
-    { icon: Barcode, label: 'Barcode', value: 'Matched' },
+    { icon: Recycle, label: 'Bin', value: 'Plastic (PET)' },
     { icon: Scale, label: 'Scale', value: '0.42 kg' },
+    { icon: ShieldCheck, label: 'Weight sent', value: 'By itself' },
   ];
   return (
     <div className="hiw-screen">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/60"><Text>Smart recycling machine</Text></p>
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/60"><Text>Kiosk bin</Text></p>
         <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-success-600/20 px-2.5 py-1 text-[11px] font-semibold text-[#7fe0b0]"><span className="live-dot" aria-hidden /><Text>Session open</Text></span>
       </div>
       <p className="mt-4 font-display text-5xl font-bold text-white"><span className="hiw-count">8</span> <span className="text-xl font-semibold text-white/60"><Text>items</Text></span></p>
@@ -45,7 +45,7 @@ function DoScreen() {
           </li>
         ))}
       </ul>
-      <p className="mt-5 text-xs text-white/50"><Text>Record signed by machine EV-01 · Elmina Central Park</Text></p>
+      <p className="mt-5 text-xs text-white/50"><Text>Weight sent by bin EV-01 · Elmina Valley kiosk</Text></p>
     </div>
   );
 }

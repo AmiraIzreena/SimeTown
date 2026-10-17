@@ -17,8 +17,8 @@ export const metadata: Metadata = {
 };
 
 const CLAIM: { icon: LucideIcon; title: string; text: string }[] = [
-  { icon: Footprints, title: 'Do the activity', text: 'Recycle at a smart machine, finish a park loop, water a garden or help a neighbour.' },
-  { icon: BadgeCheck, title: 'It is verified', text: 'A machine, a QR checkpoint, GPS or a staff member confirms it. There is no form to fill in.' },
+  { icon: Footprints, title: 'Do the activity', text: 'Recycle at a kiosk bin, finish a park loop, water a garden or help a neighbour.' },
+  { icon: BadgeCheck, title: 'It is verified', text: 'A bin’s scale, a QR checkpoint, GPS or a staff member confirms it. There is no form to fill in.' },
   { icon: Wallet, title: 'XP and points arrive', text: 'Impact XP is added at once. When a challenge goal is met, its points land with the funder named.' },
 ];
 

@@ -63,8 +63,8 @@ describe('offer-backed points (BR29)', () => {
     await createOffer(db, shop, { ...offerInput, monthlyBudgetSen: 100_000 }, T0);
     const resident = await makeResident(w);
     expect((await recycle(resident, 5_000)).offerPoints).toBe(500);
-    expect((await recycle(resident, 5_000, at(0.02))).offerPoints).toBe(300); // 800 a month per home by default
-    expect(await offerBalance(db, resident.id)).toBe(800);
+    expect((await recycle(resident, 7_000, at(0.02))).offerPoints).toBe(500); // worth 700; 1000 a month per home by default
+    expect(await offerBalance(db, resident.id)).toBe(1_000);
   });
 
   it('gives nothing for an action that was not verified strongly enough', async () => {

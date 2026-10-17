@@ -216,7 +216,7 @@ const TOOLS: Tool[] = [
   },
   {
     kind: 'read',
-    spec: { name: 'get_recycling_places', description: "The township's recycling kiosks and smart machines, with where they are, and the resident's recycling this month.", parameters: noArgs },
+    spec: { name: 'get_recycling_places', description: "The township's recycling kiosks and their bins, with where they are, and the resident's recycling this month.", parameters: noArgs },
     run: async ({ db, actor, now }) => {
       const k = await kitarOverview(db, actor, now);
       return {

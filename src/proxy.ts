@@ -29,7 +29,8 @@ export function proxy(request: NextRequest) {
     // Stylesheets are our own files. Inline style *attributes* are allowed for computed widths (progress bars, charts).
     dev ? `style-src 'self' 'unsafe-inline'${googleMaps ? ' https://fonts.googleapis.com' : ''}` : `style-src 'self' 'nonce-${nonce}'${googleMaps ? ' https://fonts.googleapis.com' : ''}`,
     `style-src-attr 'unsafe-inline'`,
-    `img-src 'self' data: blob:${googleMaps ? ' https://*.googleapis.com https://*.gstatic.com https://*.google.com https://*.googleusercontent.com' : ''}`,
+    // Kitar map tiles: the OpenStreetMap tile server only.
+    `img-src 'self' data: blob: https://tile.openstreetmap.org https://*.tile.openstreetmap.org${googleMaps ? ' https://*.googleapis.com https://*.gstatic.com https://*.google.com https://*.googleusercontent.com' : ''}`,
     `font-src 'self'${googleMaps ? ' https://fonts.gstatic.com' : ''}`,
     `connect-src 'self'${googleMaps ? ' https://*.googleapis.com https://*.google.com https://*.gstatic.com data: blob:' : ''}`,
     ...(googleMaps ? [`frame-src https://*.google.com`, `worker-src blob:`] : []),

@@ -117,7 +117,7 @@ describe('Kitar smart machine (BR23)', () => {
     expect((await simulateItem(db, w.staff, machineId, { material: 'ALUMINIUM', outcome: 'ACCEPT' }, t)).accepted).toBe(true);
     expect((await simulateItem(db, w.staff, machineId, { material: 'PLASTIC_PET', outcome: 'ACCEPT' }, t)).accepted).toBe(true);
     const wrong = await simulateItem(db, w.staff, machineId, { material: 'GLASS', outcome: 'WRONG_MATERIAL' }, t);
-    expect(wrong).toMatchObject({ accepted: false, reason: 'The camera saw a different material.' });
+    expect(wrong).toMatchObject({ accepted: false, reason: 'This item is not the material this bin takes.' });
 
     const done = await simulateFinish(db, w.staff, machineId, t);
     expect(done).toMatchObject({ acceptedCount: 2, rejectedCount: 1 });

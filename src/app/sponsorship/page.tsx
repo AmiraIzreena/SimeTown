@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 const STEPS: { icon: LucideIcon; title: string; text: string }[] = [
   { icon: Award, title: 'Choose a tier', text: 'A yearly tier gives your brand a place on this page and a set number of challenges.' },
   { icon: HandCoins, title: 'Fund a challenge', text: 'Your budget goes into a locked pool before any resident earns a single point from it.' },
-  { icon: BadgeCheck, title: 'Residents take part', text: 'Every action is verified by a machine, a QR code or staff before a point is given.' },
+  { icon: BadgeCheck, title: 'Residents take part', text: 'Every action is verified by a bin’s scale, a QR code or staff before a point is given.' },
   { icon: ChartColumn, title: 'See the results', text: 'You get grouped results, never a list of people. Unused reward money is refunded; tier and campaign fees are not.' },
 ];
 
@@ -37,7 +37,7 @@ const SPLIT = [
 const PARTNERS: { icon: LucideIcon; who: string; gives: string; gets: string }[] = [
   { icon: Landmark, who: 'Local authority', gives: 'Acts on Lapor reports and official flood channels', gets: 'Live reports and flood data, fewer complaints' },
   { icon: RadioTower, who: 'Telco and sensor suppliers', gives: 'Connectivity and flood sensors, cost shared', gets: 'A real township showcase for their network' },
-  { icon: Recycle, who: 'Licensed recycler', gives: 'Collects from the smart recycling machines', gets: 'Clean, sorted material with signed weights' },
+  { icon: Recycle, who: 'Licensed recycler', gives: 'Collects from the kiosk bins', gets: 'Clean, sorted material with signed weights' },
   { icon: Sprout, who: 'Conservation partner', gives: 'Confirms wildlife sightings and plans native planting', gets: 'Resident data for local biodiversity work' },
   { icon: Store, who: 'Township shops', gives: 'Accept points as redemption partners', gets: 'Customers who live a few streets away' },
 ];

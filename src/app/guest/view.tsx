@@ -145,7 +145,7 @@ export function GuestView() {
           </Reveal>
           <div className="mt-10 grid gap-5 md:grid-cols-3">
             <Journey index={0} icon={DoorOpen} title="Visitor pass" text="Your host sends you a link by WhatsApp or SMS. Open it and show the QR code at the main gate. No app, and no identity card." visual={<PassVisual />} />
-            <Journey index={1} icon={Recycle} title="Recycle as a guest" text="Tap “Recycle as guest” on any smart machine. You get a claim code: join SimeTown within 14 days to claim the Impact XP. Guests are not tracked." visual={<ClaimVisual />} />
+            <Journey index={1} icon={Recycle} title="Recycle as a guest" text="Tap “Recycle as guest” on the screen of any kiosk bin. You get a claim code: join SimeTown within 14 days to claim the Impact XP. Guests are not tracked." visual={<ClaimVisual />} />
             <Journey
               index={2}
               icon={Droplets}
