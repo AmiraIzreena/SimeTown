@@ -1,3 +1,4 @@
+import type { MerchantKind } from '@/shared/domain';
 import { LEGAL } from '@/shared/legal';
 import { one, type Db } from '../../db/client';
 import { assertTownshipAccess, type Actor } from '../../auth/actor';
@@ -14,6 +15,8 @@ export interface MerchantApplication {
   businessName: string;
   registrationNo: string;
   category: string;
+  /** A shop, home services, or both. Shops are the default. */
+  kind?: MerchantKind;
   addressLine: string;
   postcode: string;
   city: string;
@@ -42,9 +45,12 @@ export async function applyAsMerchant(db: Db, input: MerchantApplication, now: D
     if (!(await one(tx, 'SELECT 1 FROM townships WHERE id = $1', [input.townshipId]))) throw notFound('Township');
     const merchant = await one<{ id: string }>(
       tx,
-      `INSERT INTO merchants (township_id, name, registration_no, category, address_line, postcode, city, state)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-      [input.townshipId, input.businessName.trim(), input.registrationNo.trim().toUpperCase(), input.category, input.addressLine, input.postcode, input.city, input.state],
+      `INSERT INTO merchants (township_id, name, registration_no, category, address_line, postcode, city, state, offers_retail, offers_services)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+      [
+        input.townshipId, input.businessName.trim(), input.registrationNo.trim().toUpperCase(), input.category, input.addressLine, input.postcode, input.city, input.state,
+        (input.kind ?? 'RETAIL') !== 'SERVICES', (input.kind ?? 'RETAIL') !== 'RETAIL',
+      ],
     );
     const user = await one<{ id: string }>(
       tx,
@@ -59,7 +65,7 @@ export async function applyAsMerchant(db: Db, input: MerchantApplication, now: D
 
 export async function listMerchantsForAdmin(db: Db, actor: Actor) {
   return db.query(
-    `SELECT m.id, m.name, m.registration_no, m.category, m.status, m.plan, m.created_at, m.approved_at,
+    `SELECT m.id, m.name, m.registration_no, m.category, m.status, m.plan, m.created_at, m.approved_at, m.offers_retail, m.offers_services,
             concat_ws(', ', m.address_line, concat_ws(' ', m.postcode, m.city), m.state) AS address,
             coalesce(p.balance, 0) AS pool_sen, coalesce(o.balance, 0) AS owed_sen
        FROM merchants m

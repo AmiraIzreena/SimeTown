@@ -160,12 +160,13 @@ export async function createSale(db: Db, actor: Actor, input: SaleInput, now: Da
     const existing = await loadSale(tx, 's.merchant_id = $1 AND s.idempotency_key = $2', [merchantId, input.idempotencyKey]);
     if (existing) return saleView(existing, now);
 
-    const merchant = await one<{ name: string; status: string; township_id: string }>(
+    const merchant = await one<{ name: string; status: string; township_id: string; offers_retail: boolean }>(
       tx,
-      'SELECT name, status, township_id FROM merchants WHERE id = $1',
+      'SELECT name, status, township_id, offers_retail FROM merchants WHERE id = $1',
       [merchantId],
     );
     if (merchant?.status !== 'ACTIVE') throw forbidden('This shop has not been approved yet.');
+    if (!merchant.offers_retail) throw forbidden('This business is set up for home services only.');
     const s = await getSettings(tx);
     assertNotPaused(s);
 
@@ -409,9 +410,9 @@ export async function pendingForResident(q: Queryable, userId: string, now: Date
 }
 
 export async function merchantSummary(db: Db, actor: Actor, now: Date) {
-  const merchant = await one<{ id: string; name: string; status: string; plan: string; category: string; akses_friendly: boolean }>(
+  const merchant = await one<{ id: string; name: string; status: string; plan: string; category: string; akses_friendly: boolean; offers_retail: boolean; offers_services: boolean }>(
     db,
-    'SELECT id, name, status, plan, category, akses_friendly FROM merchants WHERE id = $1',
+    'SELECT id, name, status, plan, category, akses_friendly, offers_retail, offers_services FROM merchants WHERE id = $1',
     [actor.merchantId],
   );
   if (!merchant) throw notFound('Shop');
@@ -512,7 +513,7 @@ export async function listActiveMerchants(q: Queryable, townshipId: string) {
     `SELECT m.id, m.name, m.category, m.akses_friendly, concat_ws(', ', m.address_line, concat_ws(' ', m.postcode, m.city)) AS address,
             o.title AS offer_title, o.discount_sen AS offer_discount_sen
        FROM merchants m LEFT JOIN shop_offers o ON o.merchant_id = m.id AND o.status = 'ACTIVE'
-      WHERE m.township_id = $1 AND m.status = 'ACTIVE' ORDER BY m.name`,
+      WHERE m.township_id = $1 AND m.status = 'ACTIVE' AND m.offers_retail ORDER BY m.name`,
     [townshipId],
   );
 }

@@ -79,3 +79,12 @@ These are choices made in code. Each should be confirmed, or changed, before a p
 | Who can operate the gate? | Guards, and township staff and admins covering a shift. | `tamu/routes.ts` |
 | Pass lengths | One visit 2 days, delivery 1 day, event 2 days, contractor 30 days, regular helper and carer 90 days. | `PASS_TYPE_INFO` |
 | What does a carer see? | Flood alerts in the resident's zone and whether they checked in safe. Never their access needs. Either side can end the link. | `akses/service.ts` |
+| Who sets the price of a home service job? | The company and the resident, in person, after inspection. The listing must show the pricing method and any call-out fee before booking; SimeTown records no price and takes no payment. | `home-services/service.ts`, `service_listings` |
+| Can a company mark a booking completed? | No. It can mark the work done; only the resident completes it (also possible straight from "worker on site" if the company never marks it). | `confirmCompleted` |
+| When does a company see the resident's address and phone? | Only while a visit is arranged (accepted, worker assigned, on site, work done). Not before accepting, not after it closes. | `merchantView` |
+| How many open bookings? | One per home per company listing, and five per home in all. | `service_bookings_one_open_idx`, `createBooking` |
+| Who sees a home service report? | The resident who made it and township staff. Never the company. Harassment reports reach staff as urgent. Three reports per booking at most. | `reportBooking` |
+| What happens to a gate pass when the worker changes? | It is cancelled and the resident is told to send a new one. Cancelling the booking cancels it too. | `assignWorker`, `cancelByMerchant`, `cancelByResident` |
+| Can a business switch off services or its shop? | Township admins can, but not services while bookings are open, nor the shop while a Shop Offer is live. | `setMerchantKind` |
+| Who sees the home logbook? | Everyone registered at the home, including jobs booked by earlier occupants: it is the home's record. The problem text and rating are shown only to the resident who booked. | `homeLogbook` |
+| When is a service due again? | Air-conditioning 180 days after the last confirmed job; "due soon" 21 days before. No reminder while a booking for it is open. | `SERVICE_REMINDER_DAYS` |

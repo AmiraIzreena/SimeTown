@@ -8,12 +8,12 @@ import { Button } from '@/components/ui/button';
 import { Badge, PageHeader } from '@/components/ui/card';
 import { Modal } from '@/components/ui/dialog';
 import { Async, EmptyState } from '@/components/ui/feedback';
-import { Input } from '@/components/ui/field';
+import { Input, Select } from '@/components/ui/field';
 import { DataTable } from '@/components/ui/table';
 import { api } from '@/lib/api';
 import { parseRM } from '@/lib/format';
 import { useAction, useApi } from '@/lib/hooks';
-import { formatRM } from '@/shared/domain';
+import { formatRM, MERCHANT_KINDS, MERCHANT_KIND_LABELS, merchantKind, type MerchantKind } from '@/shared/domain';
 
 interface Shop {
   id: string;
@@ -23,6 +23,8 @@ interface Shop {
   status: 'PENDING' | 'ACTIVE' | 'SUSPENDED';
   pool_sen: number;
   owed_sen: number;
+  offers_retail: boolean;
+  offers_services: boolean;
 }
 const STATUS = { PENDING: ['Waiting for approval', 'warning'], ACTIVE: ['Active', 'success'], SUSPENDED: ['Suspended', 'danger'] } as const;
 
@@ -32,6 +34,7 @@ export default function ShopsPage() {
   const [amount, setAmount] = useState('');
   const reload = () => void shops.mutate();
 
+  const setKind = useAction((id: string, kind: MerchantKind) => api.post(`/admin/merchants/${id}/kind`, { kind }), { success: 'Saved.', onSuccess: reload });
   const setStatus = useAction((id: string, status: 'ACTIVE' | 'SUSPENDED') => api.post(`/admin/merchants/${id}/status`, { status }), { success: 'Saved.', onSuccess: reload });
   const record = useAction((id: string, bankRef: string) => api.post(`/admin/merchants/${id}/deposits`, { amountSen: parseRM(amount), bankRef }), {
     success: 'Deposit recorded. The shop can give points from its pool.',
@@ -44,7 +47,7 @@ export default function ShopsPage() {
 
   return (
     <>
-      <PageHeader title="Shops" description="Approve shops after checking their business registration, and record the money they pay into their reward pools." />
+      <PageHeader title="Shops" description="Approve shops and home service companies after checking their business registration, choose what each offers, and record the money shops pay into their reward pools." />
       <Async state={shops}>
         {(list) =>
           list.length === 0 ? (
@@ -58,6 +61,20 @@ export default function ShopsPage() {
                 { header: 'Shop', cell: (s) => <span className="font-medium text-ink-900">{s.name}</span> },
                 { header: 'Registration', desktopOnly: true, cell: (s) => s.registration_no },
                 { header: 'Type', desktopOnly: true, cell: (s) => s.category },
+                {
+                  header: 'Offers',
+                  cell: (s) => (
+                    <Select
+                      label="Offers"
+                      labelClassName="sr-only"
+                      value={merchantKind({ offersRetail: s.offers_retail, offersServices: s.offers_services })}
+                      onChange={(event) => void setKind.run(s.id, event.target.value as MerchantKind)}
+                      disabled={setKind.pending}
+                    >
+                      {MERCHANT_KINDS.map((k) => <option key={k} value={k}><Text>{MERCHANT_KIND_LABELS[k]}</Text></option>)}
+                    </Select>
+                  ),
+                },
                 { header: 'Status', cell: (s) => <Badge tone={STATUS[s.status][1]}><Text>{STATUS[s.status][0]}</Text></Badge> },
                 { header: 'Reward pool', align: 'right', cell: (s) => formatRM(s.pool_sen) },
                 { header: 'Owed this week', align: 'right', cell: (s) => formatRM(s.owed_sen) },

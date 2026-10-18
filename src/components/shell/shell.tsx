@@ -25,6 +25,8 @@ import { AksesViewContext } from '@/components/features/akses-mode';
 export interface ShellUser {
   fullName: string;
   role: Role;
+  /** Business accounts only: whether it runs a shop, home services, or both. */
+  offers?: { retail: boolean; services: boolean };
 }
 
 interface AccessProfile {
@@ -50,6 +52,8 @@ function pageMotion(pathname: string) {
     ['/app/assistant', 'motion-assistant'],
     ['/app/home-services', 'motion-home-services'],
     ['/merchant/offers', 'motion-offers'],
+    ['/merchant/bookings', 'motion-sales'],
+    ['/merchant/services', 'motion-statements'],
     ['/merchant/sales', 'motion-sales'],
     ['/merchant/statements', 'motion-statements'],
     ['/merchant', 'motion-merchant'],
@@ -91,7 +95,7 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
   };
 
   const root = NAV[area].items[0]!.href;
-  const items = NAV[area].items.filter((item) => !item.roles || item.roles.includes(user.role));
+  const items = NAV[area].items.filter((item) => (!item.roles || item.roles.includes(user.role)) && (!item.offer || !user.offers || user.offers[item.offer]));
   const primary = items.filter((item) => item.primary).slice(0, 4);
   const needsMore = items.length > primary.length;
   const initials = user.fullName.split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase();
