@@ -31,14 +31,16 @@ password yourself, set `SEED_DEMO_PASSWORD` in `.env` (10+ characters) before ru
 
 | Sign in as | Email | What you see |
 | --- | --- | --- |
-| Resident (main demo) | `aisyah@demo.kita.test` | Today card, Points & XP (cash- and offer-backed), Kitar with the smart machine, Gerak map tracking, Tamu, Lapor, Jiran, Kongsi, Jimat bill reading, Banjir, Taman, Akses+, Assistant, SimeTown Home |
+| Resident (main demo) | `aisyah@demo.kita.test` | Today card, Points & XP (cash- and offer-backed), Kitar with the smart machine, Gerak map tracking, Tamu, Lapor, Jiran, Kongsi, Jimat bill reading, Banjir, Taman, Akses+, Assistant, SimeTown Home (book a plumber, see who is coming, review) |
 | Resident in Simple Mode | `zainab@demo.kita.test` | Simple Mode's four big buttons; on the flood priority help list; Mei Ling is her carer |
 | Resident with a visitor waiting | `daniel@demo.kita.test` | A walk-in at the main gate waiting for his answer in Tamu |
 | Shop | `kafe@demo.kita.test`, `kedai@demo.kita.test` | Counter with Shop Offers, offers page, sales, weekly statements |
+| Home service company | `plumber@demo.kita.test`, `aircon@demo.kita.test` | Booking inbox, accept with a visit time, assign a registered worker, services and workers |
+| Shop and home services | `kemas@demo.kita.test` | Both menus on one business account: the counter and offers, and bookings |
 | Guard | `guard@demo.kita.test` | The main gate: scan passes, walk-ins, SOS calls, patrol round, flood tasks |
 | Shop, not yet approved | `bengkel@demo.kita.test` | The "waiting for approval" state |
 | Sponsor | `sponsor@demo.kita.test` | Its Green Champion tier, own campaigns and grouped results |
-| Township staff | `staff@demo.kita.test` | Insights, report queue, the flood agent, kiosks, smart machines, gardens and patrol points, nature and access |
+| Township staff | `staff@demo.kita.test` | Insights, report queue, home service reports, the flood agent, kiosks, smart machines, gardens and patrol points, nature and access |
 | Township admin | `admin@demo.kita.test`, `admin2@demo.kita.test` | Everything staff see, plus shops, money and corrections |
 | SDP HQ admin | `hq@demo.kita.test` | Everything, plus the programme rules |
 
@@ -112,8 +114,15 @@ Open two browser windows (one normal, one private) so you can be the resident an
     Taman puts residents on a garden's waiting list (staff run the ballot under *Kiosks, machines & trails*) and
     logs wildlife (staff confirm under *Nature & access*). Ask the Assistant “What homes is Sime Darby
     selling in Elmina?” or “Make a visitor pass for Ali tomorrow”, then answer the question it hands over
-    under *Assistant questions* as staff. SimeTown Home is a labelled preview. The *EN/BM* switch in the
-    top bar changes the language.
+    under *Assistant questions* as staff. The *EN/BM* switch in the top bar changes the language.
+16. **SimeTown Home: book a home service.** As Aisyah, open *SimeTown Home*, choose *Plumbing*, compare
+    the companies (ratings and call-out fees are shown first) and book Elmina Plumbing Co. with a photo.
+    As `plumber@`, open *Bookings*: the resident's address appears only after you accept. Accept with a
+    time and assign Ahmad. As Aisyah, see Ahmad named before the visit and send him a Tamu gate pass
+    (the company sees the code). As the plumber, mark the worker arrived and the work done; as Aisyah,
+    confirm and review, or report a problem privately. As staff, open *Home service reports*: the report
+    names the worker assigned at the time, with the booking's full history. The company never sees it.
+    Aisyah's *Home logbook* shows her air-conditioner service as due soon: *Book again* rebooks the same company.
 
 ---
 
@@ -138,13 +147,13 @@ Open two browser windows (one normal, one private) so you can be the resident an
 | Business | SimeTown Merchant | Shop Offers with the shop's own terms and monthly cap, 10% success fee, new and returning customers, Akses-friendly badge; give and accept points, refunds, weekly statement |
 | Business | SimeTown Partner Hub | Four sponsor tiers with a public Partners page and one labelled banner; campaigns with a prefunded pool and grouped results |
 | Business | SimeTown Insights | 30-day totals, the float against what it owes, machine uptime, offer pledges, visitors, flood alerts, barriers fixed on time, nature; printable monthly report |
-| Business | SimeTown Home | **Mock-up**: home logbook, services with contractor passes, resale and rental, early previews |
+| Business | SimeTown Home | Home services: residents compare approved township companies (ratings, pricing and call-out fees up front), book with a photo, see the assigned worker before arrival, send a Tamu contractor pass, confirm the job and review it, or report privately to staff. Companies are Merchant accounts with services switched on (shop, services, or both). Prices are agreed in person; SimeTown takes no payment. The home logbook records every confirmed job at the home and reminds when a service (air-conditioning, every 180 days) is due, with *Book again*. Warranty records and resale are still previews |
 
 Also built because a real system needs them: moderation of flagged posts, the daily float check,
 weekly settlement, points expiry and reminders, two-person approval for balance corrections, an
 audit trail, adjustable programme rules, data download and account deletion.
 
-**Shown as a preview, and labelled so:** SimeTown Home (a mock-up: nothing can be booked or sold).
+**Shown as a preview, and labelled so:** SimeTown Home warranty and defect records, resale and rental, and new launches.
 
 **Simulated, and labelled so in the app:** no real money moves (deposits and settlements are
 ledger entries an admin records); the recycling machine is a tablet page whose buttons stand in for

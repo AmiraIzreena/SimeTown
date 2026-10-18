@@ -4,7 +4,8 @@ import { Text } from '@/components/ui/localized-text';
 import { LocalizedDiv, LocalizedInput } from '@/components/ui/localized-elements';
 
 import { CheckCircle2, CircleSlash, Clock, Coins, HandCoins, PiggyBank, Receipt, Repeat, Tag, UserPlus } from 'lucide-react';
-import { useState, type FormEvent } from 'react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, PageHeader, Stat } from '@/components/ui/card';
 import { Async, SkeletonStats } from '@/components/ui/feedback';
@@ -17,7 +18,7 @@ import type { SaleView } from '@/lib/types';
 import { formatPoints, formatRM } from '@/shared/domain';
 
 interface Summary {
-  merchant: { name: string; status: 'PENDING' | 'ACTIVE' | 'SUSPENDED' };
+  merchant: { name: string; status: 'PENDING' | 'ACTIVE' | 'SUSPENDED'; offers_retail: boolean };
   poolSen: number;
   owedSen: number;
   last7Days: { sales: number; billSen: number; pointsGiven: number; feesSen: number; pointsAccepted: number };
@@ -29,6 +30,12 @@ interface Summary {
 
 export default function CounterPage() {
   const summary = useApi<Summary>('/merchant/summary');
+  const router = useRouter();
+  // A home-services-only business has no counter: its first screen is its bookings.
+  const servicesOnly = summary.data?.merchant.offers_retail === false;
+  useEffect(() => {
+    if (servicesOnly) router.replace('/merchant/bookings');
+  }, [servicesOnly, router]);
   const [memberCode, setMemberCode] = useState('');
   const [bill, setBill] = useState('');
   const [usePoints, setUsePoints] = useState(false);

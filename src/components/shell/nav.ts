@@ -1,6 +1,6 @@
 import {
-  Accessibility, Bike, Bot, Building2, ClipboardList, DoorOpen, Droplets, Gauge, HandHeart, History, Home, House, Landmark, Leaf, Megaphone, MapPin, MessageCircleQuestionMark,
-  Receipt, Recycle, Repeat2, ScrollText, Settings, ShieldAlert, Sprout, Store, Tag, TriangleAlert, UserRound, Users, Wallet, Zap, type LucideIcon,
+  Accessibility, Bike, Bot, Building2, CalendarCheck, ClipboardList, DoorOpen, Droplets, Gauge, HandHeart, History, Home, House, Landmark, Leaf, Megaphone, MapPin, MessageCircleQuestionMark,
+  Receipt, Recycle, Repeat2, ScrollText, Settings, ShieldAlert, Sprout, Store, Tag, TriangleAlert, UserRound, Users, Wallet, Wrench, Zap, type LucideIcon,
 } from 'lucide-react';
 import { ADMINS, type Role } from '@/shared/domain';
 
@@ -13,6 +13,8 @@ export interface NavItem {
   gloss?: string;
   icon: LucideIcon;
   roles?: readonly Role[];
+  /** Business menus: shown only when the account offers this (a shop, home services, or both). */
+  offer?: 'retail' | 'services';
   /** Shown in the phone's bottom bar. Everything else sits behind "More". */
   primary?: boolean;
 }
@@ -41,10 +43,12 @@ export const NAV: Record<Area, { title: string; items: NavItem[] }> = {
   merchant: {
     title: 'Shop',
     items: [
-      { href: '/merchant', label: 'Counter', icon: Store, primary: true },
-      { href: '/merchant/offers', label: 'Shop Offers', icon: Tag, primary: true },
-      { href: '/merchant/sales', label: 'Sales', icon: Receipt, primary: true },
-      { href: '/merchant/statements', label: 'Statements', icon: ScrollText, primary: true },
+      { href: '/merchant', label: 'Counter', icon: Store, primary: true, offer: 'retail' },
+      { href: '/merchant/bookings', label: 'Bookings', icon: CalendarCheck, primary: true, offer: 'services' },
+      { href: '/merchant/offers', label: 'Shop Offers', icon: Tag, primary: true, offer: 'retail' },
+      { href: '/merchant/services', label: 'Services & workers', icon: Wrench, primary: true, offer: 'services' },
+      { href: '/merchant/sales', label: 'Sales', icon: Receipt, primary: true, offer: 'retail' },
+      { href: '/merchant/statements', label: 'Statements', icon: ScrollText, primary: true, offer: 'retail' },
       { href: '/merchant/account', label: 'Account', icon: UserRound },
     ],
   },
@@ -76,6 +80,7 @@ export const NAV: Record<Area, { title: string; items: NavItem[] }> = {
       { href: '/console/places', label: 'Kiosks, machines & trails', icon: MapPin },
       { href: '/console/nature', label: 'Nature & access', icon: Leaf },
       { href: '/console/moderation', label: 'Moderation', icon: ShieldAlert },
+      { href: '/console/home-services', label: 'Home service reports', icon: Wrench },
       { href: '/console/audit', label: 'Audit trail', icon: History, roles: ADMINS },
       { href: '/console/settings', label: 'Rules', icon: Settings },
       { href: '/console/account', label: 'Account', icon: UserRound },

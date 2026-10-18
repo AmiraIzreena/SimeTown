@@ -1,5 +1,8 @@
+import { homeServicesMalay } from './i18n-home-services';
+
 /** Shared labels, validation and short messages used by several features. */
 export const extraMalay: Record<string, string> = {
+  ...homeServicesMalay,
   'Post hidden': 'Siaran disembunyikan', 'Post restored': 'Siaran dipulihkan', 'Post removed': 'Siaran dibuang',
   'Sos raised': 'SOS dihantar', 'Sos closed': 'SOS ditutup', 'Sos acknowledged': 'SOS diakui',
   'Sighting confirmed': 'Pemerhatian disahkan', 'Sighting rejected': 'Pemerhatian ditolak', 'Garden created': 'Kebun dicipta',

@@ -5,6 +5,7 @@ import { banjirRoutes } from '../modules/banjir/routes';
 import { campaignRoutes } from '../modules/campaigns/routes';
 import { communityRoutes } from '../modules/community/routes';
 import { gerakRoutes } from '../modules/gerak/routes';
+import { homeServiceRoutes } from '../modules/home-services/routes';
 import { identityRoutes } from '../modules/identity/routes';
 import { jimatRoutes } from '../modules/jimat/routes';
 import { kitarRoutes } from '../modules/kitar/routes';
@@ -29,6 +30,7 @@ export const routes: RouteDef[] = [
   ...communityRoutes,
   ...reportRoutes,
   ...tamuRoutes,
+  ...homeServiceRoutes,
   ...gerakRoutes,
   ...kitarRoutes,
   ...jimatRoutes,

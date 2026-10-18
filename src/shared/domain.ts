@@ -126,6 +126,72 @@ export const PASS_TYPE_INFO: Record<PassType, { label: string; maxDays: number; 
 export const HOST_REPLIES = ['EXPECTED', 'NOT_EXPECTED', 'CALL_ME'] as const;
 export type HostReply = (typeof HOST_REPLIES)[number];
 
+// --- SimeTown Home: home services ----------------------------------------------
+
+/** What a business account offers: a shop (points, offers), home services, or both. */
+export const MERCHANT_KINDS = ['RETAIL', 'SERVICES', 'BOTH'] as const;
+export type MerchantKind = (typeof MERCHANT_KINDS)[number];
+export const MERCHANT_KIND_LABELS: Record<MerchantKind, string> = { RETAIL: 'Shop', SERVICES: 'Home services', BOTH: 'Shop and home services' };
+export const merchantKind = (m: { offersRetail: boolean; offersServices: boolean }): MerchantKind =>
+  m.offersRetail && m.offersServices ? 'BOTH' : m.offersServices ? 'SERVICES' : 'RETAIL';
+
+export const SERVICE_CATEGORIES = ['PLUMBING', 'ELECTRICAL', 'AIRCON', 'CLEANING', 'REPAIRS', 'RENOVATION'] as const;
+export type ServiceCategory = (typeof SERVICE_CATEGORIES)[number];
+export const SERVICE_CATEGORY_LABELS: Record<ServiceCategory, string> = {
+  PLUMBING: 'Plumbing',
+  ELECTRICAL: 'Electrical',
+  AIRCON: 'Air-conditioning',
+  CLEANING: 'Cleaning',
+  REPAIRS: 'Repairs',
+  RENOVATION: 'Renovation',
+};
+
+/** How a company prices a job. The price itself is agreed in person; SimeTown takes no payment. */
+/** Services that come round again: the home logbook reminds the home this many days after the last one. */
+export const SERVICE_REMINDER_DAYS: Partial<Record<ServiceCategory, number>> = { AIRCON: 180 };
+/** A reminder turns "due soon" this many days before it is due. */
+export const SERVICE_DUE_SOON_DAYS = 21;
+
+export const SERVICE_PRICING = ['FIXED', 'INSPECTION', 'QUOTE'] as const;
+export type ServicePricing = (typeof SERVICE_PRICING)[number];
+export const SERVICE_PRICING_LABELS: Record<ServicePricing, string> = {
+  FIXED: 'Fixed price',
+  INSPECTION: 'Price after inspection',
+  QUOTE: 'Site visit and quotation',
+};
+
+export const SERVICE_SLOTS = ['MORNING', 'AFTERNOON', 'EVENING'] as const;
+export type ServiceSlot = (typeof SERVICE_SLOTS)[number];
+export const SERVICE_SLOT_LABELS: Record<ServiceSlot, string> = { MORNING: 'Morning (9am to 12pm)', AFTERNOON: 'Afternoon (12pm to 5pm)', EVENING: 'Evening (5pm to 8pm)' };
+
+export const BOOKING_STATUSES = ['REQUESTED', 'ACCEPTED', 'SCHEDULED', 'IN_PROGRESS', 'WORK_DONE', 'COMPLETED', 'DECLINED', 'CANCELLED'] as const;
+export type BookingStatus = (typeof BOOKING_STATUSES)[number];
+export const BOOKING_STATUS_LABELS: Record<BookingStatus, string> = {
+  REQUESTED: 'Waiting for the company',
+  ACCEPTED: 'Visit confirmed',
+  SCHEDULED: 'Worker assigned',
+  IN_PROGRESS: 'Worker on site',
+  WORK_DONE: 'Waiting for your confirmation',
+  COMPLETED: 'Completed',
+  DECLINED: 'Declined',
+  CANCELLED: 'Cancelled',
+};
+/** Bookings that are still going on. */
+export const OPEN_BOOKING_STATUSES: readonly BookingStatus[] = ['REQUESTED', 'ACCEPTED', 'SCHEDULED', 'IN_PROGRESS', 'WORK_DONE'];
+
+export const SERVICE_REPORT_CATEGORIES = ['HARASSMENT', 'MISCONDUCT', 'NO_SHOW', 'POOR_WORK', 'PRICING', 'OTHER'] as const;
+export type ServiceReportCategory = (typeof SERVICE_REPORT_CATEGORIES)[number];
+export const SERVICE_REPORT_CATEGORY_LABELS: Record<ServiceReportCategory, string> = {
+  HARASSMENT: 'Harassment or threatening behaviour',
+  MISCONDUCT: 'Other misconduct',
+  NO_SHOW: 'Nobody came',
+  POOR_WORK: 'Poor or unsafe work',
+  PRICING: 'Price different from what was agreed',
+  OTHER: 'Something else',
+};
+export const SERVICE_REPORT_STATUSES = ['NEW', 'REVIEWING', 'CLOSED'] as const;
+export type ServiceReportStatus = (typeof SERVICE_REPORT_STATUSES)[number];
+
 // --- Sponsors -----------------------------------------------------------------
 
 // The stored codes predate the three-tier proposal and are kept so the shared

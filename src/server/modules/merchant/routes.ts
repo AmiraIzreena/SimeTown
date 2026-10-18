@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ADMINS } from '@/shared/domain';
+import { ADMINS, MERCHANT_KINDS } from '@/shared/domain';
 import { townshipOf } from '../../auth/actor';
 import { pageQuery } from '../../http/pagination';
 import { emptyBody, route, zAcceptTerms, zEmail, zId, zPassword, zPhone, zPostcode, zSen, zState, zText } from '../../http/router';
@@ -11,10 +11,10 @@ const zMemberCode = z.string().trim().min(6).max(12).regex(/^[A-Za-z0-9]+$/, 'Ch
 
 export const merchantRoutes = [
   route({
-    method: 'POST', path: '/merchants/apply', tag: 'SimeTown Merchant', summary: 'Apply to join as a shop (needs admin approval)', auth: 'public',
+    method: 'POST', path: '/merchants/apply', tag: 'SimeTown Merchant', summary: 'Apply to join as a shop or a home service company (needs admin approval)', auth: 'public',
     rateLimit: { limit: 5, windowSec: 3600, by: 'ip' },
     body: z.object({
-      townshipId: zId, businessName: zText(120, 2), registrationNo: zText(40, 4), category: zText(40, 2),
+      townshipId: zId, businessName: zText(120, 2), registrationNo: zText(40, 4), category: zText(40, 2), kind: z.enum(MERCHANT_KINDS).default('RETAIL'),
       addressLine: zText(160, 5), postcode: zPostcode, city: zText(60, 2), state: zState,
       contactName: zText(100, 2), email: zEmail, phone: zPhone, password: zPassword, acceptTerms: zAcceptTerms,
     }),

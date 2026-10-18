@@ -26,7 +26,7 @@ assessment below is therefore of the *specification*.
 
 | Left out | Why |
 | --- | --- |
-| Real bookings in SimeTown Home | SimeTown Home needs real service providers, so it is a clearly labelled mock-up where nothing can be booked or sold. SimeTown Assistant is now an AI agent; see *SimeTown Assistant* below. |
+| Payments and quotations in SimeTown Home | Home service bookings are real (see *SimeTown Home Services* below), but the price is agreed in person after inspection and paid to the company directly, so SimeTown holds no money and no quote is binding in the app. Warranty records and resale remain labelled previews. SimeTown Assistant is now an AI agent; see *SimeTown Assistant* below. |
 | Machine learning for the recycling machine, CCTV and bills | Planned after the hackathon selection. The machine is a tablet page whose buttons stand in for camera, barcode and scale (its signed records are real); CCTV is a fixed set of test pictures with known readings; bills are read from the PDF's own text, with the optional AI service for photos. |
 | In-app payments, top-up, stored cash | Rule BR11 forbids them, and they would bring e-money regulation. Residents pay shops directly. |
 | A separate API service, Redis, queues, WebSockets | The pilot design has them. At prototype scale they add operations work and no user benefit: polling every few seconds is enough for a counter confirmation and a flood alert. The backend is already isolated (`src/server`) so it can be lifted out later. |
@@ -50,7 +50,8 @@ assessment below is therefore of the *specification*.
  │     origin check → session → role → rate limit → validation → handler → errors   │
  │  src/server/modules/<feature>/routes.ts → service.ts                             │
  │     identity · wallet · merchant · offers · campaigns · community · reports ·    │
- │     gerak · kitar · jimat · banjir · tamu · akses · taman · insights · admin     │
+ │     gerak · kitar · jimat · banjir · tamu · akses · taman · home-services ·      │
+ │     insights · admin                                                             │
  │  src/server/files/*                 upload gate and PDF reader (bills)           │
  │  src/server/modules/rewards.ts      XP, limits, campaign awards (one door)       │
  │  src/server/modules/ledger/*        double-entry ledger, float, settlement       │
@@ -349,3 +350,28 @@ An agent on the server (`src/server/modules/assistant/`), answering one question
 5. **Handover.** A question sent to the township office (`assistant_handoffs`) appears under *Assistant questions* in the console; the answer goes back into the resident's chat with a notification. Staff see that question only, not the conversation.
 6. **Fallback.** With no AI provider, past the daily limit (`AI_ASSISTANT_DAILY_LIMIT`, default 100 a day per resident) or when the AI fails, `rules.ts` answers from the same tools and knowledge, matching whole words; anything it cannot answer is offered to the township office.
 7. **Records.** Each answer keeps its sources, any proposal, and how it was made (`meta`: AI or rules, tools used, tokens, time), which is logged but never shown to the resident.
+
+## SimeTown Home Services
+
+Residents book a township service company; the company assigns one of its registered workers; the
+resident confirms the job and can review it or report a problem privately. Migration
+`014_home_services.sql`, module `src/server/modules/home-services`.
+
+- **No new role.** A company is a `MERCHANT` account. `merchants.offers_retail` and
+  `merchants.offers_services` say whether it runs a shop, home services, or both (township admins set
+  this under *Shops*; a business chooses when it applies). Menus follow the flags, and every service
+  route checks `offers_services` on the server; shop sales and offers check `offers_retail`.
+- **Workers do not sign in.** `service_workers` holds a name and an optional phone, never an IC.
+- **Status model.** `REQUESTED → ACCEPTED (visit time) → SCHEDULED (worker) → IN_PROGRESS → WORK_DONE →
+  COMPLETED`, or `DECLINED` / `CANCELLED`. Only the resident can complete a booking, from
+  `IN_PROGRESS` or `WORK_DONE`. Every change of status, worker or gate pass is a row in
+  `service_booking_events` with who made it and when, and the worker's name as it was.
+- **Privacy.** The company sees a short name and the problem until it accepts; the address and phone
+  only while a visit is arranged. Reviews need a completed booking (one each). `service_reports` are
+  visible to the resident and township staff only, and keep the worker assigned at the time.
+- **Tamu.** The resident can send the assigned worker a `CONTRACTOR` pass for the visit window; the
+  company sees the code. Changing the worker or cancelling the booking cancels the pass.
+- **Home logbook.** Read from completed bookings for the home (no table of its own), so it belongs to
+  the home and is shared by everyone registered there; only the booker sees their own problem text and
+  rating. `SERVICE_REMINDER_DAYS` sets services that come round again (air-conditioning, 180 days).
+- **No ledger, no points.** Nothing here moves money or awards points or XP.

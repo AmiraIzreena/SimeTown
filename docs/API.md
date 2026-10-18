@@ -53,7 +53,7 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 
 | Method | Path | Who | What it does |
 | --- | --- | --- | --- |
-| POST | `/merchants/apply` | Public | Apply to join as a shop (needs admin approval) |
+| POST | `/merchants/apply` | Public | Apply to join as a shop or a home service company (needs admin approval) |
 | PATCH | `/merchant/profile` | MERCHANT | Update the shop's business address |
 | GET | `/merchants` | RESIDENT | Shops residents can visit |
 | GET | `/merchant/summary` | MERCHANT | Reward pool, amount owed, last 7 days and the rules |
@@ -135,6 +135,42 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | POST | `/guard/sos/:sosId` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN | Acknowledge or close an SOS call |
 | POST | `/guard/patrol` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN | Scan a patrol point on a round |
 | GET | `/admin/patrol-points` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Patrol points with their printable codes |
+
+## SimeTown Home
+
+| Method | Path | Who | What it does |
+| --- | --- | --- | --- |
+| GET | `/home-services/categories` | RESIDENT | Service categories with the number of companies offering each |
+| GET | `/home-services/providers` | RESIDENT | Companies offering a category, with ratings and pricing |
+| GET | `/home-services/providers/:merchantId` | RESIDENT | A company's profile, listings and reviews |
+| POST | `/home-services/bookings` | RESIDENT | Ask a company for a visit (multipart form; optional photo) |
+| GET | `/home-services/bookings` | RESIDENT | My bookings, open ones first |
+| GET | `/home-services/logbook` | RESIDENT | The home logbook: jobs confirmed at my home, and services due again |
+| GET | `/home-services/bookings/:bookingId` | RESIDENT | One of my bookings: the worker, the history and what I can do next |
+| GET | `/home-services/bookings/:bookingId/photo` | RESIDENT, MERCHANT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | The problem photo (the resident, the company booked and township staff only) |
+| POST | `/home-services/bookings/:bookingId/cancel` | RESIDENT | Cancel my booking before the visit |
+| POST | `/home-services/bookings/:bookingId/confirm` | RESIDENT | Confirm the job is done (only the resident can) |
+| POST | `/home-services/bookings/:bookingId/review` | RESIDENT | Review the company for a completed booking |
+| POST | `/home-services/bookings/:bookingId/reports` | RESIDENT | Privately report a problem to township staff (never shown to the company) |
+| POST | `/home-services/bookings/:bookingId/pass` | RESIDENT | Send the assigned worker a Tamu contractor pass for this visit |
+| GET | `/merchant/services` | MERCHANT | The company's description, listings and workers |
+| PATCH | `/merchant/services/about` | MERCHANT | What residents read about the company |
+| POST | `/merchant/services/listings` | MERCHANT | Add or update the listing for a category, with its pricing |
+| POST | `/merchant/services/listings/:listingId/active` | MERCHANT | Show or hide a listing |
+| POST | `/merchant/services/workers` | MERCHANT | Register a worker (name and phone; never an IC) |
+| POST | `/merchant/services/workers/:workerId/active` | MERCHANT | Make a worker active or inactive |
+| GET | `/merchant/bookings` | MERCHANT | The company's bookings: open (default) or closed |
+| GET | `/merchant/bookings/:bookingId` | MERCHANT | One booking with its history |
+| POST | `/merchant/bookings/:bookingId/accept` | MERCHANT | Accept with a visit time, and optionally a worker |
+| POST | `/merchant/bookings/:bookingId/decline` | MERCHANT | Decline a request |
+| POST | `/merchant/bookings/:bookingId/worker` | MERCHANT | Assign or change the worker (the resident is told) |
+| POST | `/merchant/bookings/:bookingId/start` | MERCHANT | The worker has arrived |
+| POST | `/merchant/bookings/:bookingId/done` | MERCHANT | The work is finished; the resident confirms |
+| POST | `/merchant/bookings/:bookingId/cancel` | MERCHANT | Cancel an accepted booking (the resident is told why) |
+| GET | `/admin/home-services/reports` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Reports about home service visits, harassment first |
+| GET | `/admin/home-services/reports/:reportId` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | One report with the booking, worker assignment history and records |
+| PATCH | `/admin/home-services/reports/:reportId` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Update a report (the resident is told) |
+| POST | `/admin/merchants/:merchantId/kind` | TOWNSHIP_ADMIN, HQ_ADMIN | Set what a business offers: shop, home services or both |
 
 ## Gerak
 

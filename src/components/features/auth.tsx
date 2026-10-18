@@ -13,7 +13,7 @@ import { Checkbox, Input, Select } from '@/components/ui/field';
 import { api } from '@/lib/api';
 import { useAction, useApi } from '@/lib/hooks';
 import { useHydrated } from '@/lib/use-hydrated';
-import { MALAYSIAN_STATES, ROLE_HOME, type Role } from '@/shared/domain';
+import { MALAYSIAN_STATES, MERCHANT_KINDS, MERCHANT_KIND_LABELS, ROLE_HOME, type Role } from '@/shared/domain';
 import { AddressPicker } from './address';
 import { reloadTo } from '@/lib/navigate';
 
@@ -196,10 +196,17 @@ export function MerchantApplyForm() {
   const f = apply.fields;
   return (
     <form onSubmit={submit} method="post" className="space-y-4" noValidate>
-      <Input label="Shop name" name="businessName" required error={f.businessName} />
+      <Input label="Business name" name="businessName" required error={f.businessName} />
+      <Select label="What does your business offer?" name="kind" defaultValue="RETAIL" error={f.kind} hint="Home service companies take bookings from residents and send registered workers.">
+        {MERCHANT_KINDS.map((k) => (
+          <option key={k} value={k}>
+            <Text>{MERCHANT_KIND_LABELS[k]}</Text>
+          </option>
+        ))}
+      </Select>
       <div className="grid grid-cols-2 gap-3">
         <Input label="Business registration no." name="registrationNo" required error={f.registrationNo} />
-        <Input label="Type of shop" name="category" placeholder="e.g. Groceries" required error={f.category} />
+        <Input label="Type of business" name="category" placeholder="e.g. Groceries or Plumbing" required error={f.category} />
       </div>
       <Select label="Township" name="townshipId" required error={f.townshipId} defaultValue="">
         <option value="" disabled>

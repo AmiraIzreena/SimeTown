@@ -187,8 +187,9 @@ export async function createOffer(db: Db, actor: Actor, input: OfferInput, now: 
   if (input.monthlyBudgetSen < input.discountSen) throw ruleViolation('OFFER_BUDGET', 'The monthly budget must cover at least one discount.');
   if (input.minSpendSen > 0 && input.minSpendSen <= input.discountSen) throw ruleViolation('OFFER_MIN_SPEND', 'The minimum spend must be more than the discount.');
   return db.tx(async (tx) => {
-    const merchant = await one<{ status: string; township_id: string }>(tx, 'SELECT status, township_id FROM merchants WHERE id = $1 FOR UPDATE', [actor.merchantId]);
+    const merchant = await one<{ status: string; township_id: string; offers_retail: boolean }>(tx, 'SELECT status, township_id, offers_retail FROM merchants WHERE id = $1 FOR UPDATE', [actor.merchantId]);
     if (merchant?.status !== 'ACTIVE') throw forbidden('This shop has not been approved yet.');
+    if (!merchant.offers_retail) throw forbidden('This business is set up for home services only.');
     if (await one(tx, `SELECT 1 FROM shop_offers WHERE merchant_id = $1 AND status = 'ACTIVE'`, [actor.merchantId])) {
       throw conflict('OFFER_EXISTS', 'Your shop already has a live offer. Pause or end it first.');
     }

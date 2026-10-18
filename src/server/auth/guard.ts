@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { ROLE_HOME, type Role } from '@/shared/domain';
-import { getDb } from '../db/client';
+import { getDb, one } from '../db/client';
 import type { Actor } from './actor';
 import { actorFromToken, sessionCookieName } from './session';
 
@@ -21,4 +21,11 @@ export async function requireArea(roles: readonly Role[]): Promise<Actor> {
   if (!actor) redirect('/login');
   if (!roles.includes(actor.role)) redirect(ROLE_HOME[actor.role]);
   return actor;
+}
+
+/** What a business account offers, for the menus its layout shows. The API checks the same flags on every call. */
+export async function merchantOffers(actor: Actor): Promise<{ retail: boolean; services: boolean }> {
+  if (!actor.merchantId) return { retail: false, services: false };
+  const m = await one<{ offers_retail: boolean; offers_services: boolean }>(await getDb(), 'SELECT offers_retail, offers_services FROM merchants WHERE id = $1', [actor.merchantId]);
+  return { retail: m?.offers_retail ?? false, services: m?.offers_services ?? false };
 }

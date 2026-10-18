@@ -1,3 +1,5 @@
+import { homeServicesTemplates } from './i18n-home-services';
+
 /** Templates for application-generated messages; interpolated personal values stay unchanged. */
 export const messageTemplates: readonly (readonly [string, string])[] = [
   ["Photo: {0}", "Foto: {0}"],
@@ -993,5 +995,6 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
   [
     "{0} is under a {1} alert, with water at {2}%. {3} If anyone is in danger, call 999.",
     "{0} berada dalam status {1}, dengan paras air pada {2}%. {3} Jika sesiapa dalam bahaya, hubungi 999."
-  ]
+  ],
+  ...homeServicesTemplates,
 ];

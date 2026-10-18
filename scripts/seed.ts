@@ -19,6 +19,7 @@ import { recordCommunityDeposit, recordMerchantDeposit, runFloatCheck, runSettle
 import { setMerchantStatus } from '../src/server/modules/merchant/admin';
 import { createSale, decideSale } from '../src/server/modules/merchant/service';
 import { createReport, updateReport } from '../src/server/modules/reports/service';
+import { seedHomeServices } from './seed-home-services';
 import { seedThirdEdition } from './seed-third-edition';
 
 /**
@@ -50,6 +51,7 @@ async function main() {
     // An existing demo database: add only what the third edition's features need, and touch nothing else.
     console.log('The database already has data. Adding any missing third-edition demo data only.\n');
     await seedThirdEdition(db, { passwordHash, now, log: (line) => console.log(`  ${line}`) });
+    await seedHomeServices(db, { passwordHash, now, log: (line) => console.log(`  ${line}`) });
     const check = await runFloatCheck(db, null, now);
     console.log(`\n  Float check: ${check.ok ? 'OK' : `FAILED: ${check.issues.join(' ')}`}`);
     if (!process.env.SEED_DEMO_PASSWORD) console.log(`  A new account (if any was added) uses the password: ${password}`);
@@ -268,6 +270,7 @@ async function main() {
 
   // --- Third edition: Tamu, Shop Offers, the smart machine, map tracking, Akses+, Taman ---------
   await seedThirdEdition(db, { passwordHash, now, log: () => undefined });
+  await seedHomeServices(db, { passwordHash, now, log: () => undefined });
 
   const check = await runFloatCheck(db, admin2.id, now);
   if (!check.ok) throw new Error(`Seed left the float out of balance: ${check.issues.join(' ')}`);
@@ -279,6 +282,9 @@ async function main() {
     ['Shop', `kafe@${DOMAIN}`, 'Kafe Seri Pagi'],
     ['Shop', `kedai@${DOMAIN}`, 'Kedai Runcit Mesra'],
     ['Shop (not yet approved)', `bengkel@${DOMAIN}`, 'Bengkel Basikal Roda'],
+    ['Home services', `plumber@${DOMAIN}`, 'Elmina Plumbing Co. (workers Ahmad and Lim)'],
+    ['Home services', `aircon@${DOMAIN}`, 'Sejuk Aircon Services'],
+    ['Shop and home services', `kemas@${DOMAIN}`, 'Kemas Home Care'],
     ['Guard', `guard@${DOMAIN}`, 'the main gate: visitor passes, walk-ins, SOS, patrol'],
     ['Sponsor', `sponsor@${DOMAIN}`, 'Solar Cerah (demo sponsor)'],
     ['Township staff', `staff@${DOMAIN}`, ''],
