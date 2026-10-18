@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { ADMINS, ROLES, STAFF } from '@/shared/domain';
 import { destroySession, readSessionToken, sessionCookie } from '../../auth/session';
+import { recordCourierLogin } from '../carriers/team';
 import { pageQuery } from '../../http/pagination';
 import { emptyBody, json, route, zAcceptTerms, zEmail, zId, zPassword, zPhone, zText } from '../../http/router';
 import { addressOptions, homesOnStreet, listTownships } from '../townships';
@@ -48,6 +49,7 @@ export const identityRoutes = [
       // A much higher ceiling per account still stops guessing spread over many addresses.
       await c.limit(`login:${c.body.email}`, 100, 900);
       const { token, actor } = await identity.login(c.db, c.body, c.now);
+      if (actor.role === 'COURIER') await recordCourierLogin(c.db, actor.id, 'PASSWORD', c.ip, c.req.headers.get('user-agent'), c.now);
       return signedIn(actor, token);
     },
   }),

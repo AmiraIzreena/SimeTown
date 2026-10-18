@@ -17,10 +17,11 @@ const readerClass = () => (window as unknown as { BarcodeDetector?: DetectorClas
  * reader. Nothing is uploaded: the picture never leaves the device. Where the
  * browser has no reader, the code printed under the QR is typed instead.
  */
-export function CameraScan({ onCode, label = 'Scan with camera' }: { onCode: (text: string) => void; label?: string }) {
+export function CameraScan({ onCode, label = 'Scan with camera', formats = ['qr_code'] }: { onCode: (text: string) => void; label?: string; formats?: string[] }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [on, setOn] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  const formatKey = formats.join(',');
 
   useEffect(() => {
     if (!on) return;
@@ -29,7 +30,7 @@ export function CameraScan({ onCode, label = 'Scan with camera' }: { onCode: (te
     let stream: MediaStream | null = null;
     let timer = 0;
     let stopped = false;
-    const detector = new Reader({ formats: ['qr_code'] });
+    const detector = new Reader({ formats: formatKey.split(',') });
     void (async () => {
       try {
         stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
@@ -62,7 +63,7 @@ export function CameraScan({ onCode, label = 'Scan with camera' }: { onCode: (te
       window.clearTimeout(timer);
       stream?.getTracks().forEach((track) => track.stop());
     };
-  }, [on, onCode]);
+  }, [on, onCode, formatKey]);
 
   return (
     <div className="space-y-3">

@@ -112,10 +112,21 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | Method | Path | Who | What it does |
 | --- | --- | --- | --- |
 | POST | `/reports` | RESIDENT | Report a hazard or access barrier (multipart form; optional photo) |
-| GET | `/reports` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | My reports (resident) or the township queue (staff) |
+| GET | `/reports` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | My reports and the ones I follow (resident) or the township queue (staff) |
+| GET | `/reports/similar` | RESIDENT | Open reports that look like the one about to be sent, to tap "Me too" instead |
+| GET | `/reports/stats` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Open, late, duplicates avoided and time to fix (the one-channel test) |
 | GET | `/reports/:reportId` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | One report |
 | GET | `/reports/:reportId/photo` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | The report's photo (reporter and township staff only) |
-| PATCH | `/reports/:reportId` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Staff update status, type, urgency or note (corrections to the AI are logged) |
+| GET | `/reports/:reportId/fixed-photo` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | The photo staff took once it was fixed (reporter, followers and staff) |
+| POST | `/reports/:reportId/me-too` | RESIDENT | Follow a report about the same problem instead of filing another (no XP) |
+| PATCH | `/reports/:reportId` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Staff update status, type, urgency, note, who is fixing it and the target date (corrections to the AI are logged) |
+| POST | `/reports/:reportId/fixed-photo` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Staff attach a photo of the fix (multipart form) |
+
+## Requests
+
+| Method | Path | Who | What it does |
+| --- | --- | --- | --- |
+| GET | `/requests` | RESIDENT | Everything my household is waiting on: reports, parcels and collections, with the next step |
 
 ## Tamu
 
@@ -172,6 +183,157 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | PATCH | `/admin/home-services/reports/:reportId` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Update a report (the resident is told) |
 | POST | `/admin/merchants/:merchantId/kind` | TOWNSHIP_ADMIN, HQ_ADMIN | Set what a business offers: shop, home services or both |
 
+## Parcels
+
+| Method | Path | Who | What it does |
+| --- | --- | --- | --- |
+| GET | `/parcels` | RESIDENT | My home's parcels: waiting ones with their one-time code, and the last 30 days |
+| GET | `/parcels/:parcelId/photo` | RESIDENT, GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | The parcel's photo (its household and the gate) |
+| POST | `/parcels/:parcelId/problem` | RESIDENT | Say a parcel marked collected never reached you |
+| GET | `/guard/parcels` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN | Every parcel waiting at the guardhouse, oldest first |
+| POST | `/guard/parcels` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN | Log a parcel (multipart form; optional photo). The household gets its code |
+| POST | `/guard/parcels/check` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN | Check the code a resident shows: which parcel and shelf |
+| POST | `/guard/parcels/:parcelId/collect` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN | Hand a parcel over against its code (the code then stops working) |
+| POST | `/guard/parcels/:parcelId/return` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN | Send a parcel back to the courier |
+| GET | `/admin/parcels/stats` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Waiting, time to collect, same-day share and handovers queried (the parcel test) |
+
+## Smart lockers
+
+| Method | Path | Who | What it does |
+| --- | --- | --- | --- |
+| GET | `/couriers/companies` | Public | Courier companies that may apply for locker access |
+| POST | `/couriers/apply` | Public | Apply for a courier account (an admin approves it and chooses the stations) |
+| GET | `/lockers/stations/:code` | Public | A station's public name and place, from the code on its QR poster (grants nothing) |
+| GET | `/courier` | COURIER | The courier's account status and the stations they may use |
+| GET | `/courier/parcels` | COURIER | The courier's recent deliveries |
+| POST | `/courier/parcels` | COURIER | Register a parcel at a station and verify the recipient (no resident details are returned) |
+| GET | `/courier/parcels/:parcelId` | COURIER | Where a delivery stands, with its door command |
+| POST | `/courier/parcels/:parcelId/open` | COURIER | Reserve the smallest suitable compartment and unlock it (or list the alternatives when full) |
+| POST | `/courier/parcels/:parcelId/station` | COURIER | Choose another station you may use |
+| POST | `/courier/parcels/:parcelId/counter` | COURIER | Take the parcel to a staffed counter that accepts deliveries instead |
+| POST | `/courier/parcels/:parcelId/confirm` | COURIER | Stations without sensors: confirm the parcel is in and the door is shut |
+| POST | `/courier/parcels/:parcelId/fail` | COURIER | Record that the delivery could not be made (the parcel stays with the courier) |
+| GET | `/lockers/my-parcels` | RESIDENT | My home's locker parcels with their QR code, PIN and deadline |
+| POST | `/lockers/parcels/:parcelId/open` | RESIDENT | Open my parcel's door from the app, at the station (its code from the QR poster) |
+| POST | `/lockers/parcels/:parcelId/confirm` | RESIDENT | Stations without sensors: confirm I have the parcel and the door is shut |
+| POST | `/lockers/parcels/:parcelId/extend` | RESIDENT | Ask for more time, when management has switched extensions on |
+| POST | `/lockers/parcels/:parcelId/new-code` | RESIDENT | Replace my pickup PIN and QR code (the old one stops working at once) |
+| POST | `/lockers/parcels/:parcelId/keypad-help` | RESIDENT | Ask staff to unlock my parcel's station keypad after it locked itself (once per lockout) |
+| POST | `/lockers/parcels/:parcelId/report` | RESIDENT | Report a problem with a parcel from the lockers: not collected by us, damaged, wrong contents, not ours |
+| POST | `/lockers/parcels/:parcelId/simulate-close` | RESIDENT, COURIER, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Simulated stations only: close the door you opened, with or without the parcel inside |
+| GET | `/admin/lockers` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Every station by compartment state, overflow storage, the 14-day trend and alerts |
+| GET | `/admin/lockers/forecast` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Tomorrow's expected demand per station, with the method and recommendations |
+| POST | `/admin/lockers/stations` | TOWNSHIP_ADMIN, HQ_ADMIN | Add a station and its compartments (a gateway station’s device secret is shown once) |
+| POST | `/admin/lockers/stations/:stationId/status` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Put a station online, offline or in maintenance |
+| POST | `/admin/lockers/stations/:stationId/keypad-unlock` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Unlock a station keypad that locked itself after too many wrong pickup codes |
+| POST | `/admin/lockers/stations/:stationId/secret` | TOWNSHIP_ADMIN, HQ_ADMIN | Issue a new device secret (the old one stops working) |
+| GET | `/admin/lockers/stations/:stationId/commands` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | A station's recent door commands and device messages |
+| POST | `/admin/lockers/compartments/:compartmentId` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Disable, enable or clear the fault on a compartment |
+| POST | `/admin/lockers/compartments/:compartmentId/unlock` | TOWNSHIP_ADMIN, HQ_ADMIN | Open an empty compartment for maintenance (admins; logged) |
+| GET | `/admin/lockers/parcels` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Locker parcels by state, station or tracking number |
+| GET | `/admin/lockers/parcels/:parcelId` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | One parcel's state history, custody chain and door commands |
+| POST | `/admin/lockers/parcels/:parcelId/receive` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Receive a parcel a courier brought to the counter because the lockers were full |
+| POST | `/admin/lockers/parcels/:parcelId/return` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Mark a parcel to go back to the courier |
+| POST | `/admin/lockers/parcels/:parcelId/returned` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | The courier has taken the parcel back |
+| POST | `/admin/lockers/parcels/:parcelId/resolve` | TOWNSHIP_ADMIN, HQ_ADMIN | Settle a parcel held as an exception |
+| GET | `/admin/lockers/relocations` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Relocation tasks, open ones first |
+| POST | `/admin/lockers/relocations/:taskId/start` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Start a relocation: choose the storage place and open the parcel's door |
+| POST | `/admin/lockers/relocations/:taskId/verify` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Scan the tracking code of the parcel taken out |
+| POST | `/admin/lockers/relocations/:taskId/complete` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | The parcel is in storage and the compartment is shut and empty |
+| POST | `/admin/lockers/relocations/:taskId/fail` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | The parcel was missing, damaged or could not be moved |
+| GET | `/admin/lockers/overflow` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Overflow storage places and how full they are |
+| GET | `/admin/lockers/storage/parcels` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Parcels currently held at storage locations |
+| GET | `/admin/lockers/storage/deliveries` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Courier parcels committed for delivery to a storage counter |
+| POST | `/admin/lockers/overflow` | TOWNSHIP_ADMIN, HQ_ADMIN | Register an overflow storage place |
+| POST | `/admin/lockers/overflow/:locationId/active` | TOWNSHIP_ADMIN, HQ_ADMIN | Open or close a storage place |
+| POST | `/admin/lockers/overflow/:locationId/check` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Check the pickup code a resident shows at the counter |
+| POST | `/admin/lockers/overflow/:locationId/handover` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Hand the parcel over after checking the code and ID |
+| GET | `/admin/lockers/couriers` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Courier applications and accounts with their stations |
+| POST | `/admin/lockers/couriers/:userId/approve` | TOWNSHIP_ADMIN, HQ_ADMIN | Approve a courier for the chosen stations |
+| POST | `/admin/lockers/couriers/:userId/revoke` | TOWNSHIP_ADMIN, HQ_ADMIN | Withdraw a courier's access at once |
+| GET | `/admin/lockers/companies` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Courier companies, including paused ones |
+| POST | `/admin/lockers/companies` | TOWNSHIP_ADMIN, HQ_ADMIN | Authorise a courier company |
+| POST | `/admin/lockers/companies/:companyId/active` | TOWNSHIP_ADMIN, HQ_ADMIN | Pause or resume a courier company |
+| GET | `/admin/lockers/incidents` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Security incidents: replayed barcodes, forced doors, refused commands, suspicious sign-ins |
+| POST | `/admin/lockers/incidents` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Report something staff saw at a locker |
+| POST | `/admin/lockers/incidents/:incidentId` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Acknowledge or resolve an incident |
+| GET | `/admin/lockers/exceptions` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Requests to open an occupied door outside the normal flow |
+| GET | `/admin/lockers/access-sessions` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Controlled multi-parcel access sessions |
+| POST | `/admin/lockers/access-sessions` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Request one controlled session for several occupied doors at one station |
+| POST | `/admin/lockers/access-sessions/:sessionId/decision` | TOWNSHIP_ADMIN, HQ_ADMIN | A second admin approves or rejects a controlled access session |
+| POST | `/admin/lockers/access-sessions/:sessionId/items/:itemId/open` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Open the next approved session door |
+| POST | `/admin/lockers/access-sessions/:sessionId/items/:itemId/complete` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Scan and confirm the parcel removed during a session |
+| POST | `/admin/lockers/exceptions/:requestId/decision` | TOWNSHIP_ADMIN, HQ_ADMIN | A second admin approves (the door opens) or rejects a request |
+| POST | `/admin/lockers/parcels/:parcelId/exception` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Ask to open an occupied door (wrong door, wrong household, damage, suspected theft, fault) |
+| GET | `/admin/lockers/policy` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | The township's collection deadlines, reminders and extension settings |
+| PATCH | `/admin/lockers/policy` | TOWNSHIP_ADMIN, HQ_ADMIN | Change the collection policy |
+| GET | `/admin/lockers/simulator/:stationId` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | A simulated station's compartments, doors and sensors |
+| POST | `/admin/lockers/simulator/:stationId` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Simulated stations only: a door, sensor, fault, connectivity or keypad event |
+| POST | `/devices/lockers/events` | Bearer token (machine) | Station gateway: command acknowledgements, door events, heartbeats and keypad pickups (HMAC-signed) |
+
+## Courier platform
+
+| Method | Path | Who | What it does |
+| --- | --- | --- | --- |
+| POST | `/courier/shipments/check` | COURIER | Check a scanned label with the courier company and SimeTown: no door opens (masked recipient only) |
+| POST | `/courier/shipments/deliver` | COURIER | Check the shipment again and, if verified, reserve and open the smallest door that fits |
+| GET | `/courier/team` | COURIER | A company manager's couriers here, and the company's terms |
+| POST | `/courier/team` | COURIER | Add one of the company’s couriers (they get a link to set a password) |
+| POST | `/courier/team/:userId/status` | COURIER | Suspend, reactivate or remove one of the company’s couriers (sessions end at once) |
+| POST | `/courier/team/:userId/reconfirm` | COURIER | Confirm the courier still works for the company |
+| GET | `/auth/courier-sso/companies` | Public | Courier companies whose couriers sign in with the company’s own sign-in |
+| POST | `/auth/courier-sso/start` | Public | Start signing in through a courier company (OpenID Connect with PKCE) |
+| GET | `/auth/courier-sso/callback` | Public | Where the courier company sends the courier back; signs them in for one shift |
+| POST | `/couriers/:code/directory-events` | Bearer token (machine) | A courier company suspends, reactivates or removes one of its couriers (HMAC-signed, applied once) |
+| GET | `/admin/couriers/companies` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Courier companies with their approval, stations, representatives, integration and history |
+| POST | `/admin/couriers/companies` | TOWNSHIP_ADMIN, HQ_ADMIN | Start onboarding a courier company (it can do nothing until approved) |
+| PATCH | `/admin/couriers/companies/:companyId/integration` | TOWNSHIP_ADMIN, HQ_ADMIN | How the company’s couriers sign in and how its shipments are checked |
+| POST | `/admin/couriers/companies/:companyId/decision` | TOWNSHIP_ADMIN, HQ_ADMIN | Approve, suspend or revoke a company here, with its agreement and assurance terms |
+| POST | `/admin/couriers/companies/:companyId/stations` | TOWNSHIP_ADMIN, HQ_ADMIN | The stations the company’s couriers may use |
+| POST | `/admin/couriers/companies/:companyId/representatives` | TOWNSHIP_ADMIN, HQ_ADMIN | Add a representative the company has named (returns a one-time link) |
+| POST | `/admin/couriers/companies/:companyId/representatives/:userId/remove` | TOWNSHIP_ADMIN, HQ_ADMIN | Remove a company representative |
+| GET | `/admin/couriers/shipments` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Shipment checks this week, the latest scans, repeated scans and provider health |
+
+## Simulated courier companies
+
+| Method | Path | Who | What it does |
+| --- | --- | --- | --- |
+| GET | `/sim-idp/:code/.well-known/openid-configuration` | Public | Discovery document of a simulated company’s sign-in |
+| GET | `/sim-idp/:code/jwks` | Public | Signing keys of a simulated company’s sign-in |
+| GET | `/sim-idp/:code/page` | Public | What the simulated sign-in page shows |
+| POST | `/sim-idp/:code/authorize` | Public | The simulated company checks its employee and issues a one-time code |
+| POST | `/sim-idp/:code/token` | Public | The simulated company exchanges the code for a signed ID token (PKCE) |
+| GET | `/demo/labels` | Public | Printable demo labels for the simulated companies’ fictional shipments (demo only) |
+| POST | `/admin/couriers/companies/:companyId/simulated-outage` | TOWNSHIP_ADMIN, HQ_ADMIN | Simulated companies only: switch the company’s system down or up |
+| GET | `/admin/couriers/simulated` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | The simulated companies’ fictional shipments and staff directories |
+| POST | `/admin/couriers/simulated/shipments/:shipmentId` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Act as the simulated company changing a shipment’s status |
+| POST | `/admin/couriers/simulated/:companyId/directory/:employeeRef` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Act as the simulated company suspending or reactivating one of its staff |
+
+## Incidents
+
+| Method | Path | Who | What it does |
+| --- | --- | --- | --- |
+| POST | `/incidents/report` | RESIDENT, COURIER | Report a problem: sent to the courier company, filed for the township, or checked against the township’s records first |
+| GET | `/incidents/mine` | RESIDENT, COURIER | My reports, with what the township office told me, and my courier referrals |
+| POST | `/incidents/mine/:reference/reply` | RESIDENT, COURIER | Answer the township office’s question about my report |
+| POST | `/incidents/mine/:reference/reopen` | RESIDENT, COURIER | Not fixed: reopen my report within the township’s window (the admins are told) |
+| POST | `/incidents/referrals/:referralId/ticket` | RESIDENT | Simulated courier companies only: file the complaint in the company’s (simulated) ticket system |
+| GET | `/admin/incidents` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | All the township’s cases with counts and filters (Lapor’s reports listed alongside, read-only) |
+| GET | `/admin/incidents/policy` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | How fast each priority must be taken and resolved (proposed values) |
+| PATCH | `/admin/incidents/policy` | TOWNSHIP_ADMIN, HQ_ADMIN | Change the case deadlines, working hours, holidays and the reopening window |
+| POST | `/admin/incidents/run-checks` | TOWNSHIP_ADMIN, HQ_ADMIN | Run the deadline checks now (the scheduler runs them every 5 minutes) |
+| POST | `/admin/couriers/companies/:companyId/support` | TOWNSHIP_ADMIN, HQ_ADMIN | Record a courier company’s support channel after checking it with the company |
+| GET | `/admin/incidents/by-reference/:reference` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | One case in full, found by its reference (as linked from notifications) |
+| GET | `/admin/incidents/:id` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | One case in full: history, escalations and the related records |
+| POST | `/admin/incidents/:id/claim` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | “I’ll handle this”: take an unassigned case (only one person can) |
+| POST | `/admin/incidents/:id/assign` | TOWNSHIP_ADMIN, HQ_ADMIN | Assign or reassign a case, with a reason when it already has an owner |
+| POST | `/admin/incidents/:id/status` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Investigating, or waiting for the courier company, a contractor or someone else |
+| POST | `/admin/incidents/:id/note` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | An investigation note only staff see |
+| POST | `/admin/incidents/:id/update-resident` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Send the reporter an update (they are notified) |
+| POST | `/admin/incidents/:id/request-info` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Ask the reporter for more details; the case waits for their answer |
+| POST | `/admin/incidents/:id/escalate` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Ask an admin to step in (the owner keeps the case) |
+| POST | `/admin/incidents/:id/resolve` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Record the outcome and tell the reporter; never unlocks, issues codes or changes the parcel |
+
 ## Gerak
 
 | Method | Path | Who | What it does |
@@ -195,19 +357,33 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | POST | `/kitar/dropoffs` | RESIDENT | Record a drop-off at a kiosk |
 | GET | `/admin/kitar/kiosks` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Kiosks with their printable codes |
 | POST | `/admin/kitar/kiosks` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Add a kiosk |
-| POST | `/kitar/machine/join` | RESIDENT | Start recycling at a machine by scanning the code on its screen |
-| GET | `/kitar/machine/session` | RESIDENT | My recycling session at a machine, live, and its result |
+| POST | `/kitar/test-entry` | RESIDENT | Kitar test mode (local demos only): a practice entry, marked TEST and audited |
+| POST | `/kitar/machine/join` | RESIDENT | Start recycling at a bin by scanning the code on its screen |
+| GET | `/kitar/machine/session` | RESIDENT | My recycling session at a bin, live, and its result |
 | POST | `/kitar/claim` | RESIDENT | Claim guest recycling within 14 days (Impact XP only) |
-| GET | `/admin/kitar/machines` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Recycling machines, their state and today’s use |
-| POST | `/admin/kitar/machines` | TOWNSHIP_ADMIN, HQ_ADMIN | Put a recycling machine at a kiosk |
-| POST | `/admin/kitar/machines/:machineId/status` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Mark a machine online, full or offline |
-| GET | `/admin/kitar/machines/:machineId/screen` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Prototype: the machine's screen (rotating code and the session in progress) |
-| POST | `/admin/kitar/machines/:machineId/start` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Prototype: the machine reads a SimeTown QR, or a guest taps "Recycle as guest" |
-| POST | `/admin/kitar/machines/:machineId/items` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Prototype: the machine's camera, barcode reader and scale report one item |
-| POST | `/admin/kitar/machines/:machineId/finish` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Prototype: the machine signs its summary and closes the session |
-| POST | `/ingest/kitar/start` | Bearer token (machine) | Device: start a session (SimeTown QR read, or guest); signed by the machine |
-| POST | `/ingest/kitar/items` | Bearer token (machine) | Device: one item recognised, counted and weighed; signed by the machine |
-| POST | `/ingest/kitar/finish` | Bearer token (machine) | Device: the session's summary, which must match the items; signed by the machine |
+| GET | `/admin/kitar/machines` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Kiosk bins, their state and today’s use |
+| POST | `/admin/kitar/machines` | TOWNSHIP_ADMIN, HQ_ADMIN | Put a bin at a kiosk |
+| POST | `/admin/kitar/machines/:machineId/status` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Mark a bin online, full or offline |
+| POST | `/admin/kitar/machines/:machineId/material` | TOWNSHIP_ADMIN, HQ_ADMIN | Set the one material a bin takes, or null for any material |
+| GET | `/admin/kitar/machines/:machineId/screen` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Prototype: the bin's screen (rotating code and the session in progress) |
+| POST | `/admin/kitar/machines/:machineId/start` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Prototype: the bin reads a SimeTown QR, or a guest taps "Recycle as guest" |
+| POST | `/admin/kitar/machines/:machineId/items` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Prototype: the bin's scale reports one item |
+| POST | `/admin/kitar/machines/:machineId/finish` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Prototype: the bin signs its summary and closes the session |
+| GET | `/kitar/collectors` | RESIDENT | Partner collectors, what they take and when they come |
+| GET | `/kitar/collections` | RESIDENT | My home's booked collections |
+| POST | `/kitar/collections` | RESIDENT | Book a collection of bulky or special items |
+| POST | `/kitar/collections/:collectionId/cancel` | RESIDENT | Cancel a booked collection |
+| GET | `/admin/kitar/collectors` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Partner collectors with what they have collected |
+| POST | `/admin/kitar/collectors` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Add a partner collector |
+| POST | `/admin/kitar/collectors/:collectorId/active` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Pause or resume a collector |
+| GET | `/admin/kitar/collections` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Booked collections, open ones first |
+| POST | `/admin/kitar/collections/:collectionId/confirm` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Confirm a collection; the collector gets a gate pass for the day |
+| POST | `/admin/kitar/collections/:collectionId/collected` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Record the collector's weighed total (earns the household Impact XP) |
+| POST | `/admin/kitar/collections/:collectionId/missed` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | The collector did not come |
+| GET | `/admin/kitar/stats` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Material accepted by month and why machines turned items away (the recycling test) |
+| POST | `/ingest/kitar/start` | Bearer token (machine) | Device: start a session (SimeTown QR read, or guest); signed by the bin |
+| POST | `/ingest/kitar/items` | Bearer token (machine) | Device: one item weighed by the bin’s scale; signed by the bin |
+| POST | `/ingest/kitar/finish` | Bearer token (machine) | Device: the session's summary, which must match the items; signed by the bin |
 
 ## Jimat
 
@@ -272,6 +448,22 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | POST | `/admin/taman/gardens/:gardenId/ballot` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Draw the waiting list for a garden's free plots |
 | POST | `/admin/taman/gardens` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Add a community garden and its plots |
 
+## Planet
+
+| Method | Path | Who | What it does |
+| --- | --- | --- | --- |
+| GET | `/admin/solar/sites` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Candidate solar sites ranked by output, nearby demand and readiness, with what is missing |
+| POST | `/admin/solar/sites` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Add a candidate rooftop or car park |
+| PATCH | `/admin/solar/sites/:siteId` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Update a site: survey results, checks done, or an expert’s rank |
+| DELETE | `/admin/solar/sites/:siteId` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Remove a site |
+| GET | `/admin/materials` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | The uses that can be compared and their requirements (sample library) |
+| POST | `/admin/materials/compare` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Check every material for one use against the requirements, and flag missing evidence |
+| POST | `/admin/materials/explain` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | The agent explains the comparison, using only the table |
+| GET | `/admin/materials/shortlists` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Saved shortlists and the median time to make one |
+| POST | `/admin/materials/shortlists` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Save a shortlist with the time it took |
+| GET | `/admin/edging-trial` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | The edging trial’s test plan and results, and the plastic the township has collected |
+| PATCH | `/admin/edging-trial/tests/:testId` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Record a test result for the recycled and the conventional edging |
+
 ## Assistant
 
 | Method | Path | Who | What it does |
@@ -319,7 +511,7 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 
 | Method | Path | Who | What it does |
 | --- | --- | --- | --- |
-| POST | `/internal/jobs/:name` | Bearer token (cron) | Run a scheduled job (expire-points, float-check, settle, cleanup, flood-agent); bearer token |
+| POST | `/internal/jobs/:name` | Bearer token (cron) | Run a scheduled job (expire-points, float-check, settle, cleanup, flood-agent, parcel-reminders, lockers, couriers, incidents); bearer token |
 | GET | `/health` | Public | Liveness: the process is up |
 | GET | `/ready` | Public | Readiness: the database answers and the schema is migrated |
 | GET | `/openapi.json` | Public | This API as an OpenAPI 3.1 document |

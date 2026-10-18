@@ -388,7 +388,9 @@ describe('Akses+ (BR32) and Taman', () => {
     const { id: gardenId } = await createGarden(db, w.staff, { name: 'Test Garden', location: 'By the lake', plots: 2, plotSizeM2: 6 });
     const resident = await makeResident(w);
     const code = (await one<{ code: string }>(db, 'SELECT code FROM gardens WHERE id = $1', [gardenId]))!.code;
-    expect((await markWatered(db, resident, code, T0)).reward.xp).toBe(15);
+    const watered = await markWatered(db, resident, code, T0);
+    expect(watered.reward.xp).toBe(15);
+    expect(watered.reward.offerPoints).toBe(0); // a printed gate code proves too little for points
     const sighting = await addSighting(db, resident, { kind: 'BIRD', species: 'Oriental magpie-robin', location: 'Lake' }, T0);
     await decideSighting(db, w.staff, sighting.id, true, T0);
     expect((await one<{ n: number }>(db, `SELECT count(*)::int AS n FROM xp_events WHERE user_id = $1 AND activity = 'TAMAN_SIGHTING'`, [resident.id]))!.n).toBe(1);

@@ -3,7 +3,7 @@
 import { Text } from '@/components/ui/localized-text';
 
 import {
-  Accessibility, Bike, Bot, CalendarClock, DoorOpen, Droplets, HandHeart, PiggyBank, Recycle, Repeat2, Sparkles, Sprout, Tag, TriangleAlert, Wallet, Zap, type LucideIcon,
+  Accessibility, Bike, Bot, CalendarClock, DoorOpen, Droplets, HandHeart, Inbox, Package, PiggyBank, Recycle, Repeat2, Sparkles, Sprout, Tag, TriangleAlert, Wallet, Zap, type LucideIcon,
 } from 'lucide-react';
 import { LocalizedLink as Link } from '@/components/ui/localized-elements';
 import { useState } from 'react';
@@ -44,7 +44,9 @@ const ACTIONS: { href: string; label: string; text: string; icon: LucideIcon }[]
   { href: '/app/kitar', label: 'Kitar', text: 'Record a recycling drop-off', icon: Recycle },
   { href: '/app/gerak', label: 'Gerak', text: 'Track a walk or scan a checkpoint', icon: Bike },
   { href: '/app/tamu', label: 'Tamu', text: 'Visitor passes and the guardhouse', icon: DoorOpen },
+  { href: '/app/parcels', label: 'Parcels', text: 'Parcels waiting at the guardhouse', icon: Package },
   { href: '/app/lapor', label: 'Lapor', text: 'Report a problem', icon: TriangleAlert },
+  { href: '/app/requests', label: 'My requests', text: 'Everything your home is waiting on', icon: Inbox },
   { href: '/app/jimat', label: 'Jimat', text: 'Read a bill or enter readings', icon: Zap },
   { href: '/app/banjir', label: 'Banjir', text: 'Check flood levels', icon: Droplets },
   { href: '/app/taman', label: 'Taman', text: 'Garden plots and wildlife', icon: Sprout },
@@ -77,6 +79,7 @@ function TodayCard({ wallet }: { wallet?: WalletOverview }) {
   const flood = useApi<BanjirOverview>('/banjir', { refreshInterval: 15_000 });
   const tamu = useApi<Tamu>('/tamu');
   const offers = useApi<Offers>('/offers');
+  const parcels = useApi<{ parcels: { id: string; courier: string; shelf: string; status: string }[] }>('/parcels');
   const now = new Date();
   const hour = Number(now.toLocaleString('en-GB', { hour: 'numeric', hour12: false, timeZone: 'Asia/Kuala_Lumpur' }));
   const weekday = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kuala_Lumpur' })).getDay();
@@ -91,6 +94,17 @@ function TodayCard({ wallet }: { wallet?: WalletOverview }) {
   }
   for (const w of tamu.data?.waiting ?? []) {
     moments.push({ key: `walkin-${w.id}`, icon: DoorOpen, tone: 'bg-gold-50 text-gold-700', title: t('Someone is at the main gate'), text: `${w.visitor_name}. Reply Expected, Not expected or Call me.`, href: '/app/tamu' });
+  }
+  const waiting = parcels.data?.parcels.filter((p) => p.status === 'WAITING') ?? [];
+  if (waiting.length > 0) {
+    moments.push({
+      key: 'parcels',
+      icon: Package,
+      tone: 'bg-gold-50 text-gold-700',
+      title: waiting.length === 1 ? t('A parcel is waiting at the guardhouse') : t('{n} parcels are waiting at the guardhouse', { n: waiting.length }),
+      text: t('Show the collection code in Parcels to collect it.'),
+      href: '/app/parcels',
+    });
   }
   const today = now.toDateString();
   const expected = tamu.data?.passes.find((p) => p.status === 'ACTIVE' && !p.lastEntryAt && new Date(p.validFrom).toDateString() === today && (p.type === 'ONE_VISIT' || p.type === 'DELIVERY'));

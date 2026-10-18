@@ -6,6 +6,7 @@ import { badRequest } from '../../errors';
 import { emptyBody, route, zId, zText } from '../../http/router';
 import { readForm, readPhoto } from '../../http/uploads';
 import { zScanCode } from '../gerak/routes';
+import * as collections from './collections';
 import * as machine from './machine';
 import * as kitar from './service';
 import { recordTestEntry } from './test-entry';
@@ -106,6 +107,65 @@ export const kitarRoutes = [
   route({
     method: 'POST', path: '/admin/kitar/machines/:machineId/finish', tag: 'Kitar', summary: "Prototype: the bin signs its summary and closes the session", auth: 'session', roles: STAFF, body: emptyBody,
     handler: (c) => machine.simulateFinish(c.db, c.actor, c.params.machineId!, c.now),
+  }),
+  // --- Collections from partner collectors ------------------------------------------------
+  route({
+    method: 'GET', path: '/kitar/collectors', tag: 'Kitar', summary: 'Partner collectors, what they take and when they come', auth: 'session', roles: ['RESIDENT'],
+    query: z.object({ material: z.enum(MATERIALS).optional() }),
+    handler: (c) => collections.listCollectors(c.db, c.actor, c.query.material),
+  }),
+  route({
+    method: 'GET', path: '/kitar/collections', tag: 'Kitar', summary: "My home's booked collections", auth: 'session', roles: ['RESIDENT'],
+    handler: (c) => collections.myCollections(c.db, c.actor),
+  }),
+  route({
+    method: 'POST', path: '/kitar/collections', tag: 'Kitar', summary: 'Book a collection of bulky or special items', auth: 'session', roles: ['RESIDENT'],
+    rateLimit: { limit: 10, windowSec: 3600, by: 'user' },
+    body: z.object({
+      collectorId: zId, materials: z.array(z.enum(MATERIALS)).min(1).max(8), items: zText(300, 3),
+      day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Choose a day.'), slot: z.enum(collections.COLLECTION_SLOTS),
+    }),
+    handler: (c) => collections.bookCollection(c.db, c.actor, c.body, c.now),
+  }),
+  route({
+    method: 'POST', path: '/kitar/collections/:collectionId/cancel', tag: 'Kitar', summary: 'Cancel a booked collection', auth: 'session', roles: ['RESIDENT'], body: emptyBody,
+    handler: (c) => collections.cancelCollection(c.db, c.actor, c.params.collectionId!, c.now),
+  }),
+  route({
+    method: 'GET', path: '/admin/kitar/collectors', tag: 'Kitar', summary: 'Partner collectors with what they have collected', auth: 'session', roles: STAFF,
+    handler: (c) => collections.listCollectorsForStaff(c.db, c.actor),
+  }),
+  route({
+    method: 'POST', path: '/admin/kitar/collectors', tag: 'Kitar', summary: 'Add a partner collector', auth: 'session', roles: STAFF,
+    body: z.object({ name: zText(80, 2), phone: z.string().trim().max(30).optional(), materials: z.array(z.enum(MATERIALS)).min(1).max(8), days: zText(80, 2), notes: z.string().trim().max(200).optional() }),
+    handler: (c) => collections.createCollector(c.db, c.actor, c.body),
+  }),
+  route({
+    method: 'POST', path: '/admin/kitar/collectors/:collectorId/active', tag: 'Kitar', summary: 'Pause or resume a collector', auth: 'session', roles: STAFF,
+    body: z.object({ active: z.boolean() }),
+    handler: (c) => collections.setCollectorActive(c.db, c.actor, c.params.collectorId!, c.body.active),
+  }),
+  route({
+    method: 'GET', path: '/admin/kitar/collections', tag: 'Kitar', summary: 'Booked collections, open ones first', auth: 'session', roles: STAFF,
+    query: z.object({ status: z.enum(['REQUESTED', 'CONFIRMED', 'COLLECTED', 'CANCELLED', 'MISSED']).optional() }),
+    handler: (c) => collections.collectionsForStaff(c.db, c.actor, c.query.status),
+  }),
+  route({
+    method: 'POST', path: '/admin/kitar/collections/:collectionId/confirm', tag: 'Kitar', summary: 'Confirm a collection; the collector gets a gate pass for the day', auth: 'session', roles: STAFF, body: emptyBody,
+    handler: (c) => collections.confirmCollection(c.db, c.actor, c.params.collectionId!, c.now),
+  }),
+  route({
+    method: 'POST', path: '/admin/kitar/collections/:collectionId/collected', tag: 'Kitar', summary: "Record the collector's weighed total (earns the household Impact XP)", auth: 'session', roles: STAFF,
+    body: z.object({ weightG: z.number().int().min(1).max(500_000) }),
+    handler: (c) => collections.completeCollection(c.db, c.actor, c.params.collectionId!, c.body.weightG, c.now),
+  }),
+  route({
+    method: 'POST', path: '/admin/kitar/collections/:collectionId/missed', tag: 'Kitar', summary: 'The collector did not come', auth: 'session', roles: STAFF, body: emptyBody,
+    handler: (c) => collections.missCollection(c.db, c.actor, c.params.collectionId!),
+  }),
+  route({
+    method: 'GET', path: '/admin/kitar/stats', tag: 'Kitar', summary: 'Material accepted by month and why machines turned items away (the recycling test)', auth: 'session', roles: STAFF,
+    handler: (c) => collections.recyclingStats(c.db, c.actor, c.now),
   }),
   route({
     method: 'POST', path: '/ingest/kitar/start', tag: 'Kitar', summary: 'Device: start a session (SimeTown QR read, or guest); signed by the bin', auth: 'machine',

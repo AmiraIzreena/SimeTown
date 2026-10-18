@@ -3,43 +3,108 @@
 import { Text } from '@/components/ui/localized-text';
 import { LocalizedInput } from '@/components/ui/localized-elements';
 
-import { MapPin, Sparkles } from 'lucide-react';
-import { useState, type FormEvent } from 'react';
-import { ReportPhoto, STATUS_LABELS, StatusBadge, URGENCY_LABELS, UrgencyBadge, categoryLabel, type Report } from '@/components/features/report-bits';
+import { CalendarClock, Camera, ClipboardList, MapPin, Sparkles, ThumbsUp, Timer, TriangleAlert } from 'lucide-react';
+import { Suspense, useState, type FormEvent } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { IncidentBoard, COMMUNITY_MODULES } from '@/components/features/incident-board';
+import { AffectedBadge, FixedPhoto, LateBadge, ReportPhoto, ReportProgress, STATUS_LABELS, StatusBadge, URGENCY_LABELS, UrgencyBadge, categoryLabel, type Report } from '@/components/features/report-bits';
 import { Button } from '@/components/ui/button';
-import { PageHeader } from '@/components/ui/card';
+import { Card, CardHeader, PageHeader, Stat } from '@/components/ui/card';
 import { Modal } from '@/components/ui/dialog';
 import { EmptyState, ErrorState, SkeletonList } from '@/components/ui/feedback';
-import { Select, Textarea } from '@/components/ui/field';
+import { Input, Select, Textarea } from '@/components/ui/field';
 import { TabPanel, Tabs } from '@/components/ui/tabs';
 import { api } from '@/lib/api';
 import { timeAgo } from '@/lib/format';
-import { useAction, usePaged } from '@/lib/hooks';
-import { REPORT_CATEGORIES, REPORT_CATEGORY_LABELS, REPORT_STATUSES, URGENCIES, type ReportStatus } from '@/shared/domain';
+import { useAction, useApi, usePaged } from '@/lib/hooks';
+import { shrinkPhoto } from '@/lib/image';
+import { REPORT_CATEGORIES, REPORT_CATEGORY_LABELS, REPORT_STATUSES, URGENCIES, type ReportCategory, type ReportStatus } from '@/shared/domain';
+
+interface ReportStats {
+  open: number;
+  late: number;
+  withTargetPct: number | null;
+  duplicatesAvoided: number;
+  medianHoursToCheck: number | null;
+  medianDaysToFix: number | null;
+  resolved90d: number;
+  byCategory: { category: ReportCategory; resolved: number; median_days: number | null; open: number }[];
+}
 
 export default function ReportQueuePage() {
+  return <Suspense fallback={<SkeletonList rows={3} />}><LaporWorkspace /></Suspense>;
+}
+
+function LaporWorkspace() {
+  const search = useSearchParams();
+  const router = useRouter();
+  const tab = search.get('tab') === 'cases' || search.has('ref') ? 'cases' : 'reports';
+  const reference = search.get('ref');
+  return <>
+    <PageHeader title="Lapor" description="Manage community reports and non-parcel cases." />
+    <Tabs label="Lapor" value={tab} onChange={(value) => router.push(`/console/reports?tab=${value}`, { scroll: false })} items={[
+      { key: 'reports', label: 'Community reports' }, { key: 'cases', label: 'Gate & community cases' },
+    ]} />
+    <TabPanel>
+      {tab === 'reports' ? <CommunityReports /> : <IncidentBoard key={search.toString()} modules={COMMUNITY_MODULES} openRef={reference && /^INC-\d+$/.test(reference) ? reference : null} />}
+    </TabPanel>
+  </>;
+}
+
+function CommunityReports() {
   const [status, setStatus] = useState<ReportStatus>('NEW');
   const reports = usePaged<Report>(`/reports?status=${status}&limit=15`);
+  const stats = useApi<ReportStats>('/reports/stats');
   const [open, setOpen] = useState<Report | null>(null);
 
+  const done = () => {
+    setOpen(null);
+    void reports.reload();
+    void stats.mutate();
+  };
   const update = useAction((id: string, body: Record<string, unknown>) => api.patch(`/reports/${id}`, body), {
-    success: 'Report updated. The resident has been told.',
-    onSuccess: () => {
-      setOpen(null);
-      void reports.reload();
-    },
+    success: 'Report updated. Everyone following it has been told.',
+    onSuccess: done,
   });
+  const fixedPhoto = useAction(
+    async (id: string, file: File) => {
+      const data = new FormData();
+      data.set('photo', await shrinkPhoto(file), 'photo.jpg');
+      return api.post(`/reports/${id}/fixed-photo`, data);
+    },
+    { success: 'Photo of the fix added.', onSuccess: done },
+  );
+  const closed = open?.status === 'RESOLVED' || open?.status === 'REJECTED';
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = Object.fromEntries(new FormData(event.currentTarget)) as Record<string, string>;
-    void update.run(open!.id, { status: form.status, category: form.category, urgency: form.urgency, staffNote: form.staffNote || undefined });
+    void update.run(open!.id, {
+      status: form.status,
+      category: form.category,
+      urgency: form.urgency,
+      staffNote: form.staffNote || undefined,
+      // A closed report keeps who fixed it and when it was due.
+      ...(closed ? {} : { assignedTo: form.assignedTo ?? '', targetDate: form.targetDate || null }),
+    });
   };
-  const closed = open?.status === 'RESOLVED' || open?.status === 'REJECTED';
+  const s = stats.data;
 
   return (
     <>
-      <PageHeader title="Reports" description="Residents’ reports for this township. The type and urgency are suggestions: correct them whenever they are wrong. Every correction is logged." />
-      <Tabs<ReportStatus> label="Report status" value={status} onChange={setStatus} items={REPORT_STATUSES.map((s) => ({ key: s, label: STATUS_LABELS[s] }))} />
+
+      <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <Stat label="Open reports" value={s?.open ?? 0} icon={ClipboardList} hint={s?.withTargetPct != null ? `${s.withTargetPct}% have a target date` : 'None open'} />
+        <Stat label="Past their target date" value={s?.late ?? 0} icon={TriangleAlert} tone={s?.late ? 'danger' : 'brand'} hint="Residents see these as late." />
+        <Stat label="Duplicate reports avoided" value={s?.duplicatesAvoided ?? 0} icon={ThumbsUp} tone="gold" hint="“Me too” taps, last 90 days" />
+        <Stat
+          label="Median time to fix"
+          value={s?.medianDaysToFix != null ? `${s.medianDaysToFix} d` : '–'}
+          icon={Timer}
+          hint={s?.medianHoursToCheck != null ? `Checked within ${s.medianHoursToCheck} h · ${s.resolved90d} fixed in 90 days` : 'No fixes in the last 90 days'}
+        />
+      </div>
+
+      <Tabs<ReportStatus> label="Report status" value={status} onChange={setStatus} items={REPORT_STATUSES.map((st) => ({ key: st, label: STATUS_LABELS[st] }))} />
       <TabPanel>
         {reports.error ? (
           <ErrorState error={reports.error} onRetry={() => void reports.reload()} />
@@ -50,20 +115,30 @@ export default function ReportQueuePage() {
         ) : (
           <ul className="space-y-3">
             {[...reports.items]
-              .sort((a, b) => URGENCIES.indexOf(b.urgency) - URGENCIES.indexOf(a.urgency))
+              // Late first, then the ones that affect most people, then the most urgent.
+              .sort((a, b) => Number(b.late) - Number(a.late) || b.affected - a.affected || URGENCIES.indexOf(b.urgency) - URGENCIES.indexOf(a.urgency))
               .map((report) => (
                 <li key={report.id}>
                   <button type="button" onClick={() => setOpen(report)} className="lift block w-full rounded-lg border border-ink-200 bg-white p-5 text-left shadow-xs">
                     <div className="flex flex-wrap items-center gap-2">
                       <UrgencyBadge urgency={report.urgency} />
+                      <LateBadge late={report.late} />
+                      <AffectedBadge affected={report.affected} />
                       <span className="text-sm font-semibold text-ink-900"><Text>{categoryLabel(report.category)}</Text></span>
                       {report.zone_name && <span className="text-sm text-ink-500">· <Text>{report.zone_name}</Text></span>}
                       <span className="ml-auto text-xs text-ink-500"><Text>{timeAgo(report.created_at)}</Text></span>
                     </div>
                     <p className="mt-2 line-clamp-2 text-[15px] text-ink-700">{report.description}</p>
-                    <p className="mt-2 inline-flex items-center gap-1.5 text-sm text-ink-500">
-                      <MapPin className="size-4" aria-hidden />
-                      {report.location_text}
+                    <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-ink-500">
+                      <span className="inline-flex items-center gap-1.5"><MapPin className="size-4" aria-hidden />{report.location_text}</span>
+                      {(report.assigned_to || report.target_date) && (
+                        <span className="inline-flex items-center gap-1.5">
+                          <CalendarClock className="size-4" aria-hidden />
+                          {report.assigned_to}
+                          {report.assigned_to && report.target_date && ' · '}
+                          {report.target_date}
+                        </span>
+                      )}
                     </p>
                   </button>
                 </li>
@@ -76,6 +151,23 @@ export default function ReportQueuePage() {
           </div>
         )}
       </TabPanel>
+
+      {s && s.byCategory.length > 0 && (
+        <Card className="mt-6">
+          <CardHeader title="Time to fix by type" description="Median days from report to fixed, last 90 days." />
+          <ul className="divide-y divide-ink-100">
+            {s.byCategory.map((c) => (
+              <li key={c.category} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 text-[15px]">
+                <span className="font-semibold text-ink-900"><Text>{REPORT_CATEGORY_LABELS[c.category]}</Text></span>
+                <span className="text-ink-600">
+                  <Text>{`${c.open} open`}</Text> · <Text>{`${c.resolved} fixed`}</Text>
+                  {c.median_days != null && <> · <Text>{`median ${c.median_days} days`}</Text></>}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       <Modal
         open={open !== null}
@@ -95,6 +187,8 @@ export default function ReportQueuePage() {
             <div className="flex flex-wrap gap-2">
               <StatusBadge status={open.status} />
               <UrgencyBadge urgency={open.urgency} />
+              <LateBadge late={open.late} />
+              <AffectedBadge affected={open.affected} />
             </div>
             <p className="whitespace-pre-line text-[15px] text-ink-700">{open.description}</p>
             <ReportPhoto report={open} />
@@ -104,6 +198,7 @@ export default function ReportQueuePage() {
                 <span><Text>Suggested by </Text><Text>{open.ai_source === 'MODEL' ? 'the AI photo and text check' : 'keyword rules'}</Text>: <strong><Text>{REPORT_CATEGORY_LABELS[open.ai_category]}</Text></strong>, <strong><Text>{URGENCY_LABELS[open.ai_urgency!].toLowerCase()}</Text></strong><Text> urgency. You can change either below.</Text></span>
               </p>
             )}
+            <ReportProgress report={open} />
             <form method="post" id="report-update" key={open.id} onSubmit={submit} className="grid gap-4 sm:grid-cols-3">
               <Select label="Type" name="category" defaultValue={open.category}>
                 {REPORT_CATEGORIES.map((c) => (
@@ -120,15 +215,32 @@ export default function ReportQueuePage() {
                 ))}
               </Select>
               <Select label="Status" name="status" defaultValue={open.status} disabled={closed} hint={closed ? 'This report is closed.' : 'The resident earns XP once it is in progress or resolved.'}>
-                {REPORT_STATUSES.map((s) => (
-                  <option key={s} value={s}>
-                    <Text>{STATUS_LABELS[s]}</Text>
+                {REPORT_STATUSES.map((st) => (
+                  <option key={st} value={st}>
+                    <Text>{STATUS_LABELS[st]}</Text>
                   </option>
                 ))}
               </Select>
               {closed && <LocalizedInput type="hidden" name="status" value={open.status} />}
-              <Textarea label="Note to the resident (optional)" name="staffNote" defaultValue={open.staff_note ?? ''} maxLength={500} className="sm:col-span-3" />
+              <Input label="Who is fixing it" name="assignedTo" defaultValue={open.assigned_to ?? ''} maxLength={80} placeholder="e.g. Landscape contractor" className="sm:col-span-2" disabled={closed} />
+              <Input label="Target date" name="targetDate" type="date" defaultValue={open.target_date ?? ''} disabled={closed} hint="Residents see this date." />
+              <Textarea label="Note to residents (optional)" name="staffNote" defaultValue={open.staff_note ?? ''} maxLength={500} className="sm:col-span-3" hint="Everyone following the report sees it." />
             </form>
+            <FixedPhoto report={open} />
+            <label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-md border border-dashed border-ink-300 px-4 py-3 text-[15px] text-ink-700 transition-colors duration-200 hover:border-brand-500 hover:bg-brand-50/40 focus-within:border-brand-500">
+              <Camera className="size-5 shrink-0 text-ink-500" aria-hidden />
+              <span className="min-w-0 flex-1"><Text>{fixedPhoto.pending ? 'Uploading…' : open.fixed_photo_id ? 'Replace the photo of the fix' : 'Add a photo of the fix'}</Text></span>
+              <LocalizedInput
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                capture="environment"
+                className="sr-only"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) void fixedPhoto.run(open.id, file);
+                }}
+              />
+            </label>
           </div>
         )}
       </Modal>

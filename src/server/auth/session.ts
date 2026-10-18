@@ -33,12 +33,15 @@ export function readSessionToken(cookieHeader: string | null): string | null {
   return null;
 }
 
-export async function createSession(q: Queryable, userId: string, now: Date): Promise<string> {
+/** Courier sessions are short: a stolen phone or login stops working within a shift, and federated couriers sign in through their company again. */
+export const COURIER_SESSION_HOURS = 12;
+
+export async function createSession(q: Queryable, userId: string, now: Date, ttlHours = getConfig().SESSION_TTL_HOURS): Promise<string> {
   const token = newToken();
   await q.query(
     `INSERT INTO sessions (token_hash, user_id, created_at, last_seen_at, expires_at)
      VALUES ($1, $2, $3, $3, $3::timestamptz + make_interval(hours => $4))`,
-    [hashToken(token), userId, now, getConfig().SESSION_TTL_HOURS],
+    [hashToken(token), userId, now, ttlHours],
   );
   return token;
 }

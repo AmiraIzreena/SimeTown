@@ -49,6 +49,12 @@ export async function getSettings(q: Queryable): Promise<Settings> {
   return (await one<Settings>(q, `SELECT ${SETTINGS_COLUMNS.join(', ')} FROM program_settings`))!;
 }
 
+/** Today's date in the township's timezone, as "2026-11-02". */
+export async function todayIn(q: Queryable, now: Date): Promise<string> {
+  const tz = (await getSettings(q)).timezone;
+  return (await one<{ d: string }>(q, `SELECT ($1::timestamptz AT TIME ZONE $2)::date::text AS d`, [now, tz]))!.d;
+}
+
 /** SQL for "start of the current day / month in the township's timezone", given ($now, $tz) placeholders. */
 export const startOf = (unit: 'day' | 'month', now: string, tz: string) =>
   `(date_trunc('${unit}', ${now}::timestamptz AT TIME ZONE ${tz}) AT TIME ZONE ${tz})`;

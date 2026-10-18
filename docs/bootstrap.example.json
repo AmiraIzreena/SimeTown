@@ -1,7 +1,11 @@
 {
   "township": "Example Township",
   "zones": [
-    { "name": "Zone A", "safeRoute": "Leave by the main road towards the north gate.", "assemblyPoint": "Community hall" }
+    {
+      "name": "Zone A",
+      "safeRoute": "Leave by the main road towards the north gate.",
+      "assemblyPoint": "Community hall"
+    }
   ],
   "homes": [
     {

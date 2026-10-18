@@ -56,20 +56,33 @@ export async function createPass(db: Db, actor: Actor, input: PassInput, now: Da
     await tx.query('SELECT id FROM homes WHERE id = $1 FOR UPDATE', [resident.homeId]);
     const live = await one<{ n: number }>(tx, `SELECT count(*)::int AS n FROM visitor_passes WHERE home_id = $1 AND status = 'ACTIVE' AND valid_until > $2`, [resident.homeId, now]);
     if (live!.n >= MAX_LIVE_PASSES_PER_HOME) throw ruleViolation('TOO_MANY_PASSES', 'Your home has many live passes. Cancel some you no longer need first.');
-    const token = newToken();
-    // A short code for the guard to type, printed under the QR code. Retried on the rare clash.
-    for (let attempt = 0; attempt < 5; attempt++) {
-      const code = `P${randomCode(7)}`;
-      const row = await one<{ id: string }>(
-        tx,
-        `INSERT INTO visitor_passes (township_id, home_id, host_user_id, type, visitor_name, vehicle_no, code, token_hash, valid_from, valid_until, max_entries, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) ON CONFLICT (code) DO NOTHING RETURNING id`,
-        [resident.townshipId, resident.homeId, resident.id, input.type, input.visitorName, input.vehicleNo?.toUpperCase() || null, code, hashToken(token), input.validFrom, input.validUntil, info.entries, now],
-      );
-      if (row) return { id: row.id, code, token };
-    }
-    throw conflict('TRY_AGAIN', 'Please try again.');
+    return insertPass(tx, { townshipId: resident.townshipId, homeId: resident.homeId, hostUserId: resident.id, ...input }, now);
   });
+}
+
+/**
+ * Writes a pass with a fresh link and gate code. Also used when SimeTown makes
+ * a pass for the household, such as for a recycling collector they booked.
+ */
+export async function insertPass(
+  tx: Queryable,
+  input: PassInput & { townshipId: string; homeId: string; hostUserId: string },
+  now: Date,
+): Promise<{ id: string; code: string; token: string }> {
+  const info = PASS_TYPE_INFO[input.type];
+  const token = newToken();
+  // A short code for the guard to type, printed under the QR code. Retried on the rare clash.
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const code = `P${randomCode(7)}`;
+    const row = await one<{ id: string }>(
+      tx,
+      `INSERT INTO visitor_passes (township_id, home_id, host_user_id, type, visitor_name, vehicle_no, code, token_hash, valid_from, valid_until, max_entries, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) ON CONFLICT (code) DO NOTHING RETURNING id`,
+      [input.townshipId, input.homeId, input.hostUserId, input.type, input.visitorName, input.vehicleNo?.toUpperCase() || null, code, hashToken(token), input.validFrom, input.validUntil, info.entries, now],
+    );
+    if (row) return { id: row.id, code, token };
+  }
+  throw conflict('TRY_AGAIN', 'Please try again.');
 }
 
 /** A fresh link for a pass (the old one stops working), for sharing it again. */

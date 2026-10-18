@@ -40,7 +40,7 @@ interface ActionInput {
   now: Date;
   /**
    * The action was checked by something stronger than the resident's own word (a signed
-   * machine record, a tracked trip, a read bill, a scanned garden code), so it may earn
+   * machine record, a tracked trip, a read bill), so it may earn
    * offer-backed points. Off by default.
    */
   offerEligible?: boolean;

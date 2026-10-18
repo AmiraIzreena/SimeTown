@@ -4,7 +4,7 @@ import { LEGAL } from '@/shared/legal';
 import { one, type Db, type Queryable } from '../../db/client';
 import { assertTownshipAccess, type Actor } from '../../auth/actor';
 import { hashPassword, verifyPassword } from '../../auth/password';
-import { ACTOR_COLUMNS, createSession, hashToken, newToken, toActor } from '../../auth/session';
+import { ACTOR_COLUMNS, COURIER_SESSION_HOURS, createSession, hashToken, newToken, toActor } from '../../auth/session';
 import { conflict, forbidden, notFound, ruleViolation, unauthorized } from '../../errors';
 import { decodeCursor, toPage, type PageQuery } from '../../http/pagination';
 import { audit } from '../audit';
@@ -80,7 +80,7 @@ export async function login(db: Db, input: { email: string; password: string }, 
   if (!(await verifyPassword(input.password, row?.password_hash ?? null)) || !row) {
     throw unauthorized('The email or password is not correct.');
   }
-  return { token: await createSession(db, row.id, now), actor: toActor(row) };
+  return { token: await createSession(db, row.id, now, row.role === 'COURIER' ? COURIER_SESSION_HOURS : undefined), actor: toActor(row) };
 }
 
 export async function changePassword(db: Db, actor: Actor, input: { current: string; next: string }, now: Date): Promise<string> {
@@ -200,7 +200,7 @@ export async function changeHome(db: Db, actor: Actor, input: { homeId: string; 
 
 const INVITE_DAYS = 7;
 
-async function issueInvite(tx: Queryable, userId: string, createdBy: string, now: Date): Promise<string> {
+export async function issueInvite(tx: Queryable, userId: string, createdBy: string, now: Date): Promise<string> {
   const token = newToken();
   await tx.query('DELETE FROM user_invites WHERE user_id = $1', [userId]);
   await tx.query(
@@ -427,7 +427,7 @@ export async function acceptInvite(db: Db, input: { token: string; password: str
     const row = await one<Parameters<typeof toActor>[0]>(tx, `SELECT ${ACTOR_COLUMNS} FROM users u WHERE u.id = $1 AND u.status = 'ACTIVE'`, [invite.user_id]);
     if (!row) throw ruleViolation('INVITE_INVALID', 'This account is no longer active.');
     await audit(tx, row.id, 'INVITE_ACCEPTED', 'user', row.id);
-    return { token: await createSession(tx, row.id, now), actor: toActor(row) };
+    return { token: await createSession(tx, row.id, now, row.role === 'COURIER' ? COURIER_SESSION_HOURS : undefined), actor: toActor(row) };
   });
 }
 

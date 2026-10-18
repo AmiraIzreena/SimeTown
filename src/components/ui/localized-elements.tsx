@@ -28,6 +28,7 @@ export const LocalizedSelect = localized('select');
 export const LocalizedSvg = localized('svg');
 export const LocalizedTextarea = localized('textarea');
 export const LocalizedTd = localized('td');
+export const LocalizedUl = localized('ul');
 
 export function LocalizedLink(props: ComponentPropsWithRef<typeof Link>) {
   const t = useT();

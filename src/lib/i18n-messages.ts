@@ -1534,7 +1534,7 @@ export const malay: Record<string, string> = {
   "Scan a visitor pass": "Imbas pas pelawat",
   "Scan a visitor's pass; the host is told at once": "Imbas pas pelawat; tuan rumah dimaklumkan serta-merta",
   "Scan the code at each point on the round. Today’s checks are shown.": "Imbas kod pada setiap titik rondaan. Semakan hari ini dipaparkan.",
-  "Scan the code on the garden gate after watering. It earns Impact XP and offer-backed points.": "Imbas kod pintu kebun selepas menyiram untuk memperoleh XP Impak dan mata bersandarkan tawaran.",
+  "Scan the code on the garden gate after watering. It earns Impact XP.": "Imbas kod pintu kebun selepas menyiram untuk memperoleh XP Impak.",
   "Scan the garden's code after watering": "Imbas kod kebun selepas menyiram",
   "Scan the poster with your camera, or type the code printed under it.": "Imbas poster dengan kamera atau taip kod di bawahnya.",
   "Scan visitor passes, log walk-ins and answer SOS calls. Record a name, vehicle number and house only: never an identity card.": "Imbas pas pelawat, rekod pelawat tanpa pas dan jawab SOS. Rekod nama, nombor kenderaan dan rumah sahaja: bukan kad pengenalan.",

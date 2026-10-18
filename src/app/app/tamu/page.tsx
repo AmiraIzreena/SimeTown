@@ -2,9 +2,10 @@
 
 import { Text } from '@/components/ui/localized-text';
 
-import { Copy, DoorOpen, LifeBuoy, MessageCircle, Send, ShieldCheck, UserRound } from 'lucide-react';
+import { Copy, DoorOpen, Flag, LifeBuoy, MessageCircle, Send, ShieldCheck, UserRound } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { AksesPage, AksesReadAloud, useAksesMode } from '@/components/features/akses-mode';
+import { ReportProblemDialog } from '@/components/features/report-problem';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, PageHeader } from '@/components/ui/card';
 import { ConfirmDialog, Modal } from '@/components/ui/dialog';
@@ -127,6 +128,7 @@ export default function TamuPage() {
     }
   };
 
+  const [gateReport, setGateReport] = useState(false);
   const link = issued ? `${window.location.origin}/pass/${issued.token}` : '';
   const message = issued ? `Salam! Here is your visitor pass for City of Elmina. Show the QR code at the main gate: ${link}` : '';
   const spokenSummary = overview.data
@@ -144,10 +146,15 @@ export default function TamuPage() {
               <LifeBuoy className="size-5" aria-hidden />
               {t('SOS to the guardhouse')}
             </Button>
+            <Button size="lg" variant="secondary" onClick={() => setGateReport(true)}>
+              <Flag className="size-5" aria-hidden />
+              <Text>Report a gate problem</Text>
+            </Button>
             <AksesReadAloud profile={akses.profile} text={spokenSummary} />
           </div>
         }
       />
+      <ReportProblemDialog open={gateReport} onClose={() => setGateReport(false)} context="GATE" subtitle="A courier or visitor turned away, someone let in who should not be, or a safety concern. For an emergency, use SOS." />
       <div className="space-y-6">
         {overview.data?.sos && (
           <Card className="border-accent-200 bg-accent-50 p-5 text-[15px] text-accent-700">

@@ -11,6 +11,18 @@ export function Skeleton({ className }: { className?: string }) {
   return <div aria-hidden className={cn('skeleton h-4', className)} />;
 }
 
+/** Reserves the heading, fields and action space of a loading form. */
+export function SkeletonForm() {
+  return <LocalizedDiv role="status" aria-label="Loading" className="glass-surface rounded-xl border p-5 shadow-sm">
+    <Skeleton className="h-5 w-1/3" />
+    <Skeleton className="mt-3 w-2/3" />
+    <div aria-hidden className="mt-6 grid gap-4 sm:grid-cols-2">
+      {[0, 1].map((field) => <div key={field}><Skeleton className="mb-2 w-24" /><Skeleton className="h-11 w-full" /></div>)}
+    </div>
+    <Skeleton className="mt-5 h-11 w-32" />
+  </LocalizedDiv>;
+}
+
 /** A stand-in for a list or a row of cards while they load. */
 export function SkeletonList({ rows = 4, className }: { rows?: number; className?: string }) {
   return (

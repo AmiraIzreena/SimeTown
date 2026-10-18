@@ -1,0 +1,1323 @@
+diff --git a/README.md b/README.md
+index c89751f..45dec28 100644
+--- a/README.md
++++ b/README.md
+@@ -122,8 +122,8 @@ Open two browser windows (one normal, one private) so you can be the resident an
+ 
+ ### The hackathon brief's PEOPLE and PLANET problems
+ 
+-16. **One reporting channel.** As Aisyah, open *My requests*: every report, parcel and collection
+-    in one list, with where it stands. In *Lapor*, start a report about a blocked drain
++16. **One reporting channel.** As Aisyah, open *My requests*: every report, parcel, collection and
++    parking booking in one list, with where it stands. In *Lapor*, start a report about a blocked drain
+     behind Jalan Metafasa: the open report appears under *Already reported?*; tap *Me too* instead of
+     filing a second one. As staff, *Reports* shows the duplicates avoided, reports past their target
+     date and the median time to fix; set who is fixing a report and by when, and add a photo of the fix.
+@@ -131,26 +131,29 @@ Open two browser windows (one normal, one private) so you can be the resident an
+     U16/171 with a shelf and a photo. Aisyah's *Parcels* screen shows the one-time code (and its QR).
+     Scan or type it at the guard's screen, check the photo, hand it over: the code stops working.
+     *Not me?* queries a handover; staff see the time to collect and the queried handovers.
+-18. **Recycling guide and collections.** In *Kitar*, type “minyak” or “pizza box” under *Can I recycle
++18. **Guided parking.** In *Parking*, see which car park at Elmina Central Park has room (occupancy is
++    simulated, and says so), tap *Guide me there*, then *I have parked*; or book one of the held-back bays.
++    Staff compare minutes to find a bay with and without guidance.
++19. **Recycling guide and collections.** In *Kitar*, type “minyak” or “pizza box” under *Can I recycle
+     this?*, then *Book a collection* with a partner collector. Staff confirm it under *Recycling
+     collections* (the collector's gate pass is made automatically) and record the weight.
+-19. **Solar sites, greener materials, the edging trial.** As staff, *Solar sites* ranks rooftops and car
++20. **Solar sites, greener materials, the edging trial.** As staff, *Solar sites* ranks rooftops and car
+     parks and flags missing checks; *Greener materials* compares materials for one use (sample library),
+     asks the agent to explain, saves a timed shortlist, and follows the recycled-plastic edging trial.
+ 
+ ### Smart parcel lockers
+ 
+-20. **Deliver.** As the courier, open *Deliver*, choose *Elmina Valley Locker A*, type a tracking
++21. **Deliver.** As the courier, open *Deliver*, choose *Elmina Valley Locker A*, type a tracking
+     number, pick a size and give Aisyah's delivery code (her wallet → *Show my code*). The smallest
+     free door opens; tap *Shut the door with the parcel inside* (a simulated station). Aisyah is told.
+-21. **Collect.** As Aisyah, *Parcels* shows the QR code, the PIN and the time left. Type the PIN on
++22. **Collect.** As Aisyah, *Parcels* shows the QR code, the PIN and the time left. Type the PIN on
+     the station's keypad in the console's simulator, or enter the station code in the app and tap
+     *Open my door*, then *Take it and shut the door*.
+-22. **Overdue and relocation.** As staff, *Smart lockers → Relocations* has Priya's overdue parcel.
++23. **Overdue and relocation.** As staff, *Smart lockers → Relocations* has Priya's overdue parcel.
+     Start it (choose the township office counter), scan its tracking number, shut the empty door and
+     complete it: her code changes and she is told where to go. Hand it over under *Counter* after
+     checking the code and ID. *Parcels* shows every state change and the custody chain.
+-23. **Full station and hardware faults.** In the simulator, jam a door or take the station offline,
++24. **Full station and hardware faults.** In the simulator, jam a door or take the station offline,
+     then try a delivery: nothing is confirmed and the courier is told what to do. The *Overview*,
+     *Forecast* and *Policy* tabs show capacity, tomorrow's demand and the deadlines.
+ 
+@@ -160,29 +163,29 @@ J&T Express, Ninja Van and Shopee Express here are **simulated**: SimeTown is no
+ courier company, and every tracking number (`JTSIM…`, `NVSIM…`, `SPXSIM…`) is fictional. Open
+ `/demo/labels` on a computer to see the labels (scannable with a phone's camera, or type the number).
+ 
+-24. **Barcode first.** As Faizal (`courier@`), *Deliver* → *Elmina Valley Locker A*, scan or type
++25. **Barcode first.** As Faizal (`courier@`), *Deliver* → *Elmina Valley Locker A*, scan or type
+     `JTSIM10000001`. J&T (simulated) confirms the shipment and that Faizal carries it (high
+     assurance); SimeTown matches Aisyah by phone, name and address and shows her details masked. No
+     delivery code is needed and no township admin approved Faizal: J&T's manager added him. *Open a
+-    locker*, shut the door with the parcel inside; Aisyah is told and collects with her PIN as in step 21.
+-25. **Replays and copied labels.** Scan `JTSIM10000001` again: *Already delivered*, no door opens,
++    locker*, shut the door with the parcel inside; Aisyah is told and collects with her PIN as in step 22.
++26. **Replays and copied labels.** Scan `JTSIM10000001` again: *Already delivered*, no door opens,
+     the attempt is logged and staff see an incident. `JTSIM10000009` is already in a locker (same
+     result). `JTSIM10000008` is carried by another courier: refused, a high-severity incident.
+     `JTSIM99999999` is unknown to J&T, `JTSIM10000004` is being delivered by Hairul,
+     `JTSIM10000005` names someone who does not live at the address, `JTSIM10000006` goes to an
+     unregistered home, and `JTSIM10000007` needs a signature: each is refused for its own reason.
+-26. **Medium assurance, outage and fallback.** As Nurul (`nurul@`), `NVSIM20000001` is verified for
++27. **Medium assurance, outage and fallback.** As Nurul (`nurul@`), `NVSIM20000001` is verified for
+     Daniel by address and name; Ninja Van cannot say who carries it (medium assurance). As admin,
+     *Couriers & companies* → Ninja Van → *Simulate an outage*; Nurul scans `NVSIM20000003`, and may
+     use Mei Ling's delivery code instead (recorded as low assurance).
+-27. **The company manages its couriers.** As Kavitha (`jnt-manager@`), *Team*: add a courier with a
++28. **The company manages its couriers.** As Kavitha (`jnt-manager@`), *Team*: add a courier with a
+     staff number (they get a set-password link), suspend Hairul (his session ends at once), reconfirm
+     Faizal. As Ahmad (`courier2@`), *Deliver* says Ninja Van has suspended him.
+-28. **Signing in through the company.** Signed out, choose *Shopee Express (simulated sign-in)* on
++29. **Signing in through the company.** Signed out, choose *Shopee Express (simulated sign-in)* on
+     the sign-in page, pick Lim Wei Jie (`SPX-3001`) and the demo password: SimeTown checks the
+     company's signed token and creates his courier account on first sign-in. `SPX-3002` is refused
+     by the company itself. `SPXSIM30000001` is matched by the delivery code Zainab gave the shop.
+-29. **Staff.** As admin: *Couriers & companies* (approve, suspend, stations, agreement, assurance,
++30. **Staff.** As admin: *Couriers & companies* (approve, suspend, stations, agreement, assurance,
+     representatives, access history), *Shipment checks* (every scan and its outcome, repeated scans,
+     each company's system health, and the simulated companies' shipments and staff to change), and
+     *Cases* (how many locker and courier cases are open, with a link to them in *Incidents & reports*;
+@@ -200,23 +203,23 @@ handling it and a deadline, and the system escalates what nobody takes or what r
+ already filtered. Residents follow their
+ reports under *Parcels → My reports*. The courier companies' support channels are simulated.
+ 
+-30. **A. A late parcel belongs to the courier.** As Aisyah, *Parcels* → *A parcel hasn't arrived?*,
++31. **A. A late parcel belongs to the courier.** As Aisyah, *Parcels* → *A parcel hasn't arrived?*,
+     choose *My parcel is late* and enter `JTSIM10000002`. J&T (simulated) confirms it is hers and on
+     its way, so SimeTown shows J&T's support channel and the tracking number to copy. No township
+     case is opened and no staff member is told. (*Send it to J&T for me* files a simulated ticket.)
+-31. **B. A locker door will not open.** As Aisyah, on a parcel waiting in a locker, *Report a
++32. **B. A locker door will not open.** As Aisyah, on a parcel waiting in a locker, *Report a
+     problem* → *The door will not open*. It becomes a township case at once, with the locker's
+     door history attached. Staff work it under *Incidents & reports*; *Smart lockers → Today* lists
+     it as urgent and *Smart lockers → Cases* counts it, both linking there.
+-32. **C. A critical case escalates.** As admin (Nurul Huda, `admin@`), *Incidents & reports*: the
++33. **C. A critical case escalates.** As admin (Nurul Huda, `admin@`), *Incidents & reports*: the
+     door forced open at Locker A 25 minutes ago is critical, nobody has taken it, and the admins have
+     already been told. Running the checks again (*Deadlines* → *Run the deadline checks now*) does
+     not tell them twice.
+-33. **D. "I didn't collect this."** As Aisyah, on a collected locker parcel, *Report* → *I didn’t
++34. **D. "I didn't collect this."** As Aisyah, on a collected locker parcel, *Report* → *I didn’t
+     collect this*. SimeTown first shows what its records say (how the door was opened); *Please
+     investigate* opens a case. An earlier dispute of hers is already resolved under *My reports*,
+     with the outcome and *Not fixed? Reopen it*.
+-34. **E. Moving a case.** Daniel's locker door would not open; Ravi (`staff@`) took it and is
++35. **E. Moving a case.** Daniel's locker door would not open; Ravi (`staff@`) took it and is
+     investigating. As admin, open it and *Reassign* → Mei Chen, with a reason. The history keeps
+     both, and Mei Chen is told. A new case shows *I’ll handle this*; if two staff press it at once,
+     only one gets the case.
+@@ -235,10 +238,11 @@ reports under *Parcels → My reports*. The courier companies' support channels
+ | People | Akses+ | Private access needs with consent, Simple Mode, read-aloud, flashing alerts, carer links, step-free places, priority help list for floods |
+ | People | Jiran | Events with places, help board, XP when the organiser or asker confirms |
+ | People | Lapor | Report with photo, suggested type and urgency, staff queue, access-barrier type; live progress (checked, assigned with a target date, fixed with a photo), late flags, “Me too” instead of duplicate reports, time-to-fix figures |
+-| People | My requests | One list of everything a household is waiting on: reports, parcels and collections, each with its next step; the Assistant can read it |
++| People | My requests | One list of everything a household is waiting on: reports, parcels, collections and parking, each with its next step; the Assistant can read it |
+ | People | Parcels | Guard logs parcels with shelf and photo; the household gets a one-time code (and QR) the guard never sees; handover only against the code; “Not me?” queries; reminders after three days; 90-day deletion |
+ | People | Courier platform | Courier companies approved once per township; their own managers or their own sign-in (OpenID Connect) add and suspend couriers; the label's barcode checked with the (simulated) company; households matched automatically and shown masked; a shipment deposited once, ever; signed, expiring, single-use unlocks; incidents, staff exceptions with a second approver, a risk register |
+ | People | Smart lockers | Multi-courier delivery with approval per station, recipient verification without revealing residents, smallest-fitting door allocated atomically, one-time pickup PIN or QR (never stored), reminders outside quiet hours, staffed relocation with a custody chain, overflow counters, live capacity, a plain forecast, an interactive simulator and a signed hardware gateway contract |
++| People | Parking | Busy places and their car parks, simulated occupancy, guidance to the car park with most room, free pre-booked bays, timed searches with and without guidance |
+ | People | Gerak | Live map tracking with checkpoints that tick themselves, speed bands, near-home trimming, 30-day route deletion; QR checkpoints as the backup; demo playback |
+ | Planet | Kitar | Smart machine: rotating screen code, SimeTown QR or guest, camera + barcode + weight agreement, signed records, guest claim codes; kiosk drop-off with a photo check as the backup; “Can I recycle this?” guide in English and Malay; collections booked with partner collectors, with the gate pass made on confirmation; material accepted by month and why machines turned items away |
+ | Planet | Kongsi | Give away and lend, XP on confirmed handover |
+diff --git a/docs/BUSINESS_RULES.md b/docs/BUSINESS_RULES.md
+index f10df46..fd328a3 100644
+--- a/docs/BUSINESS_RULES.md
++++ b/docs/BUSINESS_RULES.md
+@@ -42,7 +42,7 @@ and "Third edition" refer to `tests/ledger.test.ts`, `tests/api.test.ts`,
+ | BR32 | Access needs only with consent, seen only by the resident and duty staff in an emergency, deleted on request | `akses/service.ts` (`saveAccessProfile` refuses without consent, `deleteAccessProfile`); the priority list is returned by `banjir/agent.ts → checkinSummary` only while the zone is under an alert | Third edition: "stores access needs only with consent, and deletes them on request" |
+ | BR33 | "Me too" follows an open report instead of filing another; it earns no XP; a follower sees the progress and staff updates, never the reporter's words or photo | `reports/service.ts` (`setMeToo`, `similarReports`, `present`) | Brief: "lets a neighbour follow a report instead of filing another, without XP or the reporter's words" |
+ | BR34 | A parcel leaves the guardhouse only against its own one-time code, which only the household sees; the code then stops working; one reminder after three days; deleted 90 days after it leaves | `parcels/service.ts` (`logParcel`, `handOverParcel`, `sendParcelReminders`, `deleteOldParcels`); partial unique index on waiting codes | Brief: "hands a parcel over only against its one-time code…", "reminds once after three days, and deletes old parcels with their photos" |
+-| BR35 | *Retired:* guided parking was removed for now. Its rule and code are kept in `docs/archive/parking/` | – | – |
++| BR35 | Car park occupancy is simulated and always labelled; bookable bays are held back from the open ones and capped per car park and time; one booking per person per place and time | `parking/service.ts` (`simulatedOccupancy`, `bookBay`) | Brief: "books held-back bays up to the limit and times searches with and without guidance" |
+ | BR36 | A collection is booked only with a collector who takes every material; confirming it makes the collector's gate pass for that day; the weighed total earns XP and campaign points, never offer-backed points | `kitar/collections.ts` (`bookCollection`, `confirmCollection` → `tamu/service.ts → insertPass`, `completeCollection`) | Brief: "books a collector who takes the material, gives them a gate pass for the day…" |
+ | BR37 | Solar and material figures are estimates or samples, labelled as such; unchecked data lowers a solar site's score; the materials agent may use only the comparison table | `planet/solar.ts` (`SOLAR_ASSUMPTIONS`, `rankSites`), `planet/materials.ts` (`MATERIAL_LIBRARY`, `explainComparison`) | Brief: "ranks by output, demand and readiness, flags what is missing…", "checks each requirement, flags missing evidence and never invents data" |
+ | BR38 | A courier can deliver only with an approved account, an active company and access to that station; a station's QR code grants nothing | `lockers/couriers.ts → requireCourierAt`, `approveCourier`, `revokeCourier` | Lockers: "only an approved courier with access to the station can register, and duplicates are refused" |
+diff --git a/scripts/seed-tomorrow.ts b/scripts/seed-tomorrow.ts
+index e0802e3..2c7f6ca 100644
+--- a/scripts/seed-tomorrow.ts
++++ b/scripts/seed-tomorrow.ts
+@@ -3,6 +3,7 @@ import { ACTOR_COLUMNS, toActor } from '../src/server/auth/session';
+ import { one, type Db } from '../src/server/db/client';
+ import { bookCollection, completeCollection, confirmCollection, createCollector } from '../src/server/modules/kitar/collections';
+ import { handOverParcel, logParcel, myParcels } from '../src/server/modules/parcels/service';
++import { bookBay, createParkingArea, finishSearch, startSearch } from '../src/server/modules/parking/service';
+ import { edgingTrial, updateTrialTest } from '../src/server/modules/planet/edging';
+ import { saveShortlist } from '../src/server/modules/planet/materials';
+ import { createSolarSite } from '../src/server/modules/planet/solar';
+@@ -10,14 +11,15 @@ import { createReport, setMeToo, updateReport } from '../src/server/modules/repo
+ 
+ /**
+  * Demo data for the hackathon brief's PEOPLE and PLANET features: report
+- * progress and "Me too", parcels at the guardhouse, recycling collections,
+- * solar sites, a material shortlist and the edging trial. Safe to run again: it
+- * does nothing once the demo recycling collectors exist. People, businesses
++ * progress and "Me too", parcels at the guardhouse, guided parking, recycling
++ * collections, solar sites, a material shortlist and the edging trial. Safe to
++ * run again: it does nothing once the demo car parks exist. People, businesses
+  * and figures are invented; the site areas and ranks are demo values.
+  */
+ 
+ const DOMAIN = 'demo.kita.test';
+ const DAY = 86_400_000;
++const MIN = 60_000;
+ 
+ async function actorByEmail(db: Db, login: string): Promise<Actor | undefined> {
+   const row = await one<Parameters<typeof toActor>[0]>(db, `SELECT ${ACTOR_COLUMNS} FROM users u WHERE lower(u.email) = lower($1)`, [`${login}@${DOMAIN}`]);
+@@ -31,7 +33,7 @@ export async function seedTomorrow(db: Db, input: { now: Date; log: (line: strin
+   const { now, log } = input;
+   const township = await one<{ id: string }>(db, `SELECT id FROM townships WHERE name IN ('City of Elmina (demo data)', 'Taman KITA (demo township)', 'Taman SimeTown (demo township)') LIMIT 1`);
+   if (!township) return log('No demo township found; the brief features need the main seed first.');
+-  if (await one(db, 'SELECT 1 FROM recycling_collectors WHERE township_id = $1 LIMIT 1', [township.id])) return log('Brief features: demo data already there.');
++  if (await one(db, 'SELECT 1 FROM parking_areas WHERE township_id = $1 LIMIT 1', [township.id])) return log('Brief features: demo data already there.');
+   const people = await Promise.all(['aisyah', 'daniel', 'priya', 'hafiz', 'meiling', 'zainab', 'staff', 'admin', 'guard'].map((login) => actorByEmail(db, login)));
+   const [aisyah, daniel, priya, hafiz, meiling, zainab, staff, admin, guard] = people;
+   if (!aisyah || !daniel || !priya || !hafiz || !meiling || !zainab || !staff || !admin || !guard) return log('Some demo accounts are missing; the brief features were not seeded.');
+@@ -66,6 +68,22 @@ export async function seedTomorrow(db: Db, input: { now: Date; log: (line: strin
+   }
+   await parcel(meiling, 'GDex', 'C1', ago(1, 2));
+ 
++  // --- Parking at busy places ---------------------------------------------------------------
++  const north = await createParkingArea(db, admin, { place: 'Elmina Central Park', name: 'North car park', totalBays: 120, bookableBays: 10, lat: 3.175938, lng: 101.510051 });
++  await createParkingArea(db, admin, { place: 'Elmina Central Park', name: 'Lakeside car park', totalBays: 80, bookableBays: 0 });
++  const hall = await createParkingArea(db, admin, { place: 'Community hall', name: 'Hall car park', totalBays: 40, bookableBays: 8 });
++  await createParkingArea(db, admin, { place: 'Surau Elmina Gardens', name: 'Surau car park', totalBays: 30, bookableBays: 0 });
++  const searches: [Actor, boolean, number, number][] = [
++    [aisyah, true, 2, 3.5], [daniel, true, 3, 4.5], [priya, true, 5, 2.5], [hafiz, true, 6, 5],
++    [meiling, false, 2, 11], [zainab, false, 4, 9], [daniel, false, 7, 13], [priya, false, 8, 8.5],
++  ];
++  for (const [person, guided, days, minutes] of searches) {
++    const start = ago(days, 4);
++    const s = await startSearch(db, person, { place: 'Elmina Central Park', areaId: guided ? north.id : undefined, guided }, start);
++    await finishSearch(db, person, s.id, new Date(start.getTime() + minutes * MIN));
++  }
++  await bookBay(db, aisyah, { areaId: hall.id, day: dayOf(new Date(now.getTime() + DAY)), slot: 'EVENING', vehicleNo: 'WXY 1234' }, now);
++
+   // --- Recycling collections ----------------------------------------------------------------
+   const eWaste = await createCollector(db, admin, { name: 'Kitar Plus Recyclers', phone: '+60355550101', materials: ['E_WASTE', 'PAPER', 'ALUMINIUM'], days: 'Tue and Sat mornings', notes: 'Demo partner' });
+   await createCollector(db, admin, { name: 'Minyak Hijau Collectors', phone: '+60355550102', materials: ['COOKING_OIL', 'TEXTILE'], days: 'Every Thursday', notes: 'Demo partner' });
+@@ -95,7 +113,7 @@ export async function seedTomorrow(db: Db, input: { now: Date; log: (line: strin
+   if (trip) await updateTrialTest(db, staff, trip.id, { status: 'PASSED', resultRecycled: '8 to 12 mm above the path.', resultConventional: '10 to 15 mm above the path.' }, ago(5));
+   if (dims) await updateTrialTest(db, staff, dims.id, { status: 'RUNNING' }, ago(1));
+ 
+-  log('Brief features: report progress, parcels, recycling collections, solar sites and the edging trial added.');
++  log('Brief features: report progress, parcels, parking, recycling collections, solar sites and the edging trial added.');
+ }
+ 
+ /**
+@@ -144,5 +162,9 @@ export async function seedRequestShowcase(db: Db, input: { now: Date; log: (line
+     await confirmCollection(db, staff, booked.id, now);
+   }
+ 
++  // A parking bay booked for tomorrow morning.
++  const north = await one<{ id: string }>(db, `SELECT id FROM parking_areas WHERE name = 'North car park' LIMIT 1`);
++  if (north) await bookBay(db, daniel, { areaId: north.id, day: dayOf(new Date(now.getTime() + DAY)), slot: 'MORNING', vehicleNo: 'WVB 2210' }, now);
++
+   log('My requests showcase: Daniel Tan has every kind of request and every report step.');
+ }
+diff --git a/src/app/app/page.tsx b/src/app/app/page.tsx
+index f24cda7..8d38712 100644
+--- a/src/app/app/page.tsx
++++ b/src/app/app/page.tsx
+@@ -3,7 +3,7 @@
+ import { Text } from '@/components/ui/localized-text';
+ 
+ import {
+-  Accessibility, Bike, Bot, CalendarClock, DoorOpen, Droplets, HandHeart, Inbox, Package, PiggyBank, Recycle, Repeat2, Sparkles, Sprout, Tag, TriangleAlert, Wallet, Zap, type LucideIcon,
++  Accessibility, Bike, Bot, CalendarClock, DoorOpen, Droplets, HandHeart, Inbox, Package, PiggyBank, Recycle, Repeat2, Sparkles, Sprout, SquareParking, Tag, TriangleAlert, Wallet, Zap, type LucideIcon,
+ } from 'lucide-react';
+ import { LocalizedLink as Link } from '@/components/ui/localized-elements';
+ import { useState } from 'react';
+@@ -47,6 +47,7 @@ const ACTIONS: { href: string; label: string; text: string; icon: LucideIcon }[]
+   { href: '/app/parcels', label: 'Parcels', text: 'Parcels waiting at the guardhouse', icon: Package },
+   { href: '/app/lapor', label: 'Lapor', text: 'Report a problem', icon: TriangleAlert },
+   { href: '/app/requests', label: 'My requests', text: 'Everything your home is waiting on', icon: Inbox },
++  { href: '/app/parking', label: 'Parking', text: 'Find a bay at busy places', icon: SquareParking },
+   { href: '/app/jimat', label: 'Jimat', text: 'Read a bill or enter readings', icon: Zap },
+   { href: '/app/banjir', label: 'Banjir', text: 'Check flood levels', icon: Droplets },
+   { href: '/app/taman', label: 'Taman', text: 'Garden plots and wildlife', icon: Sprout },
+diff --git a/src/app/app/parking/page.tsx b/src/app/app/parking/page.tsx
+new file mode 100644
+index 0000000..bcc7f59
+--- /dev/null
++++ b/src/app/app/parking/page.tsx
+@@ -0,0 +1,236 @@
++'use client';
++
++import { Text } from '@/components/ui/localized-text';
++import { LocalizedDiv } from '@/components/ui/localized-elements';
++
++import { CalendarPlus, CircleParking, Navigation, Timer, X } from 'lucide-react';
++import { useEffect, useState, type FormEvent } from 'react';
++import { Button } from '@/components/ui/button';
++import { Badge, Card, CardHeader, PageHeader } from '@/components/ui/card';
++import { Modal } from '@/components/ui/dialog';
++import { Async, EmptyState, SkeletonList } from '@/components/ui/feedback';
++import { Input, Select } from '@/components/ui/field';
++import { api } from '@/lib/api';
++import { cn } from '@/lib/cn';
++import { formatDate } from '@/lib/format';
++import { useAction, useApi } from '@/lib/hooks';
++
++type Slot = 'MORNING' | 'AFTERNOON' | 'EVENING';
++interface Area {
++  id: string;
++  name: string;
++  totalBays: number;
++  bookableBays: number;
++  lat: number | null;
++  lng: number | null;
++  occupancyPct: number;
++  freeBays: number;
++  bookableLeftNow: number;
++  level: 'OK' | 'BUSY' | 'FULL';
++}
++interface Overview {
++  simulated: true;
++  slot: Slot;
++  places: { place: string; areas: Area[]; bestAreaId: string | null }[];
++}
++interface Booking {
++  id: string;
++  day: string;
++  slot: Slot;
++  vehicle_no: string;
++  code: string;
++  status: 'BOOKED' | 'CANCELLED';
++  place: string;
++  area: string;
++}
++
++const SLOTS: Record<Slot, string> = { MORNING: 'Morning (before 12 pm)', AFTERNOON: 'Afternoon (12 to 6 pm)', EVENING: 'Evening (after 6 pm)' };
++const LEVEL = {
++  OK: { label: 'Space', bar: 'bg-success-600', tone: 'success' as const },
++  BUSY: { label: 'Busy', bar: 'bg-gold-500', tone: 'gold' as const },
++  FULL: { label: 'Nearly full', bar: 'bg-accent-600', tone: 'danger' as const },
++};
++const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kuala_Lumpur' }).format(new Date());
++
++export default function ParkingPage() {
++  const overview = useApi<Overview>('/parking', { refreshInterval: 60_000 });
++  const bookings = useApi<Booking[]>('/parking/bookings');
++  const [search, setSearch] = useState<{ id: string; place: string; area: string | null; guided: boolean; started: number } | null>(null);
++  const [booking, setBooking] = useState<{ place: string; areas: Area[] } | null>(null);
++
++  const start = useAction(
++    async (place: string, area: Area | null, guided: boolean) => {
++      const r = await api.post<{ id: string }>('/parking/searches', { place, areaId: area?.id, guided });
++      return { ...r, place, area: area?.name ?? null, guided };
++    },
++    {
++      onSuccess: (r) => {
++        setSearch({ ...r, started: Date.now() });
++      },
++    },
++  );
++  const parked = useAction((id: string) => api.post<{ minutes: number }>(`/parking/searches/${id}/parked`), {
++    success: (r) => `Parked in ${r.minutes} min. Thank you: this helps the township plan parking.`,
++    onSuccess: () => setSearch(null),
++  });
++  const cancel = useAction((id: string) => api.post(`/parking/bookings/${id}/cancel`), { success: 'Booking cancelled.', onSuccess: () => void bookings.mutate() });
++
++  const guide = (place: string, area: Area) => {
++    void start.run(place, area, true);
++    if (area.lat !== null && area.lng !== null) {
++      window.open(`https://www.google.com/maps/dir/?api=1&destination=${area.lat},${area.lng}&travelmode=driving`, '_blank', 'noopener');
++    }
++  };
++
++  return (
++    <>
++      <PageHeader
++        title="Parking"
++        description="Going to the park, the community hall or the masjid at a busy time? See which car park has room and go straight there, or book one of the free bays held back for booking."
++      />
++      <div className="space-y-6">
++        {search && <SearchTimer search={search} pending={parked.pending} onParked={() => void parked.run(search.id)} onStop={() => setSearch(null)} />}
++
++        <Async state={overview} skeleton={<SkeletonList rows={3} />}>
++          {(o) =>
++            o.places.length === 0 ? (
++              <EmptyState icon={CircleParking} title="No car parks set up yet"><Text>The township team adds the busy car parks here.</Text></EmptyState>
++            ) : (
++              <>
++                <p className="rounded-md bg-ink-50 px-4 py-2.5 text-sm text-ink-600"><Text>How full each car park is, is simulated from the time and day until bay sensors are installed. Bookings and timings are real.</Text></p>
++                {o.places.map((p) => (
++                  <Card key={p.place}>
++                    <CardHeader
++                      title={p.place}
++                      description={p.bestAreaId ? `Go to ${p.areas.find((a) => a.id === p.bestAreaId)!.name}: it has the most space now.` : 'Every car park here looks full now. Book a bay or come later.'}
++                      action={p.areas.some((a) => a.bookableBays > 0) ? <Button size="sm" variant="secondary" onClick={() => setBooking({ place: p.place, areas: p.areas.filter((a) => a.bookableBays > 0) })}><CalendarPlus className="size-4" aria-hidden /><Text>Book a bay</Text></Button> : undefined}
++                    />
++                    <ul className="divide-y divide-ink-100">
++                      {p.areas.map((a) => (
++                        <li key={a.id} className={cn('grid gap-3 px-5 py-4 sm:grid-cols-[1fr_auto] sm:items-center', a.id === p.bestAreaId && 'bg-success-50/60')}>
++                          <div className="min-w-0 space-y-2">
++                            <div className="flex flex-wrap items-center gap-2">
++                              <span className="text-[15px] font-semibold text-ink-900">{a.name}</span>
++                              <Badge tone={LEVEL[a.level].tone}><Text>{LEVEL[a.level].label}</Text></Badge>
++                              {a.id === p.bestAreaId && <Badge tone="success"><Text>Best now</Text></Badge>}
++                            </div>
++                            <LocalizedDiv className="occupancy-bar" role="img" aria-label={`${a.occupancyPct}% full`}>
++                              <span className={LEVEL[a.level].bar} style={{ width: `${a.occupancyPct}%` }} />
++                            </LocalizedDiv>
++                            <p className="text-sm text-ink-500">
++                              <Text>{`About ${a.freeBays} free of ${a.totalBays - a.bookableBays}`}</Text>
++                              {a.bookableBays > 0 && <> · <Text>{`${a.bookableLeftNow} of ${a.bookableBays} bookable bays left now`}</Text></>}
++                            </p>
++                          </div>
++                          <Button size="sm" variant={a.id === p.bestAreaId ? 'primary' : 'secondary'} onClick={() => guide(p.place, a)} disabled={start.pending || search !== null}>
++                            <Navigation className="size-4" aria-hidden /><Text>Guide me there</Text></Button>
++                        </li>
++                      ))}
++                    </ul>
++                    <div className="border-t border-ink-100 px-5 py-3">
++                      <Button size="sm" variant="ghost" onClick={() => void start.run(p.place, null, false)} disabled={start.pending || search !== null}>
++                        <Timer className="size-4" aria-hidden /><Text>Time my search without guidance</Text></Button>
++                    </div>
++                  </Card>
++                ))}
++              </>
++            )
++          }
++        </Async>
++
++        <Card>
++          <CardHeader title="My bookings" description="Show the code to the attendant or guard if asked." />
++          <Async state={bookings} skeleton={<SkeletonList rows={1} className="p-5" />}>
++            {(list) => {
++              const live = list.filter((b) => b.status === 'BOOKED');
++              return live.length === 0 ? (
++                <div className="p-5"><EmptyState icon={CalendarPlus} title="No bays booked" /></div>
++              ) : (
++                <ul className="divide-y divide-ink-100">
++                  {live.map((b) => (
++                    <li key={b.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
++                      <div>
++                        <p className="text-[15px] font-semibold text-ink-900">{b.place} <span className="font-normal text-ink-500">· {b.area}</span></p>
++                        <p className="text-sm text-ink-500"><Text>{formatDate(b.day)}</Text> · <Text>{SLOTS[b.slot]}</Text> · {b.vehicle_no}</p>
++                      </div>
++                      <div className="flex items-center gap-3">
++                        <span className="parcel-code text-lg font-bold text-ink-900">{b.code}</span>
++                        <Button size="sm" variant="ghost" onClick={() => void cancel.run(b.id)} disabled={cancel.pending}><Text>Cancel</Text></Button>
++                      </div>
++                    </li>
++                  ))}
++                </ul>
++              );
++            }}
++          </Async>
++        </Card>
++      </div>
++
++      <BookBay target={booking} onClose={() => setBooking(null)} onBooked={() => void bookings.mutate()} />
++    </>
++  );
++}
++
++/** The clock runs from "Guide me" (or "Time my search") until the driver taps "I have parked". */
++function SearchTimer({ search, pending, onParked, onStop }: { search: { place: string; area: string | null; guided: boolean; started: number }; pending: boolean; onParked: () => void; onStop: () => void }) {
++  const [now, setNow] = useState(() => Date.now());
++  useEffect(() => {
++    const timer = setInterval(() => setNow(Date.now()), 1000);
++    return () => clearInterval(timer);
++  }, []);
++  const seconds = Math.max(0, Math.floor((now - search.started) / 1000));
++  return (
++    <Card className="flex flex-wrap items-center justify-between gap-4 border-brand-300 bg-brand-50 p-5" aria-live="polite">
++      <div>
++        <p className="font-display text-lg font-bold text-ink-900">
++          <Text>{search.guided && search.area ? `Heading to ${search.area}` : `Finding a bay at ${search.place}`}</Text>
++        </p>
++        <p className="text-sm text-ink-600"><Text>Tap the button once you have parked. Only when it is safe: never while driving.</Text></p>
++      </div>
++      <div className="flex items-center gap-3">
++        <span className="parcel-code text-2xl font-bold text-brand-800">{Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, '0')}</span>
++        <Button onClick={onParked} pending={pending}><CircleParking className="size-4" aria-hidden /><Text>I have parked</Text></Button>
++        <Button variant="ghost" size="sm" onClick={onStop} aria-label="Stop timing"><X className="size-4" aria-hidden /></Button>
++      </div>
++    </Card>
++  );
++}
++
++function BookBay({ target, onClose, onBooked }: { target: { place: string; areas: Area[] } | null; onClose: () => void; onBooked: () => void }) {
++  const book = useAction((body: Record<string, unknown>) => api.post<{ code: string; area: string }>('/parking/bookings', body), {
++    success: (r) => `Booked at ${r.area}. Your code is ${r.code}.`,
++    onSuccess: () => {
++      onBooked();
++      onClose();
++    },
++  });
++  const submit = (event: FormEvent<HTMLFormElement>) => {
++    event.preventDefault();
++    const form = new FormData(event.currentTarget);
++    void book.run({ areaId: form.get('areaId'), day: form.get('day'), slot: form.get('slot'), vehicleNo: String(form.get('vehicleNo') ?? '').trim() });
++  };
++  return (
++    <Modal
++      open={target !== null}
++      onClose={onClose}
++      title={target ? `Book a bay at ${target.place}` : ''}
++      description="Free. One booking per person for each place and time."
++      footer={<><Button variant="secondary" onClick={onClose}><Text>Cancel</Text></Button><Button type="submit" form="book-bay" pending={book.pending}><Text>Book</Text></Button></>}
++    >
++      {target && (
++        <form method="post" id="book-bay" onSubmit={submit} className="space-y-4" noValidate>
++          <Select label="Car park" name="areaId" defaultValue={target.areas[0]?.id} error={book.fields.areaId}>
++            {target.areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
++          </Select>
++          <div className="grid gap-3 sm:grid-cols-2">
++            <Input label="Day" name="day" type="date" min={today()} defaultValue={today()} required error={book.fields.day} />
++            <Select label="Time" name="slot" defaultValue="MORNING">
++              {(Object.keys(SLOTS) as Slot[]).map((s) => <option key={s} value={s}><Text>{SLOTS[s]}</Text></option>)}
++            </Select>
++          </div>
++          <Input label="Vehicle number" name="vehicleNo" maxLength={12} autoCapitalize="characters" placeholder="e.g. WXY 1234" required error={book.fields.vehicleNo} />
++        </form>
++      )}
++    </Modal>
++  );
++}
+diff --git a/src/app/app/requests/page.tsx b/src/app/app/requests/page.tsx
+index 087e9d6..4c93798 100644
+--- a/src/app/app/requests/page.tsx
++++ b/src/app/app/requests/page.tsx
+@@ -2,7 +2,7 @@
+ 
+ import { Text } from '@/components/ui/localized-text';
+ 
+-import { Archive, ChevronRight, Flag, Inbox, Package, Recycle, TriangleAlert, type LucideIcon } from 'lucide-react';
++import { Archive, ChevronRight, Flag, Inbox, Package, Recycle, SquareParking, TriangleAlert, type LucideIcon } from 'lucide-react';
+ import Link from 'next/link';
+ import type { ReactNode } from 'react';
+ import { AffectedBadge } from '@/components/features/report-bits';
+@@ -20,10 +20,11 @@ type Item =
+   | { kind: 'PARCEL'; id: string; open: true; courier: string; shelf: string; at: string; link: string }
+   | { kind: 'LOCKER'; id: string; open: true; courier: string; state: ParcelState; station: string; compartment: string | null; counter: string | null; deadlineAt: string | null; at: string; link: string }
+   | { kind: 'COLLECTION'; id: string; open: true; collector: string; day: string; slot: 'MORNING' | 'AFTERNOON'; status: 'REQUESTED' | 'CONFIRMED'; at: string; link: string }
+-  | { kind: 'INCIDENT'; id: string; reference: string; category: string; status: IncidentStatus; open: boolean; awaitingYou: boolean; handled: boolean; at: string; link: string };
++  | { kind: 'INCIDENT'; id: string; reference: string; category: string; status: IncidentStatus; open: boolean; awaitingYou: boolean; handled: boolean; at: string; link: string }
++  | { kind: 'PARKING'; id: string; open: true; place: string; area: string; day: string; slot: 'MORNING' | 'AFTERNOON' | 'EVENING'; code: string; at: string; link: string };
+ 
+-const SLOT_LABELS = { MORNING: 'Morning', AFTERNOON: 'Afternoon' } as const;
+-const ICONS: Record<Item['kind'], LucideIcon> = { REPORT: TriangleAlert, PARCEL: Package, LOCKER: Archive, COLLECTION: Recycle, INCIDENT: Flag };
++const SLOT_LABELS = { MORNING: 'Morning', AFTERNOON: 'Afternoon', EVENING: 'Evening' } as const;
++const ICONS: Record<Item['kind'], LucideIcon> = { REPORT: TriangleAlert, PARCEL: Package, LOCKER: Archive, COLLECTION: Recycle, INCIDENT: Flag, PARKING: SquareParking };
+ 
+ /** Where a report stands, and what happens next, in a resident's words. */
+ function reportLines(r: Extract<Item, { kind: 'REPORT' }>): { now: ReactNode; next: string | null } {
+@@ -68,6 +69,8 @@ function lines(item: Item): { title: string; now: ReactNode; next: string | null
+         now: <Text>{RESIDENT_STATUS[item.status]}</Text>,
+         next: item.awaitingYou ? 'The township office has asked you a question. Open it to answer.' : item.open ? (item.handled ? 'Someone in the township office is handling it.' : 'Waiting for someone in the township office to take it.') : 'Open it to see the outcome.',
+       };
++    case 'PARKING':
++      return { title: `Parking at ${item.place}`, now: <>{item.area}, <Text>{formatDate(item.day)}</Text>, <Text>{SLOT_LABELS[item.slot]}</Text></>, next: `Booking code ${item.code}` };
+   }
+ }
+ 
+@@ -77,12 +80,12 @@ export default function RequestsPage() {
+     <>
+       <PageHeader
+         title="My requests"
+-        description="Everything your home is waiting on, in one place: reports, parcels and recycling collections. Each shows where it stands and what happens next."
++        description="Everything your home is waiting on, in one place: reports, parcels, recycling collections and parking. Each shows where it stands and what happens next."
+       />
+       <Async state={requests} skeleton={<SkeletonList rows={4} />}>
+         {(data) =>
+           data.items.length === 0 ? (
+-            <EmptyState icon={Inbox} title="Nothing waiting"><Text>Reports you send or follow, parcels at the guardhouse and in the lockers, and recycling collections show up here.</Text></EmptyState>
++            <EmptyState icon={Inbox} title="Nothing waiting"><Text>Reports you send or follow, parcels at the guardhouse, collections and parking bookings show up here.</Text></EmptyState>
+           ) : (
+             <>
+               <p className="mb-4 text-sm font-medium text-ink-600"><Text>{data.open === 1 ? '1 open request' : `${data.open} open requests`}</Text></p>
+diff --git a/src/app/console/parking/page.tsx b/src/app/console/parking/page.tsx
+new file mode 100644
+index 0000000..be1ebea
+--- /dev/null
++++ b/src/app/console/parking/page.tsx
+@@ -0,0 +1,114 @@
++'use client';
++
++import { Text } from '@/components/ui/localized-text';
++
++import { Plus, SquareParking, Timer } from 'lucide-react';
++import { useState, type FormEvent } from 'react';
++import { Button } from '@/components/ui/button';
++import { Card, CardHeader, PageHeader } from '@/components/ui/card';
++import { Modal } from '@/components/ui/dialog';
++import { Async, EmptyState, SkeletonList } from '@/components/ui/feedback';
++import { Input } from '@/components/ui/field';
++import { api } from '@/lib/api';
++import { useAction, useApi } from '@/lib/hooks';
++
++interface ParkingStats {
++  places: {
++    place: string;
++    guided: { searches: number; avgMinutes: number | null };
++    unguided: { searches: number; avgMinutes: number | null };
++    savedMinutes: number | null;
++  }[];
++  areas: { id: string; place: string; name: string; total_bays: number; bookable_bays: number; active: boolean; booked_week: number }[];
++}
++
++export default function ParkingConsolePage() {
++  const stats = useApi<ParkingStats>('/admin/parking');
++  const [open, setOpen] = useState(false);
++  const create = useAction((body: Record<string, unknown>) => api.post('/admin/parking/areas', body), {
++    success: 'Car park added.',
++    onSuccess: () => {
++      setOpen(false);
++      void stats.mutate();
++    },
++  });
++  const submit = (event: FormEvent<HTMLFormElement>) => {
++    event.preventDefault();
++    const form = new FormData(event.currentTarget);
++    const num = (name: string) => (String(form.get(name) ?? '').trim() === '' ? undefined : Number(form.get(name)));
++    void create.run({
++      place: String(form.get('place') ?? '').trim(),
++      name: String(form.get('name') ?? '').trim(),
++      totalBays: num('totalBays'),
++      bookableBays: num('bookableBays') ?? 0,
++      lat: num('lat'),
++      lng: num('lng'),
++    });
++  };
++
++  return (
++    <>
++      <PageHeader
++        title="Parking"
++        description="Busy car parks residents can be guided to, the free bays held back for booking, and the brief’s test: minutes to find a bay with guidance and without. Occupancy is simulated until bay sensors are installed."
++        action={<Button onClick={() => setOpen(true)}><Plus className="size-4" aria-hidden /><Text>Add a car park</Text></Button>}
++      />
++      <Async state={stats} skeleton={<SkeletonList rows={3} />}>
++        {(s) => (
++          <div className="space-y-6">
++            <Card>
++              <CardHeader title="Time to find a bay" description="Average minutes, last 90 days, from residents who timed their search." />
++              {s.places.length === 0 ? (
++                <div className="p-5"><EmptyState icon={Timer} title="No timed searches yet"><Text>Residents time a search from the Parking page, with or without guidance.</Text></EmptyState></div>
++              ) : (
++                <ul className="divide-y divide-ink-100">
++                  {s.places.map((p) => (
++                    <li key={p.place} className="grid gap-2 px-5 py-4 sm:grid-cols-[1fr_auto_auto_auto] sm:items-center sm:gap-6">
++                      <span className="text-[15px] font-semibold text-ink-900">{p.place}</span>
++                      <span className="text-sm text-ink-600"><Text>{p.guided.avgMinutes != null ? `Guided: ${p.guided.avgMinutes} min (${p.guided.searches})` : 'Guided: no data'}</Text></span>
++                      <span className="text-sm text-ink-600"><Text>{p.unguided.avgMinutes != null ? `Unguided: ${p.unguided.avgMinutes} min (${p.unguided.searches})` : 'Unguided: no data'}</Text></span>
++                      <span className="text-sm font-semibold text-success-700"><Text>{p.savedMinutes != null ? `${p.savedMinutes} min saved` : '–'}</Text></span>
++                    </li>
++                  ))}
++                </ul>
++              )}
++            </Card>
++            <Card>
++              <CardHeader title="Car parks" description="Bookable bays are held back from the open bays." />
++              {s.areas.length === 0 ? (
++                <div className="p-5"><EmptyState icon={SquareParking} title="No car parks yet" /></div>
++              ) : (
++                <ul className="divide-y divide-ink-100">
++                  {s.areas.map((a) => (
++                    <li key={a.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
++                      <span className="text-[15px] font-semibold text-ink-900">{a.place} <span className="font-normal text-ink-500">· {a.name}</span></span>
++                      <span className="text-sm text-ink-600"><Text>{`${a.total_bays} bays · ${a.bookable_bays} bookable · ${a.booked_week} booked this week`}</Text></span>
++                    </li>
++                  ))}
++                </ul>
++              )}
++            </Card>
++          </div>
++        )}
++      </Async>
++      <Modal
++        open={open}
++        onClose={() => setOpen(false)}
++        title="Add a car park"
++        description="A car park at a place that gets busy, such as the park, the community hall or the masjid."
++        footer={<><Button variant="secondary" onClick={() => setOpen(false)}><Text>Cancel</Text></Button><Button type="submit" form="new-car-park" pending={create.pending}><Text>Add</Text></Button></>}
++      >
++        <form method="post" id="new-car-park" onSubmit={submit} className="space-y-4" noValidate>
++          <div className="grid gap-3 sm:grid-cols-2">
++            <Input label="Place" name="place" maxLength={80} placeholder="e.g. Elmina Central Park" required error={create.fields.place} />
++            <Input label="Car park name" name="name" maxLength={80} placeholder="e.g. North car park" required error={create.fields.name} />
++            <Input label="Total bays" name="totalBays" type="number" min={1} max={5000} required error={create.fields.totalBays} />
++            <Input label="Bookable bays" name="bookableBays" type="number" min={0} max={5000} defaultValue={0} error={create.fields.bookableBays} />
++            <Input label="Latitude (optional)" name="lat" type="number" step="any" />
++            <Input label="Longitude (optional)" name="lng" type="number" step="any" />
++          </div>
++        </form>
++      </Modal>
++    </>
++  );
++}
+diff --git a/src/app/globals.css b/src/app/globals.css
+index b6df9a8..72c336d 100644
+--- a/src/app/globals.css
++++ b/src/app/globals.css
+@@ -1430,7 +1430,7 @@ dialog.flash-alert[open] {
+   letter-spacing: 0.18em;
+ }
+ 
+-/* --- Occupancy: how full a place looks ------------------------------------------ */
++/* --- Parking: how full a car park looks ----------------------------------------- */
+ .occupancy-bar {
+   height: 0.5rem;
+   border-radius: 999px;
+diff --git a/src/components/shell/nav.ts b/src/components/shell/nav.ts
+index be67c99..275f7d8 100644
+--- a/src/components/shell/nav.ts
++++ b/src/components/shell/nav.ts
+@@ -1,6 +1,6 @@
+ import {
+   Accessibility, Archive, Barcode, Siren, Bike, Bot, Building2, ClipboardList, DoorOpen, Droplets, Gauge, HandHeart, History, Home, House, Inbox, Landmark, Layers, Leaf, Megaphone, MapPin, MessageCircleQuestionMark,
+-  Package, Receipt, Recycle, Repeat2, ScrollText, Settings, ShieldAlert, Sprout, Store, Sun, Tag, TriangleAlert, UserRound, Users, Wallet, Zap, type LucideIcon,
++  Package, Receipt, Recycle, Repeat2, ScrollText, Settings, ShieldAlert, Sprout, SquareParking, Store, Sun, Tag, TriangleAlert, UserRound, Users, Wallet, Zap, type LucideIcon,
+ } from 'lucide-react';
+ import { ADMINS, type Role } from '@/shared/domain';
+ 
+@@ -29,6 +29,7 @@ export const NAV: Record<Area, { title: string; items: NavItem[] }> = {
+       { href: '/app/requests', label: 'My requests', icon: Inbox },
+       { href: '/app/tamu', label: 'Tamu', gloss: 'Visitors', icon: DoorOpen },
+       { href: '/app/parcels', label: 'Parcels', icon: Package },
++      { href: '/app/parking', label: 'Parking', icon: SquareParking },
+       { href: '/app/jiran', label: 'Jiran', gloss: 'Neighbours', icon: HandHeart },
+       { href: '/app/kongsi', label: 'Kongsi', gloss: 'Share', icon: Repeat2 },
+       { href: '/app/jimat', label: 'Jimat', gloss: 'Save energy', icon: Zap },
+@@ -91,6 +92,7 @@ export const NAV: Record<Area, { title: string; items: NavItem[] }> = {
+       { href: '/console/places', label: 'Kiosks, machines & trails', icon: MapPin },
+       { href: '/console/incidents', label: 'Incidents & reports', icon: Siren },
+       { href: '/console/recycling', label: 'Recycling collections', icon: Recycle },
++      { href: '/console/parking', label: 'Parking', icon: SquareParking },
+       { href: '/console/solar', label: 'Solar sites', icon: Sun },
+       { href: '/console/materials', label: 'Greener materials', icon: Layers },
+       { href: '/console/nature', label: 'Nature & access', icon: Leaf },
+diff --git a/src/lib/i18n-extra.ts b/src/lib/i18n-extra.ts
+index f9fbc82..401eb90 100644
+--- a/src/lib/i18n-extra.ts
++++ b/src/lib/i18n-extra.ts
+@@ -450,12 +450,13 @@ export const extraMalay: Record<string, string> = {
+   'Funded by {name}': 'Dibiayai oleh {name}',
+   'Take part in {module}': 'Sertai dalam {module}',
+   '{module} · up to {n} a day': '{module} · sehingga {n} sehari',
+-  // Township of Tomorrow: requests, parcels, recycling guide, solar, materials.
++  // Township of Tomorrow: requests, parcels, parking, recycling guide, solar, materials.
+   'Parcels waiting at the guardhouse': 'Bungkusan menunggu di pondok pengawal', 'Everything your home is waiting on': 'Semua yang ditunggu rumah anda', 'Find a bay at busy places': 'Cari petak di tempat sibuk',
+   'A parcel is waiting at the guardhouse': 'Satu bungkusan menunggu di pondok pengawal', '{n} parcels are waiting at the guardhouse': '{n} bungkusan menunggu di pondok pengawal', 'Show the collection code in Parcels to collect it.': 'Tunjukkan kod tuntutan dalam Bungkusan untuk menuntutnya.',
+   'Choose…': 'Pilih…', 'Kiosks (kg)': 'Kiosk (kg)', 'Smart machines (kg)': 'Mesin pintar (kg)', 'Collections (kg)': 'Kutipan (kg)',
+   'My requests': 'Permintaan saya',
+   'Parcels': 'Bungkusan',
++  'Parking': 'Tempat letak kereta',
+   'Recycling collections': 'Kutipan kitar semula',
+   'Solar sites': 'Tapak solar',
+   'Greener materials': 'Bahan lebih hijau',
+@@ -496,7 +497,9 @@ export const extraMalay: Record<string, string> = {
+   'Uploading…': 'Memuat naik…',
+   'Replace the photo of the fix': 'Ganti foto pembaikan',
+   'Add a photo of the fix': 'Tambah foto pembaikan',
++  'Everything your home is waiting on, in one place: reports, parcels, recycling collections and parking. Each shows where it stands and what happens next.': 'Semua yang ditunggu rumah anda, di satu tempat: laporan, bungkusan, kutipan kitar semula dan tempat letak kereta. Setiap satu menunjukkan statusnya dan langkah seterusnya.',
+   'Nothing waiting': 'Tiada yang ditunggu',
++  'Reports you send or follow, parcels at the guardhouse, collections and parking bookings show up here.': 'Laporan yang anda hantar atau ikuti, bungkusan di pondok pengawal, kutipan dan tempahan tempat letak kereta dipaparkan di sini.',
+   '1 open request': '1 permintaan terbuka',
+   'Received': 'Diterima',
+   'Next: township staff check it': 'Seterusnya: kakitangan perbandaran menyemaknya',
+@@ -507,6 +510,7 @@ export const extraMalay: Record<string, string> = {
+   'Waiting for the collector to confirm': 'Menunggu pengesahan pengutip',
+   'Morning': 'Pagi',
+   'Afternoon': 'Petang',
++  'Evening': 'Malam',
+   'Parcels the guardhouse is holding for your home. Show the one-time code to collect one: it only works once, and only for that parcel. Someone collecting for you? Share the code with them.': 'Bungkusan yang disimpan pondok pengawal untuk rumah anda. Tunjukkan kod sekali guna untuk menuntutnya: ia hanya berfungsi sekali, dan hanya untuk bungkusan itu. Orang lain menuntut bagi pihak anda? Kongsi kod dengan mereka.',
+   'No parcels waiting': 'Tiada bungkusan menunggu',
+   'When a courier leaves a parcel at the guardhouse, you are told at once and the code appears here.': 'Apabila kurier meninggalkan bungkusan di pondok pengawal, anda dimaklumkan serta-merta dan kodnya dipaparkan di sini.',
+@@ -572,14 +576,56 @@ export const extraMalay: Record<string, string> = {
+   'None in the last 30 days': 'Tiada dalam 30 hari lalu',
+   'Handed over': 'Diserahkan',
+   'to': 'kepada',
++  'Going to the park, the community hall or the masjid at a busy time? See which car park has room and go straight there, or book one of the free bays held back for booking.': 'Ke taman, dewan komuniti atau masjid pada waktu sibuk? Lihat tempat letak kereta yang masih ada ruang dan terus ke sana, atau tempah salah satu petak percuma yang dikhaskan untuk tempahan.',
++  'No car parks set up yet': 'Belum ada tempat letak kereta disediakan',
++  'The township team adds the busy car parks here.': 'Pasukan perbandaran menambah tempat letak kereta yang sibuk di sini.',
++  'How full each car park is, is simulated from the time and day until bay sensors are installed. Bookings and timings are real.': 'Tahap penuh setiap tempat letak kereta disimulasikan berdasarkan masa dan hari sehingga sensor petak dipasang. Tempahan dan catatan masa adalah sebenar.',
++  'Every car park here looks full now. Book a bay or come later.': 'Semua tempat letak kereta di sini kelihatan penuh sekarang. Tempah petak atau datang kemudian.',
++  'Book a bay': 'Tempah petak',
++  'Best now': 'Terbaik sekarang',
+   'Space': 'Ada ruang',
+   'Busy': 'Sibuk',
++  'Nearly full': 'Hampir penuh',
++  'Guide me there': 'Bawa saya ke sana',
++  'Time my search without guidance': 'Catat masa carian saya tanpa panduan',
++  'My bookings': 'Tempahan saya',
++  'Show the code to the attendant or guard if asked.': 'Tunjukkan kod kepada penjaga atau pengawal jika diminta.',
++  'No bays booked': 'Tiada petak ditempah',
++  'Tap the button once you have parked. Only when it is safe: never while driving.': 'Ketik butang sebaik anda selesai meletak kereta. Hanya apabila selamat: jangan sekali-kali semasa memandu.',
++  'I have parked': 'Saya sudah letak kereta',
++  'Stop timing': 'Henti catat masa',
++  'Free. One booking per person for each place and time.': 'Percuma. Satu tempahan bagi setiap orang untuk setiap tempat dan masa.',
+   'Book': 'Tempah',
+   'Car park': 'Tempat letak kereta',
+   'Time': 'Masa',
+   'Day': 'Hari',
+   'Vehicle number': 'Nombor kenderaan',
++  'e.g. WXY 1234': 'cth. WXY 1234',
++  'Booking cancelled.': 'Tempahan dibatalkan.',
++  'Morning (before 12 pm)': 'Pagi (sebelum 12 tgh)',
++  'Afternoon (12 to 6 pm)': 'Petang (12 tgh hingga 6 ptg)',
++  'Evening (after 6 pm)': 'Malam (selepas 6 ptg)',
++  'Busy car parks residents can be guided to, the free bays held back for booking, and the brief’s test: minutes to find a bay with guidance and without. Occupancy is simulated until bay sensors are installed.': 'Tempat letak kereta sibuk yang boleh ditunjukkan kepada penduduk, petak percuma yang dikhaskan untuk tempahan, dan ujian taklimat: minit untuk mencari petak dengan dan tanpa panduan. Tahap penghunian disimulasikan sehingga sensor petak dipasang.',
++  'Add a car park': 'Tambah tempat letak kereta',
++  'Time to find a bay': 'Masa untuk mencari petak',
++  'Average minutes, last 90 days, from residents who timed their search.': 'Purata minit, 90 hari lalu, daripada penduduk yang mencatat masa carian mereka.',
++  'No timed searches yet': 'Belum ada carian yang dicatat masa',
++  'Residents time a search from the Parking page, with or without guidance.': 'Penduduk mencatat masa carian dari halaman Tempat letak kereta, dengan atau tanpa panduan.',
++  'Guided: no data': 'Berpandu: tiada data',
++  'Unguided: no data': 'Tanpa panduan: tiada data',
++  'Car parks': 'Tempat letak kereta',
++  'Bookable bays are held back from the open bays.': 'Petak boleh tempah diasingkan daripada petak terbuka.',
++  'No car parks yet': 'Belum ada tempat letak kereta',
++  'A car park at a place that gets busy, such as the park, the community hall or the masjid.': 'Tempat letak kereta di tempat yang sibuk, seperti taman, dewan komuniti atau masjid.',
+   'Place': 'Tempat',
++  'e.g. Elmina Central Park': 'cth. Elmina Central Park',
++  'Car park name': 'Nama tempat letak kereta',
++  'e.g. North car park': 'cth. Tempat letak kereta utara',
++  'Total bays': 'Jumlah petak',
++  'Bookable bays': 'Petak boleh tempah',
++  'Latitude (optional)': 'Latitud (pilihan)',
++  'Longitude (optional)': 'Longitud (pilihan)',
++  'Car park added.': 'Tempat letak kereta ditambah.',
+   'Can I recycle this?': 'Bolehkah ini dikitar semula?',
+   'Type an item, in English or Malay, and see whether it can be recycled here, how to prepare it and where it goes.': 'Taip satu barang, dalam bahasa Inggeris atau Melayu, dan lihat sama ada ia boleh dikitar semula di sini, cara menyediakannya dan ke mana ia dihantar.',
+   'Item': 'Barang',
+@@ -892,6 +938,11 @@ export const extraMalay: Record<string, string> = {
+   'Only a parcel marked collected can be reported missing.': 'Hanya bungkusan yang ditandakan dituntut boleh dilaporkan hilang.',
+   'You have already told us about this parcel.': 'Anda sudah memaklumkan kami tentang bungkusan ini.',
+   'Parcel handover queried': 'Serahan bungkusan dipersoalkan',
++  'This car park has no bays to book. Use guidance instead.': 'Tempat letak kereta ini tiada petak untuk ditempah. Gunakan panduan sahaja.',
++  'You already have a bay booked there at that time.': 'Anda sudah menempah petak di sana pada masa itu.',
++  'Every bookable bay is taken then. Try another car park or time.': 'Semua petak boleh tempah sudah diambil pada masa itu. Cuba tempat letak kereta atau masa lain.',
++  'Bookable bays cannot be more than the total.': 'Petak boleh tempah tidak boleh melebihi jumlah keseluruhan.',
++  'This car park already exists.': 'Tempat letak kereta ini sudah wujud.',
+   'A site with this name already exists.': 'Tapak dengan nama ini sudah wujud.',
+   'Choose a date.': 'Pilih tarikh.',
+   'Choose a day.': 'Pilih hari.',
+@@ -1368,8 +1419,6 @@ export const extraMalay: Record<string, string> = {
+   'A resident at the station has asked for it to be unlocked.': 'Seorang penduduk di stesen telah meminta ia dibuka kunci.',
+   'This locker’s keypad is locked for safety': 'Papan kekunci lokar ini dikunci demi keselamatan',
+   'Too many wrong codes were typed here. Choose “I am collecting a parcel” and sign in: you can open your door from the app and ask staff to unlock the keypad.': 'Terlalu banyak kod salah dimasukkan di sini. Pilih “Saya mahu menuntut bungkusan” dan log masuk: anda boleh membuka pintu anda daripada aplikasi dan meminta kakitangan membuka kunci papan kekunci.',
+-  'Everything your home is waiting on, in one place: reports, parcels and recycling collections. Each shows where it stands and what happens next.': 'Semua yang ditunggu rumah anda, di satu tempat: laporan, bungkusan dan kutipan kitar semula. Setiap satu menunjukkan statusnya dan langkah seterusnya.',
+-  'Reports you send or follow, parcels at the guardhouse and in the lockers, and recycling collections show up here.': 'Laporan yang anda hantar atau ikuti, bungkusan di pondok pengawal dan di lokar, serta kutipan kitar semula dipaparkan di sini.',
+   // Courier platform: companies, shipment checks, security.
+   'Revoked': 'Dibatalkan',
+   'Representative removed.': 'Wakil dikeluarkan.',
+diff --git a/src/lib/i18n-templates.ts b/src/lib/i18n-templates.ts
+index 0219ada..b1cf0c1 100644
+--- a/src/lib/i18n-templates.ts
++++ b/src/lib/i18n-templates.ts
+@@ -1009,6 +1009,8 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
+   ["Parcel from {0}", "Bungkusan daripada {0}"],
+   ["Waiting on shelf {0} at the guardhouse", "Menunggu di rak {0} di pondok pengawal"],
+   ["Recycling collection by {0}", "Kutipan kitar semula oleh {0}"],
++  ["Parking at {0}", "Tempat letak kereta di {0}"],
++  ["Booking code {0}", "Kod tempahan {0}"],
+   ["From {0}", "Daripada {0}"],
+   ["Arrived {0}", "Tiba {0}"],
+   ["Shelf {0}", "Rak {0}"],
+@@ -1022,8 +1024,19 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
+   ["{0}% of collections, last 30 days", "{0}% daripada tuntutan, 30 hari lalu"],
+   ["Handed over {0}", "Diserahkan {0}"],
+   ["queried {0}", "dipersoalkan {0}"],
++  ["Go to {0}: it has the most space now.", "Pergi ke {0}: ia mempunyai ruang paling banyak sekarang."],
+   ["{0}% full", "{0}% penuh"],
++  ["About {0} free of {1}", "Kira-kira {0} kosong daripada {1}"],
++  ["{0} of {1} bookable bays left now", "{0} daripada {1} petak boleh tempah masih ada sekarang"],
++  ["Heading to {0}", "Menuju ke {0}"],
++  ["Finding a bay at {0}", "Mencari petak di {0}"],
++  ["Book a bay at {0}", "Tempah petak di {0}"],
++  ["Parked in {0} min. Thank you: this helps the township plan parking.", "Diletak dalam {0} min. Terima kasih: ini membantu perbandaran merancang tempat letak kereta."],
++  ["Booked at {0}. Your code is {1}.", "Ditempah di {0}. Kod anda ialah {1}."],
++  ["Guided: {0} min ({1})", "Berpandu: {0} min ({1})"],
++  ["Unguided: {0} min ({1})", "Tanpa panduan: {0} min ({1})"],
+   ["{0} min saved", "{0} min dijimatkan"],
++  ["{0} bays · {1} bookable · {2} booked this week", "{0} petak · {1} boleh tempah · {2} ditempah minggu ini"],
+   ["Gate pass {0} is ready in Tamu.", "Pas pintu pagar {0} sedia dalam Tamu."],
+   ["{0} collected", "{0} dikutip"],
+   ["{0} collections · {1}", "{0} kutipan · {1}"],
+@@ -1061,6 +1074,7 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
+   ["{0}, shelf {1}: the household says it never reached them.", "{0}, rak {1}: isi rumah berkata ia tidak sampai kepada mereka."],
+   ["Your parcel from {0} is still waiting", "Bungkusan anda daripada {0} masih menunggu"],
+   ["Shelf {0} at the guardhouse. Please collect it soon.", "Rak {0} di pondok pengawal. Sila tuntut segera."],
++  ["Choose a day from today up to {0} days ahead.", "Pilih hari dari hari ini hingga {0} hari ke hadapan."],
+   ["{0} will fix it", "{0} akan membaikinya"],
+   ["{0}: expected by {1}.", "{0}: dijangka siap menjelang {1}."],
+   ["{0} kWh a month, 1 home", "{0} kWh sebulan, 1 rumah"],
+diff --git a/src/server/http/api.ts b/src/server/http/api.ts
+index 3ed3fbf..3db7b54 100644
+--- a/src/server/http/api.ts
++++ b/src/server/http/api.ts
+@@ -14,6 +14,7 @@ import { lockerRoutes } from '../modules/lockers/routes';
+ import { merchantRoutes } from '../modules/merchant/routes';
+ import { offerRoutes } from '../modules/offers/routes';
+ import { parcelRoutes } from '../modules/parcels/routes';
++import { parkingRoutes } from '../modules/parking/routes';
+ import { planetRoutes } from '../modules/planet/routes';
+ import { reportRoutes } from '../modules/reports/routes';
+ import { requestRoutes } from '../modules/requests/routes';
+@@ -38,6 +39,7 @@ export const routes: RouteDef[] = [
+   ...tamuRoutes,
+   ...parcelRoutes,
+   ...lockerRoutes,
++  ...parkingRoutes,
+   ...carrierRoutes,
+   ...incidentRoutes,
+   ...gerakRoutes,
+diff --git a/src/server/modules/assistant/tools.ts b/src/server/modules/assistant/tools.ts
+index 228b53f..1f105d5 100644
+--- a/src/server/modules/assistant/tools.ts
++++ b/src/server/modules/assistant/tools.ts
+@@ -251,7 +251,7 @@ const TOOLS: Tool[] = [
+     kind: 'read',
+     spec: {
+       name: 'get_my_requests',
+-      description: "Everything the home is waiting on: the resident's reports and the ones they follow (each with its step, who is fixing it and the target date), parcels at the guardhouse and in the lockers, and booked recycling collections.",
++      description: "Everything the home is waiting on: the resident's reports and the ones they follow (each with its step, who is fixing it and the target date), parcels at the guardhouse and in the lockers, booked recycling collections and parking bookings.",
+       parameters: noArgs,
+     },
+     run: async ({ db, actor, now }) => {
+@@ -271,6 +271,8 @@ const TOOLS: Tool[] = [
+                 return { kind: 'locker parcel', courier: i.courier, state: i.state, where: i.counter ?? `${i.station}${i.compartment ? ` door ${i.compartment}` : ''}`, collectBy: i.deadlineAt };
+               case 'COLLECTION':
+                 return { kind: 'recycling collection', collector: i.collector, day: i.day, slot: i.slot, status: i.status };
++              case 'PARKING':
++                return { kind: 'parking booking', place: i.place, carPark: i.area, day: i.day, slot: i.slot };
+               case 'INCIDENT':
+                 // The reference and where it stands; staff notes never leave the township office.
+                 return { kind: 'report to the township office', reference: i.reference, about: i.category, status: i.status, waitingForYourAnswer: i.awaitingYou };
+diff --git a/src/server/modules/parking/routes.ts b/src/server/modules/parking/routes.ts
+new file mode 100644
+index 0000000..7c66c1d
+--- /dev/null
++++ b/src/server/modules/parking/routes.ts
+@@ -0,0 +1,49 @@
++import { z } from 'zod';
++import { STAFF } from '@/shared/domain';
++import { emptyBody, route, zId, zText } from '../../http/router';
++import * as parking from './service';
++
++const zVehicle = z.string().trim().min(2).max(12).regex(/^[A-Za-z0-9 ]+$/, 'Letters and numbers only.');
++
++export const parkingRoutes = [
++  route({
++    method: 'GET', path: '/parking', tag: 'Parking', summary: 'Busy places, how full each car park looks now (simulated) and where to go', auth: 'session', roles: ['RESIDENT'],
++    handler: (c) => parking.parkingOverview(c.db, c.actor, c.now),
++  }),
++  route({
++    method: 'GET', path: '/parking/bookings', tag: 'Parking', summary: 'My upcoming bay bookings', auth: 'session', roles: ['RESIDENT'],
++    handler: (c) => parking.myParkingBookings(c.db, c.actor, c.now),
++  }),
++  route({
++    method: 'POST', path: '/parking/bookings', tag: 'Parking', summary: 'Book a free bay held back for booking', auth: 'session', roles: ['RESIDENT'],
++    rateLimit: { limit: 20, windowSec: 3600, by: 'user' },
++    body: z.object({ areaId: zId, day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Choose a day.'), slot: z.enum(parking.PARKING_SLOTS), vehicleNo: zVehicle }),
++    handler: (c) => parking.bookBay(c.db, c.actor, c.body, c.now),
++  }),
++  route({
++    method: 'POST', path: '/parking/bookings/:bookingId/cancel', tag: 'Parking', summary: 'Cancel a bay booking', auth: 'session', roles: ['RESIDENT'], body: emptyBody,
++    handler: (c) => parking.cancelParkingBooking(c.db, c.actor, c.params.bookingId!),
++  }),
++  route({
++    method: 'POST', path: '/parking/searches', tag: 'Parking', summary: 'Start timing a search for a bay, guided to a car park or not', auth: 'session', roles: ['RESIDENT'],
++    rateLimit: { limit: 30, windowSec: 3600, by: 'user' },
++    body: z.object({ place: zText(80, 2), areaId: zId.optional(), guided: z.boolean() }),
++    handler: (c) => parking.startSearch(c.db, c.actor, c.body, c.now),
++  }),
++  route({
++    method: 'POST', path: '/parking/searches/:searchId/parked', tag: 'Parking', summary: 'Stop the clock: parked', auth: 'session', roles: ['RESIDENT'], body: emptyBody,
++    handler: (c) => parking.finishSearch(c.db, c.actor, c.params.searchId!, c.now),
++  }),
++  route({
++    method: 'GET', path: '/admin/parking', tag: 'Parking', summary: 'Car parks, bookings this week, and minutes to find a bay with and without guidance', auth: 'session', roles: STAFF,
++    handler: (c) => parking.parkingStats(c.db, c.actor, c.now),
++  }),
++  route({
++    method: 'POST', path: '/admin/parking/areas', tag: 'Parking', summary: 'Add a car park at a busy place', auth: 'session', roles: STAFF,
++    body: z.object({
++      place: zText(80, 2), name: zText(80, 2), totalBays: z.number().int().min(1).max(5000), bookableBays: z.number().int().min(0).max(5000),
++      lat: z.number().min(-90).max(90).optional(), lng: z.number().min(-180).max(180).optional(),
++    }),
++    handler: (c) => parking.createParkingArea(c.db, c.actor, c.body),
++  }),
++];
+diff --git a/src/server/modules/parking/service.ts b/src/server/modules/parking/service.ts
+new file mode 100644
+index 0000000..15c6139
+--- /dev/null
++++ b/src/server/modules/parking/service.ts
+@@ -0,0 +1,218 @@
++import { createHash } from 'node:crypto';
++import { one, type Db } from '../../db/client';
++import { requireVerifiedResident, type Actor } from '../../auth/actor';
++import { conflict, notFound, ruleViolation } from '../../errors';
++import { audit } from '../audit';
++import { randomCode } from '../identity/service';
++import { getSettings, todayIn } from '../settings';
++import { resolveTownship } from '../townships';
++
++/**
++ * Guided parking (the brief's "prebooked parking"), for the township's busy
++ * places: the park at weekends, the community hall on event days, the masjid on
++ * Friday. Drivers see which car park has room and are sent there, or book one of
++ * the free bays held back for booking.
++ *
++ * There are no bay sensors yet, so occupancy is SIMULATED from the time of day,
++ * the day of the week and the car park, and always labelled as such. What is
++ * real is the measurement the brief asks for: residents time how long it takes
++ * to find a bay, with guidance and without, and staff compare the two.
++ */
++
++export const PARKING_SLOTS = ['MORNING', 'AFTERNOON', 'EVENING'] as const;
++export type ParkingSlot = (typeof PARKING_SLOTS)[number];
++const BOOK_AHEAD_DAYS = 7;
++/** A search left open longer than this is treated as abandoned and left out of the averages. */
++const MAX_SEARCH_MINUTES = 60;
++
++/** Busy-ness by hour in the township's timezone, weekend evenings busiest. Deterministic for each 15 minutes. */
++export function simulatedOccupancy(areaId: string, at: Date, tz: string): number {
++  const parts = new Intl.DateTimeFormat('en-GB', { timeZone: tz, weekday: 'short', hour: 'numeric', minute: 'numeric', hourCycle: 'h23' }).formatToParts(at);
++  const hour = Number(parts.find((p) => p.type === 'hour')!.value);
++  const minute = Number(parts.find((p) => p.type === 'minute')!.value);
++  const weekday = parts.find((p) => p.type === 'weekday')!.value;
++  const weekend = weekday === 'Sat' || weekday === 'Sun';
++  const curve = [0.1, 0.08, 0.06, 0.05, 0.05, 0.08, 0.2, 0.35, 0.45, 0.5, 0.55, 0.6, 0.65, 0.6, 0.55, 0.55, 0.6, 0.7, 0.8, 0.85, 0.75, 0.55, 0.35, 0.2];
++  const friday = weekday === 'Fri' && hour >= 12 && hour <= 14 ? 0.2 : 0;
++  const bucket = `${areaId}:${Math.floor((hour * 60 + minute) / 15)}:${weekday}`;
++  const jitter = (createHash('sha256').update(bucket).digest()[0]! / 255 - 0.5) * 0.3;
++  const areaBias = (createHash('sha256').update(areaId).digest()[0]! / 255 - 0.5) * 0.3;
++  return Math.min(0.98, Math.max(0.03, curve[hour]! + (weekend ? 0.15 : 0) + friday + jitter + areaBias));
++}
++
++const slotOf = (hour: number): ParkingSlot => (hour < 12 ? 'MORNING' : hour < 18 ? 'AFTERNOON' : 'EVENING');
++
++interface AreaRow {
++  id: string;
++  place: string;
++  name: string;
++  total_bays: number;
++  bookable_bays: number;
++  lat: number | null;
++  lng: number | null;
++  booked_now: number;
++}
++
++/** Every place with its car parks, how full each looks now, and where to go. */
++export async function parkingOverview(db: Db, actor: Actor, now: Date) {
++  const resident = requireVerifiedResident(actor);
++  const tz = (await getSettings(db)).timezone;
++  const today = await todayIn(db, now);
++  const hour = Number(new Intl.DateTimeFormat('en-GB', { timeZone: tz, hour: 'numeric', hourCycle: 'h23' }).format(now));
++  const slot = slotOf(hour);
++  const areas = await db.query<AreaRow>(
++    `SELECT a.id, a.place, a.name, a.total_bays, a.bookable_bays, a.lat, a.lng,
++            (SELECT count(*)::int FROM parking_bookings b WHERE b.area_id = a.id AND b.status = 'BOOKED' AND b.day = $2::date AND b.slot = $3) AS booked_now
++       FROM parking_areas a WHERE a.township_id = $1 AND a.active ORDER BY a.place, a.name`,
++    [resident.townshipId, today, slot],
++  );
++  const places = new Map<string, ReturnType<typeof view>[]>();
++  function view(a: AreaRow) {
++    const open = a.total_bays - a.bookable_bays;
++    const occupancy = simulatedOccupancy(a.id, now, tz);
++    const free = Math.max(0, Math.round(open * (1 - occupancy)));
++    return {
++      id: a.id, name: a.name, totalBays: a.total_bays, bookableBays: a.bookable_bays, lat: a.lat, lng: a.lng,
++      occupancyPct: Math.round(occupancy * 100),
++      freeBays: free,
++      bookableLeftNow: Math.max(0, a.bookable_bays - a.booked_now),
++      level: occupancy >= 0.9 ? 'FULL' : occupancy >= 0.7 ? 'BUSY' : 'OK',
++    };
++  }
++  for (const a of areas) places.set(a.place, [...(places.get(a.place) ?? []), view(a)]);
++  return {
++    simulated: true,
++    slot,
++    places: [...places.entries()].map(([place, list]) => {
++      const best = [...list].sort((x, y) => y.freeBays - x.freeBays)[0] ?? null;
++      return { place, areas: list, bestAreaId: best && best.freeBays > 0 ? best.id : null };
++    }),
++  };
++}
++
++export interface BookingInput {
++  areaId: string;
++  day: string;
++  slot: ParkingSlot;
++  vehicleNo: string;
++}
++
++/** Book one of the free bays held back at a car park. One booking per person per place and time. */
++export async function bookBay(db: Db, actor: Actor, input: BookingInput, now: Date) {
++  const resident = requireVerifiedResident(actor);
++  return db.tx(async (tx) => {
++    const area = await one<{ id: string; place: string; name: string; bookable_bays: number }>(
++      tx, 'SELECT id, place, name, bookable_bays FROM parking_areas WHERE id = $1 AND township_id = $2 AND active FOR UPDATE', [input.areaId, resident.townshipId],
++    );
++    if (!area) throw notFound('Car park');
++    if (area.bookable_bays === 0) throw ruleViolation('NOT_BOOKABLE', 'This car park has no bays to book. Use guidance instead.');
++    const today = await todayIn(tx, now);
++    const range = await one<{ ok: boolean }>(tx, `SELECT $1::date >= $2::date AND $1::date <= $2::date + $3::int AS ok`, [input.day, today, BOOK_AHEAD_DAYS]);
++    if (!range!.ok) throw ruleViolation('PARKING_DAY', `Choose a day from today up to ${BOOK_AHEAD_DAYS} days ahead.`);
++    const mine = await one(
++      tx,
++      `SELECT 1 FROM parking_bookings b JOIN parking_areas a ON a.id = b.area_id
++        WHERE b.user_id = $1 AND b.status = 'BOOKED' AND b.day = $2::date AND b.slot = $3 AND a.place = $4`,
++      [resident.id, input.day, input.slot, area.place],
++    );
++    if (mine) throw conflict('ALREADY_BOOKED', 'You already have a bay booked there at that time.');
++    const taken = await one<{ n: number }>(tx, `SELECT count(*)::int AS n FROM parking_bookings WHERE area_id = $1 AND status = 'BOOKED' AND day = $2::date AND slot = $3`, [area.id, input.day, input.slot]);
++    if (taken!.n >= area.bookable_bays) throw ruleViolation('PARKING_FULL', 'Every bookable bay is taken then. Try another car park or time.');
++    const code = `B${randomCode(5)}`;
++    const row = await one<{ id: string }>(
++      tx,
++      `INSERT INTO parking_bookings (area_id, user_id, day, slot, vehicle_no, code, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
++      [area.id, resident.id, input.day, input.slot, input.vehicleNo.trim().toUpperCase(), code, now],
++    );
++    return { id: row!.id, code, place: area.place, area: area.name };
++  });
++}
++
++export async function myParkingBookings(db: Db, actor: Actor, now: Date) {
++  const resident = requireVerifiedResident(actor);
++  return db.query(
++    `SELECT b.id, b.day::text AS day, b.slot, b.vehicle_no, b.code, b.status, a.place, a.name AS area, a.lat, a.lng
++       FROM parking_bookings b JOIN parking_areas a ON a.id = b.area_id
++      WHERE b.user_id = $1 AND b.day >= $2::date ORDER BY b.day, b.slot LIMIT 20`,
++    [resident.id, await todayIn(db, now)],
++  );
++}
++
++export async function cancelParkingBooking(db: Db, actor: Actor, id: string) {
++  const resident = requireVerifiedResident(actor);
++  const rows = await db.query(`UPDATE parking_bookings SET status = 'CANCELLED' WHERE id = $1 AND user_id = $2 AND status = 'BOOKED' RETURNING id`, [id, resident.id]);
++  if (rows.length === 0) throw notFound('Booking');
++  return { ok: true };
++}
++
++/** Starts the clock on finding a bay, with guidance to a car park or without. */
++export async function startSearch(db: Db, actor: Actor, input: { place: string; areaId?: string; guided: boolean }, now: Date) {
++  const resident = requireVerifiedResident(actor);
++  if (input.areaId && !(await one(db, 'SELECT 1 FROM parking_areas WHERE id = $1 AND township_id = $2 AND place = $3', [input.areaId, resident.townshipId, input.place]))) {
++    throw notFound('Car park');
++  }
++  // Only one search runs at a time: starting again drops the one left open.
++  await db.query('DELETE FROM parking_searches WHERE user_id = $1 AND parked_at IS NULL', [resident.id]);
++  const row = await one<{ id: string }>(
++    db,
++    'INSERT INTO parking_searches (township_id, user_id, place, area_id, guided, started_at) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
++    [resident.townshipId, resident.id, input.place, input.areaId ?? null, input.guided, now],
++  );
++  return { id: row!.id };
++}
++
++export async function finishSearch(db: Db, actor: Actor, id: string, now: Date) {
++  const resident = requireVerifiedResident(actor);
++  const row = await one<{ started_at: Date }>(
++    db, `UPDATE parking_searches SET parked_at = $3 WHERE id = $1 AND user_id = $2 AND parked_at IS NULL RETURNING started_at`, [id, resident.id, now],
++  );
++  if (!row) throw notFound('Search');
++  return { minutes: Math.round(((now.getTime() - row.started_at.getTime()) / 60_000) * 10) / 10 };
++}
++
++/** The brief's test: time spent finding a bay, guided against unguided, per place. */
++export async function parkingStats(db: Db, actor: Actor, now: Date) {
++  const rows = await db.query<{ place: string; guided: boolean; searches: number; avg_min: number | null }>(
++    `SELECT place, guided, count(*)::int AS searches,
++            round(avg(extract(epoch FROM parked_at - started_at) / 60)::numeric, 1)::float AS avg_min
++       FROM parking_searches
++      WHERE ($1::uuid IS NULL OR township_id = $1) AND parked_at IS NOT NULL AND started_at > $2::timestamptz - interval '90 days'
++        AND parked_at - started_at <= make_interval(mins => $3)
++      GROUP BY place, guided ORDER BY place`,
++    [actor.townshipId, now, MAX_SEARCH_MINUTES],
++  );
++  const areas = await db.query(
++    `SELECT a.id, a.place, a.name, a.total_bays, a.bookable_bays, a.active,
++            (SELECT count(*)::int FROM parking_bookings b WHERE b.area_id = a.id AND b.status = 'BOOKED' AND b.day >= $2::date AND b.day < $2::date + 7) AS booked_week
++       FROM parking_areas a WHERE ($1::uuid IS NULL OR a.township_id = $1) ORDER BY a.place, a.name`,
++    [actor.townshipId, await todayIn(db, now)],
++  );
++  const places = [...new Set(rows.map((r) => r.place))].map((place) => {
++    const g = rows.find((r) => r.place === place && r.guided);
++    const u = rows.find((r) => r.place === place && !r.guided);
++    return {
++      place,
++      guided: { searches: g?.searches ?? 0, avgMinutes: g?.avg_min ?? null },
++      unguided: { searches: u?.searches ?? 0, avgMinutes: u?.avg_min ?? null },
++      savedMinutes: g?.avg_min != null && u?.avg_min != null ? Math.round((u.avg_min - g.avg_min) * 10) / 10 : null,
++    };
++  });
++  return { places, areas };
++}
++
++export async function createParkingArea(db: Db, actor: Actor, input: { place: string; name: string; totalBays: number; bookableBays: number; lat?: number; lng?: number }) {
++  if (input.bookableBays > input.totalBays) throw ruleViolation('TOO_MANY_BOOKABLE', 'Bookable bays cannot be more than the total.');
++  return db.tx(async (tx) => {
++    const townshipId = await resolveTownship(tx, actor);
++    if (await one(tx, 'SELECT 1 FROM parking_areas WHERE township_id = $1 AND lower(place) = lower($2) AND lower(name) = lower($3)', [townshipId, input.place, input.name])) {
++      throw conflict('AREA_EXISTS', 'This car park already exists.');
++    }
++    const row = await one<{ id: string }>(
++      tx,
++      `INSERT INTO parking_areas (township_id, place, name, total_bays, bookable_bays, lat, lng) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
++      [townshipId, input.place.trim(), input.name.trim(), input.totalBays, input.bookableBays, input.lat ?? null, input.lng ?? null],
++    );
++    await audit(tx, actor.id, 'PARKING_AREA_CREATED', 'parking_area', row!.id, { place: input.place, name: input.name });
++    return { id: row!.id };
++  });
++}
+diff --git a/src/server/modules/requests/routes.ts b/src/server/modules/requests/routes.ts
+index b69852c..a15ead1 100644
+--- a/src/server/modules/requests/routes.ts
++++ b/src/server/modules/requests/routes.ts
+@@ -3,7 +3,7 @@ import * as requests from './service';
+ 
+ export const requestRoutes = [
+   route({
+-    method: 'GET', path: '/requests', tag: 'Requests', summary: 'Everything my household is waiting on: reports, parcels and collections, with the next step', auth: 'session', roles: ['RESIDENT'],
++    method: 'GET', path: '/requests', tag: 'Requests', summary: 'Everything my household is waiting on: reports, parcels, collections and parking, with the next step', auth: 'session', roles: ['RESIDENT'],
+     handler: (c) => requests.myRequests(c.db, c.actor, c.now),
+   }),
+ ];
+diff --git a/src/server/modules/requests/service.ts b/src/server/modules/requests/service.ts
+index eac7443..954328c 100644
+--- a/src/server/modules/requests/service.ts
++++ b/src/server/modules/requests/service.ts
+@@ -6,18 +6,18 @@ import { todayIn } from '../settings';
+ /**
+  * "My requests": everything a household is waiting on, in one list (the
+  * brief's single resident hub). Reports and the ones followed with "Me too",
+- * parcels at the guardhouse and in the lockers, and booked recycling
+- * collections, each with where it stands and the next step, so nobody has to
++ * parcels at the guardhouse and in the lockers, booked recycling collections
++ * and parking bookings, each with where it stands and the next step, so nobody has to
+  * know whom to ask.
+  */
+ 
+-export type RequestKind = 'REPORT' | 'PARCEL' | 'LOCKER' | 'COLLECTION' | 'INCIDENT';
++export type RequestKind = 'REPORT' | 'PARCEL' | 'LOCKER' | 'COLLECTION' | 'INCIDENT' | 'PARKING';
+ type ReportStep = 'RECEIVED' | 'CHECKED' | 'ASSIGNED' | 'FIXED' | 'CLOSED';
+ 
+ export async function myRequests(db: Db, actor: Actor, now: Date) {
+   const resident = requireVerifiedResident(actor);
+   const today = await todayIn(db, now);
+-  const [reports, parcels, lockers, collections, cases] = await Promise.all([
++  const [reports, parcels, lockers, collections, cases, parking] = await Promise.all([
+     db.query<{
+       id: string; category: ReportCategory; location_text: string; status: ReportStatus; created_at: Date; updated_at: Date;
+       checked_at: Date | null; assigned_to: string | null; target_date: string | null; mine: boolean; affected: number;
+@@ -53,6 +53,12 @@ export async function myRequests(db: Db, actor: Actor, now: Date) {
+         WHERE user_id = $1 AND (status NOT IN ('RESOLVED', 'CLOSED') OR updated_at > $2::timestamptz - interval '14 days') ORDER BY updated_at DESC LIMIT 20`,
+       [resident.id, now],
+     ),
++    db.query<{ id: string; day: string; slot: string; place: string; area: string; code: string; created_at: Date }>(
++      `SELECT b.id, b.day::text AS day, b.slot, a.place, a.name AS area, b.code, b.created_at
++         FROM parking_bookings b JOIN parking_areas a ON a.id = b.area_id
++        WHERE b.user_id = $1 AND b.status = 'BOOKED' AND b.day >= $2::date ORDER BY b.day, b.slot`,
++      [resident.id, today],
++    ),
+   ]);
+ 
+   const step = (r: (typeof reports)[number]): ReportStep =>
+@@ -80,6 +86,7 @@ export async function myRequests(db: Db, actor: Actor, now: Date) {
+       deadlineAt: l.deadline_at, at: l.state_changed_at, link: '/app/parcels',
+     })),
+     ...collections.map((x) => ({ kind: 'COLLECTION' as const, id: x.id, open: true, collector: x.collector, day: x.day, slot: x.slot, status: x.status, at: x.created_at, link: '/app/kitar' })),
++    ...parking.map((b) => ({ kind: 'PARKING' as const, id: b.id, open: true, place: b.place, area: b.area, day: b.day, slot: b.slot, code: b.code, at: b.created_at, link: '/app/parking' })),
+     ...cases.map((c) => ({
+       kind: 'INCIDENT' as const, id: c.id, reference: c.reference, category: c.kind, status: c.status, open: c.status !== 'RESOLVED' && c.status !== 'CLOSED',
+       awaitingYou: c.status === 'AWAITING_EXTERNAL_PARTY' && c.awaiting === 'RESIDENT', handled: c.owner_id !== null, at: c.updated_at, link: `/app/reports#${c.reference}`,
+diff --git a/tests/tomorrow.test.ts b/tests/tomorrow.test.ts
+index bf828b6..2412796 100644
+--- a/tests/tomorrow.test.ts
++++ b/tests/tomorrow.test.ts
+@@ -4,6 +4,7 @@ import { one, type Db } from '@/server/db/client';
+ import { runJob } from '@/server/modules/admin/service';
+ import { bookCollection, cancelCollection, completeCollection, confirmCollection, createCollector, recyclingStats } from '@/server/modules/kitar/collections';
+ import { checkParcelCode, guardParcels, handOverParcel, logParcel, myParcels, parcelStats, reportParcelProblem } from '@/server/modules/parcels/service';
++import { bookBay, createParkingArea, finishSearch, parkingOverview, parkingStats, simulatedOccupancy, startSearch } from '@/server/modules/parking/service';
+ import { edgingTrial, updateTrialTest, DEFAULT_TEST_PLAN } from '@/server/modules/planet/edging';
+ import { compareMaterials, explainComparison, saveShortlist, listShortlists } from '@/server/modules/planet/materials';
+ import { createSolarSite, solarSites, updateSolarSite } from '@/server/modules/planet/solar';
+@@ -130,6 +131,36 @@ describe('Secure parcel collection', () => {
+   });
+ });
+ 
++describe('Guided parking', () => {
++  it('books held-back bays up to the limit and times searches with and without guidance', async () => {
++    const { id: areaId } = await createParkingArea(db, w.admin, { place: 'Central Park', name: 'North car park', totalBays: 40, bookableBays: 1 });
++    await createParkingArea(db, w.admin, { place: 'Central Park', name: 'Lakeside car park', totalBays: 60, bookableBays: 0 });
++    const a = await makeResident(w);
++    const b = await makeResident(w);
++
++    const view = await parkingOverview(db, a, T0);
++    expect(view.simulated).toBe(true);
++    expect(view.places[0]!.areas).toHaveLength(2);
++    const occ = simulatedOccupancy(areaId, T0, 'Asia/Kuala_Lumpur');
++    expect(occ).toBe(simulatedOccupancy(areaId, T0, 'Asia/Kuala_Lumpur'));
++    expect(occ).toBeGreaterThan(0);
++    expect(occ).toBeLessThan(1);
++
++    const booked = await bookBay(db, a, { areaId, day: '2026-11-03', slot: 'MORNING', vehicleNo: 'wxy 1234' }, T0);
++    expect(booked.code).toMatch(/^B/);
++    await expect(bookBay(db, a, { areaId, day: '2026-11-03', slot: 'MORNING', vehicleNo: 'WXY 1234' }, T0)).rejects.toMatchObject({ code: 'ALREADY_BOOKED' });
++    await expect(bookBay(db, b, { areaId, day: '2026-11-03', slot: 'MORNING', vehicleNo: 'ABC 1' }, T0)).rejects.toMatchObject({ code: 'PARKING_FULL' });
++    await expect(bookBay(db, b, { areaId, day: '2026-12-25', slot: 'MORNING', vehicleNo: 'ABC 1' }, T0)).rejects.toMatchObject({ code: 'PARKING_DAY' });
++
++    const guided = await startSearch(db, a, { place: 'Central Park', areaId, guided: true }, T0);
++    expect(await finishSearch(db, a, guided.id, new Date(T0.getTime() + 3 * 60_000))).toEqual({ minutes: 3 });
++    const unguided = await startSearch(db, b, { place: 'Central Park', guided: false }, T0);
++    await finishSearch(db, b, unguided.id, new Date(T0.getTime() + 11 * 60_000));
++    const stats = await parkingStats(db, w.staff, T0);
++    expect(stats.places[0]).toMatchObject({ place: 'Central Park', guided: { avgMinutes: 3 }, unguided: { avgMinutes: 11 }, savedMinutes: 8 });
++  });
++});
++
+ describe('Recycling guide and collections', () => {
+   it('answers in English or Malay', () => {
+     expect(searchGuide('minyak')[0]!.id).toBe('cooking-oil');
+@@ -228,7 +259,7 @@ describe('My requests', () => {
+     expect(JSON.stringify(r)).not.toMatch(/"code"/); // parcel codes stay on the Parcels screen
+   });
+ 
+-  it('shows every report step and collections exactly as the database holds them', async () => {
++  it('shows every report step, collections and parking exactly as the database holds them', async () => {
+     const homeId = await makeHome(w, 'Jalan Steps');
+     const resident = await makeResident(w, { homeId });
+     const report = (description: string) => createReport(db, resident, { description, locationText: 'Jalan Steps', category: 'OTHER' }, T0);
+@@ -245,20 +276,24 @@ describe('My requests', () => {
+     const { id: collectorId } = await createCollector(db, w.admin, { name: 'Steps Collector', materials: ['PAPER'], days: 'Fridays' });
+     const booked = await bookCollection(db, resident, { collectorId, materials: ['PAPER'], items: 'Boxes', day: '2026-11-06', slot: 'MORNING' }, T0);
+     await confirmCollection(db, w.staff, booked.id, T0);
++    const { id: areaId } = await createParkingArea(db, w.admin, { place: 'Steps Hall', name: 'Hall car park', totalBays: 10, bookableBays: 2 });
++    await bookBay(db, resident, { areaId, day: '2026-11-07', slot: 'EVENING', vehicleNo: 'ABC 123' }, T0);
+ 
+     const r = await myRequests(db, resident, at(3));
+     const steps = r.items.filter((i) => i.kind === 'REPORT').map((i) => [i.step, i.open, i.late]);
+     expect(steps).toEqual(expect.arrayContaining([['RECEIVED', true, false], ['CHECKED', true, false], ['ASSIGNED', true, true], ['FIXED', false, false], ['CLOSED', false, false]]));
+     expect(r.items.find((i) => i.kind === 'COLLECTION')).toMatchObject({ status: 'CONFIRMED', collector: 'Steps Collector' });
++    expect(r.items.find((i) => i.kind === 'PARKING')).toMatchObject({ place: 'Steps Hall', slot: 'EVENING' });
+     // The count of open requests is the same as the tables say.
+     const fromTables = await one<{ n: number }>(
+       db,
+       `SELECT (SELECT count(*) FROM reports WHERE reporter_id = $1 AND status IN ('NEW', 'IN_PROGRESS'))
+             + (SELECT count(*) FROM recycling_collections WHERE home_id = $2 AND status IN ('REQUESTED', 'CONFIRMED'))
++            + (SELECT count(*) FROM parking_bookings WHERE user_id = $1 AND status = 'BOOKED')
+             + (SELECT count(*) FROM parcels WHERE home_id = $2 AND status = 'WAITING') AS n`,
+       [resident.id, homeId],
+     );
+     expect(r.open).toBe(Number(fromTables!.n));
+-    expect(r.open).toBe(4);
++    expect(r.open).toBe(5);
+   });
+ });

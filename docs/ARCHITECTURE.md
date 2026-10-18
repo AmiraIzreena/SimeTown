@@ -60,7 +60,7 @@ assessment below is therefore of the *specification*.
                           PostgreSQL 15+ (constraints and triggers
                           guard the ledger even against our own bugs)
 
- Scheduler ──bearer token──► POST /api/v1/internal/jobs/{expire-points|float-check|settle|cleanup|flood-agent}
+ Scheduler ──bearer token──► POST /api/v1/internal/jobs/{expire-points|float-check|settle|cleanup|flood-agent|parcel-reminders|lockers|couriers}
  Sensor bridge ──bearer token──► POST /api/v1/ingest/flood
  Recycling machine ──HMAC-signed records──► POST /api/v1/ingest/kitar/{start|items|finish}
  Optional: hosted AI vision service ◄── one HTTPS call from src/server/ai/classifier.ts
@@ -248,7 +248,7 @@ It gives Impact XP, applies the daily and monthly caps, makes the action impossi
 twice, and then awards points from any live, funded campaign that covers the action, up to the
 per-person cap and only while the pool can pay. Features never touch the ledger themselves.
 Actions proved by something stronger than the resident's word (a signed machine session, a
-tracked trip, a bill-verified saving, a garden code) pass `offerEligible` and may also earn
+tracked trip, a bill-verified saving) pass `offerEligible` and may also earn
 offer-backed points; a guest machine session claimed later passes `xpOnly`.
 
 ## 7. Design system
@@ -375,3 +375,97 @@ resident confirms the job and can review it or report a problem privately. Migra
   the home and is shared by everyone registered there; only the booker sees their own problem text and
   rating. `SERVICE_REMINDER_DAYS` sets services that come round again (air-conditioning, 180 days).
 - **No ledger, no points.** Nothing here moves money or awards points or XP.
+
+## Smart lockers and the courier platform
+
+Two modules, one database, no extra services:
+
+```
+ Courier app ──scan──► carriers/verification ──► carriers/providers ──► courier company system
+      │                     │   (barcode.ts, matching.ts)       │      (SIMULATED table, or the
+      │                     ▼                                   │       signed GATEWAY contract)
+      │            courier_shipments (one row per shipment, for ever) + courier_scans (every scan)
+      ▼
+ lockers/delivery ──► lockers/hardware ──► station adapter ──► controller (simulated, or a gateway)
+      │                    signed, expiring, single-use unlock authorisation
+      ▼
+ lockers/collection ── PIN / QR for the household ── lockers/overflow ── staffed counter
+```
+
+- **Who may deliver** (`lockers/couriers.ts → requireCourierAt`): an active courier of a company
+  approved in the station's township (`courier_company_townships`), within its agreement, at a
+  station granted to the company (`courier_company_stations`), or, for couriers approved one by
+  one, to them (`courier_station_access`). Company managers (`carriers/team.ts`) and the company's
+  own sign-in (`carriers/federation.ts`, OpenID Connect with PKCE) create and suspend couriers; the
+  township approves companies (`carriers/companies.ts`).
+- **What a scan is worth** (`carriers/verification.ts`): the tracking number only. The provider
+  adapter (`carriers/providers.ts`) is the only place that knows a company; everything else uses the
+  normalised `ProviderShipment`. Outcomes: `VERIFIED`, `NOT_FOUND`, `UNVERIFIED`,
+  `PROVIDER_UNAVAILABLE`, `RECIPIENT_MISMATCH`, `NOT_ELIGIBLE`, `ALREADY_DEPOSITED`, each with a
+  reason, and an assurance level (`HIGH` when the company confirms the courier, `MEDIUM` when it
+  confirms the shipment only, `LOW` for the delivery-code fallback).
+- **One delivery per shipment**, enforced three times: the shipment row is locked while a parcel is
+  created; `deposited_at` is set once on deposit and never cleared; and a unique index allows one
+  parcel per shipment that is not a failed delivery.
+- **The delivery stages** a courier company would recognise map onto the parcel's own states
+  (`src/shared/lockers.ts`, which the server enforces):
+
+  | Stage | Parcel states |
+  | --- | --- |
+  | EXPECTED | `REGISTERED`, `VERIFIED` |
+  | RESERVED | `LOCKER_RESERVED` |
+  | DEPOSITING | `DEPOSIT_IN_PROGRESS` |
+  | DEPOSITED | `DEPOSITED`, `READY_FOR_COLLECTION`, `OVERDUE`, `RELOCATION_*`, `RELOCATED_TO_STORAGE`, `COLLECTION_IN_PROGRESS`, `RETURN_PENDING` |
+  | COLLECTED | `COLLECTED` |
+  | CANCELLED | `DELIVERY_FAILED`, `RETURNED` |
+  | EXCEPTION | `EXCEPTION` |
+
+  A finished parcel never goes back to an earlier state; a correction is a staff exception
+  (`lockers/exceptions.ts`), approved by a second admin, with the parcel held by staff.
+- **Incidents** are raised where the system notices something (replayed labels, a second courier,
+  suspended couriers, forced or open doors, refused commands, keypad lockouts, many sign-in places,
+  provider outages) and by staff and households. `lockers/incidents.ts` now hands them to the
+  township's central incident system (below). They inform people; they never change a parcel. The
+  risks they watch are in [RISK_REGISTER.md](RISK_REGISTER.md).
+- **Simulated parts** (`carriers/simulated.ts`, `carriers/sim-idp.ts`, the locker simulator) use the
+  same interfaces as real ones, are labelled wherever they appear, and refuse to run in production.
+
+## Incidents and reports
+
+One engine (`src/server/modules/incidents`) for every township case: lockers, guardhouse parcels,
+the gate and the courier platform. Lapor's community reports keep their own queue and are listed,
+read-only, on the same dashboard.
+
+Cases are worked in one place, `/console/incidents`. The *Smart lockers* and *Parcels* pages show a
+`CaseSummary` (open, overdue, critical, untaken) whose link opens the board already filtered
+(`?area=PARCELS`, `?area=LOCKERS,COURIERS`, `?disputed=1`); *Smart lockers → Today* lists the urgent
+ones and opens each by reference (`?ref=INC-000123`), as notifications do.
+
+```
+ report button ──► incidents/triage ──┬─ courier problem ──► courier_referrals + the company's verified
+ (parcel, gate,     (reason → who is  │                      support channel (no case, no staff alert)
+  courier station)   responsible)     ├─ not sure which courier ──► the resident chooses; never guessed
+                                      ├─ collection dispute ──► the records first (who opened the door)
+                                      └─ township or mixed ──► incidents/engine.createIncident
+ system signals ──► raiseSystemIncident ──────────────────────────────────┘
+                                                   │
+ incidents ── incident_events (append-only, hash-chained) ── incident_escalations (once per key)
+     ▲                                             │
+ incidents/checks (the `incidents` job, every 5 min): unassigned / overdue → escalate; resolved → close
+```
+
+- **Statuses** (`src/shared/incidents.ts`, enforced by the engine): `OPEN → ASSIGNED →
+  INVESTIGATING ⇄ AWAITING_EXTERNAL_PARTY → RESOLVED → CLOSED`, with `RESOLVED → REOPENED` while
+  the resident may still dispute the outcome. Any other move is refused.
+- **One owner**: taking a case is one conditional `UPDATE … WHERE owner_id IS NULL`, so of two staff
+  only one succeeds. Moving a case someone already holds is for admins and needs a reason.
+- **Deadlines** come from `incident_policies` (per township, per priority, optionally in working
+  time with working days and holidays in the township's time zone) and are fixed when the case is
+  opened or reopened. Escalation is keyed (`UNASSIGNED`, `OVERDUE`, `CRITICAL`, `DISPUTED`,
+  `REQUESTED`, per reopening round), so running the job twice changes nothing.
+- **Two kinds of note**: internal notes for staff, and updates the resident sees. The resident's
+  pages read only events marked visible.
+- **Resolving records an outcome**; it never opens a door, issues a code or changes a parcel.
+- **Courier support** is shown only when an admin has recorded and checked it
+  (`courier_companies.support_verified_at`). Filing a ticket for the resident uses an adapter
+  (`incidents/courier-support.ts`); only the simulated one exists, for simulated companies.

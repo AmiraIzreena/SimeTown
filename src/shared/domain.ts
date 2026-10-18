@@ -1,6 +1,6 @@
 /** Vocabulary shared by the server and the screens. No logic that needs a database lives here. */
 
-export const ROLES = ['RESIDENT', 'MERCHANT', 'SPONSOR', 'GUARD', 'TOWNSHIP_STAFF', 'TOWNSHIP_ADMIN', 'HQ_ADMIN'] as const;
+export const ROLES = ['RESIDENT', 'MERCHANT', 'SPONSOR', 'GUARD', 'COURIER', 'TOWNSHIP_STAFF', 'TOWNSHIP_ADMIN', 'HQ_ADMIN'] as const;
 export type Role = (typeof ROLES)[number];
 
 /** Township staff and above. */
@@ -13,6 +13,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   MERCHANT: 'Shop',
   SPONSOR: 'Sponsor',
   GUARD: 'Guard',
+  COURIER: 'Courier',
   TOWNSHIP_STAFF: 'Township staff',
   TOWNSHIP_ADMIN: 'Township admin',
   HQ_ADMIN: 'SDP HQ admin',
@@ -24,6 +25,7 @@ export const ROLE_HOME: Record<Role, string> = {
   MERCHANT: '/merchant',
   SPONSOR: '/sponsor',
   GUARD: '/guard',
+  COURIER: '/courier',
   TOWNSHIP_STAFF: '/console',
   TOWNSHIP_ADMIN: '/console',
   HQ_ADMIN: '/console',

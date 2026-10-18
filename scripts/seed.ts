@@ -21,6 +21,10 @@ import { createSale, decideSale } from '../src/server/modules/merchant/service';
 import { createReport, updateReport } from '../src/server/modules/reports/service';
 import { seedHomeServices } from './seed-home-services';
 import { seedThirdEdition } from './seed-third-edition';
+import { seedCourierPlatform } from './seed-couriers';
+import { seedIncidents } from './seed-incidents';
+import { seedLockers } from './seed-lockers';
+import { seedRequestShowcase, seedTomorrow } from './seed-tomorrow';
 
 /**
  * Demo data for local development and the hackathon demo. Everything here is
@@ -52,6 +56,11 @@ async function main() {
     console.log('The database already has data. Adding any missing third-edition demo data only.\n');
     await seedThirdEdition(db, { passwordHash, now, log: (line) => console.log(`  ${line}`) });
     await seedHomeServices(db, { passwordHash, now, log: (line) => console.log(`  ${line}`) });
+    await seedTomorrow(db, { now, log: (line) => console.log(`  ${line}`) });
+    await seedRequestShowcase(db, { now, log: (line) => console.log(`  ${line}`) });
+    await seedLockers(db, { passwordHash, now, log: (line) => console.log(`  ${line}`) });
+    await seedCourierPlatform(db, { passwordHash, now, log: (line) => console.log(`  ${line}`) });
+    await seedIncidents(db, { passwordHash, now, log: (line) => console.log(`  ${line}`) });
     const check = await runFloatCheck(db, null, now);
     console.log(`\n  Float check: ${check.ok ? 'OK' : `FAILED: ${check.issues.join(' ')}`}`);
     if (!process.env.SEED_DEMO_PASSWORD) console.log(`  A new account (if any was added) uses the password: ${password}`);
@@ -271,6 +280,11 @@ async function main() {
   // --- Third edition: Tamu, Shop Offers, the smart machine, map tracking, Akses+, Taman ---------
   await seedThirdEdition(db, { passwordHash, now, log: () => undefined });
   await seedHomeServices(db, { passwordHash, now, log: () => undefined });
+  await seedTomorrow(db, { now, log: () => undefined });
+  await seedRequestShowcase(db, { now, log: () => undefined });
+  await seedLockers(db, { passwordHash, now, log: () => undefined });
+  await seedCourierPlatform(db, { passwordHash, now, log: () => undefined });
+  await seedIncidents(db, { passwordHash, now, log: () => undefined });
 
   const check = await runFloatCheck(db, admin2.id, now);
   if (!check.ok) throw new Error(`Seed left the float out of balance: ${check.issues.join(' ')}`);
@@ -286,8 +300,15 @@ async function main() {
     ['Home services', `aircon@${DOMAIN}`, 'Sejuk Aircon Services'],
     ['Shop and home services', `kemas@${DOMAIN}`, 'Kemas Home Care'],
     ['Guard', `guard@${DOMAIN}`, 'the main gate: visitor passes, walk-ins, SOS, patrol'],
+    ['Courier', `courier@${DOMAIN}`, 'Faizal, J&T Express (simulated): managed by J&T, delivers to the smart lockers'],
+    ['Courier', `hairul@${DOMAIN}`, 'Hairul, J&T Express (simulated)'],
+    ['Courier', `nurul@${DOMAIN}`, 'Nurul Ain, Ninja Van (simulated)'],
+    ['Courier (suspended)', `courier2@${DOMAIN}`, 'Ahmad Zaki: suspended by Ninja Van, cannot deliver'],
+    ['Courier company manager', `jnt-manager@${DOMAIN}`, 'Kavitha, J&T Express: adds and suspends J&T couriers'],
+    ['Courier company manager', `ninjavan-manager@${DOMAIN}`, 'Tan Wei Ming, Ninja Van'],
     ['Sponsor', `sponsor@${DOMAIN}`, 'Solar Cerah (demo sponsor)'],
-    ['Township staff', `staff@${DOMAIN}`, ''],
+    ['Township staff', `staff@${DOMAIN}`, 'Ravi Kumar: takes and investigates cases'],
+    ['Township staff', `staff2@${DOMAIN}`, 'Mei Chen: a second person to hand cases to'],
     ['Township admin', `admin@${DOMAIN}`, ''],
     ['Township admin (second approver)', `admin2@${DOMAIN}`, ''],
     ['SDP HQ admin', `hq@${DOMAIN}`, ''],

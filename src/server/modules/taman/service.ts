@@ -195,8 +195,9 @@ export async function takeRosterDay(db: Db, actor: Actor, gardenId: string, day:
 }
 
 /**
- * Watering done: the resident scans the code at the garden gate, which proves
- * they were there. It earns Impact XP and offer-backed points (within the limits).
+ * Watering done: the resident scans the code at the garden gate. The printed
+ * code can be shared, so it earns Impact XP only (and points from a funded
+ * campaign, if a sponsor runs one), never offer-backed points.
  */
 export async function markWatered(db: Db, actor: Actor, code: string, now: Date) {
   const resident = requireVerifiedResident(actor);
@@ -209,7 +210,7 @@ export async function markWatered(db: Db, actor: Actor, code: string, now: Date)
     if (slot?.done_at) throw conflict('ALREADY_DONE', 'Today’s watering is already recorded.');
     if (slot) await tx.query('UPDATE garden_roster SET done_at = $3 WHERE garden_id = $1 AND day = $2::date', [garden.id, day, now]);
     else await tx.query('INSERT INTO garden_roster (garden_id, day, user_id, done_at) VALUES ($1, $2::date, $3, $4)', [garden.id, day, resident.id, now]);
-    const reward = await recordAction(tx, { user: resident, activity: 'TAMAN_WATERING', ref: `${garden.id}:${day}`, now, offerEligible: true });
+    const reward = await recordAction(tx, { user: resident, activity: 'TAMAN_WATERING', ref: `${garden.id}:${day}`, now });
     return { garden: garden.name, reward };
   });
 }

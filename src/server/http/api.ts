@@ -3,15 +3,21 @@ import { aksesRoutes } from '../modules/akses/routes';
 import { assistantRoutes } from '../modules/assistant/routes';
 import { banjirRoutes } from '../modules/banjir/routes';
 import { campaignRoutes } from '../modules/campaigns/routes';
+import { carrierRoutes } from '../modules/carriers/routes';
+import { incidentRoutes } from '../modules/incidents/routes';
 import { communityRoutes } from '../modules/community/routes';
 import { gerakRoutes } from '../modules/gerak/routes';
 import { homeServiceRoutes } from '../modules/home-services/routes';
 import { identityRoutes } from '../modules/identity/routes';
 import { jimatRoutes } from '../modules/jimat/routes';
 import { kitarRoutes } from '../modules/kitar/routes';
+import { lockerRoutes } from '../modules/lockers/routes';
 import { merchantRoutes } from '../modules/merchant/routes';
 import { offerRoutes } from '../modules/offers/routes';
+import { parcelRoutes } from '../modules/parcels/routes';
+import { planetRoutes } from '../modules/planet/routes';
 import { reportRoutes } from '../modules/reports/routes';
+import { requestRoutes } from '../modules/requests/routes';
 import { tamanRoutes } from '../modules/taman/routes';
 import { tamuRoutes } from '../modules/tamu/routes';
 import { walletRoutes } from '../modules/wallet/routes';
@@ -29,14 +35,20 @@ export const routes: RouteDef[] = [
   ...campaignRoutes,
   ...communityRoutes,
   ...reportRoutes,
+  ...requestRoutes,
   ...tamuRoutes,
   ...homeServiceRoutes,
+  ...parcelRoutes,
+  ...lockerRoutes,
+  ...carrierRoutes,
+  ...incidentRoutes,
   ...gerakRoutes,
   ...kitarRoutes,
   ...jimatRoutes,
   ...banjirRoutes,
   ...aksesRoutes,
   ...tamanRoutes,
+  ...planetRoutes,
   ...assistantRoutes,
   ...adminRoutes,
 ];

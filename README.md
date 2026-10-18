@@ -37,10 +37,15 @@ password yourself, set `SEED_DEMO_PASSWORD` in `.env` (10+ characters) before ru
 | Shop | `kafe@demo.kita.test`, `kedai@demo.kita.test` | Counter with Shop Offers, offers page, sales, weekly statements |
 | Home service company | `plumber@demo.kita.test`, `aircon@demo.kita.test` | Booking inbox, accept with a visit time, assign a registered worker, services and workers |
 | Shop and home services | `kemas@demo.kita.test` | Both menus on one business account: the counter and offers, and bookings |
-| Guard | `guard@demo.kita.test` | The main gate: scan passes, walk-ins, SOS calls, patrol round, flood tasks |
+| Guard | `guard@demo.kita.test` | The main gate: scan passes, walk-ins, SOS calls, patrol round, flood tasks; parcel shelf and the locker parcel counter |
+| Courier | `courier@demo.kita.test` | Faizal, J&T Express (simulated): managed by J&T, delivers to the smart lockers. Also `hairul@` (J&T) and `nurul@` (Ninja Van) |
+| Courier (suspended) | `courier2@demo.kita.test` | Ahmad Zaki: suspended by Ninja Van, so he cannot deliver |
+| Courier company manager | `jnt-manager@demo.kita.test` | Kavitha, J&T Express: adds, suspends and reconfirms J&T's couriers (`ninjavan-manager@` for Ninja Van) |
+| Courier (company sign-in) | staff number `SPX-3001` | Lim Wei Jie, Shopee Express: *Sign in with your courier company* on the sign-in page (simulated); `SPX-3002` is suspended by Shopee |
 | Shop, not yet approved | `bengkel@demo.kita.test` | The "waiting for approval" state |
 | Sponsor | `sponsor@demo.kita.test` | Its Green Champion tier, own campaigns and grouped results |
 | Township staff | `staff@demo.kita.test` | Insights, report queue, home service reports, the flood agent, kiosks, smart machines, gardens and patrol points, nature and access |
+| Township staff (second) | `staff2@demo.kita.test` | Mei Chen: a second person in the township office, so a case can be moved from Ravi to her |
 | Township admin | `admin@demo.kita.test`, `admin2@demo.kita.test` | Everything staff see, plus shops, money and corrections |
 | SDP HQ admin | `hq@demo.kita.test` | Everything, plus the programme rules |
 
@@ -124,6 +129,107 @@ Open two browser windows (one normal, one private) so you can be the resident an
     names the worker assigned at the time, with the booking's full history. The company never sees it.
     Aisyah's *Home logbook* shows her air-conditioner service as due soon: *Book again* rebooks the same company.
 
+### The hackathon brief's PEOPLE and PLANET problems
+
+16. **One reporting channel.** As Aisyah, open *My requests*: every report, parcel and collection
+    in one list, with where it stands. In *Lapor*, start a report about a blocked drain
+    behind Jalan Metafasa: the open report appears under *Already reported?*; tap *Me too* instead of
+    filing a second one. As staff, *Reports* shows the duplicates avoided, reports past their target
+    date and the median time to fix; set who is fixing a report and by when, and add a photo of the fix.
+17. **Secure parcel collection.** As the guard, open *Parcels*, log a parcel for No. 1 Jalan Metafasa
+    U16/171 with a shelf and a photo. Aisyah's *Parcels* screen shows the one-time code (and its QR).
+    Scan or type it at the guard's screen, check the photo, hand it over: the code stops working.
+    *Not me?* queries a handover; staff see the time to collect and the queried handovers.
+18. **Recycling guide and collections.** In *Kitar*, type “minyak” or “pizza box” under *Can I recycle
+    this?*, then *Book a collection* with a partner collector. Staff confirm it under *Recycling
+    collections* (the collector's gate pass is made automatically) and record the weight.
+19. **Solar sites, greener materials, the edging trial.** As staff, *Solar sites* ranks rooftops and car
+    parks and flags missing checks; *Greener materials* compares materials for one use (sample library),
+    asks the agent to explain, saves a timed shortlist, and follows the recycled-plastic edging trial.
+
+### Smart parcel lockers
+
+20. **Deliver.** As the courier, open *Deliver*, choose *Elmina Valley Locker A*, type a tracking
+    number, pick a size and give Aisyah's delivery code (her wallet → *Show my code*). The smallest
+    free door opens; tap *Shut the door with the parcel inside* (a simulated station). Aisyah is told.
+21. **Collect.** As Aisyah, *Parcels* shows the QR code, the PIN and the time left. Type the PIN on
+    the station's keypad in the console's simulator, or enter the station code in the app and tap
+    *Open my door*, then *Take it and shut the door*.
+22. **Overdue and relocation.** As staff, *Smart lockers → Relocations* has Priya's overdue parcel.
+    Start it (choose the township office counter), scan its tracking number, shut the empty door and
+    complete it: her code changes and she is told where to go. Hand it over under *Counter* after
+    checking the code and ID. *Parcels* shows every state change and the custody chain.
+23. **Full station and hardware faults.** In the simulator, jam a door or take the station offline,
+    then try a delivery: nothing is confirmed and the courier is told what to do. The *Overview*,
+    *Forecast* and *Policy* tabs show capacity, tomorrow's demand and the deadlines.
+
+### The courier platform (simulated courier companies)
+
+J&T Express, Ninja Van and Shopee Express here are **simulated**: SimeTown is not connected to any
+courier company, and every tracking number (`JTSIM…`, `NVSIM…`, `SPXSIM…`) is fictional. Open
+`/demo/labels` on a computer to see the labels (scannable with a phone's camera, or type the number).
+
+24. **Barcode first.** As Faizal (`courier@`), *Deliver* → *Elmina Valley Locker A*, scan or type
+    `JTSIM10000001`. J&T (simulated) confirms the shipment and that Faizal carries it (high
+    assurance); SimeTown matches Aisyah by phone, name and address and shows her details masked. No
+    delivery code is needed and no township admin approved Faizal: J&T's manager added him. *Open a
+    locker*, shut the door with the parcel inside; Aisyah is told and collects with her PIN as in step 21.
+25. **Replays and copied labels.** Scan `JTSIM10000001` again: *Already delivered*, no door opens,
+    the attempt is logged and staff see an incident. `JTSIM10000009` is already in a locker (same
+    result). `JTSIM10000008` is carried by another courier: refused, a high-severity incident.
+    `JTSIM99999999` is unknown to J&T, `JTSIM10000004` is being delivered by Hairul,
+    `JTSIM10000005` names someone who does not live at the address, `JTSIM10000006` goes to an
+    unregistered home, and `JTSIM10000007` needs a signature: each is refused for its own reason.
+26. **Medium assurance, outage and fallback.** As Nurul (`nurul@`), `NVSIM20000001` is verified for
+    Daniel by address and name; Ninja Van cannot say who carries it (medium assurance). As admin,
+    *Couriers & companies* → Ninja Van → *Simulate an outage*; Nurul scans `NVSIM20000003`, and may
+    use Mei Ling's delivery code instead (recorded as low assurance).
+27. **The company manages its couriers.** As Kavitha (`jnt-manager@`), *Team*: add a courier with a
+    staff number (they get a set-password link), suspend Hairul (his session ends at once), reconfirm
+    Faizal. As Ahmad (`courier2@`), *Deliver* says Ninja Van has suspended him.
+28. **Signing in through the company.** Signed out, choose *Shopee Express (simulated sign-in)* on
+    the sign-in page, pick Lim Wei Jie (`SPX-3001`) and the demo password: SimeTown checks the
+    company's signed token and creates his courier account on first sign-in. `SPX-3002` is refused
+    by the company itself. `SPXSIM30000001` is matched by the delivery code Zainab gave the shop.
+29. **Staff.** As admin: *Couriers & companies* (approve, suspend, stations, agreement, assurance,
+    representatives, access history), *Shipment checks* (every scan and its outcome, repeated scans,
+    each company's system health, and the simulated companies' shipments and staff to change), and
+    *Cases* (how many locker and courier cases are open, with a link to them in *Incidents & reports*;
+    reporting a locker problem; opening an occupied door, asked under *Parcels* and approved by a
+    second admin, `admin2@`). In the simulator, *Replay a used command* is refused.
+
+
+### Incidents and reports
+
+Every parcel, the gate page and the courier station have a *Report* button. SimeTown decides who
+should handle the problem: the courier company, or the township office. Township cases go to
+*Incidents & reports* (`/console/incidents`), the one place they are worked: each has one person
+handling it and a deadline, and the system escalates what nobody takes or what runs late. The
+*Smart lockers* and *Parcels* pages only show how many are open, with a link that opens the board
+already filtered. Residents follow their
+reports under *Parcels → My reports*. The courier companies' support channels are simulated.
+
+30. **A. A late parcel belongs to the courier.** As Aisyah, *Parcels* → *A parcel hasn't arrived?*,
+    choose *My parcel is late* and enter `JTSIM10000002`. J&T (simulated) confirms it is hers and on
+    its way, so SimeTown shows J&T's support channel and the tracking number to copy. No township
+    case is opened and no staff member is told. (*Send it to J&T for me* files a simulated ticket.)
+31. **B. A locker door will not open.** As Aisyah, on a parcel waiting in a locker, *Report a
+    problem* → *The door will not open*. It becomes a township case at once, with the locker's
+    door history attached. Staff work it under *Incidents & reports*; *Smart lockers → Today* lists
+    it as urgent and *Smart lockers → Cases* counts it, both linking there.
+32. **C. A critical case escalates.** As admin (Nurul Huda, `admin@`), *Incidents & reports*: the
+    door forced open at Locker A 25 minutes ago is critical, nobody has taken it, and the admins have
+    already been told. Running the checks again (*Deadlines* → *Run the deadline checks now*) does
+    not tell them twice.
+33. **D. "I didn't collect this."** As Aisyah, on a collected locker parcel, *Report* → *I didn’t
+    collect this*. SimeTown first shows what its records say (how the door was opened); *Please
+    investigate* opens a case. An earlier dispute of hers is already resolved under *My reports*,
+    with the outcome and *Not fixed? Reopen it*.
+34. **E. Moving a case.** Daniel's locker door would not open; Ravi (`staff@`) took it and is
+    investigating. As admin, open it and *Reassign* → Mei Chen, with a reason. The history keeps
+    both, and Mei Chen is told. A new case shows *I’ll handle this*; if two staff press it at once,
+    only one gets the case.
+
 ---
 
 ## 3. What is in the box
@@ -137,13 +243,19 @@ Open two browser windows (one normal, one private) so you can be the resident an
 | People | Tamu | Visitor passes by link (no app for the visitor), guard screen with camera scan, walk-ins with Expected / Not expected / Call me, SOS, patrol rounds, flood task list, 90-day deletion |
 | People | Akses+ | Private access needs with consent, Simple Mode, read-aloud, flashing alerts, carer links, step-free places, priority help list for floods |
 | People | Jiran | Events with places, help board, XP when the organiser or asker confirms |
-| People | Lapor | Report with photo, suggested type and urgency, staff queue, case tracking, access-barrier type |
+| People | Lapor | Report with photo, suggested type and urgency, staff queue, access-barrier type; live progress (checked, assigned with a target date, fixed with a photo), late flags, “Me too” instead of duplicate reports, time-to-fix figures |
+| People | My requests | One list of everything a household is waiting on: reports, parcels and collections, each with its next step; the Assistant can read it |
+| People | Parcels | Guard logs parcels with shelf and photo; the household gets a one-time code (and QR) the guard never sees; handover only against the code; “Not me?” queries; reminders after three days; 90-day deletion |
+| People | Courier platform | Courier companies approved once per township; their own managers or their own sign-in (OpenID Connect) add and suspend couriers; the label's barcode checked with the (simulated) company; households matched automatically and shown masked; a shipment deposited once, ever; signed, expiring, single-use unlocks; incidents, staff exceptions with a second approver, a risk register |
+| People | Smart lockers | Multi-courier delivery with approval per station, recipient verification without revealing residents, smallest-fitting door allocated atomically, one-time pickup PIN or QR (never stored), reminders outside quiet hours, staffed relocation with a custody chain, overflow counters, live capacity, a plain forecast, an interactive simulator and a signed hardware gateway contract |
 | People | Gerak | Live map tracking with checkpoints that tick themselves, speed bands, near-home trimming, 30-day route deletion; QR checkpoints as the backup; demo playback |
-| Planet | Kitar | Smart machine: rotating screen code, SimeTown QR or guest, camera + barcode + weight agreement, signed records, guest claim codes; kiosk drop-off with a photo check as the backup |
+| Planet | Kitar | Smart machine: rotating screen code, SimeTown QR or guest, camera + barcode + weight agreement, signed records, guest claim codes; kiosk drop-off with a photo check as the backup; “Can I recycle this?” guide in English and Malay; collections booked with partner collectors, with the gate pass made on confirmation; material accepted by month and why machines turned items away |
 | Planet | Kongsi | Give away and lend, XP on confirmed handover |
 | Planet | Jimat | Bill reading behind a file-safety gate (PDF text, or the AI service for photos), confirm with unsure fields marked, same bill only once, file never stored; typed readings, tips, leak alert, solar request |
 | Planet | Banjir | The agent: sensor, CCTV test pictures, rain gauge and resident reports; two signals must agree; one-signal drafts with 3- and 5-minute windows; 15-minute updates; four-line messages; check-ins; public status page |
-| Planet | Taman | Garden plots by ballot from a waiting list (one per home), watering roster proved by the garden code, wildlife log confirmed by staff, share the harvest in Kongsi |
+| Planet | Taman | Garden plots by ballot from a waiting list (one per home), watering roster with the garden code (Impact XP only), wildlife log confirmed by staff, share the harvest in Kongsi |
+| Planet | Solar sites | Rooftops and car parks ranked by estimated output, demand nearby from Jimat bills (per area only) and readiness; missing checks flagged; agreement with an expert's ranking |
+| Planet | Greener materials | Materials for one use checked against its requirements, missing environmental evidence flagged, an agent that explains only from the table, timed shortlists; the recycled-plastic edging trial's test plan and results |
 | Business | SimeTown Merchant | Shop Offers with the shop's own terms and monthly cap, 10% success fee, new and returning customers, Akses-friendly badge; give and accept points, refunds, weekly statement |
 | Business | SimeTown Partner Hub | Four sponsor tiers with a public Partners page and one labelled banner; campaigns with a prefunded pool and grouped results |
 | Business | SimeTown Insights | 30-day totals, the float against what it owes, machine uptime, offer pledges, visitors, flood alerts, barriers fixed on time, nature; printable monthly report |
@@ -159,7 +271,10 @@ audit trail, adjustable programme rules, data download and account deletion.
 ledger entries an admin records); the recycling machine is a tablet page whose buttons stand in for
 its camera, barcode reader and scale (its signed records and their checks are real); flood sensors,
 CCTV and the rain gauge are a simulator and a fixed test set of pictures; Gerak can play back a
-route instead of GPS outside production; the sample bill is generated by the app; WhatsApp and SMS
+route instead of GPS outside production; the sample bill is generated by the app; car park occupancy
+is simulated until bay sensors exist; the materials library holds sample values to be replaced with
+supplier datasheets; smart lockers run on the built-in simulator until real hardware is connected
+through the gateway contract (no locker vendor's API is built in); WhatsApp and SMS
 open the phone's own apps; there is no e-mail or one-time code. Bahasa Malaysia covers navigation,
 the home screen, Simple Mode, Tamu and flood alerts.
 
@@ -175,7 +290,7 @@ new features need (the guard, offers, machines, gardens, map, tiers…) and chan
 | --- | --- |
 | `npm run dev` | Development server |
 | `npm run build` / `npm start` | Production build and server |
-| `npm test` | All 123 tests, on in-process PostgreSQL |
+| `npm test` | All 222 tests, on in-process PostgreSQL |
 | `TEST_DATABASE_URL=postgres://… npm test` | The same tests on a real server (this **empties that database**) |
 | `npm run lint` / `npm run typecheck` / `npm run check` | Code checks (`check` runs lint, types and tests) |
 | `npm run db:migrate` | Apply new migrations |

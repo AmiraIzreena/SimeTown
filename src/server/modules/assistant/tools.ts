@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PASS_TYPE_INFO } from '@/shared/domain';
+import { PASS_TYPE_INFO, REPORT_CATEGORY_LABELS } from '@/shared/domain';
 import type { ToolSpec } from '../../ai/chat';
 import type { Actor } from '../../auth/actor';
 import { one, type Db, type Queryable } from '../../db/client';
@@ -8,6 +8,7 @@ import { banjirOverview } from '../banjir/service';
 import { jimatOverview } from '../jimat/service';
 import { kitarOverview } from '../kitar/service';
 import { listLiveOffers, offerBalance } from '../offers/service';
+import { myRequests } from '../requests/service';
 import { getSettings } from '../settings';
 import { tamanOverview } from '../taman/service';
 import { tamuOverview } from '../tamu/service';
@@ -243,6 +244,40 @@ const TOOLS: Tool[] = [
             .map((p) => ({ visitor: p.visitorName, type: p.type, code: p.code, from: p.validFrom, until: p.validUntil, status: p.status })),
         },
         link: { href: '/app/tamu', label: 'Open Tamu' },
+      };
+    },
+  },
+  {
+    kind: 'read',
+    spec: {
+      name: 'get_my_requests',
+      description: "Everything the home is waiting on: the resident's reports and the ones they follow (each with its step, who is fixing it and the target date), parcels at the guardhouse and in the lockers, and booked recycling collections.",
+      parameters: noArgs,
+    },
+    run: async ({ db, actor, now }) => {
+      const r = await myRequests(db, actor, now);
+      return {
+        data: {
+          open: r.open,
+          items: r.items.slice(0, 15).map((i) => {
+            switch (i.kind) {
+              case 'REPORT':
+                return { kind: 'report', type: REPORT_CATEGORY_LABELS[i.category], place: i.place, step: i.step, assignedTo: i.assignedTo, targetDate: i.targetDate, late: i.late, mine: i.mine, residentsAffected: i.affected };
+              case 'PARCEL':
+                // The collection code stays in the app: it is shown only on the Parcels screen.
+                return { kind: 'parcel', courier: i.courier, shelf: i.shelf, waitingSince: i.at };
+              case 'LOCKER':
+                // The pickup PIN and QR stay in the app: they are shown only on the Parcels screen.
+                return { kind: 'locker parcel', courier: i.courier, state: i.state, where: i.counter ?? `${i.station}${i.compartment ? ` door ${i.compartment}` : ''}`, collectBy: i.deadlineAt };
+              case 'COLLECTION':
+                return { kind: 'recycling collection', collector: i.collector, day: i.day, slot: i.slot, status: i.status };
+              case 'INCIDENT':
+                // The reference and where it stands; staff notes never leave the township office.
+                return { kind: 'report to the township office', reference: i.reference, about: i.category, status: i.status, waitingForYourAnswer: i.awaitingYou };
+            }
+          }),
+        },
+        link: { href: '/app/requests', label: 'Open My requests' },
       };
     },
   },

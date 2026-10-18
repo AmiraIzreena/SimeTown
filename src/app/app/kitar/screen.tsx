@@ -3,7 +3,9 @@
 import { Text } from '@/components/ui/localized-text';
 
 import { ArrowRight, Cpu, FlaskConical, Plus, QrCode as QrIcon, Recycle, Scale, Ticket, UserRound, Users } from 'lucide-react';
+import { Collections } from '@/components/features/collections';
 import { LiveMachineSession } from '@/components/features/machine-session';
+import { RecyclingGuide } from '@/components/features/recycling-guide';
 import { AksesPage, AksesWizard, useAksesMode } from '@/components/features/akses-mode';
 import { HubSummary } from '@/components/features/kitar/hub-summary';
 import { GOOD_TO_KNOW_ID, HOW_KITAR_WORKS, KitarAbout } from '@/components/features/kitar/kitar-about';
@@ -27,7 +29,7 @@ import { api } from '@/lib/api';
 import { formatKg, rewardMessage, timeAgo } from '@/lib/format';
 import { useAction, useApi } from '@/lib/hooks';
 import type { ActionRewardView, Campaign } from '@/lib/types';
-import { MATERIAL_INFO } from '@/shared/domain';
+import { MATERIAL_INFO, type Material } from '@/shared/domain';
 
 const MACHINE_STATUS = { ONLINE: { label: 'Open', tone: 'success' as const }, FULL: { label: 'Full', tone: 'warning' as const }, OFFLINE: { label: 'Offline', tone: 'neutral' as const } };
 
@@ -56,6 +58,8 @@ export function KitarScreen() {
   // "Manual recycle (practice)": offered only when GET /kitar says test mode is available (a local pglite demo).
   const [manualOpen, setManualOpen] = useState(false);
   const testMode = Boolean(overview.data?.testEntry);
+  // A material the Recycling guide sends to Collections; n changes on every tap so the same material reopens the form.
+  const [bookRequest, setBookRequest] = useState<{ material: Material; n: number } | null>(null);
 
   const [claimCode, setClaimCode] = useState('');
   const claim = useAction(() => api.post<{ grams: number; reward: ActionRewardView | null }>('/kitar/claim', { code: claimCode.trim() }), {
@@ -100,6 +104,9 @@ export function KitarScreen() {
       ))}
     </div>
   );
+
+  const guideBlock = <RecyclingGuide kiosks={overview.data?.kiosks ?? []} onBook={(m) => setBookRequest((current) => ({ material: m, n: (current?.n ?? 0) + 1 }))} />;
+  const collectionsBlock = <Collections request={bookRequest} />;
 
   const machineCard = (
     <Card>
@@ -204,9 +211,11 @@ export function KitarScreen() {
       {akses.simple ? (
         <div className="space-y-6">
           {statsBlock}
+          {guideBlock}
           {challengeBlock}
           <LiveMachineSession onDone={() => void overview.mutate()} />
           {machineCard}
+          {collectionsBlock}
           {recentCard}
         </div>
       ) : (
@@ -230,6 +239,8 @@ export function KitarScreen() {
                 <LiveMachineSession onDone={() => { void overview.mutate(); void wallet.mutate(); }} />
                 {challengeBlock}
                 {overview.data && <RatesList overview={overview.data} />}
+                {guideBlock}
+                {collectionsBlock}
                 <button type="button" onClick={showHowItWorks} className="inline-flex min-h-11 items-center gap-1.5 self-start rounded-md text-[15px] font-semibold text-brand-700 underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-900">
                   <Text>New here? See how it works</Text><ArrowRight className="size-4" aria-hidden /></button>
                 {recentCard}

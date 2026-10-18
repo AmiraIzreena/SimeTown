@@ -6,6 +6,12 @@ import { audit } from '../audit';
 import { runFloatCheck, runSettlement } from '../ledger/finance';
 import { expirePoints, sendExpiryReminders } from '../ledger/points';
 import { expireOfferPoints } from '../offers/service';
+import { sendParcelReminders } from '../parcels/service';
+import { reconcile } from '../lockers/hardware';
+import { notifyProviders } from '../carriers/providers';
+import { revalidateCouriers } from '../carriers/team';
+import { runIncidentChecks } from '../incidents/checks';
+import { runExpiry } from '../lockers/overflow';
 import { retentionCleanup } from '../retention';
 import { runAgentClock } from '../banjir/agent';
 import { getSettings, SETTINGS_COLUMNS, type Settings } from '../settings';
@@ -62,7 +68,7 @@ export async function updateSettings(db: Db, actor: Actor, changes: Partial<Sett
   });
 }
 
-export const JOBS = ['expire-points', 'float-check', 'settle', 'cleanup', 'flood-agent'] as const;
+export const JOBS = ['expire-points', 'float-check', 'settle', 'cleanup', 'flood-agent', 'parcel-reminders', 'lockers', 'couriers', 'incidents'] as const;
 export type JobName = (typeof JOBS)[number];
 
 /**
@@ -80,6 +86,19 @@ export async function runJob(db: Db, name: JobName, now: Date): Promise<Record<s
     }
     case 'settle':
       return runSettlement(db, null, now);
+    case 'parcel-reminders':
+      // Daily: one reminder for each parcel waiting three days or more.
+      return { remindersSent: await sendParcelReminders(db, now) };
+    case 'lockers':
+      // Every few minutes: settle unanswered door commands and unused reservations, doors left open, then reminders, overdue parcels,
+      // relocation tasks, and telling courier companies about deposits they have not heard of (retried).
+      return { ...(await reconcile(db, now)), ...(await runExpiry(db, now)), providers: await notifyProviders(db, now) };
+    case 'incidents':
+      // Every 5 minutes: escalate cases nobody took in time or past their deadline (once each), close resolved cases after the dispute window.
+      return runIncidentChecks(db, now);
+    case 'couriers':
+      // Daily: couriers their company has not reconfirmed are paused, agreements about to end are flagged, ended ones stop access.
+      return revalidateCouriers(db, now);
     case 'flood-agent':
       // Every minute or two: one-signal drafts past their deadline, and the 15-minute updates (BR28).
       return runAgentClock(db, now);

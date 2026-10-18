@@ -153,7 +153,7 @@ export function TamanScreen({ scanned }: { scanned: string }) {
         </Async>
 
         <Card>
-          <CardHeader title="Watered today?" description="Scan the code on the garden gate after watering. It earns Impact XP and offer-backed points." />
+          <CardHeader title="Watered today?" description="Scan the code on the garden gate after watering. It earns Impact XP." />
           <div className="p-5">
             {akses.guided ? (
               <Button size="lg" className="min-h-20 w-full text-xl" onClick={() => setWateringOpen(true)}><Text>Enter garden code</Text></Button>

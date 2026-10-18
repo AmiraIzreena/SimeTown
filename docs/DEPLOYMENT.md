@@ -113,13 +113,17 @@ Running it again only adds new zones and homes.
 
 ## 4. Scheduled jobs
 
-Four jobs keep the programme honest. Each is safe to run twice.
+These jobs keep the programme honest. Each is safe to run twice.
 
 | Job | When | What it does |
 | --- | --- | --- |
 | `float-check` | daily | Proves the float equals what it owes; pauses points if not |
 | `expire-points` | daily | Expires old points to their funders; sends 60- and 14-day reminders |
 | `cleanup` | daily | Removes expired sessions, old rate-limit rows and stale requests |
+| `parcel-reminders` | daily | Reminds a household once about a parcel waiting three days or more |
+| `lockers` | every 5 minutes | Settles unanswered locker door commands and unused reservations; flags doors left open; sends locker reminders; marks parcels overdue and opens relocation tasks; tells courier companies about deposits (retried) |
+| `incidents` | every 5 minutes | Escalates township cases nobody took in time, or that are past their resolution deadline, to the township admins (once per case and round); closes resolved cases once the reopening window has passed |
+| `couriers` | daily | Pauses company-managed couriers not reconfirmed in 90 days; flags agreements ending within 14 days; ends access when an agreement has ended |
 | `settle` | weekly | Pays every shop what it is owed and writes its statement |
 
 Run them from any scheduler, either as a command (`npm run job -- settle` in the tools image) or
@@ -160,7 +164,133 @@ Hyperdrive in front of PostgreSQL; a database client created per request instead
 jobs to Cron Triggers. The backend's `Request → Response` router was written so that this stays a
 contained change.
 
-## 6. Logs and monitoring
+## 6. Smart parcel lockers
+
+**Setting up.** Set `LOCKER_CREDENTIAL_SECRET` (32+ random characters; it derives pickup PINs and
+QR codes, which are never stored). In production the lockers refuse to issue codes without it.
+Schedule the `lockers` job every five minutes. Add stations, courier companies and overflow
+counters in the console under *Smart lockers*, and review the collection policy there: its starting
+values (reminders at 24 and 36 hours, relocation after 48) are proposals, not a township policy.
+Print each station's QR poster from its link `/locker/<code>`.
+
+**Simulated or real.** A station is either `SIMULATED` (the console's simulator plays its doors,
+sensors and keypad, through the same server logic) or `HTTP_GATEWAY` (real hardware). No vendor's
+locker API or protocol is built in, and none is claimed: real hardware connects through a small
+gateway (supplied with the lockers or written for them) that speaks the contract below and
+translates it to the controller's own protocol (REST, MQTT over TLS, serial, and so on).
+
+**The gateway contract.** Every message is signed with the station's device secret (shown once when
+the station is added, and rotatable): `HMAC-SHA256(secret, text)` in lowercase hex.
+
+- *SimeTown → gateway*: `POST {gateway_url}/commands` with JSON
+  `{ commandId, stationId, compartment, action: "UNLOCK", purpose, parcelId, expiresAt, authorisation }`, headers
+  `x-simetown-timestamp` (ISO time) and `x-simetown-signature` = HMAC of `timestamp + "." + body`.
+  Answer 2xx to accept. The command must be acknowledged within 30 seconds or it times out and is
+  reconciled (the reservation is released; nothing is confirmed).
+- *The controller must check `authorisation`* before opening anything: it is
+  `HMAC(secret, "UNLOCK|commandId|stationId|compartment|purpose|parcelId|expiresAt")`. Refuse it when
+  the signature is wrong, when `expiresAt` has passed, or when that `commandId` was carried out
+  before. SimeTown also refuses an acknowledgement that arrives after the command expired. The
+  built-in simulator plays a controller that does exactly this; a real controller must be shown to.
+- *Gateway → SimeTown*: `POST /api/v1/devices/lockers/events` with JSON
+  `{ stationId, eventId, type, commandId?, ok?, error?, compartment?, door?, itemPresent?, credential?, ts, signature }`.
+  `type` is `ACK` (did the door open), `DOOR` (`OPEN`/`CLOSED` with `itemPresent`), `HEARTBEAT`, or
+  `PICKUP` (a PIN or QR read at the station's keypad). The signature covers
+  `stationId|eventId|type|commandId|ok|error|compartment|door|itemPresent|credential|ts` (empty for
+  absent fields). Messages older than 5 minutes are refused, and an `eventId` is accepted once.
+- A deposit is confirmed only by `DOOR CLOSED` with `itemPresent: true`; a collection only by
+  `DOOR CLOSED` with `itemPresent: false`. Stations without presence sensors are marked so, and the
+  courier or resident confirms in the app instead.
+
+**Pickup codes and guessing.** A PIN works only at its own station, once. Ten wrong codes in 10
+minutes make a station refuse codes for the rest of that window and warn staff; thirty in a day lock
+its keypad until staff unlock it under *Smart lockers → Overview* (an urgent notification is sent).
+That caps guessing at about 30 tries per lock, so with 20 parcels waiting the chance of hitting one
+is about 0.06%. Staffed counters never lock, since staff check ID there. Opening from the app needs
+the resident's own sign-in and is not affected. While a keypad is locked, residents with a parcel there
+see a notice in the app with an *Ask staff to unlock it* button (staff get an urgent notification,
+once per resident), and the station's QR poster page tells everyone else to sign in. A resident can
+swap their code for a new one in the app at any time (not while the door is open); the old code
+stops working at once.
+
+Changing `LOCKER_CREDENTIAL_SECRET` changes every live PIN and QR code, so do it only when no
+parcels are waiting, or reissue their codes afterwards. For a large rollout, consider storing each
+random PIN encrypted with a key held in a managed key service (KMS) instead: the key can then be
+rotated without changing anyone's code.
+
+## 6a. Courier companies and shipment checks
+
+**Approving companies, not couriers.** Under *Smart lockers → Couriers & companies*, onboard a
+company, record how its identity was checked (registration, signed agreement), approve it, choose
+its stations and set its agreement's end date. Then either:
+
+- **The company manages its couriers** (`COMPANY_MANAGED`): add the representatives the company has
+  named to you in writing. They sign in, invite their couriers by staff number, suspend them and
+  reconfirm them at least every 90 days (the `couriers` job pauses anyone not reconfirmed).
+- **Couriers sign in through the company** (`FEDERATED`, OpenID Connect): register SimeTown with the
+  company's identity provider (redirect URI `{APP_URL}/api/v1/auth/courier-sso/callback`), then set
+  the issuer, client id and the *name* of the environment variable holding the client secret. SimeTown
+  uses the authorisation code flow with PKCE, checks state, nonce, issuer, audience, expiry and the
+  RS256 signature against the provider's keys, and can require an MFA claim (`amr`). A courier's
+  account is created on first sign-in; each session lasts one shift (12 hours).
+- **Couriers approved one by one** (`MANUAL`): the old way, for independent couriers and companies
+  without an arrangement.
+
+A company can suspend a courier here from its own system by posting to
+`/api/v1/couriers/{code}/directory-events` with `{ eventId, employeeRef, status: ACTIVE|SUSPENDED|REMOVED, ts, signature }`,
+where `signature` is `HMAC-SHA256(secret, "eventId|employeeRef|status|ts")` with the secret in the
+environment variable named on the company. Messages older than 5 minutes are refused and each
+`eventId` is applied once. Suspensions end the courier's sessions at once.
+
+**Shipment checks.** No courier company's real system is built in. A company that agrees to
+integrate implements SimeTown's lookup contract (or a bridge translates it to its own API):
+
+- `POST {provider_url}/shipments/lookup` with `{ trackingNo, requestedAt }`, signed like the locker
+  gateway (`x-simetown-timestamp`, `x-simetown-signature` = HMAC of `timestamp + "." + body`, with the
+  secret from the environment variable named on the company). Answer within 4 seconds with
+  `{ found: false }` or `{ found: true, shipment: { trackingNo, providerRef, status, lockerEligible,
+  recipient: { name, phone, addressLine, postcode, simetownCode }, parcel: { weightG, dimensionsMm },
+  assignedCourierRef? } }`. `status` is one of `IN_TRANSIT`, `OUT_FOR_DELIVERY`, `DELIVERED`,
+  `ON_HOLD`, `CANCELLED`, `RETURNED`. Send `assignedCourierRef` (the courier's staff number) only if
+  the company really tracks it, and tick *the provider says which courier carries each shipment*.
+- `POST {provider_url}/shipments/deposited` with `{ trackingNo, depositedAt }`, retried by the
+  `lockers` job if it fails.
+
+What SimeTown does with the answer: a deposited shipment is never deposited again; a shipment the
+company has no record of, or will not allow in a locker, is refused; where the company names the
+courier, it must be the one scanning; the household is matched by the resident's delivery code, by a
+verified phone with a compatible name and address, or by the address with a compatible name, never by
+a name alone. Recipient details are used for matching and not stored; couriers see them masked. When
+the company's system does not answer, the township decides (per company) whether couriers may fall
+back on the resident's delivery code; such deliveries are recorded as low assurance.
+
+**What a real integration needs from each company:** a signed agreement covering data sharing under
+the PDPA; a lookup endpoint implementing the contract above (or an API a bridge can call); its
+identity provider details, or named representatives; a webhook secret if it will suspend couriers
+from its own system; and the tracking number format its labels use. Until then, use the simulated
+companies only for demonstration (they refuse to run in production).
+
+## 6b. Incidents and reports
+
+Residents, guards and couriers report problems from the page where they happen (a locker parcel, a
+guardhouse parcel, the gate, the courier station). Problems that belong to the courier company (late,
+damaged, wrong item, cancelled) are sent to that company: SimeTown shows the company's support
+channel and opens no township case. Everything else becomes a case in the central incident system
+(`/console/incidents`), with one person handling it and a deadline. Community reports from Lapor keep
+their own queue and are only listed on the same dashboard.
+
+Before going live:
+
+- Agree the deadlines with SDP under *Incidents & reports → Deadlines* (the built-in values are a
+  proposal), including working hours, working days and public holidays.
+- Schedule the `incidents` job every 5 minutes; without it, nothing escalates.
+- For each courier company, record its customer-service channel only after checking it with the
+  company (*Smart lockers → Courier companies → Integration*). Residents are told to use the
+  courier's own app until a channel is recorded; SimeTown never guesses a link or a number.
+- Filing a complaint with a courier company on a resident's behalf is only simulated. A real
+  integration needs the company's ticket API and an agreement covering the data shared.
+
+## 7. Logs and monitoring
 
 - The app writes one JSON line per request (method, path, status, milliseconds, request id, user
   id) and full details for any 5xx, to stdout. Collect them with the host's log service.
@@ -170,14 +300,14 @@ contained change.
   (admins also get an urgent in-app notification, and points pause automatically).
 - An error tracker (Sentry or similar) can be attached in `src/server/logger.ts`; none is bundled.
 
-## 7. Backups and data
+## 8. Backups and data
 
 - Turn on the database's point-in-time recovery. The ledger is the system of record for money-like
   value; losing it is not recoverable from anywhere else.
 - Photos live in the database in this build, so they are covered by the same backups.
 - Keep production data out of development. The seed creates everything a demo needs.
 
-## 8. Before going live: checklist
+## 9. Before going live: checklist
 
 - [ ] `APP_ENV=production`, `APP_URL` is the final `https://` address
 - [ ] Database in the chosen region, TLS on, backups on, least-privilege user for the app
@@ -190,3 +320,6 @@ contained change.
 - [ ] Terms of Use and Privacy Notice reviewed by a lawyer, a Bahasa Malaysia version added, and the
       operator and contact address in `src/shared/legal.ts` set to real, monitored details
 - [ ] Homes imported with full postal addresses from SDP's property record (`npm run bootstrap`)
+- [ ] Smart lockers: `LOCKER_CREDENTIAL_SECRET` set, the `lockers` and `couriers` jobs scheduled, the collection policy agreed, and each real station's controller tested against the contract in section 6 (including refusing expired and repeated authorisations)
+- [ ] Incidents: deadlines agreed and saved, the `incidents` job scheduled, each courier company's support channel checked and recorded, and the people who handle cases given staff accounts
+- [ ] Courier companies: agreements signed, identities recorded, providers and sign-in set up per section 6a, secrets in the environment; the simulated companies removed; [RISK_REGISTER.md](RISK_REGISTER.md) reviewed

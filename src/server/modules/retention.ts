@@ -1,6 +1,7 @@
 import type { Db } from '../db/client';
 import { deleteOldConversations } from './assistant/service';
 import { deleteOldVisitorRecords } from './tamu/service';
+import { deleteOldParcels } from './parcels/service';
 
 /**
  * Keeps only what each feature promised to keep (proposal section 18). Part of
@@ -11,6 +12,8 @@ import { deleteOldVisitorRecords } from './tamu/service';
  *   Jimat   bills read but never confirmed: 1 day (the file itself is never kept, BR25)
  *   Kitar   machine sessions nobody finished: closed after 15 minutes
  *   Assistant  conversations: 90 days after the last message
+ *   Parcels collected or returned parcels, with their photos: 90 days
+ *   Lockers finished locker parcels with their history: 90 days; wrong-code counts: 1 day; device messages: 30 days
  */
 export async function retentionCleanup(db: Db, now: Date): Promise<Record<string, number>> {
   const visitors = await deleteOldVisitorRecords(db, now);
@@ -31,6 +34,19 @@ export async function retentionCleanup(db: Db, now: Date): Promise<Record<string
     [now],
   );
   const conversations = await deleteOldConversations(db, now);
+  const parcels = await deleteOldParcels(db, now);
+  // Smart lockers: finished parcels (with their history) after 90 days; wrong-code counts after a day; unlocked keypad records after 90 days; device messages after 30 days.
+  const lockerParcels = await db.query(`DELETE FROM locker_parcels WHERE state IN ('COLLECTED', 'RETURNED', 'DELIVERY_FAILED') AND state_changed_at < $1::timestamptz - interval '90 days' AND id NOT IN (SELECT parcel_id FROM locker_commands WHERE parcel_id IS NOT NULL AND status IN ('PENDING', 'SENT')) RETURNING id`, [now]);
+  await db.query(`DELETE FROM pickup_attempts WHERE at < $1::timestamptz - interval '1 day'`, [now]);
+  await db.query(`DELETE FROM pickup_lockouts WHERE cleared_at < $1::timestamptz - interval '90 days'`, [now]);
+  // Courier platform: scans and sign-ins after 180 days; resolved incidents after a year; finished sign-in attempts after a day.
+  await db.query(`DELETE FROM courier_scans WHERE at < $1::timestamptz - interval '180 days'`, [now]);
+  await db.query(`DELETE FROM courier_logins WHERE at < $1::timestamptz - interval '180 days'`, [now]);
+  await db.query(`DELETE FROM courier_login_states WHERE expires_at < $1::timestamptz - interval '1 day'`, [now]);
+  await db.query(`DELETE FROM incidents WHERE status = 'CLOSED' AND updated_at < $1::timestamptz - interval '365 days'`, [now]);
+  await db.query(`DELETE FROM courier_referrals WHERE created_at < $1::timestamptz - interval '365 days'`, [now]);
+  await db.query(`DELETE FROM sim_idp_codes WHERE expires_at < $1::timestamptz - interval '1 day'`, [now]);
+  await db.query(`DELETE FROM locker_device_events WHERE received_at < $1::timestamptz - interval '30 days'`, [now]);
   return {
     visitorEntriesDeleted: visitors.entries,
     visitorPassesDeleted: visitors.passes,
@@ -39,5 +55,7 @@ export async function retentionCleanup(db: Db, now: Date): Promise<Record<string
     unconfirmedBillsDeleted: bills.length,
     machineSessionsClosed: sessions.length,
     assistantConversationsDeleted: conversations,
+    parcelsDeleted: parcels,
+    lockerParcelsDeleted: lockerParcels.length,
   };
 }
