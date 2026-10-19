@@ -2,9 +2,9 @@
 
 import { Text } from '@/components/ui/localized-text';
 import { LocalizedButton } from '@/components/ui/localized-elements';
-import { Camera, CheckCircle2, Clock, CloudRain, Gauge, MapPin, Megaphone, Navigation, Phone, Share2, ShieldCheck, UserCheck, type LucideIcon } from 'lucide-react';
+import { BadgeCheck, Camera, CheckCircle2, Clock, CloudRain, Gauge, MapPin, Megaphone, Navigation, Phone, Share2, ShieldCheck, UserCheck, type LucideIcon } from 'lucide-react';
 import { useEffect, useState, type CSSProperties } from 'react';
-import { FloodBadge } from '@/components/features/flood';
+import { FloodBadge, useVerifiedText, type Verified } from '@/components/features/flood';
 import { WaterColumn } from '@/components/features/water-column';
 import { SiteFooter } from '@/components/shell/site-footer';
 import { SiteHeader } from '@/components/shell/site-header';
@@ -16,7 +16,7 @@ import { formatDateTime, timeAgo } from '@/lib/format';
 import { useApi } from '@/lib/hooks';
 import { useT } from '@/lib/i18n';
 
-interface StatusZone {
+interface StatusZone extends Verified {
   id: string;
   name: string;
   status: 'NORMAL' | 'WARNING' | 'DANGER';
@@ -62,6 +62,7 @@ function useCountdown(stamp: unknown) {
 }
 
 function ZoneCard({ z, t, index }: { z: StatusZone; t: Township; index: number }) {
+  const verified = useVerifiedText();
   return (
     <article className={cn('zone-card relative flex flex-col overflow-hidden rounded-3xl border bg-white p-6 shadow-sm', z.status === 'DANGER' && 'is-danger border-accent-200', z.status === 'WARNING' && 'border-warning-600/40', z.status === 'NORMAL' && 'border-white/80')} style={{ '--i': index } as CSSProperties}>
       <div className="flex items-start justify-between gap-3">
@@ -77,7 +78,10 @@ function ZoneCard({ z, t, index }: { z: StatusZone; t: Township; index: number }
               <CountUp value={z.level_pct} />%
             </p>
           </div>
-          <p className="flex items-center gap-1.5 text-xs text-ink-500"><Clock className="size-3.5" aria-hidden /><Text>Updated </Text><Text>{timeAgo(z.updated_at)}</Text></p>
+          <div className="space-y-0.5 text-xs text-ink-500">
+            <p className="flex items-center gap-1.5"><Clock className="size-3.5" aria-hidden /><Text>Updated </Text><Text>{timeAgo(z.updated_at)}</Text></p>
+            <p className="flex items-center gap-1.5"><BadgeCheck className="size-3.5" aria-hidden />{verified(z)}</p>
+          </div>
         </div>
       </div>
 

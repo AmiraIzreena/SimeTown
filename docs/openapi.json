@@ -14167,7 +14167,7 @@
           "Smart lockers"
         ],
         "summary": "Station gateway: command acknowledgements, door events, heartbeats and keypad pickups (HMAC-signed)",
-        "description": "A kiosk bin; every record carries an HMAC-SHA256 signature made with that bin’s own key.",
+        "description": "A device (a kiosk bin or a flood sensor); every record carries an HMAC-SHA256 signature made with that device’s own key.",
         "operationId": "postDevicesLockersEvents",
         "parameters": [],
         "requestBody": {
@@ -15198,7 +15198,7 @@
           "Courier platform"
         ],
         "summary": "A courier company suspends, reactivates or removes one of its couriers (HMAC-signed, applied once)",
-        "description": "A kiosk bin; every record carries an HMAC-SHA256 signature made with that bin’s own key.",
+        "description": "A device (a kiosk bin or a flood sensor); every record carries an HMAC-SHA256 signature made with that device’s own key.",
         "operationId": "postCouriersCodeDirectoryEvents",
         "parameters": [
           {
@@ -20642,7 +20642,7 @@
           "Kitar"
         ],
         "summary": "Device: start a session (SimeTown QR read, or guest); signed by the bin",
-        "description": "A kiosk bin; every record carries an HMAC-SHA256 signature made with that bin’s own key.",
+        "description": "A device (a kiosk bin or a flood sensor); every record carries an HMAC-SHA256 signature made with that device’s own key.",
         "operationId": "postIngestKitarStart",
         "parameters": [],
         "requestBody": {
@@ -20738,7 +20738,7 @@
           "Kitar"
         ],
         "summary": "Device: one item weighed by the bin’s scale; signed by the bin",
-        "description": "A kiosk bin; every record carries an HMAC-SHA256 signature made with that bin’s own key.",
+        "description": "A device (a kiosk bin or a flood sensor); every record carries an HMAC-SHA256 signature made with that device’s own key.",
         "operationId": "postIngestKitarItems",
         "parameters": [],
         "requestBody": {
@@ -20873,7 +20873,7 @@
           "Kitar"
         ],
         "summary": "Device: the session's summary, which must match the items; signed by the bin",
-        "description": "A kiosk bin; every record carries an HMAC-SHA256 signature made with that bin’s own key.",
+        "description": "A device (a kiosk bin or a flood sensor); every record carries an HMAC-SHA256 signature made with that device’s own key.",
         "operationId": "postIngestKitarFinish",
         "parameters": [],
         "requestBody": {
@@ -20970,7 +20970,7 @@
         "tags": [
           "Banjir"
         ],
-        "summary": "Water level, risk and the latest official message for each zone",
+        "summary": "Water level, risk, last verified reading and the latest official message for each zone",
         "description": "Signed-in RESIDENT, GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
         "operationId": "getBanjir",
         "parameters": [],
@@ -20992,6 +20992,66 @@
                 }
               }
             }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/banjir/zones/{zoneId}/history": {
+      "get": {
+        "tags": [
+          "Banjir"
+        ],
+        "summary": "A zone's water level over the last hours, in 10-minute steps",
+        "description": "Signed-in RESIDENT, GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "getBanjirZonesZoneIdHistory",
+        "parameters": [
+          {
+            "name": "zoneId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "hours",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 48
+            }
+          }
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
           },
           "401": {
             "$ref": "#/components/responses/Error"
@@ -21092,6 +21152,59 @@
           },
           "400": {
             "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/banjir/help-tasks/{taskId}/reached": {
+      "post": {
+        "tags": [
+          "Banjir"
+        ],
+        "summary": "The guard (or duty staff) marks a resident on the priority help list as reached",
+        "description": "Signed-in GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "postBanjirHelpTasksTaskIdReached",
+        "parameters": [
+          {
+            "name": "taskId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
           },
           "401": {
             "$ref": "#/components/responses/Error"
@@ -21217,7 +21330,7 @@
         "tags": [
           "Banjir"
         ],
-        "summary": "The Banjir agent: each zone's signals, drafts waiting for the officer and the decision timeline",
+        "summary": "The Banjir agent: each zone's signals, sensors, drafts waiting for the officer and the decision timeline",
         "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
         "operationId": "getAdminBanjirAgent",
         "parameters": [],
@@ -21254,7 +21367,7 @@
         "tags": [
           "Banjir"
         ],
-        "summary": "Prototype: a signal from the sensor simulator, a camera test picture or the rain gauge",
+        "summary": "Prototype: a signal from the sensor simulator (signed readings from the zone's simulated sensors), a camera test picture or the rain gauge",
         "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
         "operationId": "postAdminBanjirZonesZoneIdSignals",
         "parameters": [
@@ -21382,7 +21495,7 @@
         "tags": [
           "Banjir"
         ],
-        "summary": "One tap: send (optionally edited) or cancel a one-signal draft",
+        "summary": "One tap: send (optionally edited) or cancel a one-signal draft; a cancel or an edit needs a reason (BR21)",
         "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
         "operationId": "postAdminBanjirDraftsMessageId",
         "parameters": [
@@ -21419,6 +21532,11 @@
                   "todo": {
                     "type": "string",
                     "minLength": 10,
+                    "maxLength": 300
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 3,
                     "maxLength": 300
                   }
                 },
@@ -21466,12 +21584,950 @@
         }
       }
     },
+    "/api/v1/flood/readings": {
+      "post": {
+        "tags": [
+          "Banjir"
+        ],
+        "summary": "A sensor (or its gateway) posts signed readings: signature checked, duplicates dropped, stored, and the agent woken",
+        "description": "A device (a kiosk bin or a flood sensor); every record carries an HMAC-SHA256 signature made with that device’s own key.",
+        "operationId": "postFloodReadings",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "sensor_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      "zone_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      "level_cm": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 2000
+                      },
+                      "battery": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 100
+                      },
+                      "rssi": {
+                        "type": "integer",
+                        "minimum": -200,
+                        "maximum": 0
+                      },
+                      "ts": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                      },
+                      "signature": {
+                        "type": "string",
+                        "pattern": "^[0-9a-fA-F]{64}$"
+                      }
+                    },
+                    "required": [
+                      "sensor_id",
+                      "zone_id",
+                      "level_cm",
+                      "battery",
+                      "rssi",
+                      "ts",
+                      "signature"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "readings": {
+                        "minItems": 1,
+                        "maxItems": 100,
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "sensor_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "zone_id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "level_cm": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 2000
+                            },
+                            "battery": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 100
+                            },
+                            "rssi": {
+                              "type": "integer",
+                              "minimum": -200,
+                              "maximum": 0
+                            },
+                            "ts": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                            },
+                            "signature": {
+                              "type": "string",
+                              "pattern": "^[0-9a-fA-F]{64}$"
+                            }
+                          },
+                          "required": [
+                            "sensor_id",
+                            "zone_id",
+                            "level_cm",
+                            "battery",
+                            "rssi",
+                            "ts",
+                            "signature"
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "readings"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/banjir/sensors": {
+      "get": {
+        "tags": [
+          "Banjir"
+        ],
+        "summary": "Every sensor: battery, signal strength, last seen, health, open ticket and maintenance log",
+        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "getAdminBanjirSensors",
+        "parameters": [],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Banjir"
+        ],
+        "summary": "Register a sensor; its signing key is shown once",
+        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "postAdminBanjirSensors",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "zoneId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "code": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 32,
+                    "pattern": "^[A-Za-z0-9-]+$"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "ULTRASONIC",
+                      "RADAR"
+                    ]
+                  },
+                  "site": {
+                    "type": "string",
+                    "enum": [
+                      "LAKE_EDGE",
+                      "MAIN_DRAIN",
+                      "LOW_ROAD",
+                      "OTHER"
+                    ]
+                  },
+                  "locationNote": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "baseCm": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 2000
+                  },
+                  "overflowCm": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 2000
+                  },
+                  "riseCm10min": {
+                    "type": "number",
+                    "minimum": 1,
+                    "maximum": 200
+                  },
+                  "lowBatteryPct": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 90
+                  },
+                  "simulated": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "zoneId",
+                  "code",
+                  "kind",
+                  "site",
+                  "baseCm",
+                  "overflowCm",
+                  "simulated"
+                ]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/banjir/sensors/{sensorId}/calibrate": {
+      "post": {
+        "tags": [
+          "Banjir"
+        ],
+        "summary": "Calibrate a sensor on site: the base (0%) and overflow (100%) heights",
+        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "postAdminBanjirSensorsSensorIdCalibrate",
+        "parameters": [
+          {
+            "name": "sensorId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "baseCm": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 2000
+                  },
+                  "overflowCm": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 2000
+                  },
+                  "note": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 300
+                  }
+                },
+                "required": [
+                  "baseCm",
+                  "overflowCm"
+                ]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/banjir/sensors/{sensorId}/thresholds": {
+      "post": {
+        "tags": [
+          "Banjir"
+        ],
+        "summary": "Set the rate-of-rise and low-battery thresholds from the site survey",
+        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "postAdminBanjirSensorsSensorIdThresholds",
+        "parameters": [
+          {
+            "name": "sensorId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "riseCm10min": {
+                    "type": "number",
+                    "minimum": 1,
+                    "maximum": 200
+                  },
+                  "lowBatteryPct": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 90
+                  }
+                },
+                "required": [
+                  "riseCm10min",
+                  "lowBatteryPct"
+                ]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/banjir/sensors/{sensorId}/maintenance": {
+      "post": {
+        "tags": [
+          "Banjir"
+        ],
+        "summary": "Log maintenance; closes the sensor's open ticket",
+        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "postAdminBanjirSensorsSensorIdMaintenance",
+        "parameters": [
+          {
+            "name": "sensorId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "note": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "note"
+                ]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/banjir/sensors/{sensorId}/simulate": {
+      "post": {
+        "tags": [
+          "Banjir"
+        ],
+        "summary": "Prototype: cut power, drain the battery or stick the value of a simulated sensor",
+        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "postAdminBanjirSensorsSensorIdSimulate",
+        "parameters": [
+          {
+            "name": "sensorId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "POWER_CUT",
+                      "POWER_ON",
+                      "LOW_BATTERY",
+                      "BATTERY_OK",
+                      "STUCK",
+                      "UNSTUCK"
+                    ]
+                  }
+                },
+                "required": [
+                  "action"
+                ]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/banjir/help": {
+      "get": {
+        "tags": [
+          "Banjir"
+        ],
+        "summary": "The priority help list and \"I need help\" check-ins for zones under an alert, with their tasks (duty staff only)",
+        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "getAdminBanjirHelp",
+        "parameters": [],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/banjir/help-tasks": {
+      "post": {
+        "tags": [
+          "Banjir"
+        ],
+        "summary": "Send a guard to reach a resident on the help list",
+        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "postAdminBanjirHelpTasks",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "eventId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "userId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "assignedTo": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "note": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 300
+                  }
+                },
+                "required": [
+                  "eventId",
+                  "userId",
+                  "assignedTo"
+                ]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/banjir/events": {
+      "get": {
+        "tags": [
+          "Banjir"
+        ],
+        "summary": "Past and open flood events",
+        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "getAdminBanjirEvents",
+        "parameters": [],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/banjir/events/{eventId}": {
+      "get": {
+        "tags": [
+          "Banjir"
+        ],
+        "summary": "The post-event report: timeline, who was warned, check-in rate and the false-alarm review",
+        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "getAdminBanjirEventsEventId",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/banjir/events/{eventId}/review": {
+      "post": {
+        "tags": [
+          "Banjir"
+        ],
+        "summary": "Record the false-alarm review after the all clear",
+        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "postAdminBanjirEventsEventIdReview",
+        "parameters": [
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "falseAlarm": {
+                    "type": "boolean"
+                  },
+                  "note": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 1000
+                  }
+                },
+                "required": [
+                  "falseAlarm",
+                  "note"
+                ]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
     "/api/v1/ingest/flood": {
       "post": {
         "tags": [
           "Banjir"
         ],
-        "summary": "Sensor bridge posts a reading (bearer token); the agent judges it with the other signals",
+        "summary": "Older unsigned bridge (bearer token): a zone-level reading. New sensors use POST /flood/readings",
         "description": "Machine caller with a bearer token.",
         "operationId": "postIngestFlood",
         "parameters": [],

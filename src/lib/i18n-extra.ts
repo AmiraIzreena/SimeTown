@@ -1,3 +1,4 @@
+import { floodMalay } from './i18n-flood';
 import { homeServicesMalay } from './i18n-home-services';
 import { komunitiMalay } from './i18n-komuniti';
 import { aksesMalay } from './i18n-akses';
@@ -11,6 +12,9 @@ const aksesOnly = Object.fromEntries(Object.entries({ ...aksesMalay, ...shopsMal
 export const extraMalay: Record<string, string> = {
   ...aksesOnly,
   ...homeServicesMalay,
+  // Banjir with real sensors. A word the main catalogue already translates keeps that translation.
+  // Keys are looked up trimmed; the spaces around a piece of text stay as written in the page.
+  ...Object.fromEntries(Object.entries(floodMalay).map(([en, ms]) => [en.trim(), ms.trim()] as const).filter(([english]) => !Object.hasOwn(malay, english))),
   ...komunitiMalay,
   'Request tracking': 'Jejak permintaan',
   'Report details': 'Butiran laporan',

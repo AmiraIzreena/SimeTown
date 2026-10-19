@@ -83,7 +83,7 @@ export const NAV: Record<Area, { title: string; items: NavItem[] }> = {
       { href: '/console/reports', label: 'Lapor', icon: ClipboardList, primary: true },
       { href: '/console/operations', label: 'Parcels', icon: Package },
       { href: '/console/assistant', label: 'Assistant questions', icon: MessageCircleQuestionMark },
-      { href: '/console/banjir', label: 'Flood agent', icon: Droplets, primary: true },
+      { href: '/console/banjir', label: 'Flood dashboard', icon: Droplets, primary: true },
       { href: '/console/campaigns', label: 'Campaigns & sponsors', icon: Megaphone },
       { href: '/console/people', label: 'People', icon: Users },
       { href: '/console/shops', label: 'Shops', icon: Building2, roles: ADMINS },

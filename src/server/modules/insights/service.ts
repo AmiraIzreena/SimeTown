@@ -1,5 +1,6 @@
 import { one, type Db } from '../../db/client';
 import type { Actor } from '../../auth/actor';
+import { floodInsights } from '../banjir/events';
 import { floatPosition } from '../ledger/finance';
 import { pledgeSummary } from '../offers/service';
 import { getSettings } from '../settings';
@@ -139,5 +140,6 @@ export async function insightsOverview(db: Db, actor: Actor, now: Date) {
     ),
     pledgeSummary(db, t, now, tz),
   ]);
-  return { people, planet, reports, community, shops, points, byActivity, byCategory, byZone, daily, float, smart, offers };
+  const flood = await floodInsights(db, t, now);
+  return { people, planet, reports, community, shops, points, byActivity, byCategory, byZone, daily, float, smart, offers, flood };
 }

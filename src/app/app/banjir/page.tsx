@@ -2,22 +2,34 @@
 
 import { Text } from '@/components/ui/localized-text';
 
-import { Clock, ExternalLink, HeartPulse, MapPin, Megaphone, Navigation, ShieldCheck } from 'lucide-react';
+import { BadgeCheck, Clock, ExternalLink, HeartPulse, MapPin, Megaphone, Navigation, ShieldCheck, TrendingUp } from 'lucide-react';
 import { AksesPage, AksesReadAloud, useAksesMode } from '@/components/features/akses-mode';
-import { FloodBadge, LevelGauge } from '@/components/features/flood';
+import { FloodBadge, LevelGauge, LevelHistory, useVerifiedText } from '@/components/features/flood';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, PageHeader } from '@/components/ui/card';
 import { Async, EmptyState } from '@/components/ui/feedback';
 import { cn } from '@/lib/cn';
-import { timeAgo } from '@/lib/format';
 import { api } from '@/lib/api';
 import { formatDateTime } from '@/lib/format';
 import { useAction, useApi } from '@/lib/hooks';
 import { useT } from '@/lib/i18n';
 import type { BanjirOverview } from '@/lib/types';
 
+/** The last six hours of one zone's water level. */
+function ZoneHistory({ zoneId, warningPct, dangerPct }: { zoneId: string; warningPct: number; dangerPct: number }) {
+  const history = useApi<{ points: { at: string; pct: number }[] }>(`/banjir/zones/${zoneId}/history?hours=6`, { refreshInterval: 60_000 });
+  if (!history.data) return null;
+  return (
+    <div className="mt-4">
+      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-ink-500"><Text>Last 6 hours</Text></p>
+      <LevelHistory points={history.data.points} warningPct={warningPct} dangerPct={dangerPct} />
+    </div>
+  );
+}
+
 export default function BanjirPage() {
   const t = useT();
+  const verified = useVerifiedText();
   const akses = useAksesMode();
   const overview = useApi<BanjirOverview>('/banjir', { refreshInterval: 15_000 });
   const checkin = useAction((status: 'SAFE' | 'NEED_HELP') => api.post('/banjir/checkin', { status }), {
@@ -74,6 +86,8 @@ export default function BanjirPage() {
                       </div>
                       <p className="text-xl font-semibold text-ink-900"><Text>{isMine ? statusText : zone.status === 'DANGER' ? 'Flood danger' : zone.status === 'WARNING' ? 'Flood warning' : 'Normal'}</Text></p>
                       <p className="font-display text-4xl font-bold tabular-nums text-ink-900"><Text>{zone.level_pct}</Text>%</p>
+                      {zone.rising_fast && <p className="text-xl font-semibold text-accent-700"><Text>The water is rising fast. Get ready to move.</Text></p>}
+                      {isMine && <p className="text-base text-ink-600">{verified(zone)}</p>}
                       <p><strong><Text>Safe route</Text>:</strong> <Text>{zone.safe_route}</Text></p>
                       <p><strong><Text>Assembly point</Text>:</strong> <Text>{zone.assembly_point}</Text></p>
                       {isMine && zone.status !== 'NORMAL' && (
@@ -114,6 +128,13 @@ export default function BanjirPage() {
                       <div className="mt-3">
                         <LevelGauge level={zone.level_pct} status={zone.status} warningPct={o.warningPct} dangerPct={o.dangerPct} />
                       </div>
+                      {zone.rising_fast && (
+                        <p role="status" className="mt-3 flex items-start gap-2 rounded-lg bg-accent-50 px-3 py-2.5 text-sm font-medium text-accent-700">
+                          <TrendingUp className="mt-0.5 size-4 shrink-0" aria-hidden />
+                          <Text>The water is rising fast here. Get ready to move: charge your phone and move valuables up.</Text>
+                        </p>
+                      )}
+                      <ZoneHistory zoneId={zone.id} warningPct={o.warningPct} dangerPct={o.dangerPct} />
                       <ul className="mt-4 space-y-2 border-t border-ink-100 pt-3 text-sm text-ink-700">
                         <li className="flex gap-2">
                           <Navigation className="mt-0.5 size-4 shrink-0 text-ink-500" aria-hidden />
@@ -146,7 +167,10 @@ export default function BanjirPage() {
                           )}
                         </div>
                       )}
-                      <p className="mt-3 text-xs text-ink-500"><Text>Updated </Text><Text>{timeAgo(zone.updated_at)}</Text></p>
+                      <p className="mt-3 flex items-center gap-1.5 text-xs text-ink-500">
+                        <BadgeCheck className="size-3.5" aria-hidden />
+                        {verified(zone)}
+                      </p>
                     </Card>
                   ))}
               </div>

@@ -284,7 +284,7 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | PATCH | `/admin/lockers/policy` | TOWNSHIP_ADMIN, HQ_ADMIN | Change the collection policy |
 | GET | `/admin/lockers/simulator/:stationId` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | A simulated station's compartments, doors and sensors |
 | POST | `/admin/lockers/simulator/:stationId` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Simulated stations only: a door, sensor, fault, connectivity or keypad event |
-| POST | `/devices/lockers/events` | Bearer token (machine) | Station gateway: command acknowledgements, door events, heartbeats and keypad pickups (HMAC-signed) |
+| POST | `/devices/lockers/events` | Signed device (own HMAC key) | Station gateway: command acknowledgements, door events, heartbeats and keypad pickups (HMAC-signed) |
 
 ## Courier platform
 
@@ -299,7 +299,7 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | GET | `/auth/courier-sso/companies` | Public | Courier companies whose couriers sign in with the company’s own sign-in |
 | POST | `/auth/courier-sso/start` | Public | Start signing in through a courier company (OpenID Connect with PKCE) |
 | GET | `/auth/courier-sso/callback` | Public | Where the courier company sends the courier back; signs them in for one shift |
-| POST | `/couriers/:code/directory-events` | Bearer token (machine) | A courier company suspends, reactivates or removes one of its couriers (HMAC-signed, applied once) |
+| POST | `/couriers/:code/directory-events` | Signed device (own HMAC key) | A courier company suspends, reactivates or removes one of its couriers (HMAC-signed, applied once) |
 | GET | `/admin/couriers/companies` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Courier companies with their approval, stations, representatives, integration and history |
 | POST | `/admin/couriers/companies` | TOWNSHIP_ADMIN, HQ_ADMIN | Start onboarding a courier company (it can do nothing until approved) |
 | PATCH | `/admin/couriers/companies/:companyId/integration` | TOWNSHIP_ADMIN, HQ_ADMIN | How the company’s couriers sign in and how its shipments are checked |
@@ -396,23 +396,37 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | POST | `/admin/kitar/collections/:collectionId/collected` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Record the collector's weighed total (earns the household Impact XP) |
 | POST | `/admin/kitar/collections/:collectionId/missed` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | The collector did not come |
 | GET | `/admin/kitar/stats` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Material accepted by month and why machines turned items away (the recycling test) |
-| POST | `/ingest/kitar/start` | Bearer token (machine) | Device: start a session (SimeTown QR read, or guest); signed by the bin |
-| POST | `/ingest/kitar/items` | Bearer token (machine) | Device: one item weighed by the bin’s scale; signed by the bin |
-| POST | `/ingest/kitar/finish` | Bearer token (machine) | Device: the session's summary, which must match the items; signed by the bin |
+| POST | `/ingest/kitar/start` | Signed device (own HMAC key) | Device: start a session (SimeTown QR read, or guest); signed by the bin |
+| POST | `/ingest/kitar/items` | Signed device (own HMAC key) | Device: one item weighed by the bin’s scale; signed by the bin |
+| POST | `/ingest/kitar/finish` | Signed device (own HMAC key) | Device: the session's summary, which must match the items; signed by the bin |
 
 ## Banjir
 
 | Method | Path | Who | What it does |
 | --- | --- | --- | --- |
-| GET | `/banjir` | RESIDENT, GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Water level, risk and the latest official message for each zone |
+| GET | `/banjir` | RESIDENT, GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Water level, risk, last verified reading and the latest official message for each zone |
+| GET | `/banjir/zones/:zoneId/history` | RESIDENT, GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | A zone's water level over the last hours, in 10-minute steps |
 | GET | `/alerts/active` | RESIDENT, GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Open flood alerts that concern me (drives the danger takeover) |
 | POST | `/banjir/checkin` | RESIDENT | "I'm safe" or "I need help" during an alert in my zone |
+| POST | `/banjir/help-tasks/:taskId/reached` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | The guard (or duty staff) marks a resident on the priority help list as reached |
 | GET | `/public/flood-status` | Public | The one official flood status page (no sign-in, nothing about any person) |
 | POST | `/admin/banjir/zones/:zoneId/level` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | The duty officer sets a zone water level by hand (sent at once) |
-| GET | `/admin/banjir/agent` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | The Banjir agent: each zone's signals, drafts waiting for the officer and the decision timeline |
-| POST | `/admin/banjir/zones/:zoneId/signals` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Prototype: a signal from the sensor simulator, a camera test picture or the rain gauge |
-| POST | `/admin/banjir/drafts/:messageId` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | One tap: send (optionally edited) or cancel a one-signal draft |
-| POST | `/ingest/flood` | Bearer token (sensor) | Sensor bridge posts a reading (bearer token); the agent judges it with the other signals |
+| GET | `/admin/banjir/agent` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | The Banjir agent: each zone's signals, sensors, drafts waiting for the officer and the decision timeline |
+| POST | `/admin/banjir/zones/:zoneId/signals` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Prototype: a signal from the sensor simulator (signed readings from the zone's simulated sensors), a camera test picture or the rain gauge |
+| POST | `/admin/banjir/drafts/:messageId` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | One tap: send (optionally edited) or cancel a one-signal draft; a cancel or an edit needs a reason (BR21) |
+| POST | `/flood/readings` | Signed device (own HMAC key) | A sensor (or its gateway) posts signed readings: signature checked, duplicates dropped, stored, and the agent woken |
+| GET | `/admin/banjir/sensors` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Every sensor: battery, signal strength, last seen, health, open ticket and maintenance log |
+| POST | `/admin/banjir/sensors` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Register a sensor; its signing key is shown once |
+| POST | `/admin/banjir/sensors/:sensorId/calibrate` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Calibrate a sensor on site: the base (0%) and overflow (100%) heights |
+| POST | `/admin/banjir/sensors/:sensorId/thresholds` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Set the rate-of-rise and low-battery thresholds from the site survey |
+| POST | `/admin/banjir/sensors/:sensorId/maintenance` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Log maintenance; closes the sensor's open ticket |
+| POST | `/admin/banjir/sensors/:sensorId/simulate` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Prototype: cut power, drain the battery or stick the value of a simulated sensor |
+| GET | `/admin/banjir/help` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | The priority help list and "I need help" check-ins for zones under an alert, with their tasks (duty staff only) |
+| POST | `/admin/banjir/help-tasks` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Send a guard to reach a resident on the help list |
+| GET | `/admin/banjir/events` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Past and open flood events |
+| GET | `/admin/banjir/events/:eventId` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | The post-event report: timeline, who was warned, check-in rate and the false-alarm review |
+| POST | `/admin/banjir/events/:eventId/review` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Record the false-alarm review after the all clear |
+| POST | `/ingest/flood` | Bearer token (sensor) | Older unsigned bridge (bearer token): a zone-level reading. New sensors use POST /flood/readings |
 
 ## Akses+
 

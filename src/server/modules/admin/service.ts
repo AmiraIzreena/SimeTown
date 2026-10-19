@@ -36,6 +36,7 @@ export async function listAudit(db: Db, actor: Actor, page: PageQuery) {
               WHEN 'gerak_loop' THEN (SELECT g.name FROM gerak_loops g WHERE g.id::text = a.entity_id)
               WHEN 'kitar_kiosk' THEN (SELECT k.name FROM kitar_kiosks k WHERE k.id::text = a.entity_id)
               WHEN 'flood_zone' THEN (SELECT z.name FROM flood_zones z WHERE z.id::text = a.entity_id)
+              WHEN 'flood_sensor' THEN (SELECT s.code FROM flood_sensors s WHERE s.id::text = a.entity_id)
               WHEN 'account_request' THEN (SELECT coalesce(t.full_name, r.full_name) FROM account_requests r LEFT JOIN users t ON t.id = r.user_id
                                             WHERE r.id::text = a.entity_id)
             END AS subject

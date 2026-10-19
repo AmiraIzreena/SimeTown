@@ -2,15 +2,18 @@
 
 import { Text } from '@/components/ui/localized-text';
 
-import { Siren, TriangleAlert } from 'lucide-react';
+import { HeartPulse, ShieldCheck, Siren, TriangleAlert } from 'lucide-react';
 import { LocalizedLink as Link } from '@/components/ui/localized-elements';
 import { useEffect, useRef, useState } from 'react';
+import { mutate } from 'swr';
+import { useVerifiedText, type Verified } from '@/components/features/flood';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/cn';
-import { useApi } from '@/lib/hooks';
+import { api } from '@/lib/api';
+import { useAction, useApi } from '@/lib/hooks';
 import { speak, useLang, useT } from '@/lib/i18n';
 
-interface ActiveAlert {
+interface ActiveAlert extends Verified {
   id: string;
   level: 'WARNING' | 'DANGER';
   zone_name: string;
@@ -33,14 +36,21 @@ interface AccessChoices {
  * Akses+: for someone who asked for it, the warning also flashes (once a
  * second, well under the three-flashes-a-second safety limit) and vibrates,
  * and is read aloud.
+ *
+ * A resident checks in right there: "I understand" keeps the safe route on
+ * screen and asks "I'm safe" or "I need help" (the flow's step 4), so nobody
+ * has to find the Banjir page first. "Later" closes it; the Banjir page still
+ * has the same two buttons.
  */
-export function AlertTakeover({ href }: { href: string }) {
+export function AlertTakeover({ href, canCheckIn = false }: { href: string; canCheckIn?: boolean }) {
   const { data } = useApi<ActiveAlert[]>('/alerts/active', { refreshInterval: 15_000 });
   const access = useApi<AccessChoices>('/me/access');
   const t = useT();
+  const verified = useVerifiedText();
   const lang = useLang();
   // Remembered for this browser tab only, so a new session shows the warning again.
   const [acknowledged, setAcknowledged] = useState<string | null>(() => (typeof window === 'undefined' ? null : window.sessionStorage.getItem('kita.alert.ack')));
+  const [understood, setUnderstood] = useState(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const alert = data?.[0];
   const takeover = alert?.level === 'DANGER' && acknowledged !== alert.id;
@@ -59,11 +69,21 @@ export function AlertTakeover({ href }: { href: string }) {
     if (access.data?.readAloud) speak(`${t('Flood danger')}. ${alert.zone_name}. ${t('Safe route')}: ${alert.safe_route}. ${t('Go to')}: ${alert.assembly_point}.`, lang);
   }, [takeover, alert, access.data, t, lang]);
 
+  const checkin = useAction((status: 'SAFE' | 'NEED_HELP') => api.post('/banjir/checkin', { status }), {
+    onSuccess: () => {
+      void mutate('/banjir');
+      acknowledge();
+    },
+    success: 'Thank you. The township team can see your answer.',
+  });
+
   if (!alert) return null;
-  const acknowledge = () => {
+  function acknowledge() {
+    if (!alert) return;
     window.sessionStorage.setItem('kita.alert.ack', alert.id);
     setAcknowledged(alert.id);
-  };
+    setUnderstood(false);
+  }
   const danger = alert.level === 'DANGER';
 
   return (
@@ -108,9 +128,26 @@ export function AlertTakeover({ href }: { href: string }) {
                 <dd className="mt-1 text-[17px] font-medium"><Text>{alert.assembly_point}</Text></dd>
               </div>
             </dl>
-            <Button variant="light" size="lg" className="mt-8 w-full text-accent-700 hover:bg-accent-50" onClick={acknowledge} autoFocus>
-              {t('I understand')}
-            </Button>
+            {/* Where this warning comes from, and how fresh it is (Appendix E.1). */}
+            <p className="mt-4 text-sm text-accent-100">{verified(alert)}</p>
+            {understood ? (
+              <div className="mt-6 w-full space-y-3">
+                <p className="text-lg font-semibold text-white">{t('Let the township team know how you are.')}</p>
+                <Button variant="light" size="lg" className="w-full text-accent-700 hover:bg-accent-50" onClick={() => void checkin.run('SAFE')} pending={checkin.pending} autoFocus>
+                  <ShieldCheck className="size-5" aria-hidden />{t("I'm safe")}
+                </Button>
+                <Button variant="danger" size="lg" className="w-full border border-white/40" onClick={() => void checkin.run('NEED_HELP')} disabled={checkin.pending}>
+                  <HeartPulse className="size-5" aria-hidden />{t('I need help')}
+                </Button>
+                <button type="button" className="w-full py-2 text-sm font-medium text-accent-100 underline underline-offset-2" onClick={acknowledge} disabled={checkin.pending}>
+                  {t('Later')}
+                </button>
+              </div>
+            ) : (
+              <Button variant="light" size="lg" className="mt-6 w-full text-accent-700 hover:bg-accent-50" onClick={() => (canCheckIn ? setUnderstood(true) : acknowledge())} autoFocus>
+                {t('I understand')}
+              </Button>
+            )}
             <p className="mt-4 text-sm text-accent-100">{t('In an emergency call 999.')}</p>
           </div>
         )}
