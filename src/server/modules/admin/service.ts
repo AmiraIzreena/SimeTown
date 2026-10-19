@@ -12,6 +12,7 @@ import { notifyProviders } from '../carriers/providers';
 import { revalidateCouriers } from '../carriers/team';
 import { runIncidentChecks } from '../incidents/checks';
 import { runAccessChecks } from '../akses/automation';
+import { runCollectionChecks } from '../kitar/collection-automation';
 import { runExpiry } from '../lockers/overflow';
 import { retentionCleanup } from '../retention';
 import { runAgentClock } from '../banjir/agent';
@@ -70,7 +71,7 @@ export async function updateSettings(db: Db, actor: Actor, changes: Partial<Sett
   });
 }
 
-export const JOBS = ['expire-points', 'float-check', 'settle', 'cleanup', 'flood-agent', 'parcel-reminders', 'lockers', 'couriers', 'incidents', 'access'] as const;
+export const JOBS = ['expire-points', 'float-check', 'settle', 'cleanup', 'flood-agent', 'parcel-reminders', 'lockers', 'couriers', 'incidents', 'access', 'recycling'] as const;
 export type JobName = (typeof JOBS)[number];
 
 /**
@@ -101,6 +102,9 @@ export async function runJob(db: Db, name: JobName, now: Date): Promise<Record<s
     case 'access':
       // Every 5 minutes: Akses+ reminders and escalations (once each), stalled verifications, inspection reminders, and delivering or retrying messages to parties' systems.
       return runAccessChecks(db, now);
+    case 'recycling':
+      // Nightly: day-before reminders, collections that did not happen or were never weighed, and homes or collectors to check.
+      return runCollectionChecks(db, now);
     case 'couriers':
       // Daily: couriers their company has not reconfirmed are paused, agreements about to end are flagged, ended ones stop access.
       return revalidateCouriers(db, now);

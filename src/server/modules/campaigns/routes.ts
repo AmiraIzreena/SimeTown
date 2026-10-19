@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ADMINS, CAMPAIGN_ACTIVITIES, SPONSOR_TIERS, STAFF } from '@/shared/domain';
+import { ADMINS, CAMPAIGN_ACTIVITIES, campaignSplit, SPONSOR_TIERS, STAFF } from '@/shared/domain';
 import { emptyBody, route, zId, zSen, zText } from '../../http/router';
 import * as campaigns from './service';
 import * as tiers from './tiers';
@@ -16,13 +16,9 @@ const campaignBody = z
     rewardPoints: z.number().int().positive().max(100_000),
     perPersonCap: z.number().int().positive().max(100).default(1),
     budgetSen: zSen(1_000_000_000),
-    poolBps: z.number().int().min(1).max(10_000).default(6000),
-    feeBps: z.number().int().min(0).max(10_000).default(2500),
-    costsBps: z.number().int().min(0).max(10_000).default(1500),
     startsAt: z.coerce.date(),
     endsAt: z.coerce.date(),
   })
-  .refine((v) => v.poolBps + v.feeBps + v.costsBps === 10_000, { path: ['poolBps'], message: 'Pool, fee and costs must add up to 100%.' })
   .refine((v) => v.endsAt > v.startsAt, { path: ['endsAt'], message: 'The end must be after the start.' });
 
 export const campaignRoutes = [
@@ -34,7 +30,8 @@ export const campaignRoutes = [
   route({
     method: 'POST', path: '/campaigns', tag: 'SimeTown Partner Hub', summary: 'Set up a challenge (draft until funded)', auth: 'session', roles: STAFF,
     body: campaignBody,
-    handler: (c) => campaigns.createCampaign(c.db, c.actor, c.body),
+    // The budget split follows who funds it (BR14); the browser cannot choose it.
+    handler: (c) => campaigns.createCampaign(c.db, c.actor, { ...c.body, ...campaignSplit(c.body.sponsorId) }),
   }),
   route({
     method: 'POST', path: '/campaigns/:campaignId/fund', tag: 'SimeTown Partner Hub', summary: "Record the funder's payment and open the reward pool", auth: 'session', roles: ADMINS,
@@ -52,7 +49,7 @@ export const campaignRoutes = [
   }),
   route({
     method: 'GET', path: '/sponsors', tag: 'SimeTown Partner Hub', summary: 'Sponsor organisations', auth: 'session', roles: STAFF,
-    handler: (c) => tiers.listSponsorsWithTiers(c.db),
+    handler: (c) => tiers.listSponsorsWithTiers(c.db, c.now),
   }),
   route({
     method: 'POST', path: '/sponsors', tag: 'SimeTown Partner Hub', summary: 'Add a sponsor organisation', auth: 'session', roles: ADMINS,

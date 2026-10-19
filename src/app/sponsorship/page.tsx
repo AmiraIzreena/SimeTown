@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 };
 
 const STEPS: { icon: LucideIcon; title: string; text: string }[] = [
-  { icon: Award, title: 'Choose a tier', text: 'A yearly tier gives your brand a place on this page and a set number of challenges.' },
+  { icon: Award, title: 'Choose a tier', text: 'A yearly tier gives your brand a place on this page and a set number of challenges. Without one, you can still run a one-off challenge.' },
   { icon: HandCoins, title: 'Fund a challenge', text: 'Your budget goes into a locked pool before any resident earns a single point from it.' },
   { icon: BadgeCheck, title: 'Residents take part', text: 'Every action is verified by a bin’s scale, a QR code or staff before a point is given.' },
   { icon: ChartColumn, title: 'See the results', text: 'You get grouped results, never a list of people. Unused reward money is refunded; tier and campaign fees are not.' },
@@ -29,7 +29,7 @@ const SPLIT = [
   { label: 'Spent at township shops', sen: 600_000, tone: 'bg-brand-500' },
   { label: 'SimeTown campaign fee', sen: 500_000, tone: 'bg-brand-800' },
   { label: 'Refunded to the sponsor', sen: 450_000, tone: 'bg-gold-500' },
-  { label: 'Verification, prizes and publicity', sen: 300_000, tone: 'bg-ink-500' },
+  { label: 'Running costs: verification, prizes and publicity', sen: 300_000, tone: 'bg-ink-500' },
   { label: 'Expired points to a community pool', sen: 150_000, tone: 'bg-success-600' },
 ];
 

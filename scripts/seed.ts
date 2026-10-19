@@ -193,7 +193,7 @@ async function main() {
   });
   await fundCampaign(db, admin, gerakCampaign.id, 'DEMO-SDP-GERAK', daysAgo(15));
   await createCampaign(db, staff, {
-    sponsorId, title: 'Good Neighbour Month', description: 'Help three neighbours through the Jiran help board and earn 150 points. Waiting for the sponsor’s payment.',
+    sponsorId, title: 'Good Neighbour Month', description: 'Help three neighbours through the Jiran help board and earn 150 points.',
     activity: 'JIRAN_HELP', goalMetric: 'COUNT', goalTarget: 3, rewardPoints: 150, perPersonCap: 1,
     budgetSen: 100_000, poolBps: 6000, feeBps: 2500, costsBps: 1500, startsAt: now, endsAt: new Date(now.getTime() + 45 * DAY),
   });

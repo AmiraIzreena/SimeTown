@@ -1,11 +1,12 @@
-import type { Activity } from '@/shared/domain';
+import { challengeAllowance, type Activity, type SponsorTier } from '@/shared/domain';
 import { one, type Db, type Queryable } from '../../db/client';
 import { assertTownshipAccess, type Actor } from '../../auth/actor';
-import { conflict, forbidden, notFound, ruleViolation } from '../../errors';
+import { conflict, duplicateBankRef, forbidden, notFound, ruleViolation } from '../../errors';
 import { audit } from '../audit';
 import { createAccount, credit, debit, getAccount, postTxn, systemAccounts } from '../ledger/ledger';
 import { getSettings } from '../settings';
 import { resolveTownship } from '../townships';
+import { activeTier } from './tiers';
 
 /** SimeTown Partner Hub: challenges with a fixed, prefunded reward pool. */
 
@@ -87,7 +88,7 @@ export async function fundCampaign(db: Db, actor: Actor, id: string, bankRef: st
     const c = await lockCampaign(tx, actor, id);
     if (c.status !== 'DRAFT') throw conflict('ALREADY_FUNDED', 'This campaign has already been funded.');
     if (await one(tx, 'SELECT 1 FROM deposits WHERE bank_ref = $1', [bankRef])) {
-      throw conflict('DUPLICATE_BANK_REF', 'A deposit with this bank reference is already recorded.');
+      throw duplicateBankRef();
     }
     const poolSen = Math.floor((c.budget_sen * c.pool_bps) / 10_000);
     const feeSen = Math.floor((c.budget_sen * c.fee_bps) / 10_000);
@@ -149,7 +150,7 @@ export async function closeCampaign(db: Db, actor: Actor, id: string, now: Date)
 const CAMPAIGN_LIST = `
   SELECT c.id, c.title, c.description, c.activity, c.goal_metric, c.goal_target, c.reward_points, c.per_person_cap,
          c.budget_sen, c.pool_bps, c.fee_bps, c.costs_bps, c.starts_at, c.ends_at, c.status, c.refunded_sen,
-         coalesce(s.name, 'Sime Darby Property') AS funder, r.quantity_unit,
+         c.sponsor_id, coalesce(s.name, 'Sime Darby Property') AS funder, r.quantity_unit,
          CASE WHEN c.status = 'FUNDED' AND c.starts_at <= $1 AND c.ends_at > $1 THEN true ELSE false END AS live,
          coalesce(a.balance, 0) AS pool_left_sen
     FROM campaigns c
@@ -203,7 +204,24 @@ export async function listCampaigns(db: Db, actor: Actor, now: Date) {
   if (actor.role === 'SPONSOR') {
     return db.query(`${CAMPAIGN_LIST} WHERE c.sponsor_id = $2 AND c.status <> 'DRAFT' ORDER BY c.starts_at DESC`, [now, actor.sponsorId]);
   }
-  return db.query(`${CAMPAIGN_LIST} WHERE ($2::uuid IS NULL OR c.township_id = $2) ORDER BY c.created_at DESC`, [now, actor.townshipId]);
+  // Staff also see how many rewards were given, for progress (a sponsor gets counts only through the grouped
+  // report), and whether a sponsored campaign is beyond what the sponsor's tier includes this year. The order
+  // is set up first, across every township, counting drafts but not cancelled ones, as on the Sponsors tab.
+  const rows = await db.query<Record<string, unknown> & { year_rank: number | null; sponsor_tier: SponsorTier | 'NONE' | null; sponsor_tier_until: string | null }>(
+    `SELECT x.*, (SELECT count(*)::int FROM campaign_awards w WHERE w.campaign_id = x.id) AS rewards_given,
+            r.year_rank, s.tier AS sponsor_tier, s.tier_until::text AS sponsor_tier_until
+       FROM (${CAMPAIGN_LIST} WHERE ($2::uuid IS NULL OR c.township_id = $2)) x
+       LEFT JOIN (SELECT id, row_number() OVER (PARTITION BY sponsor_id, date_trunc('year', starts_at) ORDER BY created_at, id)::int AS year_rank
+                    FROM campaigns WHERE sponsor_id IS NOT NULL AND (funded_at IS NOT NULL OR status = 'DRAFT')) r ON r.id = x.id
+       LEFT JOIN sponsors s ON s.id = x.sponsor_id
+      ORDER BY x.ends_at DESC`,
+    [now, actor.townshipId],
+  );
+  return rows.map(({ year_rank, sponsor_tier, sponsor_tier_until, ...c }) => {
+    const tier = sponsor_tier ? activeTier(sponsor_tier, sponsor_tier_until, now) : 'NONE';
+    const included = challengeAllowance(tier);
+    return { ...c, sponsor_tier: tier, extra: year_rank !== null && included !== null && year_rank > included };
+  });
 }
 
 /**
@@ -214,7 +232,7 @@ export async function listCampaigns(db: Db, actor: Actor, now: Date) {
 export async function campaignReport(db: Db, actor: Actor, id: string, now: Date) {
   const c = await one<{ id: string; township_id: string; sponsor_id: string | null } & Record<string, unknown>>(
     db,
-    `SELECT x.*, c.township_id, c.sponsor_id FROM (${CAMPAIGN_LIST}) x JOIN campaigns c ON c.id = x.id WHERE x.id = $2`,
+    `SELECT x.*, c.township_id FROM (${CAMPAIGN_LIST}) x JOIN campaigns c ON c.id = x.id WHERE x.id = $2`,
     [now, id],
   );
   if (!c) throw notFound('Campaign');

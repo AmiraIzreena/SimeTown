@@ -137,6 +137,7 @@ These jobs keep the programme honest. Each is safe to run twice.
 | `parcel-reminders` | daily | Reminds a household once about a parcel waiting three days or more |
 | `lockers` | every 5 minutes | Settles unanswered locker door commands and unused reservations; flags doors left open; sends locker reminders; marks parcels overdue and opens relocation tasks; tells courier companies about deposits (retried) |
 | `incidents` | every 5 minutes | Escalates township cases nobody took in time, or that are past their resolution deadline, to the township admins (once per case and round); closes resolved cases once the reopening window has passed |
+| `recycling` | nightly | Booked collections: confirms requests left from before bookings confirmed themselves; day-before reminders; a past collection the gate never scanned and nobody weighed becomes missed (pass cancelled); one scanned but not weighed closes after 2 days with no points; flags homes with 3+ large weights or reward-limit hits, and collectors with 3+ misses, in 30 days (to township staff and SDP HQ) |
 | `couriers` | daily | Pauses company-managed couriers not reconfirmed in 90 days; flags agreements ending within 14 days; ends access when an agreement has ended |
 | `settle` | weekly | Pays every shop what it is owed and writes its statement |
 

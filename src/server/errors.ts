@@ -18,7 +18,9 @@ export const badRequest = (message: string, details?: unknown) => new AppError(4
 export const unauthorized = (message = 'Please sign in.') => new AppError(401, 'UNAUTHORIZED', message);
 export const forbidden = (message = 'You do not have permission to do this.') => new AppError(403, 'FORBIDDEN', message);
 export const notFound = (what = 'Resource') => new AppError(404, 'NOT_FOUND', `${what} not found.`);
-export const conflict = (code: string, message: string) => new AppError(409, code, message);
+export const conflict = (code: string, message: string, details?: unknown) => new AppError(409, code, message, details);
+/** A bank reference that was used before: shown on the form's `bankRef` field, inside any open dialog. */
+export const duplicateBankRef = (message = 'A deposit with this bank reference is already recorded.') => conflict('DUPLICATE_BANK_REF', message, { fields: { bankRef: message } });
 /** A request that is well-formed but breaks a business rule. */
 export const ruleViolation = (code: string, message: string, details?: unknown) => new AppError(422, code, message, details);
 export const tooManyRequests = (retryAfterSec: number) =>
