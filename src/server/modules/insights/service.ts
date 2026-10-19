@@ -5,6 +5,9 @@ import { floatPosition } from '../ledger/finance';
 import { pledgeSummary } from '../offers/service';
 import { getSettings } from '../settings';
 
+/** Activities of features in use today. Archived ones (Taman, Jimat) keep their history but are not reported. */
+const INSIGHT_ACTIVITIES = ['JIRAN_EVENT', 'JIRAN_HELP', 'KONGSI_SHARE', 'LAPOR_REPORT', 'GERAK_CHECKIN', 'GERAK_LOOP', 'GERAK_TRIP', 'KITAR_DROPOFF', 'AKSES_UPDATE'];
+
 /**
  * SimeTown Insights: what the township achieved in the last 30 days. Totals for
  * groups only, never one person's activity (BR16).
@@ -27,12 +30,15 @@ export async function insightsOverview(db: Db, actor: Actor, now: Date) {
     ),
     one(
       db,
+      // Practice (TEST) drop-offs are never township results.
       `SELECT (SELECT coalesce(sum(d.weight_g), 0)::int FROM kitar_dropoffs d JOIN kitar_kiosks k ON k.id = d.kiosk_id
-                WHERE ($1::uuid IS NULL OR k.township_id = $1) AND d.created_at >= ${since}) AS recycled_g,
+                WHERE d.source = 'LIVE' AND ($1::uuid IS NULL OR k.township_id = $1) AND d.created_at >= ${since}) AS recycled_g,
               (SELECT count(*)::int FROM kitar_dropoffs d JOIN kitar_kiosks k ON k.id = d.kiosk_id
-                WHERE ($1::uuid IS NULL OR k.township_id = $1) AND d.created_at >= ${since}) AS drop_offs,
+                WHERE d.source = 'LIVE' AND ($1::uuid IS NULL OR k.township_id = $1) AND d.created_at >= ${since}) AS drop_offs,
               (SELECT coalesce(sum(e.quantity), 0)::int FROM xp_events e JOIN users u ON u.id = e.user_id
-                WHERE e.activity = 'GERAK_LOOP' AND ($1::uuid IS NULL OR u.township_id = $1) AND e.created_at >= ${since}) AS moved_m`,
+                WHERE e.activity = 'GERAK_LOOP' AND ($1::uuid IS NULL OR u.township_id = $1) AND e.created_at >= ${since}) AS moved_m,
+              (SELECT count(*)::int FROM xp_events e JOIN users u ON u.id = e.user_id
+                WHERE e.activity = 'GERAK_LOOP' AND ($1::uuid IS NULL OR u.township_id = $1) AND e.created_at >= ${since}) AS loops`,
       [t, now],
     ),
     one(
@@ -80,9 +86,9 @@ export async function insightsOverview(db: Db, actor: Actor, now: Date) {
          FROM activity_rules r
          LEFT JOIN (xp_events e JOIN users u ON u.id = e.user_id AND ($1::uuid IS NULL OR u.township_id = $1))
                 ON e.activity = r.activity AND e.created_at >= ${since}
-        WHERE r.activity NOT IN ('TAMAN_WATERING', 'TAMAN_SIGHTING')
+        WHERE r.activity = ANY($3::text[])
         GROUP BY r.activity, r.label ORDER BY actions DESC, r.label`,
-      [t, now],
+      [t, now, INSIGHT_ACTIVITIES],
     ),
     db.query(
       `SELECT category, count(*)::int AS open FROM reports
@@ -121,9 +127,15 @@ export async function insightsOverview(db: Db, actor: Actor, now: Date) {
               (SELECT count(*)::int FROM visitor_entries e WHERE ($1::uuid IS NULL OR e.township_id = $1) AND e.entered_at >= ${since}) AS visits,
               (SELECT count(*)::int FROM flood_messages f JOIN flood_zones z ON z.id = f.zone_id
                 WHERE f.status = 'SENT' AND f.kind = 'ALERT' AND ($1::uuid IS NULL OR z.township_id = $1) AND f.sent_at >= ${since}) AS flood_alerts,
-              (SELECT count(*)::int FROM reports r WHERE r.category = 'ACCESS_BARRIER' AND ($1::uuid IS NULL OR r.township_id = $1) AND r.created_at >= ${since}) AS barriers_reported,
-              (SELECT count(*)::int FROM reports r WHERE r.category = 'ACCESS_BARRIER' AND r.status = 'RESOLVED' AND r.resolved_at - r.created_at <= interval '7 days'
-                AND ($1::uuid IS NULL OR r.township_id = $1) AND r.created_at >= ${since}) AS barriers_fixed_on_time`,
+              -- Accessibility runs through Akses+ incidents and places now, not Lapor's access-barrier reports.
+              (SELECT count(*)::int FROM access_incidents i WHERE i.status = 'RESOLVED' AND ($1::uuid IS NULL OR i.township_id = $1) AND i.resolved_at >= ${since}) AS access_resolved,
+              (SELECT count(*)::int FROM access_incidents i WHERE i.status = 'RESOLVED' AND i.resolved_at <= i.resolve_due_at
+                AND ($1::uuid IS NULL OR i.township_id = $1) AND i.resolved_at >= ${since}) AS access_on_time,
+              (SELECT count(*)::int FROM access_incidents i WHERE i.status <> 'RESOLVED' AND ($1::uuid IS NULL OR i.township_id = $1)) AS access_open,
+              (SELECT count(*)::int FROM access_places p WHERE p.archived_at IS NULL AND ($1::uuid IS NULL OR p.township_id = $1)) AS access_places,
+              (SELECT count(*)::int FROM access_places p WHERE p.archived_at IS NULL AND p.verification = 'VERIFIED' AND ($1::uuid IS NULL OR p.township_id = $1)) AS access_verified,
+              (SELECT count(*)::int FROM access_places p WHERE p.archived_at IS NULL AND p.availability IN ('REPORTED_BLOCKED', 'CONFIRMED_BLOCKED')
+                AND ($1::uuid IS NULL OR p.township_id = $1)) AS access_blocked`,
       [t, now],
     ),
     pledgeSummary(db, t, now, tz),

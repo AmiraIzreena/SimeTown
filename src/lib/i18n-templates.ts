@@ -1180,6 +1180,11 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
   ["{0} requested controlled access to {1} occupied doors at {2}.", "{0} meminta akses terkawal kepada {1} pintu berisi di {2}."],
   ["{0} ms", "{0} milisaat"],
   ...floodTemplates,
+  // Insights
+  ["{0} drop-offs at kiosks and machines", "{0} serahan di kiosk dan mesin"],
+  ["{0} loops completed", "{0} laluan diselesaikan"],
+  ["{0} open access issues", "{0} isu akses terbuka"],
+  ["No pledge, no points: offer-backed points given this month ({0}) can never pass what {1} shop offer(s) promised ({2}).", "Tiada ikrar, tiada mata: mata bertawaran yang diberi bulan ini ({0}) tidak boleh melebihi apa yang dijanjikan oleh {1} tawaran kedai ({2})."],
   // Akses+ last, so an existing template always matches first.
   ...aksesTemplates,
   ...shopsTemplates,

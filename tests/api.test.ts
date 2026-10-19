@@ -613,6 +613,16 @@ describe('insights, jobs and personal data', () => {
     expect(f.trustSen).toBe(f.walletsSen + f.payablesSen + f.poolsSen + f.communitySen);
     expect(res.data.planet.recycled_g).toBeGreaterThan(0);
     expect(res.data.daily).toHaveLength(14);
+    // Only features in use today: archived Taman and Jimat activities are not reported.
+    const archived = (await db.query<{ label: string }>(`SELECT label FROM activity_rules WHERE activity IN ('TAMAN_WATERING', 'TAMAN_SIGHTING', 'JIMAT_READING', 'JIMAT_SAVER')`)).map((r) => r.label);
+    expect(archived.length).toBeGreaterThan(0);
+    for (const label of archived) expect((res.data.byActivity as { label: string }[]).map((a) => a.label)).not.toContain(label);
+    expect((res.data.byActivity as { label: string }[]).map((a) => a.label)).toContain('Access report or place confirmed');
+    // Accessibility comes from Akses+, and practice drop-offs never count.
+    for (const k of ['access_resolved', 'access_on_time', 'access_open', 'access_places', 'access_verified', 'access_blocked']) expect(typeof res.data.smart[k]).toBe('number');
+    const live = await one<{ g: number }>(db, `SELECT coalesce(sum(d.weight_g), 0)::int AS g FROM kitar_dropoffs d JOIN kitar_kiosks k ON k.id = d.kiosk_id
+      WHERE d.source = 'LIVE' AND k.township_id = $1 AND d.created_at >= $2::timestamptz - interval '30 days'`, [w.townshipId, clock.now]);
+    expect(res.data.planet.recycled_g).toBe(live!.g);
   });
 
   it('runs scheduled jobs only with the cron token', async () => {

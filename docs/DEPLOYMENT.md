@@ -50,13 +50,27 @@ A wrong or missing value stops the app at start-up with a message naming the var
 | `CRON_SECRET` | optional | set | set |
 | `SENSOR_INGEST_TOKEN` | optional | set if testing sensors | set when sensors exist |
 | `AI_PROVIDER`, `AI_API_URL`, `AI_API_KEY`, `AI_MODEL` | `none` | optional | optional |
+| `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | not set | optional | recommended with more than one instance |
+| `SESSION_CACHE_SECONDS` | 60 | 60 | 60 (0 turns the cache off) |
 | `LOG_LEVEL` | `info` | `info` | `info` |
 
 Rules the app enforces by itself outside development: `APP_URL` must be `https://`, the database
 cannot be PGlite, cookies become `Secure` with the `__Host-` prefix, and the database connection
 uses TLS unless `DB_SSL=disable` is set on purpose (for a private network).
 
-Secrets (`DATABASE_URL`, `CRON_SECRET`, `SENSOR_INGEST_TOKEN`, `AI_API_KEY`) go in the host's
+**Redis (optional).** Create an Upstash Redis database in the same region as the app and copy its
+REST URL and token. Set both or neither; the URL must be `https://` outside development. Use a
+separate database (or at least separate credentials) for staging and production. Keys are also
+prefixed with `APP_ENV`. Without Redis, rate limits count in the `rate_limits` table and every
+sign-in lookup reads the database, exactly as before. If Redis fails while the app is running, the
+app logs `Redis unavailable; using PostgreSQL` and carries on. The session cache holds each
+signed-in person's id, role, name and email for at most a minute, so treat the Redis database as
+personal data, in the same region rules as PostgreSQL.
+
+If you change `users` or `sessions` directly in SQL (for example, disabling an account by hand),
+the app does not know. Allow `SESSION_CACHE_SECONDS` before relying on it, or set it to 0.
+
+Secrets (`DATABASE_URL`, `CRON_SECRET`, `SENSOR_INGEST_TOKEN`, `AI_API_KEY`, `UPSTASH_REDIS_REST_TOKEN`) go in the host's
 secret store, never in the repository or the image. Generate tokens with
 `openssl rand -base64 36`.
 
@@ -119,7 +133,7 @@ These jobs keep the programme honest. Each is safe to run twice.
 | --- | --- | --- |
 | `float-check` | daily | Proves the float equals what it owes; pauses points if not |
 | `expire-points` | daily | Expires old points to their funders; sends 60- and 14-day reminders |
-| `cleanup` | daily | Removes expired sessions, old rate-limit rows and stale requests |
+| `cleanup` | daily | Removes expired sessions, old rate-limit rows and stale requests (Redis counters expire by themselves) |
 | `parcel-reminders` | daily | Reminds a household once about a parcel waiting three days or more |
 | `lockers` | every 5 minutes | Settles unanswered locker door commands and unused reservations; flags doors left open; sends locker reminders; marks parcels overdue and opens relocation tasks; tells courier companies about deposits (retried) |
 | `incidents` | every 5 minutes | Escalates township cases nobody took in time, or that are past their resolution deadline, to the township admins (once per case and round); closes resolved cases once the reopening window has passed |

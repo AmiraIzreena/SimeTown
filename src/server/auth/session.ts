@@ -1,14 +1,16 @@
 import { createHash, randomBytes } from 'node:crypto';
 import type { Role } from '@/shared/domain';
 import { getConfig } from '../config';
-import { one, type Queryable } from '../db/client';
+import { afterCommit, one, type Queryable } from '../db/client';
 import type { Actor } from './actor';
+import { invalidateSessionCache, LAST_SEEN_EVERY_MS, lookupSession, storeSession } from './session-cache';
 
 /**
  * Server-side sessions. The browser holds a random token in an HttpOnly
  * cookie; the database holds only its SHA-256 hash, so a database leak does
  * not hand out working sessions. Signing out or changing a password deletes
- * the rows, which ends the session at once.
+ * the rows and clears the optional Redis session cache, which ends the
+ * session at once.
  */
 
 export const hashToken = (token: string) => createHash('sha256').update(token).digest('hex');
@@ -48,7 +50,16 @@ export async function createSession(q: Queryable, userId: string, now: Date, ttl
 
 export async function destroySession(q: Queryable, token: string): Promise<void> {
   await q.query('DELETE FROM sessions WHERE token_hash = $1', [hashToken(token)]);
+  await sessionsChanged(q);
 }
+
+/**
+ * Call after anything that ends sessions or changes what `actorFromToken`
+ * returns (role, status, residency, home, township, shop, sponsor, name,
+ * email, member code, password). Clears the Redis session cache once `q`
+ * commits; does nothing when Redis is not configured.
+ */
+export const sessionsChanged = (q: Queryable) => afterCommit(q, invalidateSessionCache);
 
 interface ActorRow {
   id: string;
@@ -79,19 +90,33 @@ export const toActor = (r: ActorRow): Actor => ({
   memberCode: r.member_code,
 });
 
-/** Resolves a cookie token to the signed-in person, or null. Role and status are re-read on every request. */
+/**
+ * Resolves a cookie token to the signed-in person, or null. Role and status
+ * are re-read from the database on every request, or served from the Redis
+ * session cache, which every change to them clears (see `sessionsChanged`).
+ */
 export async function actorFromToken(q: Queryable, token: string | null, now: Date): Promise<Actor | null> {
   if (!token) return null;
-  const row = await one<ActorRow & { session_id: string; last_seen_at: Date }>(
+  const tokenHash = hashToken(token);
+  const cached = await lookupSession(tokenHash, now);
+  if (cached?.hit) return cached.hit.actor;
+
+  const row = await one<ActorRow & { session_id: string; last_seen_at: Date; expires_at: Date }>(
     q,
-    `SELECT ${ACTOR_COLUMNS}, s.id AS session_id, s.last_seen_at
+    `SELECT ${ACTOR_COLUMNS}, s.id AS session_id, s.last_seen_at, s.expires_at
        FROM sessions s JOIN users u ON u.id = s.user_id
       WHERE s.token_hash = $1 AND s.expires_at > $2 AND u.status = 'ACTIVE'`,
-    [hashToken(token), now],
+    [tokenHash, now],
   );
   if (!row) return null;
-  if (now.getTime() - row.last_seen_at.getTime() > 5 * 60_000) {
+  let lastSeenAt = row.last_seen_at.getTime();
+  if (now.getTime() - lastSeenAt > LAST_SEEN_EVERY_MS) {
     await q.query('UPDATE sessions SET last_seen_at = $2 WHERE id = $1', [row.session_id, now]);
+    lastSeenAt = now.getTime();
   }
-  return toActor(row);
+  const actor = toActor(row);
+  if (cached) {
+    await storeSession(tokenHash, cached.gen, { actor, sessionId: row.session_id, lastSeenAt, expiresAt: row.expires_at.getTime() }, now);
+  }
+  return actor;
 }

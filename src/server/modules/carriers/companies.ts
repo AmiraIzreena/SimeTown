@@ -1,6 +1,7 @@
 import { ADMINS } from '@/shared/domain';
 import { one, type Db, type Queryable } from '../../db/client';
 import type { Actor } from '../../auth/actor';
+import { sessionsChanged } from '../../auth/session';
 import { conflict, forbidden, notFound, ruleViolation } from '../../errors';
 import { audit } from '../audit';
 import { issueInvite } from '../identity/service';
@@ -148,6 +149,7 @@ export interface ApprovalInput {
 /** Ends every session of the company's people in this township: a suspension takes effect at once, even mid-shift. */
 async function endCompanySessions(q: Queryable, companyId: string, townshipId: string) {
   await q.query('DELETE FROM sessions WHERE user_id IN (SELECT user_id FROM courier_accounts WHERE company_id = $1 AND township_id = $2)', [companyId, townshipId]);
+  await sessionsChanged(q);
 }
 
 /** Approve, suspend (an emergency stop) or revoke a company in this township, and set its agreement and assurance terms. */
@@ -242,6 +244,7 @@ export async function removeRepresentative(db: Db, actor: Actor, companyId: stri
     );
     if (rows.length === 0) throw notFound('Representative');
     await tx.query('DELETE FROM sessions WHERE user_id = $1', [userId]);
+    await sessionsChanged(tx);
     await companyEvent(tx, companyId, townshipId, 'REPRESENTATIVE_REMOVED', actor.id, null, now);
     await audit(tx, actor.id, 'COURIER_REPRESENTATIVE_REMOVED', 'user', userId, { companyId });
     return { ok: true };

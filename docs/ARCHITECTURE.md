@@ -29,7 +29,7 @@ assessment below is therefore of the *specification*.
 | Payments and quotations in SimeTown Home | Home service bookings are real (see *SimeTown Home Services* below), but the price is agreed in person after inspection and paid to the company directly, so SimeTown holds no money and no quote is binding in the app. Warranty records and resale remain labelled previews. SimeTown Assistant is now an AI agent; see *SimeTown Assistant* below. |
 | Machine learning for the recycling machine, CCTV and bills | Planned after the hackathon selection. The machine is a tablet page whose buttons stand in for camera, barcode and scale (its signed records are real); CCTV is a fixed set of test pictures with known readings; bills are read from the PDF's own text, with the optional AI service for photos. |
 | In-app payments, top-up, stored cash | Rule BR11 forbids them, and they would bring e-money regulation. Residents pay shops directly. |
-| A separate API service, Redis, queues, WebSockets | The pilot design has them. At prototype scale they add operations work and no user benefit: polling every few seconds is enough for a counter confirmation and a flood alert. The backend is already isolated (`src/server`) so it can be lifted out later. |
+| A separate API service, queues, WebSockets | The pilot design has them. At prototype scale they add operations work and no user benefit: polling every few seconds is enough for a counter confirmation and a flood alert. The backend is already isolated (`src/server`) so it can be lifted out later. Redis is optional and limited to rate limits and a sign-in cache (see *Optional Redis* in section 3); money, the ledger, Insights and jobs stay in PostgreSQL. |
 | An ORM | The ledger is a handful of precise SQL statements. Plain parameterised SQL keeps them readable and reviewable, and removes a dependency. |
 | A global state library, a component library, a chart library, a date library | SWR covers server data; the UI kit is about 900 lines; charts are plain CSS bars; dates use `Intl`. |
 | Dark mode; a full Malay translation | Worth doing, and each doubles the testing surface. The third edition adds an EN/BM switch (`src/lib/i18n.ts`) covering navigation, the home screen, Simple Mode, Tamu and flood alerts; the rest stays in English. |
@@ -118,11 +118,38 @@ age (5 minutes at most) and its sequence number before anything is stored
 | **Zod** | One schema validates the request and documents it. |
 | **SWR** | Caching, de-duplication, refresh on focus and polling for the few live screens. |
 | **Server-side sessions** in an HttpOnly cookie | Simple to revoke (delete the row), nothing sensitive in the browser, no token-refresh logic. |
+| **Optional Upstash Redis** (REST, plain `fetch`) | Takes rate-limit counting and repeat sign-in lookups off the database when configured. No driver and no open connections; see below. |
 | **scrypt** from Node's own crypto | A memory-hard password hash with no extra dependency. |
 | **Vitest** | Fast, TypeScript-native. |
 
 Runtime dependencies: `next`, `react`, `react-dom`, `pg`, `zod`, `swr`, `lucide-react` (icons),
 `qrcode` (loaded only when a code is shown) and two self-hosted font packages. That is all.
+
+### Optional Redis
+
+The app runs fully without Redis. When `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`
+are set, two things use it, and nothing else does:
+
+- **Rate limits** (`src/server/http/rate-limit.ts`). The same fixed windows as the `rate_limits`
+  table, so the limits and the `Retry-After` header do not change. Redis sees only a SHA-256 hash
+  of each key, never an email or IP address. If Redis fails or takes longer than one second, that
+  request is counted in PostgreSQL instead, and Redis is left alone for 30 seconds. Never "allow
+  everything" and never "block everything".
+- **Session cache** (`src/server/auth/session-cache.ts`). `actorFromToken` keeps "this token
+  hash belongs to this person" for up to `SESSION_CACHE_SECONDS` (60 by default), and never
+  longer than the session has left. Keys are token hashes, never tokens. Every entry is tagged
+  with a generation value and is only used while that value is current. `sessionsChanged(q)`
+  replaces the generation after the change commits (`afterCommit` in `db/client.ts`). It is
+  called wherever sessions end or a field `actorFromToken` returns changes: sign-out, password
+  change, account deletion, invitation accepted, residency decision, home or name change, and
+  every courier suspension or removal. A lookup stores what it read only under the generation it
+  saw before querying, so a request racing with a change cannot store the old answer as current.
+  `tests/redis.test.ts` fails if a new `DELETE FROM sessions` or a change to those user columns
+  is added without the call. The `last_seen_at` update still happens every five minutes, because
+  older entries are not used. If clearing the cache fails, that instance stops reading the cache
+  until every entry has expired.
+
+Money, the ledger, Insights and scheduled jobs never touch Redis.
 
 ## 4. Database design
 
@@ -330,7 +357,7 @@ acknowledged rather than dismissed by accident.
 | Separate API (NestJS) | Mount `src/server` behind it; routes and services move unchanged. |
 | React Native app | Uses the same `/api/v1`; session cookie becomes a bearer token in `auth/session.ts`. |
 | Phone one-time codes | Replace `identity/service.ts → login`; sessions stay. |
-| Redis + queue | Jobs in `admin/service.ts → runJob` become queue workers. |
+| Queue | Jobs in `admin/service.ts → runJob` become queue workers. Redis is already optional for rate limits and the session cache. |
 | MQTT sensors | A bridge posts to `/ingest/flood` (already there). |
 | Real recycling machines | Each device gets its key at set-up (held in a key store, not the database) and posts to `/ingest/kitar/*` (already there). |
 | Vision models (machine, CCTV, bill photos) | Replace the simulator buttons and test pictures; the agreement rules and the 60% confidence floor stay. |
