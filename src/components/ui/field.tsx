@@ -1,6 +1,7 @@
 
 import { Text } from '@/components/ui/localized-text';
 import { LocalizedInput, LocalizedSelect, LocalizedTextarea } from '@/components/ui/localized-elements';
+import { PasswordInput } from '@/components/ui/password-input';
 import { useId, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react';
 import { cn } from '@/lib/cn';
 
@@ -41,11 +42,15 @@ const noteProps = (id: string, hint: unknown, error?: string) => ({
   'aria-describedby': hint || error ? `${id}-note` : undefined,
 });
 
-export function Input({ label, hint, error, className, labelClassName, ...rest }: FieldProps & InputHTMLAttributes<HTMLInputElement>) {
+export function Input({ label, hint, error, className, labelClassName, type, ...rest }: FieldProps & InputHTMLAttributes<HTMLInputElement>) {
   const id = useId();
   return (
     <Shell {...{ label, hint, error, className, labelClassName, id }}>
-      <LocalizedInput className="control" {...noteProps(id, hint, error)} {...rest} />
+      {type === 'password' ? (
+        <PasswordInput className="control" {...noteProps(id, hint, error)} {...rest} />
+      ) : (
+        <LocalizedInput className="control" type={type} {...noteProps(id, hint, error)} {...rest} />
+      )}
     </Shell>
   );
 }
