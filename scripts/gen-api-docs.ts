@@ -21,7 +21,7 @@ const lines = [
 for (const tag of [...new Set(routes.map((r) => r.tag))]) {
   lines.push(`## ${tag}`, '', '| Method | Path | Who | What it does |', '| --- | --- | --- | --- |');
   for (const r of routes.filter((x) => x.tag === tag)) {
-    const who = r.auth === 'public' ? 'Public' : r.auth === 'session' ? (r.roles?.join(', ') ?? 'Any signed-in user') : `Bearer token (${r.auth})`;
+    const who = r.auth === 'public' ? 'Public' : r.auth === 'session' ? (r.roles?.join(', ') ?? 'Any signed-in user') : r.auth === 'machine' ? 'Signed device (own HMAC key)' : `Bearer token (${r.auth})`;
     lines.push(`| ${r.method} | \`${r.path}\` | ${who} | ${r.summary} |`);
   }
   lines.push('');

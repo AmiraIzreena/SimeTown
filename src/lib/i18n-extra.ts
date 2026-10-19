@@ -1,8 +1,13 @@
+import { floodMalay } from './i18n-flood';
 import { homeServicesMalay } from './i18n-home-services';
+import { malay } from './i18n-messages';
 
 /** Shared labels, validation and short messages used by several features. */
 export const extraMalay: Record<string, string> = {
   ...homeServicesMalay,
+  // Banjir with real sensors. A word the main catalogue already translates keeps that translation.
+  // Keys are looked up trimmed; the spaces around a piece of text stay as written in the page.
+  ...Object.fromEntries(Object.entries(floodMalay).map(([en, ms]) => [en.trim(), ms.trim()] as const).filter(([english]) => !Object.hasOwn(malay, english))),
   'Post hidden': 'Siaran disembunyikan', 'Post restored': 'Siaran dipulihkan', 'Post removed': 'Siaran dibuang',
   'Sos raised': 'SOS dihantar', 'Sos closed': 'SOS ditutup', 'Sos acknowledged': 'SOS diakui',
   'Sighting confirmed': 'Pemerhatian disahkan', 'Sighting rejected': 'Pemerhatian ditolak', 'Garden created': 'Kebun dicipta',

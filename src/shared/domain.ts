@@ -95,6 +95,16 @@ export const FLOOD_SOURCE_LABELS: Record<FloodSource, string> = {
   REPORT: 'Residents’ photo reports',
 };
 
+/** Where a warning came from, shown on every warning (Appendix E.1): a signal type, or the duty officer by hand. */
+export type WarningSource = FloodSource | 'MANUAL';
+export const WARNING_SOURCE_LABELS: Record<WarningSource, string> = {
+  MANUAL: 'duty officer',
+  SENSOR: 'water-level sensor',
+  CAMERA: 'CCTV',
+  RAIN: 'rain gauge',
+  REPORT: 'residents’ reports',
+};
+
 /**
  * The prototype's camera test set (proposal 6.5): pictures of a painted measuring
  * post in a drain, each with the true water level and what the image model read.
@@ -111,6 +121,21 @@ export const FLOOD_TEST_PICTURES = [
 ] as const;
 export type FloodTestPictureId = (typeof FLOOD_TEST_PICTURES)[number]['id'];
 export const CAMERA_MIN_CONFIDENCE = 0.6;
+
+/** Real water-level sensors (proposal Appendix E): IP68 ultrasonic or radar, two or three per zone. */
+export const FLOOD_SENSOR_KINDS = ['ULTRASONIC', 'RADAR'] as const;
+export type FloodSensorKind = (typeof FLOOD_SENSOR_KINDS)[number];
+export const FLOOD_SENSOR_KIND_LABELS: Record<FloodSensorKind, string> = { ULTRASONIC: 'Ultrasonic', RADAR: 'Radar' };
+export const FLOOD_SENSOR_SITES = ['LAKE_EDGE', 'MAIN_DRAIN', 'LOW_ROAD', 'OTHER'] as const;
+export type FloodSensorSite = (typeof FLOOD_SENSOR_SITES)[number];
+export const FLOOD_SENSOR_SITE_LABELS: Record<FloodSensorSite, string> = { LAKE_EDGE: 'Lake edge', MAIN_DRAIN: 'Main drain', LOW_ROAD: 'Low road', OTHER: 'Other place' };
+export type FloodSensorHealth = 'UNKNOWN' | 'OK' | 'FAULTY';
+export type FloodFaultReason = 'NO_READING' | 'STUCK' | 'LOW_BATTERY';
+export const FLOOD_FAULT_LABELS: Record<FloodFaultReason, string> = {
+  NO_READING: 'No reading for 5 minutes',
+  STUCK: 'Stuck on one value',
+  LOW_BATTERY: 'Low battery',
+};
 
 // --- Tamu: visitors -----------------------------------------------------------
 

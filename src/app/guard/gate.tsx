@@ -2,7 +2,7 @@
 
 import { Text } from '@/components/ui/localized-text';
 
-import { CheckCircle2, ClipboardCheck, DoorOpen, LogOut, Route, ScanLine, Siren, TriangleAlert, UserPlus, XCircle } from 'lucide-react';
+import { CheckCircle2, ClipboardCheck, DoorOpen, HeartPulse, LogOut, Route, ScanLine, Siren, TriangleAlert, UserPlus, XCircle } from 'lucide-react';
 import { useCallback, useState, type FormEvent } from 'react';
 import { AddressPicker } from '@/components/features/address';
 import { CameraScan } from '@/components/features/camera-scan';
@@ -34,6 +34,7 @@ interface GateOverview {
   sos: { id: string; status: 'OPEN' | 'ACKNOWLEDGED'; created_at: string; full_name: string; phone: string | null; address: string }[];
   patrol: { id: string; seq: number; name: string; last_scan_today: string | null }[];
   floodTasks: { zone: string; level: 'WARNING' | 'DANGER'; task: string }[];
+  helpTasks: { id: string; full_name: string; phone: string | null; note: string | null; reason: 'PRIORITY' | 'NEED_HELP'; zone_name: string; priority_note: string | null; address: string; created_at: string }[];
 }
 interface ScanResult {
   visitorName: string;
@@ -74,6 +75,7 @@ export function GateScreen({ initialPatrol }: { initialPatrol: string }) {
     success: (r) => (r.notified ? `Logged. ${r.notified} resident${r.notified === 1 ? '' : 's'} at ${r.house} asked to reply.` : `Logged. Nobody at ${r.house} has the app: call the house.`),
   });
   const exit = useAction((id: string) => api.post(`/guard/entries/${id}/exit`), { onSuccess: () => void gate.mutate() });
+  const reached = useAction((id: string) => api.post(`/banjir/help-tasks/${id}/reached`), { onSuccess: () => void gate.mutate(), success: 'Marked reached. The duty officer can see it.' });
   const sos = useAction((id: string, close: boolean) => api.post(`/guard/sos/${id}`, { close }), { onSuccess: () => void gate.mutate() });
   const patrol = useAction((value: string) => api.post<{ point: string }>('/guard/patrol', { code: value }), {
     onSuccess: () => {
@@ -119,6 +121,26 @@ export function GateScreen({ initialPatrol }: { initialPatrol: string }) {
               )}
               <Button variant="secondary" onClick={() => sos.run(s.id, true)} disabled={sos.pending}><Text>Close</Text></Button>
             </div>
+          </Card>
+        ))}
+
+        {gate.data?.helpTasks.map((task) => (
+          <Card key={task.id} role="alert" className="flex flex-wrap items-center justify-between gap-4 border-accent-300 bg-accent-50 p-5">
+            <div className="flex items-start gap-3">
+              <span className="grid size-11 shrink-0 place-items-center rounded-full bg-accent-600 text-white">
+                <HeartPulse className="size-5" aria-hidden />
+              </span>
+              <div className="text-sm text-ink-700">
+                <p className="font-display text-lg font-bold text-ink-900"><Text>Reach </Text>{task.full_name}</p>
+                <p>{task.address}{task.phone && <> · <a className="font-semibold text-brand-700 underline" href={`tel:${task.phone}`}>{task.phone}</a></>}</p>
+                <p>
+                  <Text>{task.zone_name}</Text> · <Text>{task.reason === 'NEED_HELP' ? 'Asked for help' : 'On the priority help list'}</Text> · <Text>{timeAgo(task.created_at)}</Text>
+                </p>
+                {task.priority_note && <p className="text-ink-600"><Text>{task.priority_note}</Text></p>}
+                {task.note && <p className="font-medium text-ink-900"><Text>{task.note}</Text></p>}
+              </div>
+            </div>
+            <Button variant="danger" onClick={() => void reached.run(task.id)} pending={reached.pending}><Text>Reached them</Text></Button>
           </Card>
         ))}
 

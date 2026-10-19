@@ -14,6 +14,8 @@ import {
   suggestPlace,
 } from "../src/server/modules/akses/service";
 import { simulateSignal } from "../src/server/modules/banjir/agent";
+import { ingestReadings, signReading, type SignedReading } from "../src/server/modules/banjir/ingest";
+import { registerSensor } from "../src/server/modules/banjir/sensors";
 import { setSponsorTier } from "../src/server/modules/campaigns/tiers";
 import {
   addPoints,
@@ -603,6 +605,35 @@ export async function seedThirdEdition(
     );
     log("Banjir: sensor, camera and rain-gauge signals for Elmina Valley 1 & 2.");
   }
+
+  // --- Banjir: simulated sensors (Appendix E), with three hours of signed readings ----------
+  const zonesWithoutSensors = await db.query<{ id: string; name: string }>(
+    `SELECT z.id, z.name FROM flood_zones z WHERE z.township_id = $1 AND NOT EXISTS (SELECT 1 FROM flood_sensors s WHERE s.zone_id = z.id) ORDER BY z.name`,
+    [township.id],
+  );
+  const SENSOR_PREFIX: Record<string, string> = { "Elmina Valley 1 & 2": "EV12", "Elmina Valley 3, 4 & 5": "EV345", "Elmina Gardens": "EG", "Elmina West": "EW" };
+  for (const [z, zone] of zonesWithoutSensors.entries()) {
+    const prefix = SENSOR_PREFIX[zone.name] ?? `Z${z + 1}`;
+    const sites = (zone.name === "Elmina Valley 1 & 2" ? ["LAKE_EDGE", "MAIN_DRAIN", "LOW_ROAD"] : ["MAIN_DRAIN", "LOW_ROAD"]) as ("LAKE_EDGE" | "MAIN_DRAIN" | "LOW_ROAD")[];
+    for (const [i, site] of sites.entries()) {
+      const sensor = await registerSensor(
+        db,
+        staff,
+        { zoneId: zone.id, code: `${prefix}-${site.replace("_", "")}-${i + 1}`, kind: i % 2 ? "ULTRASONIC" : "RADAR", site, baseCm: 0, overflowCm: 180, riseCm10min: 15, simulated: true },
+        new Date(now.getTime() - 3 * 3_600_000),
+      );
+      // A calm morning after light rain: the level rises a little and falls back, reading every 10 minutes.
+      const readings: SignedReading[] = [];
+      for (let m = 180; m >= 10; m -= 10) {
+        const pct = 14 + z * 3 + i * 2 + Math.round(10 * Math.sin(((180 - m) / 180) * Math.PI));
+        const reading = { sensor_id: sensor.id, zone_id: zone.id, level_cm: Math.round(pct * 1.8 * 10) / 10 + (m % 20) / 10, battery: 92 - i, rssi: -70 - i * 3, ts: new Date(now.getTime() - m * 60_000).toISOString() };
+        readings.push({ ...reading, signature: signReading(sensor.secret, reading) });
+      }
+      await ingestReadings(db, readings, now);
+      await db.query("UPDATE flood_sensors SET sim_level_cm = $2 WHERE id = $1", [sensor.id, 14 * 1.8]);
+    }
+  }
+  if (zonesWithoutSensors.length) log(`Banjir: simulated, signing sensors for ${zonesWithoutSensors.length} zones, with three hours of readings.`);
 
   // --- Akses+: places, a carer and the priority help list --------------------------------
   if (

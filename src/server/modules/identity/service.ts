@@ -629,6 +629,8 @@ export async function deleteAccount(db: Db, actor: Actor, password: string, now:
     await tx.query('DELETE FROM assistant_handoffs WHERE user_id = $1', [id]);
     await tx.query('DELETE FROM assistant_conversations WHERE user_id = $1', [id]);
     await tx.query('DELETE FROM solar_leads WHERE user_id = $1', [id]);
+    await tx.query('DELETE FROM sms_outbox WHERE user_id = $1', [id]); // phone numbers of danger SMS (Banjir)
+    await tx.query(`UPDATE flood_help_tasks SET note = NULL WHERE user_id = $1`, [id]);
     await tx.query('DELETE FROM notifications WHERE user_id = $1', [id]);
     await tx.query('DELETE FROM sessions WHERE user_id = $1', [id]);
     await tx.query('DELETE FROM user_invites WHERE user_id = $1', [id]);

@@ -38,7 +38,20 @@ interface Insights {
     plots_booked: number;
   };
   offers: { month: string; pledged: number; issued: number; used: number; shops: number };
+  flood: {
+    events: number;
+    warningLeadMin: number | null;
+    falseAlarmPct: number | null;
+    reviewed: number;
+    checkin30Pct: number | null;
+    reachPriorityMin: number | null;
+    sensors: number;
+    faultySensors: number;
+    sensorUptimePct: number | null;
+  };
 }
+
+const orDash = (value: number | null, unit: string) => (value === null ? '–' : `${value}${unit}`);
 
 export default function InsightsPage() {
   const insights = useApi<Insights>('/insights', { refreshInterval: 20_000 });
@@ -157,6 +170,24 @@ export default function InsightsPage() {
                     })}
                   </dl>
                   <p className="px-5 py-3 text-xs text-ink-500"><Text>No pledge, no points: offer-backed points given this month (</Text><Text>{formatPoints(d.offers.issued)}</Text><Text>) can never pass what </Text><Text>{d.offers.shops}</Text><Text> shop offer</Text><Text>{d.offers.shops === 1 ? '' : 's'}</Text><Text> promised (</Text><Text>{formatPoints(d.offers.pledged)}</Text>).</p>
+                </Card>
+                <Card className="lg:col-span-2">
+                  <CardHeader title="Flood readiness" description="Banjir events of the last 90 days; sensor uptime over the last 24 hours. Targets are set from the pilot's first drill." />
+                  <dl className="grid grid-cols-2 gap-px bg-ink-100 sm:grid-cols-3 lg:grid-cols-5">
+                    {[
+                      ['Warning lead time', orDash(d.flood.warningLeadMin, ' min'), 'From the first alert to danger'],
+                      ['False-alarm rate', orDash(d.flood.falseAlarmPct, '%'), `${d.flood.reviewed} of ${d.flood.events} events reviewed`],
+                      ['Checked in within 30 minutes', orDash(d.flood.checkin30Pct, '%'), 'Share of residents in the zone'],
+                      ['Time to reach priority residents', orDash(d.flood.reachPriorityMin, ' min'), 'From the first alert'],
+                      ['Sensor uptime', orDash(d.flood.sensorUptimePct, '%'), `${d.flood.faultySensors} of ${d.flood.sensors} sensors faulty now`],
+                    ].map(([label, value, hint]) => (
+                      <div key={label} className="bg-white px-4 py-4">
+                        <dt className="flex items-center gap-1.5 text-xs font-medium text-ink-500"><Droplets className="size-3.5" aria-hidden /><Text>{label}</Text></dt>
+                        <dd className="mt-1 font-display text-xl font-bold tabular-nums text-ink-900"><Text>{value}</Text></dd>
+                        <dd className="mt-0.5 text-[11px] text-ink-500"><Text>{hint}</Text></dd>
+                      </div>
+                    ))}
+                  </dl>
                 </Card>
                 <Card>
                   <CardHeader title="Community" description="Neighbours meeting, helping and sharing." />

@@ -5,12 +5,13 @@ import { Text } from '@/components/ui/localized-text';
 import { Siren, TriangleAlert } from 'lucide-react';
 import { LocalizedLink as Link } from '@/components/ui/localized-elements';
 import { useEffect, useRef, useState } from 'react';
+import { useVerifiedText, type Verified } from '@/components/features/flood';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/cn';
 import { useApi } from '@/lib/hooks';
 import { speak, useLang, useT } from '@/lib/i18n';
 
-interface ActiveAlert {
+interface ActiveAlert extends Verified {
   id: string;
   level: 'WARNING' | 'DANGER';
   zone_name: string;
@@ -38,6 +39,7 @@ export function AlertTakeover({ href }: { href: string }) {
   const { data } = useApi<ActiveAlert[]>('/alerts/active', { refreshInterval: 15_000 });
   const access = useApi<AccessChoices>('/me/access');
   const t = useT();
+  const verified = useVerifiedText();
   const lang = useLang();
   // Remembered for this browser tab only, so a new session shows the warning again.
   const [acknowledged, setAcknowledged] = useState<string | null>(() => (typeof window === 'undefined' ? null : window.sessionStorage.getItem('kita.alert.ack')));
@@ -108,7 +110,9 @@ export function AlertTakeover({ href }: { href: string }) {
                 <dd className="mt-1 text-[17px] font-medium"><Text>{alert.assembly_point}</Text></dd>
               </div>
             </dl>
-            <Button variant="light" size="lg" className="mt-8 w-full text-accent-700 hover:bg-accent-50" onClick={acknowledge} autoFocus>
+            {/* Where this warning comes from, and how fresh it is (Appendix E.1). */}
+            <p className="mt-4 text-sm text-accent-100">{verified(alert)}</p>
+            <Button variant="light" size="lg" className="mt-6 w-full text-accent-700 hover:bg-accent-50" onClick={acknowledge} autoFocus>
               {t('I understand')}
             </Button>
             <p className="mt-4 text-sm text-accent-100">{t('In an emergency call 999.')}</p>

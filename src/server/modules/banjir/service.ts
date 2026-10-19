@@ -3,21 +3,25 @@ import { one, type Db } from '../../db/client';
 import type { Actor } from '../../auth/actor';
 import { notFound } from '../../errors';
 import { getSettings } from '../settings';
-import { levelOf, sendLevel } from './agent';
+import { assessZone, levelOf, sendLevel, VERIFIED_COLUMNS, VERIFIED_JOIN, withSources } from './agent';
 
 /** Banjir: water levels by zone, and warnings that take priority over everything else. */
 
-export async function banjirOverview(db: Db, actor: Actor) {
+export async function banjirOverview(db: Db, actor: Actor, now: Date) {
   const s = await getSettings(db);
-  const zones = await db.query(
+  const rows = await db.query<{ id: string } & Record<string, unknown>>(
     `SELECT z.id, z.name, z.level_pct, z.status, z.safe_route, z.assembly_point, z.updated_at,
-            m.kind AS message_kind, m.what, m.where_text, m.todo, m.next_update_at, m.sent_at
+            m.kind AS message_kind, m.what, m.where_text, m.todo, m.next_update_at, m.sent_at, m.level AS message_level, m.signals, ${VERIFIED_COLUMNS}
        FROM flood_zones z
-       LEFT JOIN LATERAL (SELECT kind, what, where_text, todo, next_update_at, sent_at FROM flood_messages
+       LEFT JOIN LATERAL (SELECT kind, what, where_text, todo, next_update_at, sent_at, level, signals FROM flood_messages
                            WHERE zone_id = z.id AND status = 'SENT' ORDER BY sent_at DESC LIMIT 1) m ON true
+       ${VERIFIED_JOIN}
       WHERE ($1::uuid IS NULL OR z.township_id = $1) ORDER BY z.name`,
     [actor.townshipId],
   );
+  // The early warning residents see: a sensor climbing faster than its rate-of-rise line (Appendix E.2, rule 5).
+  const zones = [];
+  for (const z of rows) zones.push({ ...withSources(z as typeof z & { status: FloodStatus }), rising_fast: (await assessZone(db, z.id, now, s)).risingFast });
   const mine = actor.homeId ? await one<{ zone_id: string | null }>(db, 'SELECT zone_id FROM homes WHERE id = $1', [actor.homeId]) : undefined;
   // During an alert in their own zone, a resident can say "I'm safe" or "I need help".
   const checkin = mine?.zone_id
@@ -32,14 +36,20 @@ export async function banjirOverview(db: Db, actor: Actor) {
 
 /** Open alerts that concern this person: their own zone for a resident, the whole township for staff. */
 export async function activeAlerts(db: Db, actor: Actor) {
-  return db.query(
-    `SELECT a.id, a.level, a.started_at, a.next_update_at, z.id AS zone_id, z.name AS zone_name, z.level_pct, z.safe_route, z.assembly_point
+  const rows = await db.query<{ message_level: FloodStatus | null; signals: unknown } & Record<string, unknown>>(
+    `SELECT a.id, a.level, a.started_at, a.next_update_at, z.id AS zone_id, z.name AS zone_name, z.level_pct, z.safe_route, z.assembly_point,
+            m.level AS message_level, m.signals, ${VERIFIED_COLUMNS}
        FROM flood_alerts a JOIN flood_zones z ON z.id = a.zone_id
+       LEFT JOIN LATERAL (SELECT level, signals FROM flood_messages
+                           WHERE zone_id = z.id AND status = 'SENT' ORDER BY sent_at DESC LIMIT 1) m ON true
+       ${VERIFIED_JOIN}
       WHERE a.ended_at IS NULL AND ($1::uuid IS NULL OR z.township_id = $1)
         AND ($2::uuid IS NULL OR z.id = (SELECT zone_id FROM homes WHERE id = $2))
       ORDER BY (a.level = 'DANGER') DESC, a.started_at DESC`,
     [actor.townshipId, actor.role === 'RESIDENT' ? actor.homeId : null],
   );
+  // The source of the warning goes with it (Appendix E.1), never the raw signals.
+  return rows.map(withSources);
 }
 
 /**

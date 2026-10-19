@@ -145,8 +145,8 @@ const TOOLS: Tool[] = [
       description: "The official flood status of the resident's own area: level, status, the latest official message, the safe route and the assembly point. Repeat it; never change it.",
       parameters: noArgs,
     },
-    run: async ({ db, actor }) => {
-      const b = await banjirOverview(db, actor);
+    run: async ({ db, actor, now }) => {
+      const b = await banjirOverview(db, actor, now);
       const zone = (b.zones as Record<string, unknown>[]).find((z) => z.id === b.myZoneId);
       if (!zone) return { data: { error: 'This resident’s home is not linked to a flood area yet.' }, link: { href: '/app/banjir', label: 'Open Banjir' } };
       return {
