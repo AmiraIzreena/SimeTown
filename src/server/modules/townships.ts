@@ -58,3 +58,15 @@ export async function resolveTownship(q: Queryable, actor: Actor, requested?: st
   if (townships.length === 1) return townships[0]!.id;
   throw badRequest('Choose a township.');
 }
+
+/**
+ * Which township a staff list covers. Township roles always see their own; an HQ
+ * admin sees every township, or one they pick.
+ */
+export function listScope(actor: Actor, requested?: string): string | null {
+  if (actor.townshipId) {
+    if (requested && requested !== actor.townshipId) throw forbidden();
+    return actor.townshipId;
+  }
+  return requested ?? null;
+}
