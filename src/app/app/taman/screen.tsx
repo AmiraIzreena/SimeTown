@@ -126,7 +126,7 @@ export function TamanScreen({ scanned }: { scanned: string }) {
         title="Taman"
         description="Community gardens and more nature in the township. Apply for a plot, take a day on the watering roster, and log the birds and insects you spot."
         action={
-          <Button href="/app/kongsi" variant="secondary">
+          <Button href="/app/komuniti?tab=share" variant="secondary">
             <Repeat2 className="size-4" aria-hidden /><Text>Share your harvest</Text></Button>
         }
       />
