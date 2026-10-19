@@ -94,23 +94,29 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | GET | `/public/challenges` | Public | The Challenges page: live funded challenges and the actions that earn Impact XP (no budgets, no people) |
 | GET | `/sponsored` | RESIDENT | One labelled sponsored banner for the home screen (never on safety screens) |
 
-## Jiran & Kongsi
+## Komuniti
 
 | Method | Path | Who | What it does |
 | --- | --- | --- | --- |
 | GET | `/posts` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Events, help requests and items to give or lend: one type, several (GIVE,LEND) or all |
 | GET | `/posts/impact` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Your verified community XP: events attended, items shared, neighbours helped |
 | POST | `/posts` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Create an event, a help request or a sharing offer |
+| POST | `/posts/:postId/close` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Close a post |
 | POST | `/posts/:postId/respond` | RESIDENT | Join, offer help or ask for an item |
 | POST | `/posts/:postId/withdraw` | RESIDENT | Cancel your RSVP or request (events: before they start) |
 | POST | `/posts/:postId/responses/:userId/accept` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Accept a help, give-away or borrow request (loans need a return date) |
 | POST | `/posts/:postId/responses/:userId/decline` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Decline a request |
 | POST | `/posts/:postId/responses/:userId/returned` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Mark a lent item returned (gives the lender Impact XP) |
 | POST | `/posts/:postId/responses/:userId/confirm` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Confirm it happened (gives Impact XP) |
-| POST | `/posts/:postId/close` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Close a post |
-| POST | `/posts/:postId/flag` | RESIDENT | Flag a post for moderators |
-| GET | `/moderation/posts` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Posts hidden by flags, waiting for review |
-| POST | `/moderation/posts/:postId` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Restore or remove a hidden post |
+| POST | `/posts/:postId/flag` | RESIDENT | Report a post to township staff |
+| GET | `/admin/komuniti/overview` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Komuniti at a glance: open posts, reports waiting, hidden posts, overdue loans, suspensions |
+| GET | `/admin/komuniti/reports` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Reported posts waiting for a decision: hidden first, then scams and safety |
+| GET | `/admin/komuniti/posts` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Every post, including hidden and removed ones |
+| GET | `/admin/komuniti/posts/:postId` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | One post in full: responses, every report and decision, and the author’s record |
+| POST | `/admin/komuniti/posts/:postId/moderate` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Keep (dismiss the reports), hide while checking, or remove with a reason |
+| GET | `/admin/komuniti/suspensions` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Residents who cannot post or respond in Komuniti right now |
+| POST | `/admin/komuniti/suspensions/:userId` | TOWNSHIP_ADMIN, HQ_ADMIN | Suspend a resident from Komuniti for some days (replaces an earlier suspension) |
+| POST | `/admin/komuniti/suspensions/:userId/lift` | TOWNSHIP_ADMIN, HQ_ADMIN | Lift a Komuniti suspension early |
 
 ## Lapor
 

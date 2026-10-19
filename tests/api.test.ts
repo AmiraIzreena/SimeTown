@@ -404,20 +404,112 @@ describe('Jiran and Kongsi', () => {
     expect((await call('GET', '/posts?type=NOPE', { as: author })).status).toBe(400);
   });
 
-  it('hides a post after three different residents flag it, until a moderator decides (BR20)', async () => {
+});
+
+describe('Komuniti moderation (township staff, township admins and HQ)', () => {
+  const lastNotice = async (user: Actor) => one<{ title: string; body: string }>(db, 'SELECT title, body FROM notifications WHERE user_id = $1 ORDER BY created_at DESC, id DESC LIMIT 1', [user.id]);
+  const report = (postId: string, as: Actor, body: Record<string, unknown> = { category: 'SCAM' }) => call('POST', `/posts/${postId}/flag`, { as, body });
+  const queued = async (postId: string, as: Actor = w.staff) => (await call('GET', '/admin/komuniti/reports', { as })).data.some((p: { id: string }) => p.id === postId);
+
+  it('hides a post after three different residents report it, and keeping it dismisses the reports (BR20)', async () => {
     const author = await makeResident(w);
     const post = await call('POST', '/posts', { as: author, body: { type: 'LEND', title: 'Totally legit offer', body: 'Send me your bank details.' } });
-    const listed = async () => (await call('GET', '/posts?type=LEND', { as: w.staff })).data.items.some((p: { id: string }) => p.id === post.data.id);
+    const id = post.data.id as string;
+    const listed = async () => (await call('GET', '/posts?type=LEND', { as: w.staff })).data.items.some((p: { id: string }) => p.id === id);
+    expect((await report(id, await makeResident(w), { category: 'OTHER' })).error!.code).toBe('REASON_NEEDED');
 
-    for (let i = 0; i < 2; i++) await call('POST', `/posts/${post.data.id}/flag`, { as: await makeResident(w), body: { reason: 'Looks like a scam' } });
+    const reporters = [await makeResident(w), await makeResident(w), await makeResident(w)];
+    await report(id, reporters[0]!);
+    await report(id, reporters[0]!); // a second report from the same resident does not count
+    await report(id, reporters[1]!, { category: 'OTHER', reason: 'Asks for bank details' });
     expect(await listed()).toBe(true);
-    const third = await call('POST', `/posts/${post.data.id}/flag`, { as: await makeResident(w), body: { reason: 'Scam' } });
-    expect(third.data.hidden).toBe(true);
+    expect(await queued(id)).toBe(true); // staff see reports before the post is hidden
+    expect((await report(id, reporters[2]!)).data.hidden).toBe(true);
     expect(await listed()).toBe(false);
 
-    expect((await call('GET', '/moderation/posts', { as: w.staff })).data).toHaveLength(1);
-    await call('POST', `/moderation/posts/${post.data.id}`, { as: w.staff, body: { action: 'REMOVE' } });
-    expect((await call('GET', '/moderation/posts', { as: w.staff })).data).toHaveLength(0);
+    const queue = (await call('GET', '/admin/komuniti/reports', { as: w.admin })).data;
+    expect(queue[0]).toMatchObject({ id, status: 'HIDDEN', open_reports: 3, urgent: true });
+    expect((await call('GET', '/admin/komuniti/overview', { as: w.admin })).data).toMatchObject({ reported: 1, hidden: 1 });
+
+    const kept = await call('POST', `/admin/komuniti/posts/${id}/moderate`, { as: w.staff, body: { action: 'KEEP' } });
+    expect(kept.data.status).toBe('OPEN');
+    expect(await listed()).toBe(true);
+    expect(await queued(id)).toBe(false);
+    expect((await lastNotice(reporters[0]!))!.title).toBe('We reviewed "Totally legit offer"');
+    expect((await lastNotice(author))!.title).toBe('Your post "Totally legit offer" is visible again');
+    // Dismissed reports stay on record but no longer count towards hiding it.
+    const detail = (await call('GET', `/admin/komuniti/posts/${id}`, { as: w.admin })).data;
+    expect(detail.reports.map((r: { status: string }) => r.status)).toEqual(['DISMISSED', 'DISMISSED', 'DISMISSED']);
+    expect((await report(id, await makeResident(w))).data.hidden).toBe(false);
+    expect((await call('POST', `/admin/komuniti/posts/${id}/moderate`, { as: w.staff, body: { action: 'KEEP' } })).status).toBe(200);
+    expect((await call('POST', `/admin/komuniti/posts/${id}/moderate`, { as: w.staff, body: { action: 'KEEP' } })).error!.code).toBe('NOTHING_TO_REVIEW');
+  });
+
+  it('removes a post only with a reason, and tells the author, the reporters and anyone waiting on it', async () => {
+    const author = await makeResident(w);
+    const reporter = await makeResident(w);
+    const borrower = await makeResident(w);
+    const post = await call('POST', '/posts', { as: author, body: { type: 'LEND', title: 'Cheap phones, cash only', body: 'Message me.' } });
+    const id = post.data.id as string;
+    await call('POST', `/posts/${id}/respond`, { as: borrower, body: {} });
+    await report(id, reporter, { category: 'SPAM' });
+
+    expect((await call('POST', `/admin/komuniti/posts/${id}/moderate`, { as: w.admin, body: { action: 'REMOVE' } })).status).toBe(400);
+    const removed = await call('POST', `/admin/komuniti/posts/${id}/moderate`, { as: w.admin, body: { action: 'REMOVE', note: 'Selling is not allowed in Komuniti.' } });
+    expect(removed.data.status).toBe('REMOVED');
+    expect(await lastNotice(author)).toMatchObject({ title: 'Your post "Cheap phones, cash only" was removed', body: 'Selling is not allowed in Komuniti.' });
+    expect((await lastNotice(reporter))!.title).toBe('Thank you: "Cheap phones, cash only" was removed');
+    expect((await lastNotice(borrower))!.title).toBe('"Cheap phones, cash only" is no longer available');
+    expect((await report(id, await makeResident(w))).status).toBe(404);
+
+    const detail = (await call('GET', `/admin/komuniti/posts/${id}`, { as: w.hq })).data;
+    expect(detail).toMatchObject({ status: 'REMOVED', moderation_note: 'Selling is not allowed in Komuniti.', author: { removed: 1, upheld_reports: 1 } });
+    const all = (await call('GET', '/admin/komuniti/posts?status=REMOVED', { as: w.admin })).data.items.map((p: { id: string }) => p.id);
+    expect(all).toContain(id);
+  });
+
+  it('lets township admins and HQ suspend a resident from Komuniti, but not township staff', async () => {
+    const resident = await makeResident(w);
+    const post = await call('POST', '/posts', { as: await makeResident(w), body: { type: 'HELP', title: 'Help with groceries', body: 'Two bags from the car.' } });
+    const suspend = (as: Actor) => call('POST', `/admin/komuniti/suspensions/${resident.id}`, { as, body: { days: 7, reason: 'Repeated scam posts.' } });
+
+    expect((await suspend(w.staff)).status).toBe(403);
+    expect((await suspend(w.admin)).status).toBe(200);
+    expect((await lastNotice(resident))!.title).toBe('You are suspended from Komuniti');
+    expect((await call('POST', '/posts', { as: resident, body: { type: 'GIVE', title: 'Old sofa', body: 'Free to collect.' } })).error!.code).toBe('KOMUNITI_SUSPENDED');
+    expect((await call('POST', `/posts/${post.data.id}/respond`, { as: resident, body: {} })).error!.code).toBe('KOMUNITI_SUSPENDED');
+    expect((await call('GET', '/admin/komuniti/suspensions', { as: w.staff })).data.map((s: { user_id: string }) => s.user_id)).toContain(resident.id);
+
+    expect((await call('POST', `/admin/komuniti/suspensions/${resident.id}/lift`, { as: w.hq, body: {} })).status).toBe(200);
+    expect((await call('POST', `/posts/${post.data.id}/respond`, { as: resident, body: {} })).status).toBe(200);
+    expect((await call('POST', `/admin/komuniti/suspensions/${resident.id}/lift`, { as: w.admin, body: {} })).status).toBe(404);
+
+    // The suspension ends on its own.
+    expect((await suspend(w.hq)).status).toBe(200);
+    clock.now = new Date(T0.getTime() + 8 * 86_400_000);
+    try {
+      expect((await call('POST', '/posts', { as: resident, body: { type: 'GIVE', title: 'Old sofa', body: 'Free to collect.' } })).status).toBe(200);
+    } finally {
+      clock.now = T0;
+    }
+  });
+
+  it('keeps each township admin to their own township, while HQ sees all of them or picks one', async () => {
+    const other = await makeWorld(db);
+    const post = await call('POST', '/posts', { as: await makeResident(other), body: { type: 'GIVE', title: 'Spare paint', body: 'Half a tin of white.' } });
+    const id = post.data.id as string;
+    await report(id, await makeResident(other), { category: 'UNSAFE' });
+
+    expect(await queued(id, w.admin)).toBe(false);
+    expect(await queued(id, other.admin)).toBe(true);
+    expect(await queued(id, w.hq)).toBe(true);
+    const picked = (await call('GET', `/admin/komuniti/reports?townshipId=${other.townshipId}`, { as: w.hq })).data;
+    expect(picked.map((p: { id: string }) => p.id)).toEqual([id]);
+    expect((await call('GET', `/admin/komuniti/reports?townshipId=${other.townshipId}`, { as: w.admin })).status).toBe(403);
+    expect((await call('GET', `/admin/komuniti/posts/${id}`, { as: w.admin })).status).toBe(403);
+    expect((await call('POST', `/admin/komuniti/posts/${id}/moderate`, { as: w.admin, body: { action: 'HIDE' } })).status).toBe(403);
+    expect((await call('POST', `/admin/komuniti/posts/${id}/moderate`, { as: w.hq, body: { action: 'HIDE' } })).data.status).toBe('HIDDEN');
+    expect((await call('GET', '/admin/komuniti/reports', { as: await makeResident(w) })).status).toBe(403);
   });
 });
 
