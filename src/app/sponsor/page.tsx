@@ -4,7 +4,7 @@ import { Text } from '@/components/ui/localized-text';
 
 import { Award, BarChart3, Check, ExternalLink, Megaphone } from 'lucide-react';
 import { useState } from 'react';
-import { BudgetSplit, CampaignReport, CampaignStatus } from '@/components/features/campaign-admin';
+import { CampaignReport, CampaignSplit, CampaignStatus } from '@/components/features/campaign-admin';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, PageHeader, Progress } from '@/components/ui/card';
 import { Async, EmptyState } from '@/components/ui/feedback';
@@ -58,7 +58,12 @@ function TierCard() {
                 <>
                   <Progress value={t.challengesThisYear} max={t.challengeAllowance} tone="gold" label="Challenges used this year" />
                   <p className="text-sm text-ink-600">
-                    <Text>{t.challengesThisYear}</Text><Text> of </Text><Text>{t.challengeAllowance}</Text><Text> included</Text></p>
+                    {t.challengesThisYear > t.challengeAllowance ? (
+                      <Text>{`All ${t.challengeAllowance} included used · ${t.challengesThisYear - t.challengeAllowance} extra this year`}</Text>
+                    ) : (
+                      <><Text>{t.challengesThisYear}</Text><Text> of </Text><Text>{t.challengeAllowance}</Text><Text> included</Text></>
+                    )}
+                  </p>
                 </>
               )}
               {t.tagline && (
@@ -100,7 +105,7 @@ export default function SponsorPage() {
                   <p className="mt-3 text-sm text-ink-700"><Text>Budget </Text><strong><Text>{formatRM(c.budget_sen)}</Text></strong> · <Text>{formatPoints(c.reward_points)}</Text><Text> points per reward · pool left </Text><strong><Text>{formatRM(c.pool_left_sen)}</Text></strong>
                   </p>
                   <div className="mt-3">
-                    <BudgetSplit campaign={c} />
+                    <CampaignSplit campaign={c} />
                   </div>
                   <div className="mt-4">
                     <Button variant="secondary" size="sm" onClick={() => setReport(c)}>

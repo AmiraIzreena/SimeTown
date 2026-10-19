@@ -287,6 +287,24 @@ export const SPONSOR_TIER_INFO: Record<SponsorTier, { label: string; feeSen: num
   },
 };
 
+/**
+ * How a campaign budget is split. A sponsor pays the campaign fee and running
+ * costs up front (proposal, worked example 3); an SDP community programme puts
+ * the whole budget into rewards. The server sets this, never the browser.
+ */
+export const CAMPAIGN_SPLIT = {
+  SPONSOR: { poolBps: 6000, feeBps: 2500, costsBps: 1500 },
+  COMMUNITY: { poolBps: 10_000, feeBps: 0, costsBps: 0 },
+} as const;
+export const campaignSplit = (sponsorId: string | null) => (sponsorId ? CAMPAIGN_SPLIT.SPONSOR : CAMPAIGN_SPLIT.COMMUNITY);
+
+/**
+ * Challenges a year included in a tier (null: no set number, for Peneraju and
+ * for one-off sponsors outside a tier). Never a cap: more run as extra
+ * one-offs, each paying the campaign fee.
+ */
+export const challengeAllowance = (activeTier: SponsorTier | 'NONE'): number | null => (activeTier === 'NONE' ? null : SPONSOR_TIER_INFO[activeTier].challenges);
+
 // --- Akses+ -------------------------------------------------------------------
 
 export const ACCESS_NEEDS = ['MOBILITY', 'VISION', 'HEARING', 'COGNITIVE', 'ELDERLY'] as const;

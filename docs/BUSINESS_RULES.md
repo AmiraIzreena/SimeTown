@@ -117,7 +117,9 @@ These are choices made in code. Each should be confirmed, or changed, before a p
 | What if spent points are refunded after the shop was already paid for them? | The value comes from what the float still owes that shop, then from the shop's pool. If neither is enough the refund is refused until the shop tops up. | `refundSale` |
 | Which points are spent first? | The batch that expires soonest. | `ledger/points.ts → consumeLots` |
 | Do sponsor campaigns also pay the 15% issuance fee? | No. Sponsors pay the campaign fee (default 25%) and running costs (15%) up front, as in the proposal's example 3. | `campaigns/service.ts → fundCampaign` |
-| How are SDP community programmes funded? | As a campaign with no sponsor, with the whole budget as reward pool by default. | console → Campaigns |
+| How are SDP community programmes funded? | As a campaign with no sponsor, with the whole budget as reward pool. | console → Campaigns |
+| Who decides a campaign's budget split? | The server, from who funds it: 60/25/15 for a sponsor, 100% rewards for SDP. The browser cannot send its own split. | `shared/domain.ts → campaignSplit`, `campaigns/routes.ts` |
+| How many challenges can a sponsor run? | As many as they fund. A tier *includes* a number a calendar year (by start date): Rakan Komuniti 1, Rakan Township 4, Peneraju no set number. Beyond that, each runs as an extra one-off with the usual campaign fee and running costs, never refused, because every challenge earns SimeTown its fee. The console counts drafts waiting for payment (not cancelled ones) and suggests the next tier once the included ones are used. | `campaigns/tiers.ts → listSponsorsWithTiers`, console → Campaigns & sponsors |
 | Where do balance corrections come from? | The community pool, which SDP pays into. A correction is refused if the pool cannot cover it. | `decideAdjustment` |
 | What happens when the float check fails? | All earning and spending pause. An SDP HQ admin resumes them under Rules. | `runFloatCheck`, `assertNotPaused` |
 | When does a Lapor report earn XP? | When staff move it to "in progress" or "resolved", never on submission. | `reports/service.ts → updateReport` |

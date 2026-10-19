@@ -237,6 +237,8 @@ describe('KITA Merchant through the API', () => {
     // The same bank reference cannot be recorded twice.
     const dup = await call('POST', `/admin/merchants/${apply.data.merchantId}/deposits`, { as: w.admin, body: { amountSen: 5_000, bankRef: 'TRF-KAFE-1' } });
     expect(dup.error!.code).toBe('DUPLICATE_BANK_REF');
+    // Named on the field, so the form shows it inside the payment dialog.
+    expect(dup.error!.details).toMatchObject({ fields: { bankRef: expect.stringContaining('already recorded') } });
   });
 
   it('does not let one shop read or refund another shop’s sale', async () => {

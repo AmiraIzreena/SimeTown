@@ -287,8 +287,10 @@
     15% { opacity: 0.55; }
     to { transform: translateY(18rem); opacity: 0; }
   }
+  /* Explicit end: the elements also rest at scaleX(0) so they never flash full before animating. */
   @keyframes segment-grow {
     from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
   }
   @keyframes thinking-bounce {
     0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }

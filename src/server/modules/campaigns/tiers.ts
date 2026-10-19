@@ -1,7 +1,7 @@
-import { SPONSOR_TIER_INFO, type SponsorTier } from '@/shared/domain';
+import { challengeAllowance, SPONSOR_TIER_INFO, type SponsorTier } from '@/shared/domain';
 import { one, type Db } from '../../db/client';
 import type { Actor } from '../../auth/actor';
-import { conflict, notFound } from '../../errors';
+import { conflict, duplicateBankRef, notFound } from '../../errors';
 import { audit } from '../audit';
 import { credit, debit, postTxn, systemAccounts } from '../ledger/ledger';
 import { getSettings } from '../settings';
@@ -16,13 +16,30 @@ import { getSettings } from '../settings';
  * totals only, and Sime Darby Property approves the sponsor categories.
  */
 
+/**
+ * Challenges sponsor `s` holds in the calendar year of the date in `$p`:
+ * funded ones, plus (when `$p+1` is true) drafts still waiting for payment. A
+ * cancelled draft was never funded, so it does not count. Challenges beyond the
+ * tier's included number are allowed; they run as extra one-offs.
+ */
+const challengesInYear = (p: number) => `
+  (SELECT count(*)::int FROM campaigns c
+    WHERE c.sponsor_id = s.id
+      AND (c.funded_at IS NOT NULL OR ($${p + 1}::boolean AND c.status = 'DRAFT'))
+      AND c.starts_at >= date_trunc('year', $${p}::timestamptz)
+      AND c.starts_at < date_trunc('year', $${p}::timestamptz) + interval '1 year')`;
+
+/** The tier a sponsor holds today, or NONE once it has lapsed. */
+export const activeTier = (tier: SponsorTier | 'NONE', until: string | null, now: Date): SponsorTier | 'NONE' =>
+  tier !== 'NONE' && until !== null && until >= now.toISOString().slice(0, 10) ? tier : 'NONE';
+
 /** Records a tier payment and gives the sponsor that tier for a year. HQ only. */
 export async function setSponsorTier(db: Db, actor: Actor, sponsorId: string, input: { tier: SponsorTier; bankRef: string; category?: string; tagline?: string }, now: Date) {
   return db.tx(async (tx) => {
     const sponsor = await one<{ id: string; name: string; category: string | null }>(tx, 'SELECT id, name, category FROM sponsors WHERE id = $1 FOR UPDATE', [sponsorId]);
     if (!sponsor) throw notFound('Sponsor');
     if ((await one(tx, 'SELECT 1 FROM deposits WHERE bank_ref = $1', [input.bankRef])) || (await one(tx, 'SELECT 1 FROM sponsor_tier_payments WHERE bank_ref = $1', [input.bankRef]))) {
-      throw conflict('DUPLICATE_BANK_REF', 'A payment with this bank reference is already recorded.');
+      throw duplicateBankRef('A payment with this bank reference is already recorded.');
     }
     const tz = (await getSettings(tx)).timezone;
     const today = (await one<{ d: string }>(tx, `SELECT ($1::timestamptz AT TIME ZONE $2)::date::text AS d`, [now, tz]))!.d;
@@ -73,12 +90,12 @@ export async function myTier(db: Db, actor: Actor, now: Date) {
   const sponsor = await one<{ name: string; tier: SponsorTier | 'NONE'; tier_until: string | null; category: string | null; tagline: string | null; challenges: number }>(
     db,
     `SELECT s.name, s.tier, s.tier_until::text AS tier_until, s.category, s.tagline,
-            (SELECT count(*)::int FROM campaigns c WHERE c.sponsor_id = s.id AND c.status <> 'DRAFT' AND c.starts_at >= date_trunc('year', $2::timestamptz)) AS challenges
+            ${challengesInYear(2)} AS challenges
        FROM sponsors s WHERE s.id = $1`,
-    [actor.sponsorId, now],
+    [actor.sponsorId, now, false],
   );
   if (!sponsor) throw notFound('Sponsor');
-  const active = sponsor.tier !== 'NONE' && sponsor.tier_until !== null && sponsor.tier_until >= now.toISOString().slice(0, 10);
+  const active = activeTier(sponsor.tier, sponsor.tier_until, now) !== 'NONE';
   const info = active ? SPONSOR_TIER_INFO[sponsor.tier as SponsorTier] : null;
   return {
     name: sponsor.name,
@@ -128,10 +145,17 @@ export async function sponsoredBanner(db: Db, now: Date) {
   return { name: pick.name, tagline: pick.tagline, tierLabel: SPONSOR_TIER_INFO[pick.tier].label };
 }
 
-export async function listSponsorsWithTiers(db: Db) {
-  return db.query(
+/** Sponsors for the console, with the tier in force today and this year's challenges against the number it includes (drafts counted). */
+export async function listSponsorsWithTiers(db: Db, now: Date) {
+  const rows = await db.query<{ id: string; name: string; tier: SponsorTier | 'NONE'; tier_until: string | null; category: string | null; tagline: string | null; created_at: Date; campaigns: number; challenges_this_year: number }>(
     `SELECT s.id, s.name, s.tier, s.tier_until::text AS tier_until, s.category, s.tagline, s.created_at,
-            (SELECT count(*)::int FROM campaigns c WHERE c.sponsor_id = s.id) AS campaigns
+            (SELECT count(*)::int FROM campaigns c WHERE c.sponsor_id = s.id) AS campaigns,
+            ${challengesInYear(1)} AS challenges_this_year
        FROM sponsors s ORDER BY s.name`,
+    [now, true],
   );
+  return rows.map((r) => {
+    const tier = activeTier(r.tier, r.tier_until, now);
+    return { ...r, active_tier: tier, allowance: challengeAllowance(tier) };
+  });
 }
