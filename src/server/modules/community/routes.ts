@@ -33,6 +33,23 @@ export const communityRoutes = [
     handler: (c) => community.respondToPost(c.db, c.actor, c.params.postId!),
   }),
   route({
+    method: 'POST', path: '/posts/:postId/withdraw', tag: 'Jiran & Kongsi', summary: 'Cancel your RSVP or request (events: before they start)', auth: 'session', roles: ['RESIDENT'], body: emptyBody,
+    handler: (c) => community.withdrawResponse(c.db, c.actor, c.params.postId!, c.now),
+  }),
+  route({
+    method: 'POST', path: '/posts/:postId/responses/:userId/accept', tag: 'Jiran & Kongsi', summary: 'Accept a help, give-away or borrow request (loans need a return date)', auth: 'session', roles: everyoneLocal,
+    body: z.object({ dueBack: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use a date like 2026-10-31.').optional() }),
+    handler: (c) => community.acceptResponse(c.db, c.actor, c.params.postId!, c.params.userId!, c.body, c.now),
+  }),
+  route({
+    method: 'POST', path: '/posts/:postId/responses/:userId/decline', tag: 'Jiran & Kongsi', summary: 'Decline a request', auth: 'session', roles: everyoneLocal, body: emptyBody,
+    handler: (c) => community.declineResponse(c.db, c.actor, c.params.postId!, c.params.userId!),
+  }),
+  route({
+    method: 'POST', path: '/posts/:postId/responses/:userId/returned', tag: 'Jiran & Kongsi', summary: 'Mark a lent item returned (gives the lender Impact XP)', auth: 'session', roles: everyoneLocal, body: emptyBody,
+    handler: (c) => community.markReturned(c.db, c.actor, c.params.postId!, c.params.userId!, c.now),
+  }),
+  route({
     method: 'POST', path: '/posts/:postId/responses/:userId/confirm', tag: 'Jiran & Kongsi', summary: 'Confirm it happened (gives Impact XP)', auth: 'session', roles: everyoneLocal, body: emptyBody,
     handler: (c) => community.confirmResponse(c.db, c.actor, c.params.postId!, c.params.userId!, c.now),
   }),

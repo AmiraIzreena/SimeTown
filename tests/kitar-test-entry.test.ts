@@ -83,7 +83,9 @@ describe('Kitar test mode: the locks', () => {
     expect(testEntryEnabled(PRODUCTION)).toBe(false);
   });
 
-  it('is allowed on pglite in development: the real route saves it, and GET /kitar offers it', async () => {
+  // The real route reads the app's own DATABASE_URL, so this only holds when the run itself uses pglite
+  // (the PostgreSQL CI job sets TEST_DATABASE_URL and is covered by the refusal tests below).
+  it.skipIf(!process.env.DATABASE_URL?.startsWith('pglite://'))('is allowed on pglite in development: the real route saves it, and GET /kitar offers it', async () => {
     // The tests run as the local demo does: APP_ENV=development with a pglite database.
     const { world, machineId } = await township({ pledgeSen: 100_000 });
     const resident = await makeResident(world);

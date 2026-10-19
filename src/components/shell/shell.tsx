@@ -98,6 +98,8 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
   const primary = items.filter((item) => item.primary).slice(0, 4);
   const needsMore = items.length > primary.length;
   const initials = user.fullName.split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase();
+  // Hover text for the avatar: the name stays as typed, the role is translated.
+  const whoAmI = `${user.fullName} · ${t(ROLE_LABELS[user.role])}`;
   const motion = pageMotion(pathname);
   const savedAccessible = Boolean(access.data?.simpleMode || access.data?.needs.length);
   const accessible = area === 'resident' && (accessibleOverride ?? savedAccessible);
@@ -145,7 +147,7 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
         </LocalizedNav>
         <div className="border-t border-white/10 p-3">
           <div className="flex flex-col items-center justify-center gap-2 lg:flex-row lg:justify-start lg:gap-3">
-            <span aria-hidden title={`${user.fullName} · ${ROLE_LABELS[user.role]}`} className="grid size-9 shrink-0 place-items-center rounded-xl border border-white/15 bg-brand-400/20 text-sm font-semibold text-white shadow-[inset_0_1px_0_rgb(255_255_255_/_0.15)]"><Text>{initials}</Text></span>
+            <span aria-hidden title={whoAmI} className="grid size-9 shrink-0 place-items-center rounded-xl border border-white/15 bg-brand-400/20 text-sm font-semibold text-white shadow-[inset_0_1px_0_rgb(255_255_255_/_0.15)]"><Text>{initials}</Text></span>
             <div className="hidden min-w-0 flex-1 lg:block">
               <p className="truncate text-sm font-semibold text-white">{user.fullName}</p>
               <p className="truncate text-xs text-brand-200/70"><Text>{ROLE_LABELS[user.role]}</Text></p>

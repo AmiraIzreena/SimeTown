@@ -2,6 +2,17 @@ import { homeServicesTemplates } from './i18n-home-services';
 
 /** Templates for application-generated messages; interpolated personal values stay unchanged. */
 export const messageTemplates: readonly (readonly [string, string])[] = [
+  // Komuniti: accept, decline, lend and return, cancel RSVP
+  ["The return date must be between today and {0} days from now.", "Tarikh pemulangan mesti antara hari ini dan {0} hari dari sekarang."],
+  ["{0} still has this item. Mark it returned before lending it again.", "{0} masih memegang barang ini. Tandakan sudah dipulangkan sebelum meminjamkannya lagi."],
+  ["You already accepted {0}. Decline them first to choose someone else.", "Anda sudah menerima {0}. Tolak mereka dahulu untuk memilih orang lain."],
+  ["Accepted: {0}", "Diterima: {0}"],
+  ["Arrange to collect it. Please return it by {0}.", "Aturkan untuk mengambilnya. Sila pulangkan sebelum {0}."],
+  ["Not this time: {0}", "Bukan kali ini: {0}"],
+  ["Someone can no longer come to \"{0}\"", "Seseorang tidak lagi dapat hadir ke \"{0}\""],
+  ["A neighbour withdrew from \"{0}\"", "Seorang jiran menarik diri daripada \"{0}\""],
+  ["Enjoy: {0}", "Selamat menggunakan: {0}"],
+  ["Returned: {0}", "Dipulangkan: {0}"],
   ["Photo: {0}", "Foto: {0}"],
   ["{0} challenges a year", "{0} cabaran setahun"],
   [
