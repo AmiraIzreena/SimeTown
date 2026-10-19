@@ -8,7 +8,8 @@ import { ACTOR_COLUMNS, toActor } from '../src/server/auth/session';
 import { getConfig } from '../src/server/config';
 import { getDb, one } from '../src/server/db/client';
 import { createCampaign, fundCampaign } from '../src/server/modules/campaigns/service';
-import { acceptResponse, confirmResponse, createPost, respondToPost } from '../src/server/modules/community/service';
+import { createPost } from '../src/server/modules/community/posts';
+import { acceptResponse, confirmResponse, respondToPost } from '../src/server/modules/community/responses';
 import { recordLevel } from '../src/server/modules/banjir/service';
 import { checkIn, createLoop, listLoopsForStaff } from '../src/server/modules/gerak/service';
 import { randomCode } from '../src/server/modules/identity/service';
@@ -237,24 +238,24 @@ async function main() {
   await runSettlement(db, admin.id, daysAgo(7, 9));
 
   // --- Jiran and Kongsi -----------------------------------------------------------
-  const gotongRoyong = await createPost(db, staff, { type: 'EVENT', title: 'Gotong-royong at the park', body: 'Bring gloves and a water bottle. Breakfast is on the township.', location: 'Elmina Central Park entrance', startsAt: new Date(now.getTime() + 4 * DAY), capacity: 60 });
-  await createPost(db, neighbours[2]!, { type: 'EVENT', title: 'Sunday badminton, all levels', body: 'Friendly doubles. Spare rackets available.', location: 'Community hall court', startsAt: new Date(now.getTime() + 6 * DAY), capacity: 12 });
-  for (const person of [neighbours[0]!, neighbours[1]!, neighbours[4]!]) await respondToPost(db, person, gotongRoyong.id);
-  const favour = await createPost(db, neighbours[3]!, { type: 'HELP', title: 'Help moving a bookshelf', body: 'One flight of stairs. Ten minutes with two people.', location: 'Jalan Metafasa U16/161' });
-  await respondToPost(db, neighbours[2]!, favour.id);
+  const gotongRoyong = await createPost(db, staff, { type: 'EVENT', title: 'Gotong-royong at the park', body: 'Bring gloves and a water bottle. Breakfast is on the township.', location: 'Elmina Central Park entrance', startsAt: new Date(now.getTime() + 4 * DAY), capacity: 60 }, now);
+  await createPost(db, neighbours[2]!, { type: 'EVENT', title: 'Sunday badminton, all levels', body: 'Friendly doubles. Spare rackets available.', location: 'Community hall court', startsAt: new Date(now.getTime() + 6 * DAY), capacity: 12 }, now);
+  for (const person of [neighbours[0]!, neighbours[1]!, neighbours[4]!]) await respondToPost(db, person, gotongRoyong.id, now);
+  const favour = await createPost(db, neighbours[3]!, { type: 'HELP', title: 'Help moving a bookshelf', body: 'One flight of stairs. Ten minutes with two people.', location: 'Jalan Metafasa U16/161' }, now);
+  await respondToPost(db, neighbours[2]!, favour.id, now);
   await acceptResponse(db, neighbours[3]!, favour.id, neighbours[2]!.id, {}, daysAgo(4));
   await confirmResponse(db, neighbours[3]!, favour.id, neighbours[2]!.id, daysAgo(3));
-  await createPost(db, neighbours[6]!, { type: 'HELP', title: 'Can someone water my plants next week?', body: 'Away from Monday to Friday. A few pots on the porch.', location: 'Jalan Frekuensi U16/115' });
-  const stroller = await createPost(db, neighbours[4]!, { type: 'GIVE', title: 'Baby stroller, good condition', body: 'Our youngest has outgrown it. Free to a township family.', location: 'Jalan Metafasa U16/1N' });
-  await respondToPost(db, neighbours[1]!, stroller.id);
+  await createPost(db, neighbours[6]!, { type: 'HELP', title: 'Can someone water my plants next week?', body: 'Away from Monday to Friday. A few pots on the porch.', location: 'Jalan Frekuensi U16/115' }, now);
+  const stroller = await createPost(db, neighbours[4]!, { type: 'GIVE', title: 'Baby stroller, good condition', body: 'Our youngest has outgrown it. Free to a township family.', location: 'Jalan Metafasa U16/1N' }, now);
+  await respondToPost(db, neighbours[1]!, stroller.id, now);
   await acceptResponse(db, neighbours[4]!, stroller.id, neighbours[1]!.id, {}, daysAgo(6));
   await confirmResponse(db, neighbours[4]!, stroller.id, neighbours[1]!.id, daysAgo(5));
-  const drill = await createPost(db, neighbours[5]!, { type: 'LEND', title: 'Cordless drill to borrow', body: 'Comes with a set of bits. Please return within three days.', location: 'Jalan Metafasa U16/1N' });
+  const drill = await createPost(db, neighbours[5]!, { type: 'LEND', title: 'Cordless drill to borrow', body: 'Comes with a set of bits. Please return within three days.', location: 'Jalan Metafasa U16/1N' }, now);
   // The drill is out on loan right now, due back in two days.
-  await respondToPost(db, neighbours[0]!, drill.id);
+  await respondToPost(db, neighbours[0]!, drill.id, now);
   await acceptResponse(db, neighbours[5]!, drill.id, neighbours[0]!.id, { dueBack: new Date(now.getTime() + 2 * DAY).toISOString().slice(0, 10) }, now);
   await confirmResponse(db, neighbours[5]!, drill.id, neighbours[0]!.id, now);
-  await createPost(db, neighbours[7]!, { type: 'GIVE', title: 'Box of children’s story books', body: 'About 20 books, ages 4 to 8, English and Bahasa Malaysia.', location: 'Jalan Frekuensi U16/115' });
+  await createPost(db, neighbours[7]!, { type: 'GIVE', title: 'Box of children’s story books', body: 'About 20 books, ages 4 to 8, English and Bahasa Malaysia.', location: 'Jalan Frekuensi U16/115' }, now);
 
   // --- Lapor ----------------------------------------------------------------------
   const report = (by: Actor, description: string, locationText: string, zone: string, at: Date) =>

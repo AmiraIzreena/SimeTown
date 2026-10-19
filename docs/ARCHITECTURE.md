@@ -137,7 +137,7 @@ One migration, `src/server/db/migrations/001_init.sql`, about 30 tables in these
 | Rewards | `xp_events`, `campaigns`, `campaign_awards` |
 | **Ledger** | `ledger_accounts`, `ledger_txns`, `ledger_entries`, `point_lots` |
 | Shops and money | `sales`, `settlements`, `deposits`, `float_checks`, `adjustments` |
-| Features | `posts`, `post_responses`, `post_flags`, `uploads`, `reports`, `gerak_*`, `kitar_*`, `jimat_readings`, `solar_leads`, `flood_readings`, `flood_alerts` |
+| Features | `posts`, `post_responses`, `post_flags`, `komuniti_suspensions`, `uploads`, `reports`, `gerak_*`, `kitar_*`, `jimat_readings`, `solar_leads`, `flood_readings`, `flood_alerts` |
 | Third edition (`004_third_edition.sql`) | Shop Offers: `shop_offers`, `offer_pledges`, `offer_months`, `offer_point_lots`, `offer_fees`, `sponsor_tier_payments`. Tamu: `visitor_passes`, `visitor_entries`, `guard_sos`, `patrol_points`, `patrol_scans`. Machines and tracking: `kitar_machines`, `kitar_sessions`, `kitar_items`, `gerak_activities`, `gerak_activity_hits`. Bills: `jimat_bills` (numbers only, never the file). Banjir agent: `flood_signals`, `flood_messages`, `flood_agent_log`, `flood_checkins`. Akses+: `access_profiles`, `carer_links`, `access_places`. Taman: `gardens`, `garden_plots`, `garden_roster`, `wildlife_sightings`; `garden_applications` (the ballot waiting list) comes in `010_garden_ballot.sql`, and the Assistant's saved chats (`assistant_conversations`, `assistant_messages`) in `011_assistant_history.sql`. |
 
 Decisions worth knowing:

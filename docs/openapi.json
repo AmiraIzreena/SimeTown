@@ -3708,7 +3708,7 @@
     "/api/v1/posts": {
       "get": {
         "tags": [
-          "Jiran & Kongsi"
+          "Komuniti"
         ],
         "summary": "Events, help requests and items to give or lend: one type, several (GIVE,LEND) or all",
         "description": "Signed-in RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
@@ -3796,7 +3796,7 @@
       },
       "post": {
         "tags": [
-          "Jiran & Kongsi"
+          "Komuniti"
         ],
         "summary": "Create an event, a help request or a sharing offer",
         "description": "Signed-in RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
@@ -3890,7 +3890,7 @@
     "/api/v1/posts/impact": {
       "get": {
         "tags": [
-          "Jiran & Kongsi"
+          "Komuniti"
         ],
         "summary": "Your verified community XP: events attended, items shared, neighbours helped",
         "description": "Signed-in RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
@@ -3924,10 +3924,79 @@
         }
       }
     },
+    "/api/v1/posts/{postId}/close": {
+      "post": {
+        "tags": [
+          "Komuniti"
+        ],
+        "summary": "Close a post",
+        "description": "Signed-in RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "postPostsPostIdClose",
+        "parameters": [
+          {
+            "name": "postId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
     "/api/v1/posts/{postId}/respond": {
       "post": {
         "tags": [
-          "Jiran & Kongsi"
+          "Komuniti"
         ],
         "summary": "Join, offer help or ask for an item",
         "description": "Signed-in RESIDENT.",
@@ -3996,7 +4065,7 @@
     "/api/v1/posts/{postId}/withdraw": {
       "post": {
         "tags": [
-          "Jiran & Kongsi"
+          "Komuniti"
         ],
         "summary": "Cancel your RSVP or request (events: before they start)",
         "description": "Signed-in RESIDENT.",
@@ -4065,7 +4134,7 @@
     "/api/v1/posts/{postId}/responses/{userId}/accept": {
       "post": {
         "tags": [
-          "Jiran & Kongsi"
+          "Komuniti"
         ],
         "summary": "Accept a help, give-away or borrow request (loans need a return date)",
         "description": "Signed-in RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
@@ -4147,7 +4216,7 @@
     "/api/v1/posts/{postId}/responses/{userId}/decline": {
       "post": {
         "tags": [
-          "Jiran & Kongsi"
+          "Komuniti"
         ],
         "summary": "Decline a request",
         "description": "Signed-in RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
@@ -4225,7 +4294,7 @@
     "/api/v1/posts/{postId}/responses/{userId}/returned": {
       "post": {
         "tags": [
-          "Jiran & Kongsi"
+          "Komuniti"
         ],
         "summary": "Mark a lent item returned (gives the lender Impact XP)",
         "description": "Signed-in RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
@@ -4303,7 +4372,7 @@
     "/api/v1/posts/{postId}/responses/{userId}/confirm": {
       "post": {
         "tags": [
-          "Jiran & Kongsi"
+          "Komuniti"
         ],
         "summary": "Confirm it happened (gives Impact XP)",
         "description": "Signed-in RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
@@ -4378,14 +4447,14 @@
         }
       }
     },
-    "/api/v1/posts/{postId}/close": {
+    "/api/v1/posts/{postId}/flag": {
       "post": {
         "tags": [
-          "Jiran & Kongsi"
+          "Komuniti"
         ],
-        "summary": "Close a post",
-        "description": "Signed-in RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
-        "operationId": "postPostsPostIdClose",
+        "summary": "Report a post to township staff",
+        "description": "Signed-in RESIDENT.",
+        "operationId": "postPostsPostIdFlag",
         "parameters": [
           {
             "name": "postId",
@@ -4404,8 +4473,24 @@
               "schema": {
                 "$schema": "https://json-schema.org/draft/2020-12/schema",
                 "type": "object",
-                "properties": {},
-                "additionalProperties": false
+                "properties": {
+                  "category": {
+                    "default": "OTHER",
+                    "type": "string",
+                    "enum": [
+                      "SCAM",
+                      "UNSAFE",
+                      "OFFENSIVE",
+                      "SPAM",
+                      "OTHER"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 200
+                  }
+                }
               }
             }
           }
@@ -4447,14 +4532,271 @@
         }
       }
     },
-    "/api/v1/posts/{postId}/flag": {
+    "/api/v1/admin/komuniti/overview": {
+      "get": {
+        "tags": [
+          "Komuniti"
+        ],
+        "summary": "Komuniti at a glance: open posts, reports waiting, hidden posts, overdue loans, suspensions",
+        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "getAdminKomunitiOverview",
+        "parameters": [
+          {
+            "name": "townshipId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/komuniti/reports": {
+      "get": {
+        "tags": [
+          "Komuniti"
+        ],
+        "summary": "Reported posts waiting for a decision: hidden first, then scams and safety",
+        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "getAdminKomunitiReports",
+        "parameters": [
+          {
+            "name": "townshipId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/komuniti/posts": {
+      "get": {
+        "tags": [
+          "Komuniti"
+        ],
+        "summary": "Every post, including hidden and removed ones",
+        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "getAdminKomunitiPosts",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "townshipId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "OPEN",
+                "CLOSED",
+                "HIDDEN",
+                "REMOVED"
+              ]
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "EVENT",
+                "HELP",
+                "GIVE",
+                "LEND"
+              ]
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 80
+            }
+          }
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/komuniti/posts/{postId}": {
+      "get": {
+        "tags": [
+          "Komuniti"
+        ],
+        "summary": "One post in full: responses, every report and decision, and the author’s record",
+        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "getAdminKomunitiPostsPostId",
+        "parameters": [
+          {
+            "name": "postId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/komuniti/posts/{postId}/moderate": {
       "post": {
         "tags": [
-          "Jiran & Kongsi"
+          "Komuniti"
         ],
-        "summary": "Flag a post for moderators",
-        "description": "Signed-in RESIDENT.",
-        "operationId": "postPostsPostIdFlag",
+        "summary": "Keep (dismiss the reports), hide while checking, or remove with a reason",
+        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "postAdminKomunitiPostsPostIdModerate",
         "parameters": [
           {
             "name": "postId",
@@ -4474,13 +4816,155 @@
                 "$schema": "https://json-schema.org/draft/2020-12/schema",
                 "type": "object",
                 "properties": {
-                  "reason": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "KEEP",
+                      "HIDE",
+                      "REMOVE"
+                    ]
+                  },
+                  "note": {
                     "type": "string",
                     "minLength": 3,
-                    "maxLength": 200
+                    "maxLength": 500
                   }
                 },
                 "required": [
+                  "action"
+                ]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/komuniti/suspensions": {
+      "get": {
+        "tags": [
+          "Komuniti"
+        ],
+        "summary": "Residents who cannot post or respond in Komuniti right now",
+        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "getAdminKomunitiSuspensions",
+        "parameters": [
+          {
+            "name": "townshipId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/komuniti/suspensions/{userId}": {
+      "post": {
+        "tags": [
+          "Komuniti"
+        ],
+        "summary": "Suspend a resident from Komuniti for some days (replaces an earlier suspension)",
+        "description": "Signed-in TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "postAdminKomunitiSuspensionsUserId",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "days": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 365
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 300
+                  }
+                },
+                "required": [
+                  "days",
                   "reason"
                 ]
               }
@@ -4524,54 +5008,17 @@
         }
       }
     },
-    "/api/v1/moderation/posts": {
-      "get": {
-        "tags": [
-          "Jiran & Kongsi"
-        ],
-        "summary": "Posts hidden by flags, waiting for review",
-        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
-        "operationId": "getModerationPosts",
-        "parameters": [],
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The result is in `data`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {}
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/Error"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      }
-    },
-    "/api/v1/moderation/posts/{postId}": {
+    "/api/v1/admin/komuniti/suspensions/{userId}/lift": {
       "post": {
         "tags": [
-          "Jiran & Kongsi"
+          "Komuniti"
         ],
-        "summary": "Restore or remove a hidden post",
-        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
-        "operationId": "postModerationPostsPostId",
+        "summary": "Lift a Komuniti suspension early",
+        "description": "Signed-in TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "postAdminKomunitiSuspensionsUserIdLift",
         "parameters": [
           {
-            "name": "postId",
+            "name": "userId",
             "in": "path",
             "required": true,
             "schema": {
@@ -4587,18 +5034,8 @@
               "schema": {
                 "$schema": "https://json-schema.org/draft/2020-12/schema",
                 "type": "object",
-                "properties": {
-                  "action": {
-                    "type": "string",
-                    "enum": [
-                      "RESTORE",
-                      "REMOVE"
-                    ]
-                  }
-                },
-                "required": [
-                  "action"
-                ]
+                "properties": {},
+                "additionalProperties": false
               }
             }
           }

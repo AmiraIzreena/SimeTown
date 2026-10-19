@@ -95,7 +95,7 @@ export const NAV: Record<Area, { title: string; items: NavItem[] }> = {
       { href: '/console/solar', label: 'Solar sites', icon: Sun },
       { href: '/console/materials', label: 'Greener materials', icon: Layers },
       { href: '/console/nature', label: 'Nature & access', icon: Leaf },
-      { href: '/console/moderation', label: 'Moderation', icon: ShieldAlert },
+      { href: '/console/komuniti', label: 'Komuniti', gloss: 'Reports & posts', icon: ShieldAlert },
       { href: '/console/home-services', label: 'Home service reports', icon: Wrench },
       { href: '/console/audit', label: 'Audit trail', icon: History, roles: ADMINS },
       { href: '/console/settings', label: 'Rules', icon: Settings },

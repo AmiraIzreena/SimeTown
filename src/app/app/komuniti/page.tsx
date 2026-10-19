@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { KomunitiBoard, type KomunitiTab } from '@/components/features/posts-board';
+import { KomunitiBoard, type KomunitiTab } from '@/components/features/komuniti/board';
 
 export const metadata: Metadata = { title: 'Komuniti' };
 

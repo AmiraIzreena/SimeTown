@@ -51,6 +51,19 @@ export type Activity = (typeof ACTIVITIES)[number];
 
 export const POST_TYPES = ['EVENT', 'HELP', 'GIVE', 'LEND'] as const;
 export type PostType = (typeof POST_TYPES)[number];
+export const POST_STATUSES = ['OPEN', 'CLOSED', 'HIDDEN', 'REMOVED'] as const;
+export type PostStatus = (typeof POST_STATUSES)[number];
+
+/** Why a resident reported a Komuniti post. Scams and safety come first in the staff queue. */
+export const POST_FLAG_CATEGORIES = ['SCAM', 'UNSAFE', 'OFFENSIVE', 'SPAM', 'OTHER'] as const;
+export type PostFlagCategory = (typeof POST_FLAG_CATEGORIES)[number];
+export const POST_FLAG_CATEGORY_LABELS: Record<PostFlagCategory, string> = {
+  SCAM: 'Scam or asking for money',
+  UNSAFE: 'Unsafe or dangerous',
+  OFFENSIVE: 'Rude, hateful or harassing',
+  SPAM: 'Spam or selling',
+  OTHER: 'Something else',
+};
 
 export const REPORT_CATEGORIES = ['POTHOLE', 'LIGHTING', 'DRAINAGE', 'WASTE', 'ACCESS_BARRIER', 'SAFETY', 'OTHER'] as const;
 export type ReportCategory = (typeof REPORT_CATEGORIES)[number];

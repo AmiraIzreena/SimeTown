@@ -261,7 +261,7 @@ reports under *Parcels → My reports*. The courier companies' support channels 
 | Business | SimeTown Insights | 30-day totals, the float against what it owes, machine uptime, offer pledges, visitors, flood alerts, barriers fixed on time, nature; printable monthly report |
 | Business | SimeTown Home | Home services: residents compare approved township companies (ratings, pricing and call-out fees up front), book with a photo, see the assigned worker before arrival, send a Tamu contractor pass, confirm the job and review it, or report privately to staff. Companies are Merchant accounts with services switched on (shop, services, or both). Prices are agreed in person; SimeTown takes no payment. The home logbook records every confirmed job at the home and reminds when a service (air-conditioning, every 180 days) is due, with *Book again*. Warranty records and resale are still previews |
 
-Also built because a real system needs them: moderation of flagged posts, the daily float check,
+Also built because a real system needs them: Komuniti moderation (reports with reasons, keep/hide/remove, suspensions by township admins and HQ), the daily float check,
 weekly settlement, points expiry and reminders, two-person approval for balance corrections, an
 audit trail, adjustable programme rules, data download and account deletion.
 
