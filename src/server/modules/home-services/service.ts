@@ -10,7 +10,7 @@ import { conflict, forbidden, notFound, ruleViolation } from '../../errors';
 import { audit } from '../audit';
 import { notify } from '../notifications';
 import { getSettings } from '../settings';
-import { createPass } from '../tamu/service';
+import { createPass, insertPass } from '../tamu/service';
 import { HOME_ADDRESS_COLUMNS } from '../townships';
 
 /**
@@ -67,6 +67,35 @@ async function logEvent(
 /** A Tamu pass for a visit stops working when the visit is cancelled or the worker changes. */
 async function cancelVisitPass(q: Queryable, passId: string | null) {
   if (passId) await q.query(`UPDATE visitor_passes SET status = 'CANCELLED' WHERE id = $1 AND status = 'ACTIVE'`, [passId]);
+}
+
+/** A contractor pass covers the visit: from two hours before (or now) until ten hours after. */
+function visitPassWindow(scheduledAt: Date, now: Date) {
+  const visit = scheduledAt.getTime();
+  const validFrom = new Date(Math.max(now.getTime(), visit - 2 * 3_600_000));
+  const validUntil = new Date(Math.max(visit, validFrom.getTime()) + 10 * 3_600_000);
+  return { validFrom, validUntil };
+}
+
+/**
+ * The resident asked the company to come, so the gate pass for the assigned worker is
+ * made automatically, in the same transaction that sets the worker. The household is
+ * the host; the company sees the code in its bookings. Returns the gate code.
+ */
+async function issueVisitPass(
+  tx: Queryable,
+  b: { id: string; township_id: string; home_id: string; resident_id: string; merchant_name: string; scheduled_at: Date },
+  workerName: string,
+  now: Date,
+): Promise<string> {
+  const pass = await insertPass(
+    tx,
+    { townshipId: b.township_id, homeId: b.home_id, hostUserId: b.resident_id, type: 'CONTRACTOR', visitorName: `${workerName} (${b.merchant_name})`.slice(0, 80), ...visitPassWindow(b.scheduled_at, now) },
+    now,
+  );
+  await tx.query('UPDATE service_bookings SET pass_id = $2 WHERE id = $1', [b.id, pass.id]);
+  await logEvent(tx, b.id, null, { kind: 'PASS', note: pass.code }, now);
+  return pass.code;
 }
 
 const bookingLink = (id: string) => `/app/home-services?booking=${id}`;
@@ -302,7 +331,7 @@ export async function createBooking(db: Db, actor: Actor, input: BookingInput, n
     await logEvent(tx, booking!.id, resident.id, { kind: 'STATUS', to: 'REQUESTED' }, now);
     await notify(tx, await merchantUserIds(tx, listing.merchant_id), {
       title: 'New booking request',
-      body: `A resident asked for ${SERVICE_CATEGORY_LABELS[listing.category].toLowerCase()}. Accept or decline it.`,
+      body: `A resident has requested ${SERVICE_CATEGORY_LABELS[listing.category].toLowerCase()}. Please accept or decline the request.`,
       link: merchantBookingLink(booking!.id),
     });
     return { id: booking!.id };
@@ -400,9 +429,9 @@ type DetailRow = HomeAddress & {
 };
 
 async function events(q: Queryable, bookingId: string) {
-  return q.query<{ kind: string; from_status: BookingStatus | null; to_status: BookingStatus | null; worker_name: string | null; note: string | null; created_at: Date; actor: 'RESIDENT' | 'COMPANY' | 'STAFF' }>(
+  return q.query<{ kind: string; from_status: BookingStatus | null; to_status: BookingStatus | null; worker_name: string | null; note: string | null; created_at: Date; actor: 'RESIDENT' | 'COMPANY' | 'STAFF' | 'SYSTEM' }>(
     `SELECT e.kind, e.from_status, e.to_status, e.worker_name, e.note, e.created_at,
-            CASE WHEN u.role = 'RESIDENT' THEN 'RESIDENT' WHEN u.role = 'MERCHANT' THEN 'COMPANY' ELSE 'STAFF' END AS actor
+            CASE WHEN e.actor_user_id IS NULL THEN 'SYSTEM' WHEN u.role = 'RESIDENT' THEN 'RESIDENT' WHEN u.role = 'MERCHANT' THEN 'COMPANY' ELSE 'STAFF' END AS actor
        FROM service_booking_events e LEFT JOIN users u ON u.id = e.actor_user_id
       WHERE e.booking_id = $1 ORDER BY e.id`,
     [bookingId],
@@ -538,7 +567,7 @@ export async function cancelByResident(db: Db, actor: Actor, id: string, reason:
     await tx.query(`UPDATE service_bookings SET status = 'CANCELLED', closed_reason = $2, updated_at = $3 WHERE id = $1`, [id, reason || null, now]);
     await cancelVisitPass(tx, b.pass_id);
     await logEvent(tx, id, actor.id, { kind: 'STATUS', from: b.status, to: 'CANCELLED', note: reason || null }, now);
-    await notify(tx, await merchantUserIds(tx, b.merchant_id), { title: 'Booking cancelled', body: 'The resident cancelled their booking.', link: merchantBookingLink(id) });
+    await notify(tx, await merchantUserIds(tx, b.merchant_id), { title: 'Booking cancelled by resident', body: 'The resident has cancelled this booking. No further action is needed.', link: merchantBookingLink(id) });
     return { status: 'CANCELLED' as const };
   });
 }
@@ -550,7 +579,7 @@ export async function confirmCompleted(db: Db, actor: Actor, id: string, now: Da
     requireStatus(b, RESIDENT_CONFIRMABLE, 'You can confirm the job once the worker has visited.');
     await tx.query(`UPDATE service_bookings SET status = 'COMPLETED', completed_at = $2, updated_at = $2 WHERE id = $1`, [id, now]);
     await logEvent(tx, id, actor.id, { kind: 'STATUS', from: b.status, to: 'COMPLETED' }, now);
-    await notify(tx, await merchantUserIds(tx, b.merchant_id), { title: 'Job confirmed', body: 'The resident confirmed the job is done.', link: merchantBookingLink(id) });
+    await notify(tx, await merchantUserIds(tx, b.merchant_id), { title: 'Job completed', body: 'The resident has confirmed the job is complete. The booking is now closed.', link: merchantBookingLink(id) });
     return { status: 'COMPLETED' as const };
   });
 }
@@ -563,7 +592,7 @@ export async function reviewBooking(db: Db, actor: Actor, id: string, input: { r
     await tx.query('INSERT INTO service_reviews (booking_id, merchant_id, resident_id, rating, comment, created_at) VALUES ($1, $2, $3, $4, $5, $6)', [
       id, b.merchant_id, actor.id, input.rating, input.comment || null, now,
     ]);
-    await notify(tx, await merchantUserIds(tx, b.merchant_id), { title: 'New review', body: `A resident rated your service ${input.rating} out of 5.`, link: merchantBookingLink(id) });
+    await notify(tx, await merchantUserIds(tx, b.merchant_id), { title: 'New review received', body: `A resident rated your service ${input.rating} out of 5.`, link: merchantBookingLink(id) });
     return { ok: true };
   });
 }
@@ -584,22 +613,29 @@ export async function reportBooking(db: Db, actor: Actor, id: string, input: { c
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8) RETURNING id`,
       [b.township_id, id, b.merchant_id, b.worker_id, actor.id, input.category, input.description, now],
     );
-    const staff = await tx.query<{ id: string }>(`SELECT id FROM users WHERE township_id = $1 AND role IN ('TOWNSHIP_STAFF', 'TOWNSHIP_ADMIN') AND status = 'ACTIVE'`, [b.township_id]);
     const urgent = input.category === 'HARASSMENT';
+    // Township staff handle every report; HQ is also told about harassment so it is never missed.
+    const staff = await tx.query<{ id: string }>(
+      `SELECT id FROM users WHERE status = 'ACTIVE' AND ((township_id = $1 AND role IN ('TOWNSHIP_STAFF', 'TOWNSHIP_ADMIN')) OR ($2 AND role = 'HQ_ADMIN'))`,
+      [b.township_id, urgent],
+    );
     await notify(tx, staff.map((s) => s.id), {
       priority: urgent ? 'URGENT' : 'NORMAL',
-      title: urgent ? 'Harassment reported on a home service visit' : 'Home service report',
-      body: `A resident reported a problem with ${b.merchant_name}.`,
-      link: '/console/home-services',
+      title: urgent ? 'Harassment reported during a home service visit' : 'New home service report',
+      body: urgent
+        ? `A resident has reported harassment involving ${b.merchant_name}. Please contact the resident as soon as possible.`
+        : `A resident has reported a problem with ${b.merchant_name}. Please review the report.`,
+      link: `/console/home-services?report=${report!.id}`,
     });
     return { id: report!.id };
   });
 }
 
 /**
- * A Tamu contractor pass for the assigned worker and this visit. The resident
- * shares the link; the company also sees the pass code for the guardhouse. The
- * pass is cancelled again if the worker changes or the booking is cancelled.
+ * A new Tamu contractor pass for the assigned worker, made by the resident. Passes are
+ * normally made automatically when the worker is assigned; this is for when that pass
+ * was cancelled in Tamu or has run out. The company also sees the pass code for the
+ * guardhouse. The pass is cancelled again if the worker changes or the booking is cancelled.
  */
 export async function sendGatePass(db: Db, actor: Actor, id: string, now: Date) {
   const resident = requireVerifiedResident(actor);
@@ -612,9 +648,7 @@ export async function sendGatePass(db: Db, actor: Actor, id: string, now: Date) 
   if (!b) throw notFound('Booking');
   requireStatus(b, PASS_STATUSES, 'A gate pass can be sent once the company has assigned a worker.');
   if (b.pass_id && b.pass_live) throw conflict('PASS_SENT', 'A gate pass for this visit is already active.');
-  const visit = b.scheduled_at!.getTime();
-  const validFrom = new Date(Math.max(now.getTime(), visit - 2 * 3_600_000));
-  const validUntil = new Date(Math.max(visit, validFrom.getTime()) + 10 * 3_600_000);
+  const { validFrom, validUntil } = visitPassWindow(b.scheduled_at!, now);
   const visitorName = `${b.worker_name} (${b.merchant_name})`.slice(0, 80);
   const pass = await createPass(db, resident, { type: 'CONTRACTOR', visitorName, validFrom, validUntil }, now);
   const linked = await db.tx(async (tx) => {
@@ -626,8 +660,8 @@ export async function sendGatePass(db: Db, actor: Actor, id: string, now: Date) 
     if (rows.length === 0) return false;
     await logEvent(tx, id, resident.id, { kind: 'PASS', note: pass.code }, now);
     await notify(tx, await merchantUserIds(tx, b.merchant_id), {
-      title: 'Gate pass ready',
-      body: `${b.worker_name} can enter with pass code ${pass.code}.`,
+      title: 'Gate pass received',
+      body: `The resident has sent a gate pass for ${b.worker_name}. Pass code: ${pass.code}. Show it to the guard at the main gate.`,
       link: merchantBookingLink(id),
     });
     return true;
@@ -724,10 +758,15 @@ export async function acceptBooking(db: Db, actor: Actor, id: string, input: { s
       [id, status, input.scheduledAt, worker?.id ?? null, input.note || null, now],
     );
     await logEvent(tx, id, actor.id, { kind: 'STATUS', from: 'REQUESTED', to: 'ACCEPTED', note: input.note || null }, now);
-    if (worker) await logEvent(tx, id, actor.id, { kind: 'WORKER', from: 'ACCEPTED', to: 'SCHEDULED', workerId: worker.id, workerName: worker.full_name }, now);
+    if (worker) {
+      await logEvent(tx, id, actor.id, { kind: 'WORKER', from: 'ACCEPTED', to: 'SCHEDULED', workerId: worker.id, workerName: worker.full_name }, now);
+      await issueVisitPass(tx, { ...b, scheduled_at: input.scheduledAt }, worker.full_name, now);
+    }
     await notify(tx, [b.resident_id], {
       title: 'Booking accepted',
-      body: worker ? `${b.merchant_name} accepted your booking. ${worker.full_name} will visit.` : `${b.merchant_name} accepted your booking and set a visit time.`,
+      body: worker
+        ? `${b.merchant_name} has accepted your booking. ${worker.full_name} is assigned to your visit, and their gate pass is ready.`
+        : `${b.merchant_name} has accepted your booking and set a visit time. They will tell you who is coming.`,
       link: bookingLink(id),
     });
     return { status };
@@ -740,12 +779,12 @@ export async function declineBooking(db: Db, actor: Actor, id: string, reason: s
     requireStatus(b, ['REQUESTED'], 'This booking has already been answered.');
     await tx.query(`UPDATE service_bookings SET status = 'DECLINED', closed_reason = $2, updated_at = $3 WHERE id = $1`, [id, reason, now]);
     await logEvent(tx, id, actor.id, { kind: 'STATUS', from: 'REQUESTED', to: 'DECLINED', note: reason }, now);
-    await notify(tx, [b.resident_id], { title: 'Booking declined', body: `${b.merchant_name} cannot take this booking. You can choose another company.`, link: bookingLink(id) });
+    await notify(tx, [b.resident_id], { title: 'Booking declined', body: `${b.merchant_name} is unable to take this booking. Please choose another company.`, link: bookingLink(id) });
     return { status: 'DECLINED' as const };
   });
 }
 
-/** Assign or change the worker. A change withdraws any gate pass made for the previous worker. */
+/** Assign or change the worker. Any gate pass for the previous worker is withdrawn and a new one made. */
 export async function assignWorker(db: Db, actor: Actor, id: string, workerId: string, now: Date) {
   return db.tx(async (tx) => {
     const b = await lockMerchantBooking(tx, actor, id);
@@ -756,13 +795,12 @@ export async function assignWorker(db: Db, actor: Actor, id: string, workerId: s
     await tx.query(`UPDATE service_bookings SET status = 'SCHEDULED', worker_id = $2, pass_id = NULL, updated_at = $3 WHERE id = $1`, [id, worker.id, now]);
     await cancelVisitPass(tx, b.pass_id);
     await logEvent(tx, id, actor.id, { kind: 'WORKER', from: b.status, to: 'SCHEDULED', workerId: worker.id, workerName: worker.full_name }, now);
+    await issueVisitPass(tx, { ...b, scheduled_at: b.scheduled_at! }, worker.full_name, now);
     await notify(tx, [b.resident_id], {
-      title: changed ? 'A different worker is coming' : 'Worker assigned',
+      title: changed ? 'Worker changed' : 'Worker assigned',
       body: changed
-        ? b.pass_id
-          ? `${b.merchant_name} changed the worker to ${worker.full_name}. The old gate pass was cancelled; send a new one.`
-          : `${b.merchant_name} changed the worker to ${worker.full_name}.`
-        : `${worker.full_name} from ${b.merchant_name} will visit.`,
+        ? `${b.merchant_name} has assigned ${worker.full_name} to your visit instead. Their gate pass is ready, and the previous one has been cancelled.`
+        : `${worker.full_name} from ${b.merchant_name} is assigned to your visit. Their gate pass is ready.`,
       link: bookingLink(id),
     });
     return { status: 'SCHEDULED' as const };
@@ -779,14 +817,17 @@ export async function startVisit(db: Db, actor: Actor, id: string, now: Date) {
   });
 }
 
-/** The company says the work is finished. The booking completes only when the resident confirms. */
+/**
+ * The company says the work is finished. The booking completes only when the resident confirms.
+ * Pressing "Worker has arrived" first is optional, so a short job takes one tap.
+ */
 export async function markWorkDone(db: Db, actor: Actor, id: string, note: string | undefined, now: Date) {
   return db.tx(async (tx) => {
     const b = await lockMerchantBooking(tx, actor, id);
-    requireStatus(b, ['IN_PROGRESS'], 'Start the visit before marking the work done.');
+    requireStatus(b, ['SCHEDULED', 'IN_PROGRESS'], 'Assign a worker before marking the work done.');
     await tx.query(`UPDATE service_bookings SET status = 'WORK_DONE', provider_note = coalesce($2, provider_note), updated_at = $3 WHERE id = $1`, [id, note || null, now]);
-    await logEvent(tx, id, actor.id, { kind: 'STATUS', from: 'IN_PROGRESS', to: 'WORK_DONE', note: note || null }, now);
-    await notify(tx, [b.resident_id], { title: 'Is the job done?', body: `${b.merchant_name} says the work is finished. Please confirm, or report a problem.`, link: bookingLink(id) });
+    await logEvent(tx, id, actor.id, { kind: 'STATUS', from: b.status, to: 'WORK_DONE', note: note || null }, now);
+    await notify(tx, [b.resident_id], { title: 'Please confirm the job', body: `${b.merchant_name} has marked the work as finished. Please confirm it is complete, or report a problem.`, link: bookingLink(id) });
     return { status: 'WORK_DONE' as const };
   });
 }
@@ -798,7 +839,7 @@ export async function cancelByMerchant(db: Db, actor: Actor, id: string, reason:
     await tx.query(`UPDATE service_bookings SET status = 'CANCELLED', closed_reason = $2, updated_at = $3 WHERE id = $1`, [id, reason, now]);
     await cancelVisitPass(tx, b.pass_id);
     await logEvent(tx, id, actor.id, { kind: 'STATUS', from: b.status, to: 'CANCELLED', note: reason }, now);
-    await notify(tx, [b.resident_id], { title: 'Booking cancelled', body: `${b.merchant_name} cancelled your booking: ${reason}`, link: bookingLink(id) });
+    await notify(tx, [b.resident_id], { title: 'Booking cancelled by company', body: `${b.merchant_name} has cancelled your booking. Reason: ${reason}`, link: bookingLink(id) });
     return { status: 'CANCELLED' as const };
   });
 }
@@ -867,10 +908,11 @@ export async function updateServiceReport(db: Db, actor: Actor, id: string, inpu
     if (r.status === 'CLOSED' && input.status && input.status !== 'CLOSED') throw conflict('REPORT_CLOSED', 'This report is already closed.');
     const status = input.status ?? r.status;
     await tx.query('UPDATE service_reports SET status = $2, staff_note = coalesce($3, staff_note), updated_at = $4 WHERE id = $1', [id, status, input.staffNote ?? null, now]);
-    if (status !== r.status) {
-      await audit(tx, actor.id, 'SERVICE_REPORT_STATUS', 'service_report', id, { from: r.status, to: status });
+    if (status !== r.status) await audit(tx, actor.id, 'SERVICE_REPORT_STATUS', 'service_report', id, { from: r.status, to: status });
+    // A new note is news to the resident too, even when the status stays the same.
+    if (status !== r.status || input.staffNote) {
       await notify(tx, [r.resident_id], {
-        title: status === 'CLOSED' ? 'Your home service report is closed' : 'Your home service report is being looked into',
+        title: status === 'CLOSED' ? 'Your home service report is closed' : status === r.status ? 'Update on your home service report' : 'Your home service report is under review',
         body: input.staffNote ?? 'The township team has updated your report.',
         link: '/app/home-services',
       });

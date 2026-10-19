@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Db } from '@/server/db/client';
 import { listNotifications, markAllRead, notify, updateNotification } from '@/server/modules/notifications';
-import { notificationCategory, notificationDestination } from '@/shared/notifications';
+import { notificationCategoriesFor, notificationCategory, notificationDestination } from '@/shared/notifications';
 import { createReport } from '@/server/modules/reports/service';
 import { freshDb, makeResident, makeWorld, T0 } from './helpers';
 
@@ -63,6 +63,15 @@ describe('notification center', () => {
     expect(notificationDestination('/console/komuniti')).toBe('/console/komuniti');
     expect(notificationCategory('/app/komuniti')).toBe('COMMUNITY');
   });
+  it('opens a home service report from a staff notification and files it under Home services', () => {
+    expect(notificationDestination('/console/home-services?report=abc')).toBe('/console/home-services?report=abc');
+    expect(notificationCategory('/console/home-services?report=abc')).toBe('SERVICES');
+  });
+  it('offers business accounts only the categories they can receive', () => {
+    expect(notificationCategoriesFor('MERCHANT', { retail: false, services: true })).toEqual(['SERVICES', 'ACCOUNT']);
+    expect(notificationCategoriesFor('MERCHANT', { retail: true, services: true })).toEqual(['SERVICES', 'REWARDS', 'ACCOUNT']);
+    expect(notificationCategoriesFor('HQ_ADMIN')).toContain('PARCELS');
+  });
   it('rejects unsafe and unavailable destinations', () => {
     expect(notificationDestination('https://example.com')).toBeNull();
     expect(notificationDestination('//example.com')).toBeNull();
@@ -75,5 +84,19 @@ describe('notification center', () => {
     const report = await createReport(db, resident, { description: 'Broken street light outside my house', locationText: 'Main road', category: 'LIGHTING' }, T0);
     const inbox = await listNotifications(db, resident.id);
     expect(inbox.items.some((n) => n.category === 'REPORTS' && n.link?.includes(report.id))).toBe(true);
+  });
+  it('tells township staff and admins about every new report, and HQ only about urgent ones', async () => {
+    const world = await makeWorld(db);
+    const resident = await makeResident(world);
+    const titles = async (userId: string) => (await listNotifications(db, userId, { limit: 50 })).items.map((n) => n.title);
+    await createReport(db, resident, { description: 'Someone is using the parking reserved for me', locationText: 'Block A car park', category: 'OTHER' }, T0);
+    expect(await titles(world.staff.id)).toContain('New Lapor report');
+    expect(await titles(world.admin.id)).toContain('New Lapor report');
+    expect(await titles(world.hq.id)).not.toContain('New Lapor report');
+
+    const urgent = await createReport(db, resident, { description: 'Pokok tumbang across the road, live wire on the ground', locationText: 'Jalan Satu' }, T0);
+    expect(urgent.urgency).toBe('URGENT');
+    expect(await titles(world.hq.id)).toContain('Urgent safety report');
+    expect(await titles(world.staff.id)).toContain('Urgent safety report');
   });
 });

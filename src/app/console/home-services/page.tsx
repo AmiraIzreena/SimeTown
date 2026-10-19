@@ -3,20 +3,21 @@
 import { Text } from '@/components/ui/localized-text';
 
 import { ShieldCheck } from 'lucide-react';
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { BookingStatusBadge, BookingTimeline, REPORT_STATUS_LABELS, REPORT_STATUS_TONES, type BookingEvent } from '@/components/features/home-services';
 import { Button } from '@/components/ui/button';
 import { Badge, PageHeader } from '@/components/ui/card';
 import { Modal } from '@/components/ui/dialog';
-import { Async, EmptyState } from '@/components/ui/feedback';
-import { Select, Textarea } from '@/components/ui/field';
+import { Async, EmptyState, SkeletonList } from '@/components/ui/feedback';
+import { Textarea } from '@/components/ui/field';
 import { DataTable } from '@/components/ui/table';
 import { Tabs } from '@/components/ui/tabs';
 import { api } from '@/lib/api';
 import { formatDateTime, timeAgo } from '@/lib/format';
 import { useAction, useApi } from '@/lib/hooks';
 import {
-  formatPhone, SERVICE_CATEGORY_LABELS, SERVICE_REPORT_CATEGORY_LABELS, SERVICE_REPORT_STATUSES,
+  formatPhone, SERVICE_CATEGORY_LABELS, SERVICE_REPORT_CATEGORY_LABELS,
   type BookingStatus, type ServiceCategory, type ServiceReportCategory, type ServiceReportStatus,
 } from '@/shared/domain';
 
@@ -59,9 +60,15 @@ interface Detail {
 }
 
 export default function HomeServiceReportsPage() {
+  return <Suspense fallback={<SkeletonList rows={3} />}><HomeServiceReports /></Suspense>;
+}
+
+function HomeServiceReports() {
   const [tab, setTab] = useState<'OPEN' | 'CLOSED'>('OPEN');
   const reports = useApi<Row[]>('/admin/home-services/reports');
-  const [openId, setOpenId] = useState<string | null>(null);
+  // A notification links straight to its report. Only a report id is taken from the link.
+  const linked = useSearchParams().get('report');
+  const [openId, setOpenId] = useState<string | null>(linked && /^[0-9a-f-]{36}$/i.test(linked) ? linked : null);
   return (
     <>
       <PageHeader title="Home service reports" description="Private reports from residents about a home service visit. Each is tied to the booking and the worker assigned at the time. Companies never see them." />
@@ -71,7 +78,7 @@ export default function HomeServiceReportsPage() {
           {(all) => {
             const list = all.filter((r) => (tab === 'CLOSED') === (r.status === 'CLOSED'));
             return list.length === 0 ? (
-              <EmptyState icon={ShieldCheck} title="Nothing here"><Text>{tab === 'OPEN' ? 'No reports are waiting.' : 'No closed reports yet.'}</Text></EmptyState>
+              <EmptyState icon={ShieldCheck} title={tab === 'OPEN' ? 'No open reports' : 'No closed reports'}><Text>{tab === 'OPEN' ? 'New reports from residents will appear here.' : 'Reports you close will appear here.'}</Text></EmptyState>
             ) : (
               <DataTable
                 caption="Home service reports"
@@ -97,8 +104,9 @@ export default function HomeServiceReportsPage() {
 
 function ReportModal({ id, onClose, onChanged }: { id: string | null; onClose: () => void; onChanged: () => void }) {
   const detail = useApi<Detail>(id ? `/admin/home-services/reports/${id}` : null);
+  const [noteMissing, setNoteMissing] = useState(false);
   const update = useAction((status: ServiceReportStatus, staffNote: string) => api.patch(`/admin/home-services/reports/${id}`, { status, staffNote: staffNote || undefined }), {
-    success: 'Saved. The resident has been told.',
+    success: 'Saved. The resident has been notified.',
     onSuccess: () => {
       void detail.mutate();
       onChanged();
@@ -152,17 +160,22 @@ function ReportModal({ id, onClose, onChanged }: { id: string | null; onClose: (
               className="space-y-3 border-t border-ink-100 pt-4"
               onSubmit={(event) => {
                 event.preventDefault();
-                const data = new FormData(event.currentTarget);
-                void update.run(String(data.get('status')) as ServiceReportStatus, String(data.get('staffNote') ?? '').trim());
+                const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
+                const note = String(new FormData(event.currentTarget).get('staffNote') ?? '').trim();
+                // "Send update" moves a new report to Under review; "Close report" closes it. Both tell the resident.
+                const status: ServiceReportStatus = submitter?.value === 'close' ? 'CLOSED' : r.status === 'NEW' ? 'REVIEWING' : r.status;
+                // Nothing would change, so there must be a message to send.
+                setNoteMissing(status === r.status && !note);
+                if (status !== r.status || note) void update.run(status, note);
               }}
             >
               {r.staff_note && <p className="rounded-md bg-brand-50 p-3 text-sm text-brand-800"><Text>Last note to the resident: </Text>{r.staff_note}</p>}
-              <Select label="Status" name="status" defaultValue={r.status} disabled={r.status === 'CLOSED'}>
-                {SERVICE_REPORT_STATUSES.map((s) => <option key={s} value={s}><Text>{REPORT_STATUS_LABELS[s]}</Text></option>)}
-              </Select>
-              {r.status === 'CLOSED' && <input type="hidden" name="status" value="CLOSED" />}
-              <Textarea label="Note to the resident" name="staffNote" maxLength={500} hint="The resident sees this. Do not include the company's or worker's private details." error={update.fields.staffNote} />
-              <Button type="submit" size="sm" pending={update.pending}><Text>Save and tell the resident</Text></Button>
+              <Textarea label="Message to the resident" name="staffNote" maxLength={500} hint="The resident sees this. Do not include the company's or worker's private details." error={noteMissing ? 'Write a message to send.' : update.fields.staffNote} />
+              <div className="flex flex-wrap gap-2">
+                {r.status !== 'CLOSED' && <Button type="submit" size="sm" value="update" pending={update.pending}><Text>Send update to resident</Text></Button>}
+                {r.status !== 'CLOSED' && <Button type="submit" size="sm" variant="secondary" value="close" disabled={update.pending}><Text>Close report</Text></Button>}
+                {r.status === 'CLOSED' && <Button type="submit" size="sm" value="update" pending={update.pending}><Text>Send a message to the resident</Text></Button>}
+              </div>
             </form>
           </div>
         )}

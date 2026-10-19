@@ -85,11 +85,12 @@ export interface BookingEvent {
   worker_name: string | null;
   note: string | null;
   created_at: string;
-  actor: 'RESIDENT' | 'COMPANY' | 'STAFF';
+  /** SYSTEM: done automatically, such as the gate pass made when a worker is assigned. */
+  actor: 'RESIDENT' | 'COMPANY' | 'STAFF' | 'SYSTEM';
 }
 
 function eventLabel(e: BookingEvent): string {
-  if (e.kind === 'PASS') return 'Gate pass sent through Tamu';
+  if (e.kind === 'PASS') return 'Gate pass ready';
   if (e.kind === 'WORKER') return e.from_status === 'SCHEDULED' ? 'Worker changed' : 'Worker assigned';
   switch (e.to_status) {
     case 'REQUESTED': return 'Booking requested';
@@ -122,5 +123,5 @@ export function BookingTimeline({ events, showPassCode = false }: { events: Book
   );
 }
 
-export const REPORT_STATUS_LABELS: Record<ServiceReportStatus, string> = { NEW: 'Received', REVIEWING: 'Being looked into', CLOSED: 'Closed' };
+export const REPORT_STATUS_LABELS: Record<ServiceReportStatus, string> = { NEW: 'Received', REVIEWING: 'Under review', CLOSED: 'Closed' };
 export const REPORT_STATUS_TONES: Record<ServiceReportStatus, 'gold' | 'brand' | 'neutral'> = { NEW: 'gold', REVIEWING: 'brand', CLOSED: 'neutral' };

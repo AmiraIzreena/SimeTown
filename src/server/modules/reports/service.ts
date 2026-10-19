@@ -47,14 +47,21 @@ export async function createReport(db: Db, actor: Actor, input: ReportInput, now
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $12) RETURNING id`,
       [resident.townshipId, resident.id, input.zoneId ?? null, category, suggestion.urgency, suggestion.category, suggestion.urgency, suggestion.source, input.description, input.locationText, photoId, now],
     );
-    if (suggestion.urgency === 'URGENT') {
-      // BR19: urgent safety reports jump the queue for every staff member on duty.
-      const staff = await tx.query<{ id: string }>(
-        `SELECT id FROM users WHERE township_id = $1 AND role IN ('TOWNSHIP_STAFF', 'TOWNSHIP_ADMIN') AND status = 'ACTIVE'`,
-        [resident.townshipId],
-      );
-      await notify(tx, staff.map((s) => s.id), { priority: 'URGENT', title: 'Urgent safety report', body: `${input.locationText}: ${input.description.slice(0, 120)}`, link: '/console/reports' });
-    }
+    // Every new report reaches the township's staff and admins. BR19: urgent safety reports jump the
+    // queue, and HQ is told about those too, so a danger is never missed. HQ is not sent routine
+    // reports: it covers every township and sees them all in its Lapor list.
+    const urgent = suggestion.urgency === 'URGENT';
+    const staff = await tx.query<{ id: string }>(
+      `SELECT id FROM users WHERE status = 'ACTIVE' AND ((township_id = $1 AND role IN ('TOWNSHIP_STAFF', 'TOWNSHIP_ADMIN')) OR ($2 AND role = 'HQ_ADMIN'))`,
+      [resident.townshipId, urgent],
+    );
+    await notify(tx, staff.map((s) => s.id), {
+      priority: urgent ? 'URGENT' : 'NORMAL',
+      title: urgent ? 'Urgent safety report' : 'New Lapor report',
+      body: `${input.locationText}: ${input.description.slice(0, 120)}`,
+      link: '/console/reports',
+      dedupeKey: `report-new:${report!.id}`,
+    });
     // Water in a drain, reported with its area, is a second opinion for the Banjir agent (never a decision on its own).
     if (category === 'DRAINAGE' && input.zoneId) await reportSignal(tx, input.zoneId, report!.id, now);
     await notify(tx, [resident.id], { title: 'Report received', body: input.locationText, link: `/app/lapor/${report!.id}`, dedupeKey: `report-received:${report!.id}` });
