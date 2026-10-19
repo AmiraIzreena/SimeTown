@@ -4,7 +4,7 @@ import { LEGAL } from '@/shared/legal';
 import { one, type Db, type Queryable } from '../../db/client';
 import { assertTownshipAccess, type Actor } from '../../auth/actor';
 import { hashPassword, verifyPassword } from '../../auth/password';
-import { ACTOR_COLUMNS, COURIER_SESSION_HOURS, createSession, hashToken, newToken, toActor } from '../../auth/session';
+import { ACTOR_COLUMNS, COURIER_SESSION_HOURS, createSession, hashToken, newToken, sessionsChanged, toActor } from '../../auth/session';
 import { conflict, forbidden, notFound, ruleViolation, unauthorized } from '../../errors';
 import { decodeCursor, toPage, type PageQuery } from '../../http/pagination';
 import { audit } from '../audit';
@@ -92,6 +92,7 @@ export async function changePassword(db: Db, actor: Actor, input: { current: str
   return db.tx(async (tx) => {
     await tx.query('UPDATE users SET password_hash = $2, updated_at = $3 WHERE id = $1', [actor.id, passwordHash, now]);
     await tx.query('DELETE FROM sessions WHERE user_id = $1', [actor.id]); // signs out every device
+    await sessionsChanged(tx);
     await audit(tx, actor.id, 'PASSWORD_CHANGED', 'user', actor.id);
     return createSession(tx, actor.id, now);
   });
@@ -99,6 +100,7 @@ export async function changePassword(db: Db, actor: Actor, input: { current: str
 
 export async function updateProfile(db: Db, actor: Actor, input: { fullName: string; phone: string }, now: Date) {
   await db.query('UPDATE users SET full_name = $2, phone = $3, updated_at = $4 WHERE id = $1', [actor.id, input.fullName.trim(), input.phone, now]);
+  await sessionsChanged(db);
   return { ok: true };
 }
 
@@ -191,6 +193,7 @@ export async function changeHome(db: Db, actor: Actor, input: { homeId: string; 
       `UPDATE users SET home_id = $2, occupancy = $3, residency_status = 'PENDING', verified_by = NULL, verified_at = NULL, updated_at = $4 WHERE id = $1`,
       [actor.id, home.id, input.occupancy, now],
     );
+    await sessionsChanged(tx);
     await audit(tx, actor.id, 'HOME_CHANGED', 'user', actor.id, { from: actor.homeId, to: home.id, occupancy: input.occupancy });
     return { residencyStatus: 'PENDING' as const };
   });
@@ -424,6 +427,7 @@ export async function acceptInvite(db: Db, input: { token: string; password: str
       LEGAL.version,
     ]);
     await tx.query('DELETE FROM sessions WHERE user_id = $1', [invite.user_id]);
+    await sessionsChanged(tx);
     const row = await one<Parameters<typeof toActor>[0]>(tx, `SELECT ${ACTOR_COLUMNS} FROM users u WHERE u.id = $1 AND u.status = 'ACTIVE'`, [invite.user_id]);
     if (!row) throw ruleViolation('INVITE_INVALID', 'This account is no longer active.');
     await audit(tx, row.id, 'INVITE_ACCEPTED', 'user', row.id);
@@ -468,6 +472,7 @@ async function decideResidency(tx: Queryable, deciderId: string, userId: string,
     deciderId,
     now,
   ]);
+  await sessionsChanged(tx);
   await audit(tx, deciderId, approve ? 'RESIDENT_VERIFIED' : 'RESIDENT_REJECTED', 'user', userId);
   await notify(tx, [userId], {
     title: approve ? 'Your home is confirmed' : 'We could not confirm your home',
@@ -631,6 +636,7 @@ export async function deleteAccount(db: Db, actor: Actor, password: string, now:
     await tx.query('DELETE FROM solar_leads WHERE user_id = $1', [id]);
     await tx.query('DELETE FROM notifications WHERE user_id = $1', [id]);
     await tx.query('DELETE FROM sessions WHERE user_id = $1', [id]);
+    await sessionsChanged(tx);
     await tx.query('DELETE FROM user_invites WHERE user_id = $1', [id]);
     await tx.query(
       `UPDATE users SET status = 'DELETED', email = 'deleted-' || id || '@invalid', full_name = 'Deleted user', phone = NULL,

@@ -5,9 +5,10 @@ import type { Actor } from '../auth/actor';
 import { actorFromToken, readSessionToken } from '../auth/session';
 import { getConfig, type Config } from '../config';
 import { getDb, type Db } from '../db/client';
-import { AppError, badRequest, forbidden, notFound, tooManyRequests, unauthorized } from '../errors';
+import { AppError, badRequest, forbidden, notFound, unauthorized } from '../errors';
 import { log } from '../logger';
 import { readBody } from './body';
+import { enforceRateLimit } from './rate-limit';
 
 /**
  * A small declarative router. Every endpoint is one `RouteDef` that states who
@@ -104,19 +105,6 @@ function requestIdOf(req: Request): string {
     // An invalid configuration is reported by the request itself, below.
   }
   return randomUUID();
-}
-
-/** Fixed-window counter in the database, so it holds across instances. */
-async function enforceRateLimit(db: Db, key: string, limit: number, windowSec: number, now: Date): Promise<void> {
-  const windowStart = new Date(Math.floor(now.getTime() / (windowSec * 1000)) * windowSec * 1000);
-  const rows = await db.query<{ count: number }>(
-    `INSERT INTO rate_limits (key, window_start) VALUES ($1, $2)
-     ON CONFLICT (key, window_start) DO UPDATE SET count = rate_limits.count + 1 RETURNING count`,
-    [key, windowStart],
-  );
-  if (rows[0]!.count > limit) {
-    throw tooManyRequests(Math.ceil((windowStart.getTime() + windowSec * 1000 - now.getTime()) / 1000));
-  }
 }
 
 function bearerMatches(req: Request, secret: string | undefined): boolean {

@@ -1,6 +1,7 @@
 import { one, type Db, type Queryable } from '../../db/client';
 import { assertTownshipAccess, type Actor } from '../../auth/actor';
 import { hashPassword } from '../../auth/password';
+import { sessionsChanged } from '../../auth/session';
 import { conflict, forbidden, notFound, ruleViolation } from '../../errors';
 import { audit } from '../audit';
 import { notify } from '../notifications';
@@ -190,6 +191,7 @@ export async function revokeCourier(db: Db, actor: Actor, userId: string, note: 
     await tx.query(`UPDATE courier_accounts SET status = 'REVOKED', decided_by = $2, decided_at = $3, note = $4 WHERE user_id = $1`, [userId, actor.id, now, note?.trim() || null]);
     await tx.query('DELETE FROM courier_station_access WHERE user_id = $1', [userId]);
     await tx.query('DELETE FROM sessions WHERE user_id = $1', [userId]);
+    await sessionsChanged(tx);
     await audit(tx, actor.id, 'COURIER_REVOKED', 'courier_account', userId, { note });
     return { ok: true };
   });

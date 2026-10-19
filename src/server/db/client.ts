@@ -21,6 +21,29 @@ export async function one<T = Row>(q: Queryable, sql: string, params?: unknown[]
   return (await q.query<T>(sql, params))[0];
 }
 
+/** Work waiting for each open transaction to commit. Dropped with the transaction if it rolls back. */
+const commitHooks = new WeakMap<Queryable, (() => Promise<void>)[]>();
+
+/**
+ * Runs `fn` once `q` has committed, or straight away when `q` is not a
+ * transaction. For side effects outside the database (such as clearing a
+ * cache) that must not run before other requests can see the change.
+ */
+export async function afterCommit(q: Queryable, fn: () => Promise<void>): Promise<void> {
+  const hooks = commitHooks.get(q);
+  if (hooks) hooks.push(fn);
+  else await fn();
+}
+
+/** Opens a transaction's queryable for `afterCommit` and returns the function that runs its hooks after COMMIT. */
+function trackCommit(tx: Queryable): () => Promise<void> {
+  const hooks: (() => Promise<void>)[] = [];
+  commitHooks.set(tx, hooks);
+  return async () => {
+    for (const hook of hooks) await hook().catch((error: unknown) => log.error('After-commit step failed', error));
+  };
+}
+
 const INT8 = 20;
 const DATE = 1082;
 const RETRYABLE = new Set(['40001', '40P01']); // serialization failure, deadlock
@@ -54,8 +77,11 @@ async function createPgDb(url: string): Promise<Db> {
         const client = await pool.connect();
         try {
           await client.query('BEGIN');
-          const result = await fn(pgClientQueryable(client));
+          const tx = pgClientQueryable(client);
+          const committed = trackCommit(tx);
+          const result = await fn(tx);
           await client.query('COMMIT');
+          await committed();
           return result;
         } catch (error) {
           await client.query('ROLLBACK').catch(() => undefined);
@@ -84,13 +110,19 @@ async function createPgliteDb(url: string): Promise<Db> {
   return {
     query: async <T>(sql: string, params?: unknown[]) => (await db.query<T>(sql, params)).rows,
     exec: async (sql) => void (await db.exec(sql)),
-    tx: (fn) =>
-      db.transaction((t) =>
-        fn({
+    async tx(fn) {
+      let committed = async () => {};
+      const result = await db.transaction((t) => {
+        const tx: Queryable = {
           query: async <T>(sql: string, params?: unknown[]) => (await t.query<T>(sql, params)).rows,
           exec: async (sql) => void (await t.exec(sql)),
-        }),
-      ) as Promise<never>,
+        };
+        committed = trackCommit(tx);
+        return fn(tx);
+      });
+      await committed();
+      return result as never;
+    },
     close: () => db.close(),
   };
 }

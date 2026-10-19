@@ -13,7 +13,7 @@ import { REPORT_CATEGORY_LABELS, formatPoints, formatRM, type ReportCategory } f
 
 interface Insights {
   people: { homes: number; residents: number; waiting: number; active_homes: number };
-  planet: { recycled_g: number; drop_offs: number; moved_m: number };
+  planet: { recycled_g: number; drop_offs: number; moved_m: number; loops: number };
   reports: { open: number; urgent_new: number; received: number; resolved: number; median_hours: number | null };
   community: { events: number; attendances: number; favours: number; items_shared: number };
   shops: { active_shops: number; sales: number; bill_sen: number; points_given: number; points_accepted: number; fees_sen: number };
@@ -31,8 +31,12 @@ interface Insights {
     tracked_m: number;
     visits: number;
     flood_alerts: number;
-    barriers_reported: number;
-    barriers_fixed_on_time: number;
+    access_resolved: number;
+    access_on_time: number;
+    access_open: number;
+    access_places: number;
+    access_verified: number;
+    access_blocked: number;
   };
   offers: { month: string; pledged: number; issued: number; used: number; shops: number };
 }
@@ -65,12 +69,13 @@ export default function InsightsPage() {
             <div className="space-y-6">
               <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
                 <Stat label="Active homes" value={d.people.active_homes} icon={Home} hint={`of ${d.people.homes} homes · ${d.people.residents} verified residents`} />
-                <Stat label="Recycled" value={d.planet.recycled_g} format={formatKg} icon={Recycle} tone="success" hint={`${d.planet.drop_offs} kiosk drop-offs`} />
-                <Stat label="Walked and cycled" value={d.planet.moved_m} format={formatKm} icon={Bike} hint="Completed township loops" />
-                <Stat label="Open reports" value={d.reports.open} icon={ClipboardList} tone={d.reports.urgent_new ? 'danger' : 'warning'} hint={d.reports.urgent_new ? `${d.reports.urgent_new} urgent and unread` : `${d.reports.resolved} resolved · median ${d.reports.median_hours ?? '–'} h`} />
+                <Stat label="Recycled" value={d.planet.recycled_g} format={formatKg} icon={Recycle} tone="success" hint={`${d.planet.drop_offs} drop-offs at kiosks and machines`} />
+                <Stat label="Township loops walked or cycled" value={d.planet.moved_m} format={formatKm} icon={Bike} hint={`${d.planet.loops} loops completed`} />
+                <Stat label="Open Lapor reports" value={d.reports.open} icon={ClipboardList} tone={d.reports.urgent_new ? 'danger' : 'warning'} hint={d.reports.urgent_new ? `${d.reports.urgent_new} urgent and unread` : `${d.reports.resolved} resolved · median ${d.reports.median_hours ?? '–'} h`} />
                 <Stat label="Shop sales through SimeTown" value={d.shops.bill_sen} format={formatRM} icon={Store} hint={`${d.shops.sales} sales at ${d.shops.active_shops} shops`} />
                 <Stat label="Points given" value={d.points.from_shops + d.points.from_campaigns} icon={CheckCircle2} tone="gold" hint={`${formatPoints(d.points.from_shops)} by shops · ${formatPoints(d.points.from_campaigns)} by campaigns`} />
                 <Stat label="Points spent locally" value={d.shops.points_accepted} format={formatRM} icon={Store} tone="success" hint="Accepted by township shops" />
+                <Stat label="Accessible places blocked" value={d.smart.access_blocked} icon={Accessibility} tone={d.smart.access_blocked ? 'danger' : 'success'} hint={`${d.smart.access_open} open access issues`} />
               </div>
 
               <Card className={matched ? 'border-success-600/30' : 'border-accent-200'}>
@@ -103,64 +108,24 @@ export default function InsightsPage() {
                 </dl>
               </Card>
 
-              <div className="grid gap-4 lg:grid-cols-2">
-                <Card>
+              {/* A chart beside a summary of the same height; long lists run full width. No row leaves a gap. */}
+              <div className="grid gap-4 lg:grid-cols-3">
+                <Card className="flex flex-col lg:col-span-2">
                   <CardHeader title="Last 14 days" description="Verified actions and shop sales per day." />
-                  <div className="p-5">
+                  <div className="flex-1 p-5">
                     <BarChart label="Verified actions and shop sales per day" series={[{ name: 'Verified actions', className: 'bg-brand-600' }, { name: 'Shop sales', className: 'bg-gold-500' }]} data={d.daily.map((row) => ({ label: formatDay(row.day), values: [row.actions, row.sales] }))} />
                   </div>
                 </Card>
-                <Card>
-                  <CardHeader title="Actions by feature" description="Verified actions that earned Impact XP." />
-                  <div className="p-5">
-                    <RankBars rows={d.byActivity.map((a) => ({ label: a.label, value: a.actions }))} />
-                  </div>
-                </Card>
-                <Card>
-                  <CardHeader title="Where open reports cluster" description="By area and by type." />
-                  <div className="grid gap-6 p-5 sm:grid-cols-2">
-                    <RankBars tone="bg-accent-500" rows={d.byZone.map((z) => ({ label: z.zone, value: z.open }))} />
-                    {d.byCategory.length ? <RankBars tone="bg-warning-600" rows={d.byCategory.map((c) => ({ label: REPORT_CATEGORY_LABELS[c.category], value: c.open }))} /> : <p className="text-sm text-ink-500"><Text>No open reports.</Text></p>}
-                  </div>
-                </Card>
-                <Card className="lg:col-span-2">
-                  <CardHeader title="Smart township, last 30 days" description="The third edition's features: machines, tracked trips, visitors, flood alerts, access and nature." />
-                  <dl className="grid grid-cols-2 gap-px bg-ink-100 sm:grid-cols-3 lg:grid-cols-6">
-                    {[
-                      [Cpu, 'Machine uptime', `${d.smart.machines_online} of ${d.smart.machines} online`],
-                      [Recycle, 'Recycled at machines', formatKg(d.smart.machine_g)],
-                      [Bike, 'Tracked walks and rides', formatKm(d.smart.tracked_m)],
-                      [DoorOpen, 'Visitors at the gate', String(d.smart.visits)],
-                      [Droplets, 'Flood alerts sent', String(d.smart.flood_alerts)],
-                      [Accessibility, 'Barriers fixed within 7 days', `${d.smart.barriers_fixed_on_time} of ${d.smart.barriers_reported}`],
-                      [Recycle, 'Guest recycling sessions', String(d.smart.guest_sessions)],
-                      [Tag, 'Shop pledges this month', formatRM(d.offers.pledged)],
-                      [Tag, 'Offer points given / used', `${formatPoints(d.offers.issued)} / ${formatPoints(d.offers.used)}`],
-                    ].map(([Icon, label, value]) => {
-                      const I = Icon as typeof Cpu;
-                      return (
-                        <div key={label as string} className="bg-white px-4 py-4">
-                          <dt className="flex items-center gap-1.5 text-xs font-medium text-ink-500">
-                            <I className="size-3.5" aria-hidden />
-                            <Text>{label as string}</Text>
-                          </dt>
-                          <dd className="mt-1 font-display text-xl font-bold tabular-nums text-ink-900"><Text>{value as string}</Text></dd>
-                        </div>
-                      );
-                    })}
-                  </dl>
-                  <p className="px-5 py-3 text-xs text-ink-500"><Text>No pledge, no points: offer-backed points given this month (</Text><Text>{formatPoints(d.offers.issued)}</Text><Text>) can never pass what </Text><Text>{d.offers.shops}</Text><Text> shop offer</Text><Text>{d.offers.shops === 1 ? '' : 's'}</Text><Text> promised (</Text><Text>{formatPoints(d.offers.pledged)}</Text>).</p>
-                </Card>
-                <Card>
+                <Card className="flex flex-col">
                   <CardHeader title="Community" description="Neighbours meeting, helping and sharing." />
-                  <dl className="grid grid-cols-2 gap-px bg-ink-100">
+                  <dl className="grid flex-1 auto-rows-fr grid-cols-2 gap-px bg-ink-100">
                     {[
                       ['Events posted', d.community.events],
                       ['Event attendances', d.community.attendances],
                       ['Favours done', d.community.favours],
                       ['Items given or lent', d.community.items_shared],
                     ].map(([label, value]) => (
-                      <div key={label as string} className="bg-white px-5 py-4">
+                      <div key={label as string} className="flex flex-col justify-center bg-white px-5 py-4">
                         <dt className="text-xs font-medium text-ink-500"><Text>{label}</Text></dt>
                         <dd className="mt-1 font-display text-2xl font-bold tabular-nums text-ink-900"><Text>{value}</Text></dd>
                       </div>
@@ -168,6 +133,65 @@ export default function InsightsPage() {
                   </dl>
                 </Card>
               </div>
+
+              <Card>
+                <CardHeader title="Actions by feature" description="Verified actions that earned Impact XP, last 30 days." />
+                {(() => {
+                  const rows = d.byActivity.map((a) => ({ label: a.label, value: a.actions }));
+                  const half = Math.ceil(rows.length / 2);
+                  const max = Math.max(1, ...rows.map((r) => r.value));
+                  return (
+                    <div className="grid gap-x-10 gap-y-3 p-5 md:grid-cols-2">
+                      <RankBars max={max} rows={rows.slice(0, half)} />
+                      <RankBars max={max} rows={rows.slice(half)} />
+                    </div>
+                  );
+                })()}
+              </Card>
+
+              <Card>
+                <CardHeader title="Where open Lapor reports cluster" description="By area and by type." />
+                <div className="grid gap-x-10 gap-y-6 p-5 md:grid-cols-2">
+                  <div>
+                    <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-500"><Text>By area</Text></p>
+                    <RankBars tone="bg-accent-500" rows={d.byZone.map((z) => ({ label: z.zone, value: z.open }))} />
+                  </div>
+                  <div>
+                    <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-500"><Text>By type</Text></p>
+                    {d.byCategory.length ? <RankBars tone="bg-warning-600" rows={d.byCategory.map((c) => ({ label: REPORT_CATEGORY_LABELS[c.category], value: c.open }))} /> : <p className="text-sm text-ink-500"><Text>No open reports.</Text></p>}
+                  </div>
+                </div>
+              </Card>
+
+              <Card>
+                <CardHeader title="Smart township, last 30 days" description="Recycling machines, GPS-tracked trips, visitors, flood alerts, accessibility and Shop Offers." />
+                <dl className="grid grid-cols-2 gap-px bg-ink-100 lg:grid-cols-5">
+                  {[
+                    [Cpu, 'Machine uptime', `${d.smart.machines_online} of ${d.smart.machines} online`],
+                    [Recycle, 'Recycled at machines', formatKg(d.smart.machine_g)],
+                    [Recycle, 'Guest recycling sessions', String(d.smart.guest_sessions)],
+                    [Bike, 'GPS-tracked walks and rides', formatKm(d.smart.tracked_m)],
+                    [DoorOpen, 'Visitors at the gate', String(d.smart.visits)],
+                    [Droplets, 'Flood alerts sent', String(d.smart.flood_alerts)],
+                    [Accessibility, 'Access issues fixed on time', `${d.smart.access_on_time} of ${d.smart.access_resolved}`],
+                    [ShieldCheck, 'Accessible places verified', `${d.smart.access_verified} of ${d.smart.access_places}`],
+                    [Tag, 'Shop pledges this month', formatRM(d.offers.pledged)],
+                    [Tag, 'Offer points given / used', `${formatPoints(d.offers.issued)} / ${formatPoints(d.offers.used)}`],
+                  ].map(([Icon, label, value]) => {
+                    const I = Icon as typeof Cpu;
+                    return (
+                      <div key={label as string} className="bg-white px-4 py-4">
+                        <dt className="flex items-center gap-1.5 text-xs font-medium text-ink-500">
+                          <I className="size-3.5 shrink-0" aria-hidden />
+                          <Text>{label as string}</Text>
+                        </dt>
+                        <dd className="mt-1 font-display text-xl font-bold tabular-nums text-ink-900"><Text>{value as string}</Text></dd>
+                      </div>
+                    );
+                  })}
+                </dl>
+                <p className="px-5 py-3 text-xs text-ink-500"><Text>{`No pledge, no points: offer-backed points given this month (${formatPoints(d.offers.issued)}) can never pass what ${d.offers.shops} shop offer(s) promised (${formatPoints(d.offers.pledged)}).`}</Text></p>
+              </Card>
             </div>
           );
         }}

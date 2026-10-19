@@ -1,7 +1,7 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual, type JsonWebKey } from 'node:crypto';
 import { LEGAL } from '@/shared/legal';
 import { one, type Db } from '../../db/client';
-import { ACTOR_COLUMNS, COURIER_SESSION_HOURS, createSession, hashToken, toActor } from '../../auth/session';
+import { ACTOR_COLUMNS, COURIER_SESSION_HOURS, createSession, hashToken, sessionsChanged, toActor } from '../../auth/session';
 import type { Actor } from '../../auth/actor';
 import { forbidden, notFound, ruleViolation, unauthorized } from '../../errors';
 import { audit } from '../audit';
@@ -183,7 +183,10 @@ export async function applyDirectoryChange(db: Db, company: Pick<CompanyRow, 'id
     await tx.query(`UPDATE courier_accounts SET status = $2, decided_at = $3, note = $4, last_verified_at = CASE WHEN $2 = 'ACTIVE' THEN $3 ELSE last_verified_at END WHERE user_id = $1`, [
       account.user_id, status, now, `Changed by ${company.name}’s own system`,
     ]);
-    if (status !== 'ACTIVE') await tx.query('DELETE FROM sessions WHERE user_id = $1', [account.user_id]);
+    if (status !== 'ACTIVE') {
+      await tx.query('DELETE FROM sessions WHERE user_id = $1', [account.user_id]);
+      await sessionsChanged(tx);
+    }
     if (status !== 'REVOKED') {
       await notify(tx, [account.user_id], { title: status === 'ACTIVE' ? 'Your locker access is active' : 'Your locker access is suspended', body: `${company.name} changed your access to the township’s lockers.`, link: '/courier' });
     }

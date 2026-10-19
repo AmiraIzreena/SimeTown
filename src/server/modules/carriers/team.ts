@@ -1,5 +1,6 @@
 import { one, type Db, type Queryable } from '../../db/client';
 import type { Actor } from '../../auth/actor';
+import { sessionsChanged } from '../../auth/session';
 import { conflict, forbidden, notFound, ruleViolation } from '../../errors';
 import { audit } from '../audit';
 import { issueInvite } from '../identity/service';
@@ -109,7 +110,10 @@ export async function setTeamMember(db: Db, actor: Actor, userId: string, input:
       `UPDATE courier_accounts SET status = $2, decided_by = $3, decided_at = $4, note = $5, last_verified_at = CASE WHEN $2 = 'ACTIVE' THEN $4 ELSE last_verified_at END WHERE user_id = $1`,
       [userId, input.status, actor.id, now, input.note?.trim() || null],
     );
-    if (input.status !== 'ACTIVE') await tx.query('DELETE FROM sessions WHERE user_id = $1', [userId]);
+    if (input.status !== 'ACTIVE') {
+      await tx.query('DELETE FROM sessions WHERE user_id = $1', [userId]);
+      await sessionsChanged(tx);
+    }
     await companyEvent(tx, m.company_id, m.township_id, `COURIER_${input.status}`, actor.id, `${a.full_name}${input.note ? `: ${input.note.trim()}` : ''}`, now);
     await audit(tx, actor.id, `COURIER_${input.status}_BY_COMPANY`, 'user', userId, { note: input.note });
     if (input.status !== 'REVOKED') {
@@ -171,6 +175,7 @@ export async function revalidateCouriers(db: Db, now: Date) {
   );
   for (const s of stale) {
     await db.query('DELETE FROM sessions WHERE user_id = $1', [s.user_id]);
+    await sessionsChanged(db);
     await companyEvent(db, s.company_id, s.township_id, 'COURIER_SUSPENDED', null, `${s.full_name}: not reconfirmed within ${RECONFIRM_DAYS} days`, now);
     const managers = await db.query<{ user_id: string }>(`SELECT user_id FROM courier_accounts WHERE company_id = $1 AND township_id = $2 AND kind = 'MANAGER' AND status = 'ACTIVE'`, [s.company_id, s.township_id]);
     await notify(db, managers.map((x) => x.user_id), { title: 'A courier needs reconfirming', body: `${s.full_name} was paused because nobody reconfirmed them in ${RECONFIRM_DAYS} days.`, link: '/courier/team' });
@@ -191,6 +196,7 @@ export async function revalidateCouriers(db: Db, now: Date) {
     });
     if (e.ended && (await companyEvent(db, e.company_id, e.township_id, 'AGREEMENT_ENDED', null, e.agreement_until, now, `agreement-ended:${e.township_id}:${e.agreement_until}`))) {
       await db.query('DELETE FROM sessions WHERE user_id IN (SELECT user_id FROM courier_accounts WHERE company_id = $1 AND township_id = $2)', [e.company_id, e.township_id]);
+      await sessionsChanged(db);
     }
   }
   await db.query(`DELETE FROM courier_login_states WHERE expires_at < $1::timestamptz - interval '1 day'`, [now]);

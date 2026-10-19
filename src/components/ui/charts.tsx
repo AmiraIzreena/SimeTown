@@ -45,8 +45,8 @@ export function BarChart({ data, series, label }: {
 }
 
 /** Horizontal bars for a ranked list. */
-export function RankBars({ rows, format = (n) => n.toLocaleString('en-MY'), tone = 'bg-brand-600' }: { rows: { label: string; value: number; highlight?: boolean }[]; format?: (n: number) => string; tone?: string }) {
-  const max = Math.max(1, ...rows.map((r) => r.value));
+export function RankBars({ rows, format = (n) => n.toLocaleString('en-MY'), tone = 'bg-brand-600', max: scale }: { rows: { label: string; value: number; highlight?: boolean }[]; format?: (n: number) => string; tone?: string; /** Share one scale across several lists shown side by side. */ max?: number }) {
+  const max = Math.max(1, scale ?? 0, ...rows.map((r) => r.value));
   return (
     <ul className="space-y-3">
       {rows.map((row, index) => (
