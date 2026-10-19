@@ -12,7 +12,7 @@ The signed-in `/notifications` page reuses the existing `notifications` table an
 | Incident engine | Assignment, resident updates, questions, escalation and resolution | Existing case reference links |
 | Rewards and merchant sales | Points earned, redemption requests/results, expiry and expiry reminders | `/app/wallet` (History is the default tab) |
 | Community | Responses, confirmations and moderation updates | Existing Jiran/Kongsi sections |
-| Recycling | Collection requests, confirmations and outcomes | Existing Kitar or staff recycling sections |
+| Recycling | Household: booking confirmed (with the gate pass), day-before reminder, enter the weight after the gate scan, weight recorded (XP/points), missed so please rebook, under review, review complete. Staff: exceptions only (weights to check, disputed misses, flagged homes and collectors). SDP HQ: flagged homes and collectors only | `/app/kitar`, `/console/recycling` |
 | Township/account services | Flood alerts, access requests, approvals and assistant replies | Existing role-specific sections |
 
 No fictitious marketplace orders or announcement system was added. Existing event producers continue to call the same service. New submission receipts and points-earned notices are created in the transaction that records the event.

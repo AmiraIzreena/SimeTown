@@ -18903,8 +18903,8 @@
         "tags": [
           "Kitar"
         ],
-        "summary": "Add a kiosk",
-        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "summary": "Add a kiosk (township admin or SDP HQ)",
+        "description": "Signed-in TOWNSHIP_ADMIN, HQ_ADMIN.",
         "operationId": "postAdminKitarKiosks",
         "parameters": [],
         "requestBody": {
@@ -18924,6 +18924,11 @@
                     "type": "string",
                     "minLength": 3,
                     "maxLength": 160
+                  },
+                  "townshipId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                   }
                 },
                 "required": [
@@ -19858,6 +19863,27 @@
                 "COOKING_OIL"
               ]
             }
+          },
+          {
+            "name": "day",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            }
+          },
+          {
+            "name": "slot",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "MORNING",
+                "AFTERNOON"
+              ]
+            }
           }
         ],
         "security": [
@@ -19931,7 +19957,7 @@
         "tags": [
           "Kitar"
         ],
-        "summary": "Book a collection of bulky or special items",
+        "summary": "Book a collection of bulky or special items; confirmed at once, with the gate pass",
         "description": "Signed-in RESIDENT.",
         "operationId": "postKitarCollections",
         "parameters": [],
@@ -20100,15 +20126,46 @@
         }
       }
     },
-    "/api/v1/admin/kitar/collectors": {
-      "get": {
+    "/api/v1/kitar/collections/{collectionId}/weight": {
+      "post": {
         "tags": [
           "Kitar"
         ],
-        "summary": "Partner collectors with what they have collected",
-        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
-        "operationId": "getAdminKitarCollectors",
-        "parameters": [],
+        "summary": "Send what the collector took: credited at once after a gate scan, within the automatic limit; otherwise checked by staff",
+        "description": "Signed-in RESIDENT.",
+        "operationId": "postKitarCollectionsCollectionIdWeight",
+        "parameters": [
+          {
+            "name": "collectionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "weightG": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 500000
+                  }
+                },
+                "required": [
+                  "weightG"
+                ]
+              }
+            }
+          }
+        },
         "security": [
           {
             "session": []
@@ -20128,6 +20185,273 @@
               }
             }
           },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/kitar/collections/{collectionId}/came": {
+      "post": {
+        "tags": [
+          "Kitar"
+        ],
+        "summary": "Say the collector came on a collection marked missed (staff check it)",
+        "description": "Signed-in RESIDENT.",
+        "operationId": "postKitarCollectionsCollectionIdCame",
+        "parameters": [
+          {
+            "name": "collectionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/kitar/collections/{collectionId}/demo/today": {
+      "post": {
+        "tags": [
+          "Kitar"
+        ],
+        "summary": "Local demos only (pglite in development): move my confirmed collection and its gate pass to today",
+        "description": "Signed-in RESIDENT.",
+        "operationId": "postKitarCollectionsCollectionIdDemoToday",
+        "parameters": [
+          {
+            "name": "collectionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/kitar/collections/{collectionId}/demo/gate-scan": {
+      "post": {
+        "tags": [
+          "Kitar"
+        ],
+        "summary": "Local demos only (pglite in development): the real gate scan of my collection's pass, made with the township's guard account",
+        "description": "Signed-in RESIDENT.",
+        "operationId": "postKitarCollectionsCollectionIdDemoGateScan",
+        "parameters": [
+          {
+            "name": "collectionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/kitar/collectors": {
+      "get": {
+        "tags": [
+          "Kitar"
+        ],
+        "summary": "Partner collectors with what they have collected",
+        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "getAdminKitarCollectors",
+        "parameters": [
+          {
+            "name": "townshipId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
           "401": {
             "$ref": "#/components/responses/Error"
           },
@@ -20140,8 +20464,8 @@
         "tags": [
           "Kitar"
         ],
-        "summary": "Add a partner collector",
-        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "summary": "Add a partner collector (township admin or SDP HQ)",
+        "description": "Signed-in TOWNSHIP_ADMIN, HQ_ADMIN.",
         "operationId": "postAdminKitarCollectors",
         "parameters": [],
         "requestBody": {
@@ -20179,20 +20503,54 @@
                       ]
                     }
                   },
-                  "days": {
-                    "type": "string",
-                    "minLength": 2,
-                    "maxLength": 80
+                  "schedule": {
+                    "type": "object",
+                    "properties": {
+                      "days": {
+                        "minItems": 1,
+                        "maxItems": 7,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "MON",
+                            "TUE",
+                            "WED",
+                            "THU",
+                            "FRI",
+                            "SAT",
+                            "SUN"
+                          ]
+                        }
+                      },
+                      "time": {
+                        "type": "string",
+                        "enum": [
+                          "MORNING",
+                          "AFTERNOON",
+                          "BOTH"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "days",
+                      "time"
+                    ]
                   },
                   "notes": {
                     "type": "string",
                     "maxLength": 200
+                  },
+                  "townshipId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                   }
                 },
                 "required": [
                   "name",
                   "materials",
-                  "days"
+                  "schedule"
                 ]
               }
             }
@@ -20310,12 +20668,59 @@
         }
       }
     },
+    "/api/v1/admin/kitar/collectors/{collectorId}/today": {
+      "get": {
+        "tags": [
+          "Kitar"
+        ],
+        "summary": "A collector's collections today, to copy or print for them",
+        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "getAdminKitarCollectorsCollectorIdToday",
+        "parameters": [
+          {
+            "name": "collectorId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
     "/api/v1/admin/kitar/collections": {
       "get": {
         "tags": [
           "Kitar"
         ],
-        "summary": "Booked collections, open ones first",
+        "summary": "Recent collections, newest first, and how each was settled",
         "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
         "operationId": "getAdminKitarCollections",
         "parameters": [
@@ -20332,6 +20737,16 @@
                 "CANCELLED",
                 "MISSED"
               ]
+            }
+          },
+          {
+            "name": "townshipId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
             }
           }
         ],
@@ -20366,12 +20781,147 @@
         }
       }
     },
+    "/api/v1/admin/kitar/collections/exceptions": {
+      "get": {
+        "tags": [
+          "Kitar"
+        ],
+        "summary": "Only what needs a person: weights and disputes to check, homes and collectors to look at",
+        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "getAdminKitarCollectionsExceptions",
+        "parameters": [
+          {
+            "name": "townshipId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/kitar/collections/{collectionId}/review": {
+      "post": {
+        "tags": [
+          "Kitar"
+        ],
+        "summary": "Settle a collection waiting for review: accept a weight, or close it with no points",
+        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "postAdminKitarCollectionsCollectionIdReview",
+        "parameters": [
+          {
+            "name": "collectionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "decision": {
+                    "type": "string",
+                    "enum": [
+                      "ACCEPT",
+                      "REJECT"
+                    ]
+                  },
+                  "weightG": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 500000
+                  }
+                },
+                "required": [
+                  "decision"
+                ]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
     "/api/v1/admin/kitar/collections/{collectionId}/confirm": {
       "post": {
         "tags": [
           "Kitar"
         ],
-        "summary": "Confirm a collection; the collector gets a gate pass for the day",
+        "summary": "Confirm a request made before bookings were confirmed at once; the collector gets a gate pass for the day",
         "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
         "operationId": "postAdminKitarCollectionsCollectionIdConfirm",
         "parameters": [
@@ -20589,7 +21139,18 @@
         "summary": "Material accepted by month and why machines turned items away (the recycling test)",
         "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
         "operationId": "getAdminKitarStats",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "townshipId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
         "security": [
           {
             "session": []
@@ -20608,6 +21169,9 @@
                 }
               }
             }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
           },
           "401": {
             "$ref": "#/components/responses/Error"
@@ -26667,7 +27231,7 @@
         "tags": [
           "System"
         ],
-        "summary": "Run a scheduled job (expire-points, float-check, settle, cleanup, flood-agent, parcel-reminders, lockers, couriers, incidents, access); bearer token",
+        "summary": "Run a scheduled job (expire-points, float-check, settle, cleanup, flood-agent, parcel-reminders, lockers, couriers, incidents, access, recycling); bearer token",
         "description": "Machine caller with a bearer token.",
         "operationId": "postInternalJobsName",
         "parameters": [

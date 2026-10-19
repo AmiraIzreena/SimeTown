@@ -1,8 +1,9 @@
 'use client';
 
 import { Text } from '@/components/ui/localized-text';
+import { ScheduleText } from '@/components/features/collector-schedule';
 
-import { Truck } from 'lucide-react';
+import { Scale, Truck } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader } from '@/components/ui/card';
@@ -34,6 +35,14 @@ interface Collection {
   collector: string;
   collector_phone: string | null;
   pass_code: string | null;
+  gate_scanned: boolean;
+  reported_weight_g: number | null;
+  in_review: boolean;
+  can_report: boolean;
+  can_dispute: boolean;
+  /** Local demos only: the demo steps are offered for this collection. */
+  demo: boolean;
+  is_today: boolean;
 }
 
 export const COLLECTION_STATUS = {
@@ -53,15 +62,20 @@ const tomorrow = () => {
 
 /**
  * Booked collections from partner collectors, for things too big or too
- * special for a kiosk. Once a collection is confirmed, the collector's gate
- * pass is made for the household automatically.
+ * special for a kiosk. A booking is confirmed at once and the collector's gate
+ * pass is made for the household. Once the gate scans the collector in, the
+ * household types the weight here.
  */
 export function Collections({ request }: { request: { material: Material; n: number } | null }) {
   const mine = useApi<Collection[]>('/kitar/collections');
-  const collectors = useApi<Collector[]>('/kitar/collectors');
+  // Only collectors who work on the chosen day and time; the list reloads when either changes.
+  const [day, setDay] = useState(tomorrow);
+  const [slot, setSlot] = useState<'MORNING' | 'AFTERNOON'>('MORNING');
+  const collectors = useApi<Collector[]>(/^\d{4}-\d{2}-\d{2}$/.test(day) ? `/kitar/collectors?day=${day}&slot=${slot}` : null);
   const [open, setOpen] = useState(false);
   const [materials, setMaterials] = useState<Material[]>([]);
   const [collectorId, setCollectorId] = useState('');
+  const [weighing, setWeighing] = useState<Collection | null>(null);
   // A tap on "Book a collection" in the guide opens the form with that material chosen.
   const [seen, setSeen] = useState(0);
   if (request && request.n !== seen) {
@@ -72,7 +86,7 @@ export function Collections({ request }: { request: { material: Material; n: num
   }
   const fitting = (collectors.data ?? []).filter((c) => materials.every((m) => c.materials.includes(m)));
   const book = useAction((body: Record<string, unknown>) => api.post('/kitar/collections', body), {
-    success: 'Requested. You will be told when the collector confirms.',
+    success: 'Booked. The gate has the collector’s pass.',
     onSuccess: () => {
       setOpen(false);
       setMaterials([]);
@@ -81,6 +95,31 @@ export function Collections({ request }: { request: { material: Material; n: num
     },
   });
   const cancel = useAction((id: string) => api.post(`/kitar/collections/${id}/cancel`), { success: 'Collection cancelled.', onSuccess: () => void mine.mutate() });
+  const sendWeight = useAction((id: string, weightG: number) => api.post<{ status: 'COLLECTED' | 'IN_REVIEW' }>(`/kitar/collections/${id}/weight`, { weightG }), {
+    success: (r) => (r.status === 'COLLECTED' ? 'Thank you. The weight is recorded.' : 'Thank you. The township office will check the weight.'),
+    onSuccess: () => {
+      setWeighing(null);
+      void mine.mutate();
+    },
+  });
+  // Local demos only: the server refuses these anywhere else.
+  const demoToday = useAction((id: string) => api.post(`/kitar/collections/${id}/demo/today`), {
+    success: 'Demo: the collection is now today.',
+    onSuccess: () => void mine.mutate(),
+  });
+  const demoScan = useAction((id: string) => api.post(`/kitar/collections/${id}/demo/gate-scan`), {
+    success: 'Demo: the gate has scanned the pass.',
+    onSuccess: () => void mine.mutate(),
+  });
+  const came = useAction((id: string) => api.post(`/kitar/collections/${id}/came`), {
+    success: 'Thank you. The township office will check and let you know.',
+    onSuccess: () => void mine.mutate(),
+  });
+  const submitWeight = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const kg = Number(new FormData(event.currentTarget).get('kg'));
+    if (kg > 0 && weighing) void sendWeight.run(weighing.id, Math.round(kg * 1000));
+  };
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -88,8 +127,8 @@ export function Collections({ request }: { request: { material: Material; n: num
       collectorId,
       materials,
       items: String(form.get('items') ?? '').trim(),
-      day: String(form.get('day') ?? ''),
-      slot: String(form.get('slot') ?? 'MORNING'),
+      day,
+      slot,
     });
   };
   const toggle = (m: Material) => {
@@ -101,7 +140,7 @@ export function Collections({ request }: { request: { material: Material; n: num
     <Card>
       <CardHeader
         title="Book a collection"
-        description="An old fridge, a box of e-waste, a big load of paper? A partner collector comes to your home. The gate gets their pass once they confirm."
+        description="An old fridge, a box of e-waste, a big load of paper? A partner collector comes to your home. The gate gets their pass as soon as you book."
         action={<Button size="sm" onClick={() => setOpen(true)}><Truck className="size-4" aria-hidden /><Text>Book</Text></Button>}
       />
       <Async state={mine} skeleton={<SkeletonList rows={1} className="p-5" />}>
@@ -122,21 +161,54 @@ export function Collections({ request }: { request: { material: Material; n: num
                       {x.materials.map((m) => <Text key={m}>{`${MATERIAL_INFO[m].label}. `}</Text>)}
                       {x.items}
                     </p>
-                    {x.status === 'CONFIRMED' && x.pass_code && <p className="text-sm text-ink-600"><Text>{`Gate pass ${x.pass_code} is ready in Tamu.`}</Text></p>}
+                    {x.status === 'CONFIRMED' && x.pass_code && !x.gate_scanned && <p className="text-sm text-ink-600"><Text>{`Gate pass ${x.pass_code} is ready in Tamu.`}</Text></p>}
                     {x.status === 'COLLECTED' && x.weight_g && <p className="text-sm text-success-700"><Text>{`${formatKg(x.weight_g)} collected`}</Text></p>}
+                    {x.in_review && <p className="text-sm text-ink-600"><Text>The township office is checking this collection.</Text></p>}
+                    {x.can_report && x.gate_scanned && <p className="text-sm font-semibold text-ink-900"><Text>How much did they take?</Text></p>}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge tone={COLLECTION_STATUS[x.status].tone}><Text>{COLLECTION_STATUS[x.status].label}</Text></Badge>
-                    {(x.status === 'REQUESTED' || x.status === 'CONFIRMED') && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge tone={x.in_review ? 'gold' : COLLECTION_STATUS[x.status].tone}><Text>{x.in_review ? 'Under review' : COLLECTION_STATUS[x.status].label}</Text></Badge>
+                    {x.can_report && (
+                      x.gate_scanned
+                        ? <Button size="sm" onClick={() => setWeighing(x)}><Scale className="size-4" aria-hidden /><Text>Enter the weight</Text></Button>
+                        : <Button size="sm" variant="ghost" onClick={() => setWeighing(x)}><Text>The collector came</Text></Button>
+                    )}
+                    {x.can_dispute && (
+                      <Button size="sm" variant="ghost" onClick={() => void came.run(x.id)} disabled={came.pending}><Text>The collector came</Text></Button>
+                    )}
+                    {(x.status === 'REQUESTED' || x.status === 'CONFIRMED') && !x.gate_scanned && !x.in_review && (
                       <Button size="sm" variant="ghost" onClick={() => void cancel.run(x.id)} disabled={cancel.pending}><Text>Cancel</Text></Button>
                     )}
                   </div>
+                  {x.demo && (
+                    <div className="basis-full rounded-lg border border-dashed border-warning-600 bg-warning-50 px-3 py-2.5">
+                      <p className="text-xs font-bold uppercase tracking-wide text-warning-700"><Text>Demo only</Text></p>
+                      <p className="mt-0.5 text-xs text-warning-700"><Text>For local demos. Only the date and the gate scan are simulated. Everything after works as normal.</Text></p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <Button size="sm" variant="secondary" onClick={() => void demoToday.run(x.id)} disabled={x.is_today || demoToday.pending}><Text>Move this collection to today</Text></Button>
+                        <Button size="sm" variant="secondary" onClick={() => void demoScan.run(x.id)} disabled={!x.is_today || demoScan.pending}><Text>Pretend the gate scanned the pass</Text></Button>
+                      </div>
+                      {!x.is_today && <p className="mt-1.5 text-xs text-warning-700"><Text>Move it to today first. The gate only accepts the pass on the collection day.</Text></p>}
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>
           )
         }
       </Async>
+
+      <Modal
+        open={weighing !== null}
+        onClose={() => setWeighing(null)}
+        title="How much did they take?"
+        description={weighing?.gate_scanned ? 'Use the weight the collector told you.' : 'The gate did not record the collector, so the township office will check this weight first.'}
+        footer={<><Button variant="secondary" onClick={() => setWeighing(null)}><Text>Cancel</Text></Button><Button type="submit" form="collection-weight" pending={sendWeight.pending}><Text>Send</Text></Button></>}
+      >
+        <form method="post" id="collection-weight" onSubmit={submitWeight}>
+          <Input label="Weight (kg)" name="kg" type="number" min={0.1} max={500} step={0.1} required error={sendWeight.fields.weightG} hint="Small weights are recorded straight away. Large ones are checked by the township office first." />
+        </form>
+      </Modal>
 
       <Modal
         open={open}
@@ -162,14 +234,22 @@ export function Collections({ request }: { request: { material: Material; n: num
               ))}
             </div>
           </fieldset>
-          <Select label="Collector" value={collectorId} onChange={(event) => setCollectorId(event.target.value)} error={book.fields.collectorId} hint={materials.length > 0 && fitting.length === 0 ? 'No collector takes all of these together. Book them separately.' : undefined}>
+          <Select
+            label="Collector" value={collectorId} onChange={(event) => setCollectorId(event.target.value)} error={book.fields.collectorId}
+            hint={collectors.data && collectors.data.length === 0
+              ? 'No collector works on that day. Try another day or time.'
+              : materials.length > 0 && fitting.length === 0 ? 'No collector takes all of these together. Book them separately.' : undefined}
+          >
             <option value=""><Text>Choose…</Text></option>
-            {fitting.map((c) => <option key={c.id} value={c.id}>{c.name} · {c.days}</option>)}
+            {fitting.map((c) => <option key={c.id} value={c.id}>{c.name} · <ScheduleText stored={c.days} /></option>)}
           </Select>
           <Textarea label="What should they collect?" name="items" maxLength={300} placeholder="e.g. One old fridge, and two boxes of old cables" required error={book.fields.items} />
           <div className="grid gap-3 sm:grid-cols-2">
-            <Input label="Day" name="day" type="date" min={tomorrow()} defaultValue={tomorrow()} required error={book.fields.day} />
-            <Select label="Time" name="slot" defaultValue="MORNING">
+            <Input
+              label="Day" name="day" type="date" min={tomorrow()} required error={book.fields.day}
+              value={day} onChange={(event) => { setDay(event.target.value); setCollectorId(''); }}
+            />
+            <Select label="Time" name="slot" value={slot} onChange={(event) => { setSlot(event.target.value as 'MORNING' | 'AFTERNOON'); setCollectorId(''); }}>
               <option value="MORNING"><Text>Morning</Text></option>
               <option value="AFTERNOON"><Text>Afternoon</Text></option>
             </Select>

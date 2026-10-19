@@ -1,6 +1,7 @@
 'use client';
 
 import { Text } from '@/components/ui/localized-text';
+import { ScheduleText } from '@/components/features/collector-schedule';
 import { LocalizedDiv } from '@/components/ui/localized-elements';
 
 import { CheckCircle2, CircleAlert, MapPin, Truck, XCircle } from 'lucide-react';
@@ -130,7 +131,7 @@ function Answer({ item, kiosks, onBook, onBack }: { item: GuideItem; kiosks: { i
           <p className="text-sm font-semibold text-brand-800"><Text>Or have it collected from home</Text></p>
           <ul className="mt-1 space-y-0.5 text-sm text-brand-800">
             {collectors.data.map((c) => (
-              <li key={c.id}>{c.name} · <Text>{c.days}</Text></li>
+              <li key={c.id}>{c.name} · <ScheduleText stored={c.days} /></li>
             ))}
           </ul>
           <Button size="sm" className="mt-3" onClick={() => onBook(item.material!)}>

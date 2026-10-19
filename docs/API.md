@@ -371,7 +371,7 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | POST | `/kitar/identify` | RESIDENT | Photo check: what material is this? (multipart form; the photo is not stored) |
 | POST | `/kitar/dropoffs` | RESIDENT | Record a drop-off at a kiosk |
 | GET | `/admin/kitar/kiosks` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Kiosks with their printable codes |
-| POST | `/admin/kitar/kiosks` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Add a kiosk |
+| POST | `/admin/kitar/kiosks` | TOWNSHIP_ADMIN, HQ_ADMIN | Add a kiosk (township admin or SDP HQ) |
 | POST | `/kitar/test-entry` | RESIDENT | Kitar test mode (local demos only): a practice entry, marked TEST and audited |
 | POST | `/kitar/machine/join` | RESIDENT | Start recycling at a bin by scanning the code on its screen |
 | GET | `/kitar/machine/session` | RESIDENT | My recycling session at a bin, live, and its result |
@@ -386,13 +386,20 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | POST | `/admin/kitar/machines/:machineId/finish` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Prototype: the bin signs its summary and closes the session |
 | GET | `/kitar/collectors` | RESIDENT | Partner collectors, what they take and when they come |
 | GET | `/kitar/collections` | RESIDENT | My home's booked collections |
-| POST | `/kitar/collections` | RESIDENT | Book a collection of bulky or special items |
+| POST | `/kitar/collections` | RESIDENT | Book a collection of bulky or special items; confirmed at once, with the gate pass |
 | POST | `/kitar/collections/:collectionId/cancel` | RESIDENT | Cancel a booked collection |
+| POST | `/kitar/collections/:collectionId/weight` | RESIDENT | Send what the collector took: credited at once after a gate scan, within the automatic limit; otherwise checked by staff |
+| POST | `/kitar/collections/:collectionId/came` | RESIDENT | Say the collector came on a collection marked missed (staff check it) |
+| POST | `/kitar/collections/:collectionId/demo/today` | RESIDENT | Local demos only (pglite in development): move my confirmed collection and its gate pass to today |
+| POST | `/kitar/collections/:collectionId/demo/gate-scan` | RESIDENT | Local demos only (pglite in development): the real gate scan of my collection's pass, made with the township's guard account |
 | GET | `/admin/kitar/collectors` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Partner collectors with what they have collected |
-| POST | `/admin/kitar/collectors` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Add a partner collector |
+| POST | `/admin/kitar/collectors` | TOWNSHIP_ADMIN, HQ_ADMIN | Add a partner collector (township admin or SDP HQ) |
 | POST | `/admin/kitar/collectors/:collectorId/active` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Pause or resume a collector |
-| GET | `/admin/kitar/collections` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Booked collections, open ones first |
-| POST | `/admin/kitar/collections/:collectionId/confirm` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Confirm a collection; the collector gets a gate pass for the day |
+| GET | `/admin/kitar/collectors/:collectorId/today` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | A collector's collections today, to copy or print for them |
+| GET | `/admin/kitar/collections` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Recent collections, newest first, and how each was settled |
+| GET | `/admin/kitar/collections/exceptions` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Only what needs a person: weights and disputes to check, homes and collectors to look at |
+| POST | `/admin/kitar/collections/:collectionId/review` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Settle a collection waiting for review: accept a weight, or close it with no points |
+| POST | `/admin/kitar/collections/:collectionId/confirm` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Confirm a request made before bookings were confirmed at once; the collector gets a gate pass for the day |
 | POST | `/admin/kitar/collections/:collectionId/collected` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Record the collector's weighed total (earns the household Impact XP) |
 | POST | `/admin/kitar/collections/:collectionId/missed` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | The collector did not come |
 | GET | `/admin/kitar/stats` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Material accepted by month and why machines turned items away (the recycling test) |
@@ -519,7 +526,7 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 
 | Method | Path | Who | What it does |
 | --- | --- | --- | --- |
-| POST | `/internal/jobs/:name` | Bearer token (cron) | Run a scheduled job (expire-points, float-check, settle, cleanup, flood-agent, parcel-reminders, lockers, couriers, incidents, access); bearer token |
+| POST | `/internal/jobs/:name` | Bearer token (cron) | Run a scheduled job (expire-points, float-check, settle, cleanup, flood-agent, parcel-reminders, lockers, couriers, incidents, access, recycling); bearer token |
 | GET | `/health` | Public | Liveness: the process is up |
 | GET | `/ready` | Public | Readiness: the database answers and the schema is migrated |
 | GET | `/openapi.json` | Public | This API as an OpenAPI 3.1 document |

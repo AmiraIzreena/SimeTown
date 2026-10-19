@@ -179,16 +179,17 @@ export async function recordDropOff(db: Db, actor: Actor, input: { kioskCode: st
 
 export async function listKiosksForStaff(db: Db, actor: Actor) {
   return db.query(
-    `SELECT k.id, k.name, k.location, k.code, k.active,
+    `SELECT k.id, k.name, k.location, k.code, k.active, t.name AS township,
             (SELECT coalesce(sum(weight_g), 0)::int FROM kitar_dropoffs d WHERE d.kiosk_id = k.id) AS total_g
-       FROM kitar_kiosks k WHERE ($1::uuid IS NULL OR k.township_id = $1) ORDER BY k.name`,
+       FROM kitar_kiosks k JOIN townships t ON t.id = k.township_id WHERE ($1::uuid IS NULL OR k.township_id = $1) ORDER BY t.name, k.name`,
     [actor.townshipId],
   );
 }
 
-export async function createKiosk(db: Db, actor: Actor, input: { name: string; location: string }) {
+/** SDP HQ names the township for a new kiosk; township staff add to their own. */
+export async function createKiosk(db: Db, actor: Actor, input: { name: string; location: string; townshipId?: string }) {
   return db.tx(async (tx) => {
-    const townshipId = await resolveTownship(tx, actor);
+    const townshipId = await resolveTownship(tx, actor, input.townshipId);
     if (await one(tx, 'SELECT 1 FROM kitar_kiosks WHERE township_id = $1 AND lower(name) = lower($2)', [townshipId, input.name])) {
       throw conflict('KIOSK_EXISTS', 'A kiosk with this name already exists.');
     }
