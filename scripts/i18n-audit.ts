@@ -50,7 +50,7 @@ export interface Finding {
  */
 export const ALLOWED = new Set([
   // Feature and brand names, the same in Malay.
-  'Akses+', 'Banjir', 'Gerak', 'Jimat', 'Jiran', 'Kitar', 'Kongsi', 'Lapor', 'Tamu', 'Taman', 'SimeTown', 'SimeTown Home', 'SimeTown Recycle',
+  'Akses+', 'Banjir', 'Gerak', 'Jimat', 'Jiran', 'Kitar', 'Komuniti', 'Kongsi', 'Lapor', 'Tamu', 'Taman', 'SimeTown', 'SimeTown Home', 'SimeTown Recycle',
   'Google Maps', 'Sime Darby Property', 'Kafe Seri Pagi', 'Kedai Runcit Mesra', 'SimeTown · Township App for all',
   // Words and templates that are identical in Malay.
   'SOS', 'SOS ·', 'Status', 'Planet', 'Menu', 'INC-000123',

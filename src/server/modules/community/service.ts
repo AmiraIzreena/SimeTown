@@ -10,9 +10,9 @@ import { getSettings } from '../settings';
 import { resolveTownship } from '../townships';
 
 /**
- * Jiran (events, help board) and Kongsi (give away, lend) share one model:
- * a post, people who respond to it, and the author confirming what happened.
- * XP is given only at that confirmation (BR4).
+ * Komuniti: Jiran (events, help board) and Kongsi (give away, lend) share one
+ * model: a post, people who respond to it, and the author confirming what
+ * happened. XP is given only at that confirmation (BR4).
  */
 
 const isStaff = (actor: Actor) => actor.role !== 'RESIDENT';
@@ -45,7 +45,7 @@ interface PostRow {
   is_mine: boolean;
 }
 
-export async function listPosts(db: Db, actor: Actor, filter: { type: PostType; mine?: boolean } & PageQuery) {
+export async function listPosts(db: Db, actor: Actor, filter: { type?: PostType[]; q?: string; mine?: boolean } & PageQuery) {
   const [after, afterId] = decodeCursor(filter.cursor, 'time');
   const townshipId = isStaff(actor) ? actor.townshipId : townshipOf(actor);
   const rows = await db.query<PostRow>(
@@ -54,12 +54,13 @@ export async function listPosts(db: Db, actor: Actor, filter: { type: PostType; 
             (SELECT count(*)::int FROM post_responses r WHERE r.post_id = p.id) AS responses,
             (SELECT r.status FROM post_responses r WHERE r.post_id = p.id AND r.user_id = $1) AS my_response
        FROM posts p JOIN users a ON a.id = p.author_id
-      WHERE p.type = $2 AND ($3::uuid IS NULL OR p.township_id = $3)
+      WHERE ($2::text[] IS NULL OR p.type = ANY($2::text[])) AND ($3::uuid IS NULL OR p.township_id = $3)
         AND (p.status IN ('OPEN', 'CLOSED') OR (p.author_id = $1 AND p.status = 'HIDDEN'))
         AND ($4::boolean IS NOT TRUE OR p.author_id = $1 OR EXISTS (SELECT 1 FROM post_responses r WHERE r.post_id = p.id AND r.user_id = $1))
         AND ($5::timestamptz IS NULL OR (p.created_at, p.id) < ($5::timestamptz, $6::uuid))
+        AND ($8::text IS NULL OR p.title ILIKE '%' || $8 || '%' OR p.body ILIKE '%' || $8 || '%' OR p.location ILIKE '%' || $8 || '%')
       ORDER BY p.created_at DESC, p.id DESC LIMIT $7`,
-    [actor.id, filter.type, townshipId, filter.mine ?? false, after, afterId, filter.limit + 1],
+    [actor.id, filter.type?.length ? filter.type : null, townshipId, filter.mine ?? false, after, afterId, filter.limit + 1, filter.q ? filter.q.replace(/[\\%_]/g, '\\$&') : null],
   );
   const page = toPage(rows, filter.limit, (r) => [r.created_at, r.id]);
 
@@ -102,10 +103,23 @@ export async function respondToPost(db: Db, actor: Actor, postId: string) {
     }
     const added = await tx.query('INSERT INTO post_responses (post_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING RETURNING user_id', [postId, resident.id]);
     if (added.length) {
-      await notify(tx, [post.author_id], { title: `Someone responded to "${post.title}"`, body: 'Open the post to see who.', link: post.type === 'GIVE' || post.type === 'LEND' ? '/app/kongsi' : '/app/jiran' });
+      await notify(tx, [post.author_id], { title: `Someone responded to "${post.title}"`, body: 'Open the post to see who.', link: '/app/komuniti' });
     }
     return { ok: true };
   });
+}
+
+/** The resident's own community record, counted from verified XP only. */
+export async function myImpact(db: Db, actor: Actor) {
+  return one<{ xp: number; activities: number; contributions: number; neighbours_helped: number }>(
+    db,
+    `SELECT coalesce(sum(xp), 0)::int AS xp,
+            count(*) FILTER (WHERE activity = 'JIRAN_EVENT')::int AS activities,
+            count(*) FILTER (WHERE activity = 'KONGSI_SHARE')::int AS contributions,
+            count(*) FILTER (WHERE activity = 'JIRAN_HELP')::int AS neighbours_helped
+       FROM xp_events WHERE user_id = $1 AND activity IN ('JIRAN_EVENT', 'JIRAN_HELP', 'KONGSI_SHARE')`,
+    [actor.id],
+  );
 }
 
 const XP_FOR: Record<PostType, { activity: Activity; to: 'responder' | 'author' }> = {

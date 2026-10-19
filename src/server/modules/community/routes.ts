@@ -8,9 +8,17 @@ const everyoneLocal = ['RESIDENT', ...STAFF] as const;
 
 export const communityRoutes = [
   route({
-    method: 'GET', path: '/posts', tag: 'Jiran & Kongsi', summary: 'Events, help requests and items to give or lend', auth: 'session', roles: everyoneLocal,
-    query: pageQuery.extend({ type: z.enum(POST_TYPES), mine: z.enum(['true', 'false']).optional().transform((v) => v === 'true') }),
+    method: 'GET', path: '/posts', tag: 'Jiran & Kongsi', summary: 'Events, help requests and items to give or lend: one type, several (GIVE,LEND) or all', auth: 'session', roles: everyoneLocal,
+    query: pageQuery.extend({
+      type: z.string().optional().transform((v) => (v ? v.split(',') : undefined)).pipe(z.array(z.enum(POST_TYPES)).optional()),
+      q: z.string().trim().max(80).optional().transform((v) => v || undefined),
+      mine: z.enum(['true', 'false']).optional().transform((v) => v === 'true'),
+    }),
     handler: (c) => community.listPosts(c.db, c.actor, c.query),
+  }),
+  route({
+    method: 'GET', path: '/posts/impact', tag: 'Jiran & Kongsi', summary: 'Your verified community XP: events attended, items shared, neighbours helped', auth: 'session', roles: everyoneLocal,
+    handler: (c) => community.myImpact(c.db, c.actor),
   }),
   route({
     method: 'POST', path: '/posts', tag: 'Jiran & Kongsi', summary: 'Create an event, a help request or a sharing offer', auth: 'session', roles: everyoneLocal,

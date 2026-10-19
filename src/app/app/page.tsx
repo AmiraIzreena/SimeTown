@@ -3,7 +3,7 @@
 import { Text } from '@/components/ui/localized-text';
 
 import {
-  Accessibility, Bike, Bot, CalendarClock, DoorOpen, Droplets, HandHeart, Inbox, Package, PiggyBank, Recycle, Repeat2, Sparkles, Sprout, Tag, TriangleAlert, Wallet, Zap, type LucideIcon,
+  Accessibility, Bike, Bot, CalendarClock, DoorOpen, Droplets, HandHeart, Inbox, Package, PiggyBank, Recycle, Sparkles, Sprout, Tag, TriangleAlert, Wallet, Zap, type LucideIcon,
 } from 'lucide-react';
 import { LocalizedLink as Link } from '@/components/ui/localized-elements';
 import { useState } from 'react';
@@ -50,8 +50,7 @@ const ACTIONS: { href: string; label: string; text: string; icon: LucideIcon }[]
   { href: '/app/jimat', label: 'Jimat', text: 'Read a bill or enter readings', icon: Zap },
   { href: '/app/banjir', label: 'Banjir', text: 'Check flood levels', icon: Droplets },
   { href: '/app/taman', label: 'Taman', text: 'Garden plots and wildlife', icon: Sprout },
-  { href: '/app/jiran', label: 'Jiran', text: 'Events and the help board', icon: HandHeart },
-  { href: '/app/kongsi', label: 'Kongsi', text: 'Give away or lend an item', icon: Repeat2 },
+  { href: '/app/komuniti', label: 'Komuniti', text: 'Events, help and sharing with neighbours', icon: HandHeart },
   { href: '/app/wallet', label: 'Points & XP', text: 'Balance, history, badges', icon: Wallet },
   { href: '/app/akses', label: 'Akses+', text: 'Simple Mode, read-aloud and access needs', icon: Accessibility },
   { href: '/app/assistant', label: 'Assistant', text: 'Ask about the township', icon: Bot },

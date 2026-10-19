@@ -1,6 +1,6 @@
 import {
   Accessibility, Barcode, Bike, Bot, Building2, CalendarCheck, ClipboardList, DoorOpen, Droplets, Gauge, HandHeart, History, Home, House, Inbox, Landmark, Layers, Leaf, MapPin, Megaphone,
-  MessageCircleQuestionMark, Package, Receipt, Recycle, Repeat2, ScrollText, Settings, ShieldAlert, Sprout, Store, Sun, Tag, TriangleAlert, UserRound, Users, Wallet, Wrench, Zap, type LucideIcon,
+  MessageCircleQuestionMark, Package, Receipt, Recycle, ScrollText, Settings, ShieldAlert, Sprout, Store, Sun, Tag, TriangleAlert, UserRound, Users, Wallet, Wrench, Zap, type LucideIcon,
 } from 'lucide-react';
 import { ADMINS, type Role } from '@/shared/domain';
 
@@ -31,8 +31,7 @@ export const NAV: Record<Area, { title: string; items: NavItem[] }> = {
       { href: '/app/requests', label: 'My requests', icon: Inbox },
       { href: '/app/tamu', label: 'Tamu', gloss: 'Visitors', icon: DoorOpen },
       { href: '/app/parcels', label: 'Parcels', icon: Package },
-      { href: '/app/jiran', label: 'Jiran', gloss: 'Neighbours', icon: HandHeart },
-      { href: '/app/kongsi', label: 'Kongsi', gloss: 'Share', icon: Repeat2 },
+      { href: '/app/komuniti', label: 'Komuniti', gloss: 'Neighbours & sharing', icon: HandHeart },
       { href: '/app/jimat', label: 'Jimat', gloss: 'Save energy', icon: Zap },
       { href: '/app/banjir', label: 'Banjir', gloss: 'Flood', icon: Droplets },
       { href: '/app/taman', label: 'Taman', gloss: 'Garden', icon: Sprout },

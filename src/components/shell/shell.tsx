@@ -44,8 +44,7 @@ function pageMotion(pathname: string) {
     ['/app/gerak', 'motion-gerak'],
     ['/app/lapor', 'motion-lapor'],
     ['/app/tamu', 'motion-tamu'],
-    ['/app/jiran', 'motion-jiran'],
-    ['/app/kongsi', 'motion-kongsi'],
+    ['/app/komuniti', 'motion-komuniti'],
     ['/app/jimat', 'motion-jimat'],
     ['/app/banjir', 'motion-banjir'],
     ['/app/akses', 'motion-access'],
@@ -145,13 +144,13 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
           <Text>{items.map((item) => link(item, true))}</Text>
         </LocalizedNav>
         <div className="border-t border-white/10 p-3">
-          <div className="flex items-center justify-center gap-3 lg:justify-start">
-            <span aria-hidden className="grid size-9 shrink-0 place-items-center rounded-xl border border-white/15 bg-brand-400/20 text-sm font-semibold text-white shadow-[inset_0_1px_0_rgb(255_255_255_/_0.15)]"><Text>{initials}</Text></span>
+          <div className="flex flex-col items-center justify-center gap-2 lg:flex-row lg:justify-start lg:gap-3">
+            <span aria-hidden title={`${user.fullName} · ${ROLE_LABELS[user.role]}`} className="grid size-9 shrink-0 place-items-center rounded-xl border border-white/15 bg-brand-400/20 text-sm font-semibold text-white shadow-[inset_0_1px_0_rgb(255_255_255_/_0.15)]"><Text>{initials}</Text></span>
             <div className="hidden min-w-0 flex-1 lg:block">
               <p className="truncate text-sm font-semibold text-white">{user.fullName}</p>
               <p className="truncate text-xs text-brand-200/70"><Text>{ROLE_LABELS[user.role]}</Text></p>
             </div>
-            <LocalizedButton type="button" onClick={signOut} aria-label="Sign out" title="Sign out" className="hidden size-9 shrink-0 place-items-center rounded-md text-brand-100/80 transition-colors duration-200 hover:bg-white/10 hover:text-white lg:grid">
+            <LocalizedButton type="button" onClick={signOut} aria-label="Sign out" title="Sign out" className="grid size-9 shrink-0 place-items-center rounded-md text-brand-100/80 transition-colors duration-200 hover:bg-white/10 hover:text-white">
               <LogOut className="size-[18px]" aria-hidden />
             </LocalizedButton>
           </div>

@@ -249,7 +249,7 @@ export const KNOWLEDGE: KnowledgeEntry[] = [
   {
     id: 'app-features',
     title: 'What SimeTown can do',
-    keywords: ['app', 'aplikasi', 'simetown', 'how', 'bagaimana', 'feature', 'ciri', 'help', 'bantuan', 'what can you do', 'apa boleh', 'gerak', 'lapor', 'tamu', 'kitar', 'jimat', 'banjir', 'taman', 'akses', 'jiran', 'kongsi'],
+    keywords: ['app', 'aplikasi', 'simetown', 'how', 'bagaimana', 'feature', 'ciri', 'help', 'bantuan', 'what can you do', 'apa boleh', 'gerak', 'lapor', 'tamu', 'kitar', 'jimat', 'banjir', 'taman', 'akses', 'jiran', 'kongsi', 'komuniti', 'community'],
     short:
       'SimeTown covers Gerak (walks and rides), Lapor (reports), Tamu (visitor passes), Jiran and Kongsi (neighbours and sharing), Kitar (recycling), Jimat (energy bills), Banjir (flood status), Taman (gardens) and Akses+ (access needs), with points you can spend at township shops.',
     details:

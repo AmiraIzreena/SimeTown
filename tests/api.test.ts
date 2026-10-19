@@ -318,6 +318,22 @@ describe('Jiran and Kongsi', () => {
     await call('POST', `/posts/${post.data.id}/responses/${taker.id}/confirm`, { as: giver, body: {} });
     const xp = await one<{ xp_total: number }>(db, 'SELECT xp_total FROM users WHERE id = $1', [giver.id]);
     expect(xp!.xp_total).toBe(30);
+    const impact = await call('GET', '/posts/impact', { as: giver });
+    expect(impact.data).toEqual({ xp: 30, activities: 0, contributions: 1, neighbours_helped: 0 });
+  });
+
+  it('lists every type in one Komuniti feed, a group of types, or a search', async () => {
+    const author = await makeResident(w);
+    const help = await call('POST', '/posts', { as: author, body: { type: 'HELP', title: 'Komuniti test: fix a tap', body: 'Kitchen tap is dripping.' } });
+    const lend = await call('POST', '/posts', { as: author, body: { type: 'LEND', title: 'Komuniti test: ladder', body: 'Three-metre ladder.' } });
+    const ids = async (query: string) => (await call('GET', `/posts?${query}`, { as: author })).data.items.map((p: { id: string }) => p.id);
+
+    expect(await ids('mine=true')).toEqual(expect.arrayContaining([help.data.id, lend.data.id]));
+    const share = await ids('type=GIVE,LEND&mine=true');
+    expect(share).toContain(lend.data.id);
+    expect(share).not.toContain(help.data.id);
+    expect(await ids('q=ladder&mine=true')).toEqual([lend.data.id]);
+    expect((await call('GET', '/posts?type=NOPE', { as: author })).status).toBe(400);
   });
 
   it('hides a post after three different residents flag it, until a moderator decides (BR20)', async () => {

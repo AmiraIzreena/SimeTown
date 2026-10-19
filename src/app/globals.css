@@ -298,7 +298,7 @@
   .motion-home > div > header,
   .motion-gerak > header,
   .motion-tamu > header,
-  .motion-jiran > header,
+  .motion-komuniti > header,
   .motion-gate > header,
   .motion-campaigns > header {
     animation: section-from-left var(--duration-base) var(--ease-soft) both;
@@ -306,7 +306,6 @@
   .motion-wallet > header,
   .motion-kitar > header,
   .motion-lapor > header,
-  .motion-kongsi > header,
   .motion-jimat > header,
   .motion-home-services > header,
   .motion-sponsor > header,
@@ -373,11 +372,8 @@
     animation: pass-reveal 420ms var(--ease-soft) both;
     transform-origin: top center;
   }
-  .motion-jiran .post-card-enter {
+  .motion-komuniti .post-card-enter {
     animation: dashboard-card var(--duration-base) var(--ease-soft) both;
-  }
-  .motion-kongsi .post-card-enter {
-    animation: section-from-right var(--duration-base) var(--ease-soft) both;
   }
   .motion-jimat .energy-chart .animate-grow {
     animation-duration: var(--duration-slow);
