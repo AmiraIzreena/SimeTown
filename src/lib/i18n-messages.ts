@@ -24,6 +24,8 @@ export const malay: Record<string, string> = {
   "More": "Lagi",
   "Menu": "Menu",
   "Sign out": "Log keluar",
+  "Show password": "Tunjuk kata laluan",
+  "Hide password": "Sembunyi kata laluan",
   "Notifications": "Pemberitahuan",
   "Resident": "Penduduk",
   "Selamat datang": "Selamat datang",
