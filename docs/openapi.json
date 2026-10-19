@@ -1714,7 +1714,58 @@
         "summary": "My notifications",
         "description": "Signed-in user (any role).",
         "operationId": "getNotifications",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "unread",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PARCELS",
+                "SERVICES",
+                "COMMUNITY",
+                "REWARDS",
+                "REPORTS",
+                "RECYCLING",
+                "ALERTS",
+                "ACCOUNT"
+              ]
+            }
+          }
+        ],
         "security": [
           {
             "session": []
@@ -1734,6 +1785,9 @@
               }
             }
           },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
           "401": {
             "$ref": "#/components/responses/Error"
           },
@@ -1752,6 +1806,142 @@
         "description": "Signed-in user (any role).",
         "operationId": "postNotificationsRead",
         "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/notifications/{notificationKey}/read": {
+      "post": {
+        "tags": [
+          "Points & XP"
+        ],
+        "summary": "Notification: read",
+        "description": "Signed-in user (any role).",
+        "operationId": "postNotificationsNotificationKeyRead",
+        "parameters": [
+          {
+            "name": "notificationKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/notifications/{notificationKey}/dismiss": {
+      "post": {
+        "tags": [
+          "Points & XP"
+        ],
+        "summary": "Notification: dismiss",
+        "description": "Signed-in user (any role).",
+        "operationId": "postNotificationsNotificationKeyDismiss",
+        "parameters": [
+          {
+            "name": "notificationKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -2435,10 +2625,135 @@
         "tags": [
           "SimeTown Merchant"
         ],
-        "summary": "All shops with pool and amounts owed",
+        "summary": "All shops with pool and amounts owed (optional search, offer type and sort)",
         "description": "Signed-in TOWNSHIP_ADMIN, HQ_ADMIN.",
         "operationId": "getAdminMerchants",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 60
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "RETAIL",
+                "SERVICES",
+                "BOTH"
+              ]
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ACTION",
+                "NAME",
+                "POOL",
+                "OWED",
+                "NEWEST"
+              ]
+            }
+          }
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/merchant-summary": {
+      "get": {
+        "tags": [
+          "SimeTown Merchant"
+        ],
+        "summary": "Shop counts by status and the totals held in reward pools and owed",
+        "description": "Signed-in TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "getAdminMerchantSummary",
         "parameters": [],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/merchants/{merchantId}": {
+      "get": {
+        "tags": [
+          "SimeTown Merchant"
+        ],
+        "summary": "One shop: its record, contacts, money and recent deposits",
+        "description": "Signed-in TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "getAdminMerchantsMerchantId",
+        "parameters": [
+          {
+            "name": "merchantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
         "security": [
           {
             "session": []
@@ -3078,8 +3393,6 @@
                       "JIMAT_READING",
                       "JIMAT_SAVER",
                       "GERAK_TRIP",
-                      "TAMAN_WATERING",
-                      "TAMAN_SIGHTING",
                       "AKSES_UPDATE"
                     ]
                   },
@@ -3708,9 +4021,9 @@
     "/api/v1/posts": {
       "get": {
         "tags": [
-          "Jiran & Kongsi"
+          "Komuniti"
         ],
-        "summary": "Events, help requests and items to give or lend",
+        "summary": "Events, help requests and items to give or lend: one type, several (GIVE,LEND) or all",
         "description": "Signed-in RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
         "operationId": "getPosts",
         "parameters": [
@@ -3737,15 +4050,18 @@
           {
             "name": "type",
             "in": "query",
-            "required": true,
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
             "schema": {
               "type": "string",
-              "enum": [
-                "EVENT",
-                "HELP",
-                "GIVE",
-                "LEND"
-              ]
+              "maxLength": 80
             }
           },
           {
@@ -3793,7 +4109,7 @@
       },
       "post": {
         "tags": [
-          "Jiran & Kongsi"
+          "Komuniti"
         ],
         "summary": "Create an event, a help request or a sharing offer",
         "description": "Signed-in RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
@@ -3884,10 +4200,116 @@
         }
       }
     },
+    "/api/v1/posts/impact": {
+      "get": {
+        "tags": [
+          "Komuniti"
+        ],
+        "summary": "Your verified community XP: events attended, items shared, neighbours helped",
+        "description": "Signed-in RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "getPostsImpact",
+        "parameters": [],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/posts/{postId}/close": {
+      "post": {
+        "tags": [
+          "Komuniti"
+        ],
+        "summary": "Close a post",
+        "description": "Signed-in RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "postPostsPostIdClose",
+        "parameters": [
+          {
+            "name": "postId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
     "/api/v1/posts/{postId}/respond": {
       "post": {
         "tags": [
-          "Jiran & Kongsi"
+          "Komuniti"
         ],
         "summary": "Join, offer help or ask for an item",
         "description": "Signed-in RESIDENT.",
@@ -3953,10 +4375,317 @@
         }
       }
     },
+    "/api/v1/posts/{postId}/withdraw": {
+      "post": {
+        "tags": [
+          "Komuniti"
+        ],
+        "summary": "Cancel your RSVP or request (events: before they start)",
+        "description": "Signed-in RESIDENT.",
+        "operationId": "postPostsPostIdWithdraw",
+        "parameters": [
+          {
+            "name": "postId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/posts/{postId}/responses/{userId}/accept": {
+      "post": {
+        "tags": [
+          "Komuniti"
+        ],
+        "summary": "Accept a help, give-away or borrow request (loans need a return date)",
+        "description": "Signed-in RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "postPostsPostIdResponsesUserIdAccept",
+        "parameters": [
+          {
+            "name": "postId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "dueBack": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/posts/{postId}/responses/{userId}/decline": {
+      "post": {
+        "tags": [
+          "Komuniti"
+        ],
+        "summary": "Decline a request",
+        "description": "Signed-in RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "postPostsPostIdResponsesUserIdDecline",
+        "parameters": [
+          {
+            "name": "postId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/posts/{postId}/responses/{userId}/returned": {
+      "post": {
+        "tags": [
+          "Komuniti"
+        ],
+        "summary": "Mark a lent item returned (gives the lender Impact XP)",
+        "description": "Signed-in RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "postPostsPostIdResponsesUserIdReturned",
+        "parameters": [
+          {
+            "name": "postId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
     "/api/v1/posts/{postId}/responses/{userId}/confirm": {
       "post": {
         "tags": [
-          "Jiran & Kongsi"
+          "Komuniti"
         ],
         "summary": "Confirm it happened (gives Impact XP)",
         "description": "Signed-in RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
@@ -4031,14 +4760,14 @@
         }
       }
     },
-    "/api/v1/posts/{postId}/close": {
+    "/api/v1/posts/{postId}/flag": {
       "post": {
         "tags": [
-          "Jiran & Kongsi"
+          "Komuniti"
         ],
-        "summary": "Close a post",
-        "description": "Signed-in RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
-        "operationId": "postPostsPostIdClose",
+        "summary": "Report a post to township staff",
+        "description": "Signed-in RESIDENT.",
+        "operationId": "postPostsPostIdFlag",
         "parameters": [
           {
             "name": "postId",
@@ -4057,8 +4786,24 @@
               "schema": {
                 "$schema": "https://json-schema.org/draft/2020-12/schema",
                 "type": "object",
-                "properties": {},
-                "additionalProperties": false
+                "properties": {
+                  "category": {
+                    "default": "OTHER",
+                    "type": "string",
+                    "enum": [
+                      "SCAM",
+                      "UNSAFE",
+                      "OFFENSIVE",
+                      "SPAM",
+                      "OTHER"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 200
+                  }
+                }
               }
             }
           }
@@ -4100,14 +4845,271 @@
         }
       }
     },
-    "/api/v1/posts/{postId}/flag": {
+    "/api/v1/admin/komuniti/overview": {
+      "get": {
+        "tags": [
+          "Komuniti"
+        ],
+        "summary": "Komuniti at a glance: open posts, reports waiting, hidden posts, overdue loans, suspensions",
+        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "getAdminKomunitiOverview",
+        "parameters": [
+          {
+            "name": "townshipId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/komuniti/reports": {
+      "get": {
+        "tags": [
+          "Komuniti"
+        ],
+        "summary": "Reported posts waiting for a decision: hidden first, then scams and safety",
+        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "getAdminKomunitiReports",
+        "parameters": [
+          {
+            "name": "townshipId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/komuniti/posts": {
+      "get": {
+        "tags": [
+          "Komuniti"
+        ],
+        "summary": "Every post, including hidden and removed ones",
+        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "getAdminKomunitiPosts",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "townshipId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "OPEN",
+                "CLOSED",
+                "HIDDEN",
+                "REMOVED"
+              ]
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "EVENT",
+                "HELP",
+                "GIVE",
+                "LEND"
+              ]
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 80
+            }
+          }
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/komuniti/posts/{postId}": {
+      "get": {
+        "tags": [
+          "Komuniti"
+        ],
+        "summary": "One post in full: responses, every report and decision, and the author’s record",
+        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "getAdminKomunitiPostsPostId",
+        "parameters": [
+          {
+            "name": "postId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/komuniti/posts/{postId}/moderate": {
       "post": {
         "tags": [
-          "Jiran & Kongsi"
+          "Komuniti"
         ],
-        "summary": "Flag a post for moderators",
-        "description": "Signed-in RESIDENT.",
-        "operationId": "postPostsPostIdFlag",
+        "summary": "Keep (dismiss the reports), hide while checking, or remove with a reason",
+        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "postAdminKomunitiPostsPostIdModerate",
         "parameters": [
           {
             "name": "postId",
@@ -4127,13 +5129,155 @@
                 "$schema": "https://json-schema.org/draft/2020-12/schema",
                 "type": "object",
                 "properties": {
-                  "reason": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "KEEP",
+                      "HIDE",
+                      "REMOVE"
+                    ]
+                  },
+                  "note": {
                     "type": "string",
                     "minLength": 3,
-                    "maxLength": 200
+                    "maxLength": 500
                   }
                 },
                 "required": [
+                  "action"
+                ]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/komuniti/suspensions": {
+      "get": {
+        "tags": [
+          "Komuniti"
+        ],
+        "summary": "Residents who cannot post or respond in Komuniti right now",
+        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "getAdminKomunitiSuspensions",
+        "parameters": [
+          {
+            "name": "townshipId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/komuniti/suspensions/{userId}": {
+      "post": {
+        "tags": [
+          "Komuniti"
+        ],
+        "summary": "Suspend a resident from Komuniti for some days (replaces an earlier suspension)",
+        "description": "Signed-in TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "postAdminKomunitiSuspensionsUserId",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "days": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 365
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 300
+                  }
+                },
+                "required": [
+                  "days",
                   "reason"
                 ]
               }
@@ -4177,54 +5321,17 @@
         }
       }
     },
-    "/api/v1/moderation/posts": {
-      "get": {
-        "tags": [
-          "Jiran & Kongsi"
-        ],
-        "summary": "Posts hidden by flags, waiting for review",
-        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
-        "operationId": "getModerationPosts",
-        "parameters": [],
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The result is in `data`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {}
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/Error"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      }
-    },
-    "/api/v1/moderation/posts/{postId}": {
+    "/api/v1/admin/komuniti/suspensions/{userId}/lift": {
       "post": {
         "tags": [
-          "Jiran & Kongsi"
+          "Komuniti"
         ],
-        "summary": "Restore or remove a hidden post",
-        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
-        "operationId": "postModerationPostsPostId",
+        "summary": "Lift a Komuniti suspension early",
+        "description": "Signed-in TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "postAdminKomunitiSuspensionsUserIdLift",
         "parameters": [
           {
-            "name": "postId",
+            "name": "userId",
             "in": "path",
             "required": true,
             "schema": {
@@ -4240,18 +5347,8 @@
               "schema": {
                 "$schema": "https://json-schema.org/draft/2020-12/schema",
                 "type": "object",
-                "properties": {
-                  "action": {
-                    "type": "string",
-                    "enum": [
-                      "RESTORE",
-                      "REMOVE"
-                    ]
-                  }
-                },
-                "required": [
-                  "action"
-                ]
+                "properties": {},
+                "additionalProperties": false
               }
             }
           }
@@ -19868,525 +20965,6 @@
         }
       }
     },
-    "/api/v1/jimat": {
-      "get": {
-        "tags": [
-          "Jimat"
-        ],
-        "summary": "My home's readings, the change from last month and tips",
-        "description": "Signed-in RESIDENT.",
-        "operationId": "getJimat",
-        "parameters": [],
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The result is in `data`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {}
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/Error"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      }
-    },
-    "/api/v1/jimat/readings": {
-      "post": {
-        "tags": [
-          "Jimat"
-        ],
-        "summary": "Enter monthly electricity and water readings",
-        "description": "Signed-in RESIDENT.",
-        "operationId": "postJimatReadings",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$schema": "https://json-schema.org/draft/2020-12/schema",
-                "type": "object",
-                "properties": {
-                  "month": {
-                    "type": "string",
-                    "pattern": "^20\\d{2}-(0[1-9]|1[0-2])$"
-                  },
-                  "electricityKwh": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "maximum": 100000
-                  },
-                  "waterLitres": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "maximum": 10000000
-                  }
-                },
-                "required": [
-                  "month",
-                  "electricityKwh",
-                  "waterLitres"
-                ]
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The result is in `data`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {}
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error"
-          },
-          "422": {
-            "$ref": "#/components/responses/Error"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      }
-    },
-    "/api/v1/jimat/solar-interest": {
-      "post": {
-        "tags": [
-          "Jimat"
-        ],
-        "summary": "Ask to be contacted about solar, or withdraw that request",
-        "description": "Signed-in RESIDENT.",
-        "operationId": "postJimatSolarInterest",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$schema": "https://json-schema.org/draft/2020-12/schema",
-                "type": "object",
-                "properties": {
-                  "interested": {
-                    "type": "boolean"
-                  },
-                  "note": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 300
-                  }
-                },
-                "required": [
-                  "interested"
-                ]
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The result is in `data`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {}
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error"
-          },
-          "422": {
-            "$ref": "#/components/responses/Error"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      }
-    },
-    "/api/v1/admin/solar-leads": {
-      "get": {
-        "tags": [
-          "Jimat"
-        ],
-        "summary": "Residents who asked to be contacted about solar",
-        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
-        "operationId": "getAdminSolarLeads",
-        "parameters": [],
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The result is in `data`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {}
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/Error"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      }
-    },
-    "/api/v1/jimat/bills": {
-      "get": {
-        "tags": [
-          "Jimat"
-        ],
-        "summary": "Bills read and confirmed for my home (numbers only; no file is kept)",
-        "description": "Signed-in RESIDENT.",
-        "operationId": "getJimatBills",
-        "parameters": [],
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The result is in `data`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {}
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/Error"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "Jimat"
-        ],
-        "summary": "Upload a bill (multipart: file, kind). Checked, read in memory, never stored",
-        "description": "Signed-in RESIDENT.",
-        "operationId": "postJimatBills",
-        "parameters": [],
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The result is in `data`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {}
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/Error"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error"
-          },
-          "422": {
-            "$ref": "#/components/responses/Error"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      }
-    },
-    "/api/v1/jimat/bills/{billId}/confirm": {
-      "post": {
-        "tags": [
-          "Jimat"
-        ],
-        "summary": "Confirm or correct the numbers read from a bill",
-        "description": "Signed-in RESIDENT.",
-        "operationId": "postJimatBillsBillIdConfirm",
-        "parameters": [
-          {
-            "name": "billId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$schema": "https://json-schema.org/draft/2020-12/schema",
-                "type": "object",
-                "properties": {
-                  "kind": {
-                    "type": "string",
-                    "enum": [
-                      "ELECTRICITY",
-                      "WATER"
-                    ]
-                  },
-                  "usage": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "maximum": 10000000
-                  },
-                  "amountSen": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "maximum": 10000000
-                  },
-                  "month": {
-                    "type": "string",
-                    "pattern": "^20\\d{2}-(0[1-9]|1[0-2])$"
-                  }
-                },
-                "required": [
-                  "kind",
-                  "usage",
-                  "amountSen",
-                  "month"
-                ]
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The result is in `data`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {}
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error"
-          },
-          "422": {
-            "$ref": "#/components/responses/Error"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      }
-    },
-    "/api/v1/jimat/bills/{billId}/discard": {
-      "post": {
-        "tags": [
-          "Jimat"
-        ],
-        "summary": "Throw away a bill that was read but not confirmed",
-        "description": "Signed-in RESIDENT.",
-        "operationId": "postJimatBillsBillIdDiscard",
-        "parameters": [
-          {
-            "name": "billId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$schema": "https://json-schema.org/draft/2020-12/schema",
-                "type": "object",
-                "properties": {},
-                "additionalProperties": false
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The result is in `data`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {}
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error"
-          },
-          "422": {
-            "$ref": "#/components/responses/Error"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      }
-    },
-    "/api/v1/jimat/sample-bill": {
-      "get": {
-        "tags": [
-          "Jimat"
-        ],
-        "summary": "Prototype: a sample bill (PDF) to my address, marked SAMPLE, for trying bill reading",
-        "description": "Signed-in RESIDENT.",
-        "operationId": "getJimatSampleBill",
-        "parameters": [
-          {
-            "name": "kind",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "default": "ELECTRICITY",
-              "type": "string",
-              "enum": [
-                "ELECTRICITY",
-                "WATER"
-              ]
-            }
-          }
-        ],
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The result is in `data`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {}
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      }
-    },
     "/api/v1/banjir": {
       "get": {
         "tags": [
@@ -22464,10 +23042,23 @@
         "tags": [
           "Akses+"
         ],
-        "summary": "Step-free routes, ramps, lifts, accessible toilets and OKU parking",
+        "summary": "Accessible places: verification and today’s availability, kept separate",
         "description": "Signed-in RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
         "operationId": "getAccessPlaces",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "archived",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          }
+        ],
         "security": [
           {
             "session": []
@@ -22487,6 +23078,9 @@
               }
             }
           },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
           "401": {
             "$ref": "#/components/responses/Error"
           },
@@ -22499,7 +23093,7 @@
         "tags": [
           "Akses+"
         ],
-        "summary": "Suggest an accessible place (staff check it)",
+        "summary": "Suggest an accessible place (checked for duplicates; verified only by an inspection)",
         "description": "Signed-in RESIDENT.",
         "operationId": "postAccessPlaces",
         "parameters": [],
@@ -22584,14 +23178,67 @@
         }
       }
     },
-    "/api/v1/access-places/{placeId}/blocked": {
+    "/api/v1/access-places/{placeId}/reports": {
       "post": {
         "tags": [
           "Akses+"
         ],
-        "summary": "Say an accessible place is blocked",
+        "summary": "Report a problem at a place (multipart form; optional photo). Grouped, classified and routed automatically",
         "description": "Signed-in RESIDENT.",
-        "operationId": "postAccessPlacesPlaceIdBlocked",
+        "operationId": "postAccessPlacesPlaceIdReports",
+        "parameters": [
+          {
+            "name": "placeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/access-places/{placeId}/follow": {
+      "post": {
+        "tags": [
+          "Akses+"
+        ],
+        "summary": "Follow a place to hear when it is blocked or available again",
+        "description": "Signed-in RESIDENT.",
+        "operationId": "postAccessPlacesPlaceIdFollow",
         "parameters": [
           {
             "name": "placeId",
@@ -22611,6 +23258,716 @@
                 "$schema": "https://json-schema.org/draft/2020-12/schema",
                 "type": "object",
                 "properties": {
+                  "follow": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "follow"
+                ]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/me/access-reports": {
+      "get": {
+        "tags": [
+          "Akses+"
+        ],
+        "summary": "My accessibility reports and their progress",
+        "description": "Signed-in RESIDENT.",
+        "operationId": "getMeAccessReports",
+        "parameters": [],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/access-incidents/{reference}/confirm": {
+      "post": {
+        "tags": [
+          "Akses+"
+        ],
+        "summary": "Say whether a claimed fix is real (multipart form; optional photo)",
+        "description": "Signed-in RESIDENT.",
+        "operationId": "postAccessIncidentsReferenceConfirm",
+        "parameters": [
+          {
+            "name": "reference",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/access-incidents/{reference}/reopen": {
+      "post": {
+        "tags": [
+          "Akses+"
+        ],
+        "summary": "The problem is back: reopen a resolved incident I reported",
+        "description": "Signed-in RESIDENT.",
+        "operationId": "postAccessIncidentsReferenceReopen",
+        "parameters": [
+          {
+            "name": "reference",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 300
+                  }
+                },
+                "required": [
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/access-photos/{uploadId}": {
+      "get": {
+        "tags": [
+          "Akses+"
+        ],
+        "summary": "An evidence photo (who may see it depends on what it shows)",
+        "description": "Signed-in RESIDENT, GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "getAccessPhotosUploadId",
+        "parameters": [
+          {
+            "name": "uploadId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/access-work": {
+      "get": {
+        "tags": [
+          "Akses+"
+        ],
+        "summary": "Accessibility incidents routed to the teams I belong to",
+        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN, GUARD.",
+        "operationId": "getAccessWork",
+        "parameters": [],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/access-work/{incidentId}/acknowledge": {
+      "post": {
+        "tags": [
+          "Akses+"
+        ],
+        "summary": "Confirm the problem and start work",
+        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN, GUARD.",
+        "operationId": "postAccessWorkIncidentIdAcknowledge",
+        "parameters": [
+          {
+            "name": "incidentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/access-work/{incidentId}/resolve": {
+      "post": {
+        "tags": [
+          "Akses+"
+        ],
+        "summary": "Submit a fix with evidence (multipart form; photo needed for most problems). It is verified before it counts",
+        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN, GUARD.",
+        "operationId": "postAccessWorkIncidentIdResolve",
+        "parameters": [
+          {
+            "name": "incidentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/access/overview": {
+      "get": {
+        "tags": [
+          "Akses+"
+        ],
+        "summary": "Accessibility metrics and only what needs a person",
+        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "getAdminAccessOverview",
+        "parameters": [],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/access/incidents": {
+      "get": {
+        "tags": [
+          "Akses+"
+        ],
+        "summary": "Accessibility incidents, with filters",
+        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "getAdminAccessIncidents",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "REPORTED",
+                "TRIAGED",
+                "ASSIGNED",
+                "IN_PROGRESS",
+                "RESOLUTION_SUBMITTED",
+                "VERIFICATION_PENDING",
+                "RESOLVED",
+                "REOPENED",
+                "ESCALATED",
+                "ACTIVE",
+                "ALL"
+              ]
+            }
+          },
+          {
+            "name": "priority",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "CRITICAL",
+                "HIGH",
+                "NORMAL",
+                "LOW"
+              ]
+            }
+          },
+          {
+            "name": "partyId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 60
+            }
+          }
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/access/incidents/{key}": {
+      "get": {
+        "tags": [
+          "Akses+"
+        ],
+        "summary": "One incident (by id or ACC- reference): reports, evidence, fixes, escalations, deliveries and history",
+        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "getAdminAccessIncidentsKey",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/access/incidents/{incidentId}/assign": {
+      "post": {
+        "tags": [
+          "Akses+"
+        ],
+        "summary": "Send an unroutable or escalated incident to an organisation",
+        "description": "Signed-in TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "postAdminAccessIncidentsIncidentIdAssign",
+        "parameters": [
+          {
+            "name": "incidentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "partyId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 300
+                  }
+                },
+                "required": [
+                  "partyId",
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/access/incidents/{incidentId}/verify": {
+      "post": {
+        "tags": [
+          "Akses+"
+        ],
+        "summary": "Accept or reject a claimed fix after an inspection",
+        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "postAdminAccessIncidentsIncidentIdVerify",
+        "parameters": [
+          {
+            "name": "incidentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "accept": {
+                    "type": "boolean"
+                  },
                   "note": {
                     "type": "string",
                     "minLength": 5,
@@ -22618,8 +23975,245 @@
                   }
                 },
                 "required": [
+                  "accept",
                   "note"
                 ]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/access/incidents/{incidentId}/override": {
+      "post": {
+        "tags": [
+          "Akses+"
+        ],
+        "summary": "Confirm a problem seen on site, or (admin) close an incident, with a reason",
+        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "postAdminAccessIncidentsIncidentIdOverride",
+        "parameters": [
+          {
+            "name": "incidentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "CONFIRM_BLOCKED",
+                      "RESOLVE"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 300
+                  }
+                },
+                "required": [
+                  "action",
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/access/incidents/{incidentId}/simulate": {
+      "post": {
+        "tags": [
+          "Akses+"
+        ],
+        "summary": "SIMULATION: make a simulated provider acknowledge or fix (prototype only)",
+        "description": "Signed-in TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "postAdminAccessIncidentsIncidentIdSimulate",
+        "parameters": [
+          {
+            "name": "incidentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "ACKNOWLEDGED",
+                      "RESOLVED"
+                    ]
+                  },
+                  "telemetry": {
+                    "type": "boolean"
+                  },
+                  "actionTaken": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 300
+                  },
+                  "eventId": {
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 64
+                  }
+                },
+                "required": [
+                  "type"
+                ]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/access/run-checks": {
+      "post": {
+        "tags": [
+          "Akses+"
+        ],
+        "summary": "Run the Akses+ reminders, escalations and deliveries now for my township (the scheduler also runs them)",
+        "description": "Signed-in TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "postAdminAccessRunChecks",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
               }
             }
           }
@@ -22666,7 +24260,7 @@
         "tags": [
           "Akses+"
         ],
-        "summary": "Add a checked accessible place",
+        "summary": "Add a place staff have checked (verified, with its first inspection)",
         "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
         "operationId": "postAdminAccessPlaces",
         "parameters": [],
@@ -22703,6 +24297,18 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 300
+                  },
+                  "partyId": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
                 },
                 "required": [
@@ -22751,14 +24357,67 @@
         }
       }
     },
-    "/api/v1/admin/access-places/{placeId}/review": {
+    "/api/v1/admin/access-places/{placeId}/inspect": {
       "post": {
         "tags": [
           "Akses+"
         ],
-        "summary": "Confirm a place, mark it blocked, or remove it",
+        "summary": "Record an inspection: the only way verification changes (multipart form; optional photo)",
         "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
-        "operationId": "postAdminAccessPlacesPlaceIdReview",
+        "operationId": "postAdminAccessPlacesPlaceIdInspect",
+        "parameters": [
+          {
+            "name": "placeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/access-places/{placeId}/party": {
+      "post": {
+        "tags": [
+          "Akses+"
+        ],
+        "summary": "Record which organisation runs a place",
+        "description": "Signed-in TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "postAdminAccessPlacesPlaceIdParty",
         "parameters": [
           {
             "name": "placeId",
@@ -22778,900 +24437,7 @@
                 "$schema": "https://json-schema.org/draft/2020-12/schema",
                 "type": "object",
                 "properties": {
-                  "decision": {
-                    "type": "string",
-                    "enum": [
-                      "VERIFIED",
-                      "BLOCKED",
-                      "REMOVE"
-                    ]
-                  }
-                },
-                "required": [
-                  "decision"
-                ]
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The result is in `data`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {}
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error"
-          },
-          "422": {
-            "$ref": "#/components/responses/Error"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      }
-    },
-    "/api/v1/taman": {
-      "get": {
-        "tags": [
-          "Taman"
-        ],
-        "summary": "Gardens, plots, the watering roster and the wildlife log",
-        "description": "Signed-in RESIDENT.",
-        "operationId": "getTaman",
-        "parameters": [],
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The result is in `data`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {}
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/Error"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      }
-    },
-    "/api/v1/taman/gardens/{gardenId}/apply": {
-      "post": {
-        "tags": [
-          "Taman"
-        ],
-        "summary": "Join a garden's waiting list; plots are given out by ballot (one per home)",
-        "description": "Signed-in RESIDENT.",
-        "operationId": "postTamanGardensGardenIdApply",
-        "parameters": [
-          {
-            "name": "gardenId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$schema": "https://json-schema.org/draft/2020-12/schema",
-                "type": "object",
-                "properties": {},
-                "additionalProperties": false
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The result is in `data`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {}
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error"
-          },
-          "422": {
-            "$ref": "#/components/responses/Error"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      }
-    },
-    "/api/v1/taman/applications/{applicationId}/withdraw": {
-      "post": {
-        "tags": [
-          "Taman"
-        ],
-        "summary": "Leave a waiting list",
-        "description": "Signed-in RESIDENT.",
-        "operationId": "postTamanApplicationsApplicationIdWithdraw",
-        "parameters": [
-          {
-            "name": "applicationId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$schema": "https://json-schema.org/draft/2020-12/schema",
-                "type": "object",
-                "properties": {},
-                "additionalProperties": false
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The result is in `data`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {}
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error"
-          },
-          "422": {
-            "$ref": "#/components/responses/Error"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      }
-    },
-    "/api/v1/taman/plots/{plotId}/release": {
-      "post": {
-        "tags": [
-          "Taman"
-        ],
-        "summary": "Give a plot back",
-        "description": "Signed-in RESIDENT.",
-        "operationId": "postTamanPlotsPlotIdRelease",
-        "parameters": [
-          {
-            "name": "plotId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$schema": "https://json-schema.org/draft/2020-12/schema",
-                "type": "object",
-                "properties": {},
-                "additionalProperties": false
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The result is in `data`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {}
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error"
-          },
-          "422": {
-            "$ref": "#/components/responses/Error"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      }
-    },
-    "/api/v1/taman/roster": {
-      "post": {
-        "tags": [
-          "Taman"
-        ],
-        "summary": "Take a day on a garden's watering roster",
-        "description": "Signed-in RESIDENT.",
-        "operationId": "postTamanRoster",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$schema": "https://json-schema.org/draft/2020-12/schema",
-                "type": "object",
-                "properties": {
-                  "gardenId": {
-                    "type": "string",
-                    "format": "uuid",
-                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                  },
-                  "day": {
-                    "type": "string",
-                    "pattern": "^20\\d{2}-\\d{2}-\\d{2}$"
-                  }
-                },
-                "required": [
-                  "gardenId",
-                  "day"
-                ]
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The result is in `data`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {}
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error"
-          },
-          "422": {
-            "$ref": "#/components/responses/Error"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      }
-    },
-    "/api/v1/taman/watered": {
-      "post": {
-        "tags": [
-          "Taman"
-        ],
-        "summary": "Scan the garden's code after watering",
-        "description": "Signed-in RESIDENT.",
-        "operationId": "postTamanWatered",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$schema": "https://json-schema.org/draft/2020-12/schema",
-                "type": "object",
-                "properties": {
-                  "code": {
-                    "type": "string",
-                    "minLength": 6,
-                    "maxLength": 16,
-                    "pattern": "^[A-Za-z0-9]+$"
-                  }
-                },
-                "required": [
-                  "code"
-                ]
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The result is in `data`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {}
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error"
-          },
-          "422": {
-            "$ref": "#/components/responses/Error"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      }
-    },
-    "/api/v1/taman/sightings": {
-      "post": {
-        "tags": [
-          "Taman"
-        ],
-        "summary": "Log a bird, insect or plant you spotted (multipart form; photo optional)",
-        "description": "Signed-in RESIDENT.",
-        "operationId": "postTamanSightings",
-        "parameters": [],
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The result is in `data`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {}
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/Error"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error"
-          },
-          "422": {
-            "$ref": "#/components/responses/Error"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      }
-    },
-    "/api/v1/taman/sightings/{sightingId}/photo": {
-      "get": {
-        "tags": [
-          "Taman"
-        ],
-        "summary": "A sighting photo (the person who logged it, or staff)",
-        "description": "Signed-in user (any role).",
-        "operationId": "getTamanSightingsSightingIdPhoto",
-        "parameters": [
-          {
-            "name": "sightingId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The result is in `data`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {}
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/Error"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      }
-    },
-    "/api/v1/admin/taman/sightings": {
-      "get": {
-        "tags": [
-          "Taman"
-        ],
-        "summary": "Sightings waiting to be confirmed",
-        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
-        "operationId": "getAdminTamanSightings",
-        "parameters": [],
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The result is in `data`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {}
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/Error"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      }
-    },
-    "/api/v1/admin/taman/sightings/{sightingId}": {
-      "post": {
-        "tags": [
-          "Taman"
-        ],
-        "summary": "Confirm or reject a sighting",
-        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
-        "operationId": "postAdminTamanSightingsSightingId",
-        "parameters": [
-          {
-            "name": "sightingId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$schema": "https://json-schema.org/draft/2020-12/schema",
-                "type": "object",
-                "properties": {
-                  "confirm": {
-                    "type": "boolean"
-                  }
-                },
-                "required": [
-                  "confirm"
-                ]
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The result is in `data`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {}
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error"
-          },
-          "422": {
-            "$ref": "#/components/responses/Error"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      }
-    },
-    "/api/v1/admin/taman/gardens": {
-      "get": {
-        "tags": [
-          "Taman"
-        ],
-        "summary": "Gardens with their printable gate codes",
-        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
-        "operationId": "getAdminTamanGardens",
-        "parameters": [],
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The result is in `data`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {}
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/Error"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "Taman"
-        ],
-        "summary": "Add a community garden and its plots",
-        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
-        "operationId": "postAdminTamanGardens",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$schema": "https://json-schema.org/draft/2020-12/schema",
-                "type": "object",
-                "properties": {
-                  "name": {
-                    "type": "string",
-                    "minLength": 3,
-                    "maxLength": 80
-                  },
-                  "location": {
-                    "type": "string",
-                    "minLength": 3,
-                    "maxLength": 160
-                  },
-                  "plots": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "maximum": 60
-                  },
-                  "plotSizeM2": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "maximum": 100
-                  }
-                },
-                "required": [
-                  "name",
-                  "location",
-                  "plots",
-                  "plotSizeM2"
-                ]
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The result is in `data`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {}
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error"
-          },
-          "422": {
-            "$ref": "#/components/responses/Error"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      }
-    },
-    "/api/v1/admin/taman/gardens/{gardenId}/ballot": {
-      "post": {
-        "tags": [
-          "Taman"
-        ],
-        "summary": "Draw the waiting list for a garden's free plots",
-        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
-        "operationId": "postAdminTamanGardensGardenIdBallot",
-        "parameters": [
-          {
-            "name": "gardenId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$schema": "https://json-schema.org/draft/2020-12/schema",
-                "type": "object",
-                "properties": {},
-                "additionalProperties": false
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The result is in `data`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {}
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error"
-          },
-          "422": {
-            "$ref": "#/components/responses/Error"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      }
-    },
-    "/api/v1/admin/solar/sites": {
-      "get": {
-        "tags": [
-          "Planet"
-        ],
-        "summary": "Candidate solar sites ranked by output, nearby demand and readiness, with what is missing",
-        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
-        "operationId": "getAdminSolarSites",
-        "parameters": [],
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The result is in `data`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {}
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/Error"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "Planet"
-        ],
-        "summary": "Add a candidate rooftop or car park",
-        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
-        "operationId": "postAdminSolarSites",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$schema": "https://json-schema.org/draft/2020-12/schema",
-                "type": "object",
-                "properties": {
-                  "name": {
-                    "type": "string",
-                    "minLength": 2,
-                    "maxLength": 80
-                  },
-                  "kind": {
-                    "type": "string",
-                    "enum": [
-                      "ROOFTOP",
-                      "CAR_PARK",
-                      "OTHER"
-                    ]
-                  },
-                  "zoneId": {
+                  "partyId": {
                     "anyOf": [
                       {
                         "type": "string",
@@ -23682,85 +24448,284 @@
                         "type": "null"
                       }
                     ]
+                  }
+                },
+                "required": [
+                  "partyId"
+                ]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/access-places/{placeId}/archive": {
+      "post": {
+        "tags": [
+          "Akses+"
+        ],
+        "summary": "Archive a place (kept with its history; never deleted)",
+        "description": "Signed-in TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "postAdminAccessPlacesPlaceIdArchive",
+        "parameters": [
+          {
+            "name": "placeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 300
+                  }
+                },
+                "required": [
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/access-places/{placeId}/restore": {
+      "post": {
+        "tags": [
+          "Akses+"
+        ],
+        "summary": "Bring an archived place back",
+        "description": "Signed-in TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "postAdminAccessPlacesPlaceIdRestore",
+        "parameters": [
+          {
+            "name": "placeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/access/parties": {
+      "get": {
+        "tags": [
+          "Akses+"
+        ],
+        "summary": "Organisations responsible for facilities, and who acts for them",
+        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "getAdminAccessParties",
+        "parameters": [],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Akses+"
+        ],
+        "summary": "Add an organisation",
+        "description": "Signed-in TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "postAdminAccessParties",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 100
                   },
-                  "usableM2": {
-                    "type": "integer",
-                    "minimum": 1,
-                    "maximum": 1000000
-                  },
-                  "orientation": {
+                  "kind": {
                     "type": "string",
                     "enum": [
-                      "FLAT",
-                      "N",
-                      "NE",
-                      "E",
-                      "SE",
-                      "S",
-                      "SW",
-                      "W",
-                      "NW"
+                      "TOWNSHIP_OPERATIONS",
+                      "SECURITY",
+                      "FACILITY_MANAGER",
+                      "JMB_MC",
+                      "MAINTENANCE_CONTRACTOR",
+                      "LOCAL_AUTHORITY",
+                      "ACCESS_VERIFIER"
                     ]
                   },
-                  "shading": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "enum": [
-                          "LOW",
-                          "MEDIUM",
-                          "HIGH"
-                        ]
-                      },
-                      {
-                        "type": "null"
-                      }
+                  "integration": {
+                    "type": "string",
+                    "enum": [
+                      "IN_APP",
+                      "SIMULATED"
                     ]
                   },
-                  "roofAgeYears": {
-                    "anyOf": [
-                      {
-                        "type": "integer",
-                        "minimum": 0,
-                        "maximum": 200
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "structuralChecked": {
-                    "type": "boolean"
-                  },
-                  "expertRank": {
-                    "anyOf": [
-                      {
-                        "type": "integer",
-                        "minimum": 1,
-                        "maximum": 1000
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "notes": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "maxLength": 300
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
+                  "contact": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 160
                   }
                 },
                 "required": [
                   "name",
                   "kind",
-                  "usableM2",
-                  "orientation"
+                  "integration"
                 ]
               }
             }
@@ -23803,17 +24768,17 @@
         }
       }
     },
-    "/api/v1/admin/solar/sites/{siteId}": {
-      "patch": {
+    "/api/v1/admin/access/parties/{partyId}": {
+      "post": {
         "tags": [
-          "Planet"
+          "Akses+"
         ],
-        "summary": "Update a site: survey results, checks done, or an expert’s rank",
-        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
-        "operationId": "patchAdminSolarSitesSiteId",
+        "summary": "Change an organisation: active, members, simulated failures",
+        "description": "Signed-in TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "postAdminAccessPartiesPartyId",
         "parameters": [
           {
-            "name": "siteId",
+            "name": "partyId",
             "in": "path",
             "required": true,
             "schema": {
@@ -23830,20 +24795,156 @@
                 "$schema": "https://json-schema.org/draft/2020-12/schema",
                 "type": "object",
                 "properties": {
-                  "name": {
-                    "type": "string",
-                    "minLength": 2,
-                    "maxLength": 80
+                  "active": {
+                    "type": "boolean"
                   },
-                  "kind": {
+                  "simulateFailures": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10
+                  },
+                  "addMember": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "removeMember": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/access/rules": {
+      "get": {
+        "tags": [
+          "Akses+"
+        ],
+        "summary": "Routing rules that apply (the township’s own, then the defaults)",
+        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "getAdminAccessRules",
+        "parameters": [],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Akses+"
+        ],
+        "summary": "Set where a kind of problem goes, and its priority",
+        "description": "Signed-in TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "postAdminAccessRules",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "category": {
                     "type": "string",
                     "enum": [
-                      "ROOFTOP",
-                      "CAR_PARK",
+                      "OBSTRUCTION",
+                      "PARKING_OBSTRUCTION",
+                      "DAMAGED",
+                      "OUT_OF_SERVICE",
+                      "ROUTE_INACCESSIBLE",
+                      "MISINFORMATION",
                       "OTHER"
                     ]
                   },
-                  "zoneId": {
+                  "placeKind": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "STEP_FREE_ROUTE",
+                          "RAMP",
+                          "LIFT",
+                          "ACCESSIBLE_TOILET",
+                          "OKU_PARKING",
+                          "SEATING"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "target": {
+                    "type": "string",
+                    "enum": [
+                      "PLACE",
+                      "PARTY"
+                    ]
+                  },
+                  "partyId": {
                     "anyOf": [
                       {
                         "type": "string",
@@ -23855,645 +24956,250 @@
                       }
                     ]
                   },
-                  "usableM2": {
+                  "priority": {
+                    "type": "string",
+                    "enum": [
+                      "CRITICAL",
+                      "HIGH",
+                      "NORMAL",
+                      "LOW"
+                    ]
+                  }
+                },
+                "required": [
+                  "category",
+                  "placeKind",
+                  "target",
+                  "priority"
+                ]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/access/rules/{ruleId}/delete": {
+      "post": {
+        "tags": [
+          "Akses+"
+        ],
+        "summary": "Remove a township rule (the default applies again)",
+        "description": "Signed-in TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "postAdminAccessRulesRuleIdDelete",
+        "parameters": [
+          {
+            "name": "ruleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/access/policy": {
+      "get": {
+        "tags": [
+          "Akses+"
+        ],
+        "summary": "Response targets and verification rules (proposed values)",
+        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "getAdminAccessPolicy",
+        "parameters": [],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Akses+"
+        ],
+        "summary": "Change response targets and verification rules",
+        "description": "Signed-in TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "postAdminAccessPolicy",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "targets": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string",
+                      "enum": [
+                        "CRITICAL",
+                        "HIGH",
+                        "NORMAL",
+                        "LOW"
+                      ]
+                    },
+                    "additionalProperties": {
+                      "type": "object",
+                      "properties": {
+                        "ack": {
+                          "type": "integer",
+                          "minimum": 5,
+                          "maximum": 20160
+                        },
+                        "resolve": {
+                          "type": "integer",
+                          "minimum": 15,
+                          "maximum": 86400
+                        },
+                        "working": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "ack",
+                        "resolve",
+                        "working"
+                      ]
+                    }
+                  },
+                  "confirmations": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string",
+                      "enum": [
+                        "CRITICAL",
+                        "HIGH",
+                        "NORMAL",
+                        "LOW"
+                      ]
+                    },
+                    "additionalProperties": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 5
+                    }
+                  },
+                  "corroboration": {
+                    "type": "integer",
+                    "minimum": 2,
+                    "maximum": 10
+                  },
+                  "verifyHours": {
                     "type": "integer",
                     "minimum": 1,
-                    "maximum": 1000000
+                    "maximum": 336
                   },
-                  "orientation": {
-                    "type": "string",
-                    "enum": [
-                      "FLAT",
-                      "N",
-                      "NE",
-                      "E",
-                      "SE",
-                      "S",
-                      "SW",
-                      "W",
-                      "NW"
-                    ]
-                  },
-                  "shading": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "enum": [
-                          "LOW",
-                          "MEDIUM",
-                          "HIGH"
-                        ]
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "roofAgeYears": {
-                    "anyOf": [
-                      {
-                        "type": "integer",
-                        "minimum": 0,
-                        "maximum": 200
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "structuralChecked": {
-                    "type": "boolean"
-                  },
-                  "expertRank": {
-                    "anyOf": [
-                      {
-                        "type": "integer",
-                        "minimum": 1,
-                        "maximum": 1000
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "notes": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "maxLength": 300
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The result is in `data`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {}
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error"
-          },
-          "422": {
-            "$ref": "#/components/responses/Error"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "Planet"
-        ],
-        "summary": "Remove a site",
-        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
-        "operationId": "deleteAdminSolarSitesSiteId",
-        "parameters": [
-          {
-            "name": "siteId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The result is in `data`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {}
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/Error"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error"
-          },
-          "422": {
-            "$ref": "#/components/responses/Error"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      }
-    },
-    "/api/v1/admin/materials": {
-      "get": {
-        "tags": [
-          "Planet"
-        ],
-        "summary": "The uses that can be compared and their requirements (sample library)",
-        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
-        "operationId": "getAdminMaterials",
-        "parameters": [],
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The result is in `data`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {}
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/Error"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      }
-    },
-    "/api/v1/admin/materials/compare": {
-      "post": {
-        "tags": [
-          "Planet"
-        ],
-        "summary": "Check every material for one use against the requirements, and flag missing evidence",
-        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
-        "operationId": "postAdminMaterialsCompare",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$schema": "https://json-schema.org/draft/2020-12/schema",
-                "type": "object",
-                "properties": {
-                  "use": {
-                    "type": "string",
-                    "enum": [
-                      "WALKWAY_PAVING",
-                      "LANDSCAPE_EDGING"
-                    ]
-                  },
-                  "requirements": {
-                    "type": "object",
-                    "properties": {
-                      "costRm": {
-                        "type": "number",
-                        "minimum": 0,
-                        "maximum": 100000
-                      },
-                      "lifeYears": {
-                        "type": "number",
-                        "minimum": 0,
-                        "maximum": 200
-                      },
-                      "strengthMpa": {
-                        "type": "number",
-                        "minimum": 0,
-                        "maximum": 500
-                      },
-                      "permeable": {
-                        "type": "boolean"
-                      },
-                      "uvStable": {
-                        "type": "boolean"
-                      }
-                    }
-                  }
-                },
-                "required": [
-                  "use",
-                  "requirements"
-                ]
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The result is in `data`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {}
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error"
-          },
-          "422": {
-            "$ref": "#/components/responses/Error"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      }
-    },
-    "/api/v1/admin/materials/explain": {
-      "post": {
-        "tags": [
-          "Planet"
-        ],
-        "summary": "The agent explains the comparison, using only the table",
-        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
-        "operationId": "postAdminMaterialsExplain",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$schema": "https://json-schema.org/draft/2020-12/schema",
-                "type": "object",
-                "properties": {
-                  "use": {
-                    "type": "string",
-                    "enum": [
-                      "WALKWAY_PAVING",
-                      "LANDSCAPE_EDGING"
-                    ]
-                  },
-                  "requirements": {
-                    "type": "object",
-                    "properties": {
-                      "costRm": {
-                        "type": "number",
-                        "minimum": 0,
-                        "maximum": 100000
-                      },
-                      "lifeYears": {
-                        "type": "number",
-                        "minimum": 0,
-                        "maximum": 200
-                      },
-                      "strengthMpa": {
-                        "type": "number",
-                        "minimum": 0,
-                        "maximum": 500
-                      },
-                      "permeable": {
-                        "type": "boolean"
-                      },
-                      "uvStable": {
-                        "type": "boolean"
-                      }
-                    }
-                  }
-                },
-                "required": [
-                  "use",
-                  "requirements"
-                ]
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The result is in `data`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {}
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error"
-          },
-          "422": {
-            "$ref": "#/components/responses/Error"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      }
-    },
-    "/api/v1/admin/materials/shortlists": {
-      "get": {
-        "tags": [
-          "Planet"
-        ],
-        "summary": "Saved shortlists and the median time to make one",
-        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
-        "operationId": "getAdminMaterialsShortlists",
-        "parameters": [],
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The result is in `data`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {}
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/Error"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "Planet"
-        ],
-        "summary": "Save a shortlist with the time it took",
-        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
-        "operationId": "postAdminMaterialsShortlists",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$schema": "https://json-schema.org/draft/2020-12/schema",
-                "type": "object",
-                "properties": {
-                  "use": {
-                    "type": "string",
-                    "enum": [
-                      "WALKWAY_PAVING",
-                      "LANDSCAPE_EDGING"
-                    ]
-                  },
-                  "requirements": {
-                    "type": "object",
-                    "properties": {
-                      "costRm": {
-                        "type": "number",
-                        "minimum": 0,
-                        "maximum": 100000
-                      },
-                      "lifeYears": {
-                        "type": "number",
-                        "minimum": 0,
-                        "maximum": 200
-                      },
-                      "strengthMpa": {
-                        "type": "number",
-                        "minimum": 0,
-                        "maximum": 500
-                      },
-                      "permeable": {
-                        "type": "boolean"
-                      },
-                      "uvStable": {
-                        "type": "boolean"
-                      }
-                    }
-                  },
-                  "materialIds": {
-                    "minItems": 1,
-                    "maxItems": 10,
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "maxLength": 60
-                    }
-                  },
-                  "secondsTaken": {
+                  "disputeDays": {
                     "type": "integer",
-                    "minimum": 0,
-                    "maximum": 86400
-                  },
-                  "note": {
-                    "type": "string",
-                    "maxLength": 300
-                  }
-                },
-                "required": [
-                  "use",
-                  "requirements",
-                  "materialIds",
-                  "secondsTaken"
-                ]
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The result is in `data`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {}
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error"
-          },
-          "422": {
-            "$ref": "#/components/responses/Error"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      }
-    },
-    "/api/v1/admin/edging-trial": {
-      "get": {
-        "tags": [
-          "Planet"
-        ],
-        "summary": "The edging trial’s test plan and results, and the plastic the township has collected",
-        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
-        "operationId": "getAdminEdgingTrial",
-        "parameters": [],
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The result is in `data`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {}
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/Error"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      }
-    },
-    "/api/v1/admin/edging-trial/tests/{testId}": {
-      "patch": {
-        "tags": [
-          "Planet"
-        ],
-        "summary": "Record a test result for the recycled and the conventional edging",
-        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
-        "operationId": "patchAdminEdgingTrialTestsTestId",
-        "parameters": [
-          {
-            "name": "testId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$schema": "https://json-schema.org/draft/2020-12/schema",
-                "type": "object",
-                "properties": {
-                  "status": {
-                    "type": "string",
-                    "enum": [
-                      "PLANNED",
-                      "RUNNING",
-                      "PASSED",
-                      "FAILED"
-                    ]
-                  },
-                  "resultRecycled": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "maxLength": 300
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "resultConventional": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "maxLength": 300
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
+                    "minimum": 1,
+                    "maximum": 60
                   }
                 }
               }
@@ -25979,7 +26685,7 @@
         "tags": [
           "System"
         ],
-        "summary": "Run a scheduled job (expire-points, float-check, settle, cleanup, flood-agent, parcel-reminders, lockers, couriers, incidents); bearer token",
+        "summary": "Run a scheduled job (expire-points, float-check, settle, cleanup, flood-agent, parcel-reminders, lockers, couriers, incidents, access); bearer token",
         "description": "Machine caller with a bearer token.",
         "operationId": "postInternalJobsName",
         "parameters": [

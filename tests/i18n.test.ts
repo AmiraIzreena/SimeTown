@@ -4,17 +4,17 @@ import { translateMessage } from '@/lib/i18n-core';
 import { malay } from '@/lib/i18n-messages';
 import { extraMalay } from '@/lib/i18n-extra';
 import { messageTemplates } from '@/lib/i18n-templates';
-import { ACCESS_NEED_LABELS, ROLE_LABELS, REPORT_CATEGORY_LABELS, SPONSOR_TIER_INFO, PLACE_KIND_LABELS, MATERIAL_INFO } from '@/shared/domain';
+import { ACCESS_NEED_LABELS, ROLE_LABELS, REPORT_CATEGORY_LABELS, SPONSOR_TIER_INFO, PLACE_KIND_LABELS, MATERIAL_INFO, POST_FLAG_CATEGORY_LABELS } from '@/shared/domain';
 
 describe('English and Bahasa Malaysia coverage', () => {
   it('covers navigation for every role and shared domain labels', () => {
     const labels = [
       ...Object.values(NAV).flatMap(area => [area.title, ...area.items.flatMap(item => [item.label, ...(item.gloss ? [item.gloss] : [])])]),
-      ...Object.values(ROLE_LABELS), ...Object.values(ACCESS_NEED_LABELS), ...Object.values(REPORT_CATEGORY_LABELS), ...Object.values(PLACE_KIND_LABELS),
+      ...Object.values(ROLE_LABELS), ...Object.values(ACCESS_NEED_LABELS), ...Object.values(REPORT_CATEGORY_LABELS), ...Object.values(PLACE_KIND_LABELS), ...Object.values(POST_FLAG_CATEGORY_LABELS),
       ...Object.values(SPONSOR_TIER_INFO).flatMap(tier => [tier.label, ...tier.benefits]),
       ...Object.values(MATERIAL_INFO).flatMap(material => [material.label, material.tip]),
     ];
-    const brands = new Set(['Kitar', 'Gerak', 'Lapor', 'Jiran', 'Kongsi', 'Jimat', 'Banjir', 'Tamu', 'Taman', 'Akses+', 'KITA Home']);
+    const brands = new Set(['Kitar', 'Gerak', 'Lapor', 'Jiran', 'Kongsi', 'Komuniti', 'Jimat', 'Banjir', 'Tamu', 'Akses+', 'KITA Home']);
     for (const label of labels) {
       expect(brands.has(label) || Object.hasOwn(malay, label) || Object.hasOwn(extraMalay, label), label).toBe(true);
       expect(translateMessage('en', label)).toBe(label);

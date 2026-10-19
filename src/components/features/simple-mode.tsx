@@ -3,7 +3,7 @@
 import { Text } from '@/components/ui/localized-text';
 
 import {
-  Accessibility, Bike, Bot, DoorOpen, Droplets, HandHeart, House, LifeBuoy, Recycle, Repeat2, Sprout, TriangleAlert, UserRound, Volume2, Wallet, Zap, type LucideIcon,
+  Accessibility, Bike, Bot, DoorOpen, Droplets, HandHeart, House, LifeBuoy, Recycle, Repeat2, TriangleAlert, UserRound, Volume2, Wallet, type LucideIcon,
 } from 'lucide-react';
 import { LocalizedLink as Link } from '@/components/ui/localized-elements';
 import { useState } from 'react';
@@ -42,10 +42,8 @@ export function SimpleHome({ onFullApp }: { onFullApp: () => void }) {
     { label: 'Kitar', icon: Recycle, href: '/app/kitar' },
     { label: 'Gerak', icon: Bike, href: '/app/gerak' },
     { label: 'Lapor', icon: TriangleAlert, href: '/app/lapor' },
-    { label: 'Neighbours', icon: HandHeart, href: '/app/jiran' },
-    { label: 'Share', icon: Repeat2, href: '/app/kongsi' },
-    { label: 'Save energy', icon: Zap, href: '/app/jimat' },
-    { label: 'Garden', icon: Sprout, href: '/app/taman' },
+    { label: 'Neighbours', icon: HandHeart, href: '/app/komuniti?tab=help' },
+    { label: 'Share', icon: Repeat2, href: '/app/komuniti?tab=share' },
     { label: 'Akses+', icon: Accessibility, href: '/app/akses' },
     { label: 'Assistant', icon: Bot, href: '/app/assistant' },
     { label: 'Home services', icon: House, href: '/app/home-services' },

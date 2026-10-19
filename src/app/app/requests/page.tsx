@@ -76,7 +76,7 @@ export default function RequestsPage() {
   return (
     <>
       <PageHeader
-        title="My requests"
+        title="Request tracking"
         description="Everything your home is waiting on, in one place: reports, parcels and recycling collections. Each shows where it stands and what happens next."
       />
       <Async state={requests} skeleton={<SkeletonList rows={4} />}>

@@ -1,6 +1,6 @@
 import {
-  Accessibility, Barcode, Bike, Bot, Building2, CalendarCheck, ClipboardList, DoorOpen, Droplets, Gauge, HandHeart, History, Home, House, Inbox, Landmark, Layers, Leaf, MapPin, Megaphone,
-  MessageCircleQuestionMark, Package, Receipt, Recycle, Repeat2, ScrollText, Settings, ShieldAlert, Sprout, Store, Sun, Tag, TriangleAlert, UserRound, Users, Wallet, Wrench, Zap, type LucideIcon,
+  Accessibility, Barcode, Bike, Bot, Building2, CalendarCheck, ClipboardList, DoorOpen, Droplets, Gauge, HandHeart, History, Home, House, Inbox, Landmark, MapPin, Megaphone,
+  MessageCircleQuestionMark, Package, Receipt, Recycle, ScrollText, Settings, ShieldAlert, Store, Tag, TriangleAlert, UserRound, Users, Wallet, Wrench, type LucideIcon,
 } from 'lucide-react';
 import { ADMINS, type Role } from '@/shared/domain';
 
@@ -28,14 +28,11 @@ export const NAV: Record<Area, { title: string; items: NavItem[] }> = {
       { href: '/app/kitar', label: 'Kitar', gloss: 'Recycle', icon: Recycle, primary: true },
       { href: '/app/gerak', label: 'Gerak', gloss: 'Move', icon: Bike },
       { href: '/app/lapor', label: 'Lapor', gloss: 'Report', icon: TriangleAlert, primary: true },
-      { href: '/app/requests', label: 'My requests', icon: Inbox },
+      { href: '/notifications', label: 'Notifications', icon: Inbox },
       { href: '/app/tamu', label: 'Tamu', gloss: 'Visitors', icon: DoorOpen },
       { href: '/app/parcels', label: 'Parcels', icon: Package },
-      { href: '/app/jiran', label: 'Jiran', gloss: 'Neighbours', icon: HandHeart },
-      { href: '/app/kongsi', label: 'Kongsi', gloss: 'Share', icon: Repeat2 },
-      { href: '/app/jimat', label: 'Jimat', gloss: 'Save energy', icon: Zap },
+      { href: '/app/komuniti', label: 'Komuniti', gloss: 'Neighbours & sharing', icon: HandHeart },
       { href: '/app/banjir', label: 'Banjir', gloss: 'Flood', icon: Droplets },
-      { href: '/app/taman', label: 'Taman', gloss: 'Garden', icon: Sprout },
       { href: '/app/akses', label: 'Akses+', gloss: 'Access', icon: Accessibility },
       { href: '/app/assistant', label: 'Assistant', icon: Bot },
       { href: '/app/home-services', label: 'SimeTown Home', gloss: 'Home services', icon: House },
@@ -93,10 +90,8 @@ export const NAV: Record<Area, { title: string; items: NavItem[] }> = {
       { href: '/console/finance', label: 'Float & payments', icon: Landmark },
       { href: '/console/places', label: 'Kiosks, machines & trails', icon: MapPin },
       { href: '/console/recycling', label: 'Recycling collections', icon: Recycle },
-      { href: '/console/solar', label: 'Solar sites', icon: Sun },
-      { href: '/console/materials', label: 'Greener materials', icon: Layers },
-      { href: '/console/nature', label: 'Nature & access', icon: Leaf },
-      { href: '/console/moderation', label: 'Moderation', icon: ShieldAlert },
+      { href: '/console/access', label: 'Access places', icon: Accessibility },
+      { href: '/console/komuniti', label: 'Komuniti', gloss: 'Reports & posts', icon: ShieldAlert },
       { href: '/console/home-services', label: 'Home service reports', icon: Wrench },
       { href: '/console/audit', label: 'Audit trail', icon: History, roles: ADMINS },
       { href: '/console/settings', label: 'Rules', icon: Settings },

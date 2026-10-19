@@ -2,7 +2,7 @@
 
 import { Text } from '@/components/ui/localized-text';
 
-import { Copy, Plus, Sun, UserCheck } from 'lucide-react';
+import { Copy, Plus, UserCheck } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, PageHeader } from '@/components/ui/card';
@@ -13,12 +13,12 @@ import { DataTable } from '@/components/ui/table';
 import { TabPanel, Tabs } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/toast';
 import { api } from '@/lib/api';
-import { formatDate, timeAgo } from '@/lib/format';
+import { timeAgo } from '@/lib/format';
 import { useAction, useApi, usePaged } from '@/lib/hooks';
 import type { Me } from '@/lib/types';
 import { ADMINS, formatPhone, ROLE_LABELS, type Role } from '@/shared/domain';
 
-type Tab = 'verify' | 'accounts' | 'solar';
+type Tab = 'verify' | 'accounts';
 interface Resident {
   id: string;
   full_name: string;
@@ -51,14 +51,6 @@ interface AccountRequest {
 }
 /** A link straight away, or a request that a second admin must approve first. */
 type InviteResult = { inviteToken: string } | { requestId: string; pending: true };
-interface Lead {
-  id: string;
-  full_name: string;
-  email: string;
-  phone: string | null;
-  address: string;
-  consent_at: string;
-}
 
 export default function PeoplePage() {
   const me = useApi<Me>('/me');
@@ -66,9 +58,9 @@ export default function PeoplePage() {
   const [tab, setTab] = useState<Tab>('verify');
   return (
     <>
-      <PageHeader title="People" description="Confirm residents’ homes, manage shop, sponsor and staff accounts, and see who asked to be contacted about solar." />
-      <Tabs<Tab> label="People sections" value={tab} onChange={setTab} items={[{ key: 'verify', label: 'Confirm homes' }, ...(isAdmin ? [{ key: 'accounts' as const, label: 'Accounts' }] : []), { key: 'solar', label: 'Solar requests' }]} />
-      <TabPanel>{tab === 'verify' ? <VerifyResidents /> : tab === 'accounts' ? <Accounts hq={me.data?.role === 'HQ_ADMIN'} meId={me.data?.id} /> : <SolarLeads />}</TabPanel>
+      <PageHeader title="People" description="Confirm residents’ homes and manage shop, sponsor and staff accounts." />
+      <Tabs<Tab> label="People sections" value={tab} onChange={setTab} items={[{ key: 'verify', label: 'Confirm homes' }, ...(isAdmin ? [{ key: 'accounts' as const, label: 'Accounts' }] : [])]} />
+      <TabPanel>{tab === 'accounts' && isAdmin ? <Accounts hq={me.data?.role === 'HQ_ADMIN'} meId={me.data?.id} /> : <VerifyResidents />}</TabPanel>
     </>
   );
 }
@@ -282,28 +274,3 @@ function Accounts({ hq, meId }: { hq: boolean; meId?: string }) {
   );
 }
 
-function SolarLeads() {
-  const leads = useApi<Lead[]>('/admin/solar-leads');
-  return (
-    <Async state={leads}>
-      {(list) =>
-        list.length === 0 ? (
-          <EmptyState icon={Sun} title="No requests yet"><Text>Residents appear here only after they ask to be contacted about solar.</Text></EmptyState>
-        ) : (
-          <DataTable
-            caption="Residents who asked about solar"
-            rows={list}
-            keyOf={(l) => l.id}
-            columns={[
-              { header: 'Name', cell: (l) => <span className="font-medium text-ink-900">{l.full_name}</span> },
-              { header: 'Address', cell: (l) => l.address },
-              { header: 'Email', cell: (l) => l.email },
-              { header: 'Phone', cell: (l) => (l.phone ? formatPhone(l.phone) : '–') },
-              { header: 'Asked on', cell: (l) => formatDate(l.consent_at) },
-            ]}
-          />
-        )
-      }
-    </Async>
-  );
-}

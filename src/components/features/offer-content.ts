@@ -1,5 +1,5 @@
 import {
-  Accessibility, Bike, Bot, DoorOpen, Droplets, Gauge, HandHeart, House, Megaphone, Recycle, Repeat2, Sprout, Store, TriangleAlert, Zap, type LucideIcon,
+  Accessibility, Bike, Bot, DoorOpen, Droplets, Gauge, HandHeart, House, Megaphone, Recycle, Repeat2, Store, TriangleAlert, type LucideIcon,
 } from 'lucide-react';
 
 /** What SimeTown offers, by layer. Shared by the landing page, the "What we offer" page and the top bar's menu. */
@@ -37,9 +37,7 @@ export const FEATURES: OfferGroup[] = [
     items: [
       { icon: Recycle, name: 'SimeTown Recycle', gloss: 'Recycle', text: 'Each kiosk bin has a scale that weighs your items, sends the weight by itself and signs every record.' },
       { icon: Repeat2, name: 'Kongsi', gloss: 'Share', text: 'Give away or lend things instead of throwing them out.' },
-      { icon: Zap, name: 'Jimat', gloss: 'Save', text: 'Upload a bill: it is checked for safety, read, and confirmed by you. Leak alerts and tips.' },
       { icon: Droplets, name: 'Banjir', gloss: 'Flood', text: 'Sensors and camera AI, two signals must agree, a person checks the rest, and a safe route.' },
-      { icon: Sprout, name: 'Taman', gloss: 'Garden', text: 'Book a garden plot, take a day on the watering roster and log the wildlife you spot.' },
       { icon: Bot, name: 'SimeTown Assistant', gloss: 'Preview', text: 'Ask in English or Bahasa Malaysia. It acts only after you confirm, and never decides an alert.' },
     ],
   },

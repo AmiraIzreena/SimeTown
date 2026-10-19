@@ -171,12 +171,13 @@ export async function publicChallenges(db: Db, now: Date) {
        JOIN townships t ON t.id = c.township_id
        LEFT JOIN sponsors s ON s.id = c.sponsor_id
       WHERE c.status = 'FUNDED' AND c.starts_at <= $1 AND c.ends_at > $1
+        AND c.activity NOT IN ('TAMAN_WATERING', 'TAMAN_SIGHTING')
       ORDER BY c.ends_at`,
     [now],
   );
   const everyday = await db.query(
     `SELECT activity, label, xp, quantity_unit, daily_cap_person, offer_points, offer_per_quantity
-       FROM activity_rules WHERE xp > 0 ORDER BY xp DESC, label`,
+       FROM activity_rules WHERE xp > 0 AND activity NOT IN ('TAMAN_WATERING', 'TAMAN_SIGHTING') ORDER BY xp DESC, label`,
   );
   return { challenges, everyday };
 }
@@ -193,7 +194,8 @@ export async function listCampaigns(db: Db, actor: Actor, now: Date) {
                  FROM xp_events e
                 WHERE e.user_id = $3 AND e.activity = x.activity AND e.created_at >= x.starts_at AND e.created_at < x.ends_at) AS my_progress,
               (SELECT count(*)::int FROM campaign_awards w WHERE w.campaign_id = x.id AND w.user_id = $3) AS my_rewards
-         FROM (${CAMPAIGN_LIST} WHERE c.township_id = $2 AND c.status = 'FUNDED' AND c.starts_at <= $1 AND c.ends_at > $1) x
+         FROM (${CAMPAIGN_LIST} WHERE c.township_id = $2 AND c.status = 'FUNDED' AND c.starts_at <= $1 AND c.ends_at > $1
+           AND c.activity NOT IN ('TAMAN_WATERING', 'TAMAN_SIGHTING')) x
         ORDER BY x.ends_at`,
       [now, actor.townshipId, actor.id],
     );

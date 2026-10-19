@@ -31,7 +31,7 @@ password yourself, set `SEED_DEMO_PASSWORD` in `.env` (10+ characters) before ru
 
 | Sign in as | Email | What you see |
 | --- | --- | --- |
-| Resident (main demo) | `aisyah@demo.kita.test` | Today card, Points & XP (cash- and offer-backed), Kitar with the smart machine, Gerak map tracking, Tamu, Lapor, Jiran, Kongsi, Jimat bill reading, Banjir, Taman, Akses+, Assistant, SimeTown Home (book a plumber, see who is coming, review) |
+| Resident (main demo) | `aisyah@demo.kita.test` | Today card, Points & XP (cash- and offer-backed), Kitar with the smart machine, Gerak map tracking, Tamu, Lapor, Jiran, Kongsi, Banjir, Akses+, Assistant, SimeTown Home (book a plumber, see who is coming, review) |
 | Resident in Simple Mode | `zainab@demo.kita.test` | Simple Mode's four big buttons; on the flood priority help list; Mei Ling is her carer |
 | Resident with a visitor waiting | `daniel@demo.kita.test` | A walk-in at the main gate waiting for his answer in Tamu |
 | Shop | `kafe@demo.kita.test`, `kedai@demo.kita.test` | Counter with Shop Offers, offers page, sales, weekly statements |
@@ -44,7 +44,7 @@ password yourself, set `SEED_DEMO_PASSWORD` in `.env` (10+ characters) before ru
 | Courier (company sign-in) | staff number `SPX-3001` | Lim Wei Jie, Shopee Express: *Sign in with your courier company* on the sign-in page (simulated); `SPX-3002` is suspended by Shopee |
 | Shop, not yet approved | `bengkel@demo.kita.test` | The "waiting for approval" state |
 | Sponsor | `sponsor@demo.kita.test` | Its Green Champion tier, own campaigns and grouped results |
-| Township staff | `staff@demo.kita.test` | Insights, report queue, home service reports, the flood agent, kiosks, smart machines, gardens and patrol points, nature and access |
+| Township staff | `staff@demo.kita.test` | Insights, report queue, home service reports, the flood agent, kiosks, smart machines, patrol points and access places |
 | Township staff (second) | `staff2@demo.kita.test` | Mei Chen: a second person in the township office, so a case can be moved from Ravi to her |
 | Township admin | `admin@demo.kita.test`, `admin2@demo.kita.test` | Everything staff see, plus shops, money and corrections |
 | SDP HQ admin | `hq@demo.kita.test` | Everything, plus the programme rules |
@@ -86,41 +86,36 @@ Open two browser windows (one normal, one private) so you can be the resident an
 4. **Lapor.** Report a broken street light with a photo. It is sorted as "Lighting, medium urgency";
    staff see it in their queue and can correct the suggestion (the correction is logged).
 5. **Jiran and Kongsi.** Join the gotong-royong; give away an item and confirm the handover.
-6. **Jimat.** Enter this month's electricity and water readings and see the change from last month.
-7. **Banjir.** As staff, open *Flood sensors* and drag Elmina Valley 1 & 2 past 90%. Within 15 seconds
+6. **Banjir.** As staff, open *Flood sensors* and drag Elmina Valley 1 & 2 past 90%. Within 15 seconds
    a danger warning takes over Aisyah's screen with the safe route.
-8. **SimeTown Insights.** The SDP dashboard has changed all day, with the float matched to the sen.
+7. **SimeTown Insights.** The SDP dashboard has changed all day, with the float matched to the sen.
 
 ### The third edition's features
 
-9. **Smart recycling machine.** As staff, open *Kiosks, machines & trails* → *Smart machines* →
+8. **Smart recycling machine.** As staff, open *Kiosks, machines & trails* → *Smart machines* →
    *Open the machine screen* (a tablet in a real demo). Scan its QR code with Aisyah's phone, or
    type her member code under "Camera: read a SimeTown QR". Drop items with the sensor buttons, try
    "Camera sees a different material", then *Finish*. Aisyah's Kitar screen follows item by item;
    the session earns XP and offer-backed points. *Recycle as guest* gives a claim code instead.
-10. **Shop Offers.** As the grocer, the counter now has *Customer wants to use your Shop Offer*
-    (RM2 off, all day). Aisyah confirms on her phone, pays RM18 of a RM20 bill, and the shop's
-    statement shows the 10% success fee. *Shop Offers* in the shop's menu sets terms and budgets.
-11. **Gerak map tracking.** In *Gerak*, switch on *Test mode: play back a route instead of GPS* and tap *Start*: the
+9. **Shop Offers.** As the grocer, the counter now has *Customer wants to use your Shop Offer*
+   (RM2 off, all day). Aisyah confirms on her phone, pays RM18 of a RM20 bill, and the shop's
+   statement shows the 10% success fee. *Shop Offers* in the shop's menu sets terms and budgets.
+10. **Gerak map tracking.** In *Gerak*, switch on *Test mode: play back a route instead of GPS* and tap *Start*: the
     trip follows the Elmina Central Park Walk on the map, checkpoints tick themselves, then *Finish*. On a phone
     outdoors, leave the demo switch off and real GPS is used.
-12. **Jimat bill reading.** In *Jimat* → *Read a bill*, download *Sample bill*, then upload it:
-    every step of the file-safety gate is shown, the numbers are read from the PDF, you confirm,
-    and the file is never stored.
-13. **Tamu.** As Aisyah, create a pass and share it (WhatsApp, SMS or link). Open the link in a
+11. **Tamu.** As Aisyah, create a pass and share it (WhatsApp, SMS or link). Open the link in a
     private window: that is the visitor's view. As the guard, type or scan the code: Aisyah is told
     her visitor arrived. As Daniel, answer the walk-in waiting at the gate.
-14. **Banjir agent.** As staff, open *Flood agent*. Move a zone's sensor past 75%: only one signal,
+12. **Banjir agent.** As staff, open *Flood agent*. Move a zone's sensor past 75%: only one signal,
     so a draft waits for the officer. Click a CCTV test picture near the warning line: two signals
     agree and the warning goes out. Push the sensor past 90%: a danger draft starts a 3-minute
     countdown. Residents check in "I'm safe"; the priority help list appears for duty staff.
     The public page is at `/status`.
-15. **Akses+, Taman, Assistant, SimeTown Home, Bahasa Malaysia.** Sign in as Zainab for Simple Mode.
-    Taman puts residents on a garden's waiting list (staff run the ballot under *Kiosks, machines & trails*) and
-    logs wildlife (staff confirm under *Nature & access*). Ask the Assistant “What homes is Sime Darby
+13. **Akses+, Assistant, SimeTown Home, Bahasa Malaysia.** Sign in as Zainab for Simple Mode.
+    Ask the Assistant “What homes is Sime Darby
     selling in Elmina?” or “Make a visitor pass for Ali tomorrow”, then answer the question it hands over
     under *Assistant questions* as staff. The *EN/BM* switch in the top bar changes the language.
-16. **SimeTown Home: book a home service.** As Aisyah, open *SimeTown Home*, choose *Plumbing*, compare
+14. **SimeTown Home: book a home service.** As Aisyah, open *SimeTown Home*, choose *Plumbing*, compare
     the companies (ratings and call-out fees are shown first) and book Elmina Plumbing Co. with a photo.
     As `plumber@`, open *Bookings*: the resident's address appears only after you accept. Accept with a
     time and assign Ahmad. As Aisyah, see Ahmad named before the visit and send him a Tamu gate pass
@@ -131,35 +126,32 @@ Open two browser windows (one normal, one private) so you can be the resident an
 
 ### The hackathon brief's PEOPLE and PLANET problems
 
-16. **One reporting channel.** As Aisyah, open *My requests*: every report, parcel and collection
+15. **One reporting channel.** As Aisyah, open *My requests*: every report, parcel and collection
     in one list, with where it stands. In *Lapor*, start a report about a blocked drain
     behind Jalan Metafasa: the open report appears under *Already reported?*; tap *Me too* instead of
     filing a second one. As staff, *Reports* shows the duplicates avoided, reports past their target
     date and the median time to fix; set who is fixing a report and by when, and add a photo of the fix.
-17. **Secure parcel collection.** As the guard, open *Parcels*, log a parcel for No. 1 Jalan Metafasa
+16. **Secure parcel collection.** As the guard, open *Parcels*, log a parcel for No. 1 Jalan Metafasa
     U16/171 with a shelf and a photo. Aisyah's *Parcels* screen shows the one-time code (and its QR).
     Scan or type it at the guard's screen, check the photo, hand it over: the code stops working.
     *Not me?* queries a handover; staff see the time to collect and the queried handovers.
-18. **Recycling guide and collections.** In *Kitar*, type “minyak” or “pizza box” under *Can I recycle
+17. **Recycling guide and collections.** In *Kitar*, type “minyak” or “pizza box” under *Can I recycle
     this?*, then *Book a collection* with a partner collector. Staff confirm it under *Recycling
     collections* (the collector's gate pass is made automatically) and record the weight.
-19. **Solar sites, greener materials, the edging trial.** As staff, *Solar sites* ranks rooftops and car
-    parks and flags missing checks; *Greener materials* compares materials for one use (sample library),
-    asks the agent to explain, saves a timed shortlist, and follows the recycled-plastic edging trial.
 
 ### Smart parcel lockers
 
-20. **Deliver.** As the courier, open *Deliver*, choose *Elmina Valley Locker A*, type a tracking
+18. **Deliver.** As the courier, open *Deliver*, choose *Elmina Valley Locker A*, type a tracking
     number, pick a size and give Aisyah's delivery code (her wallet → *Show my code*). The smallest
     free door opens; tap *Shut the door with the parcel inside* (a simulated station). Aisyah is told.
-21. **Collect.** As Aisyah, *Parcels* shows the QR code, the PIN and the time left. Type the PIN on
+19. **Collect.** As Aisyah, *Parcels* shows the QR code, the PIN and the time left. Type the PIN on
     the station's keypad in the console's simulator, or enter the station code in the app and tap
     *Open my door*, then *Take it and shut the door*.
-22. **Overdue and relocation.** As staff, *Smart lockers → Relocations* has Priya's overdue parcel.
+20. **Overdue and relocation.** As staff, *Smart lockers → Relocations* has Priya's overdue parcel.
     Start it (choose the township office counter), scan its tracking number, shut the empty door and
     complete it: her code changes and she is told where to go. Hand it over under *Counter* after
     checking the code and ID. *Parcels* shows every state change and the custody chain.
-23. **Full station and hardware faults.** In the simulator, jam a door or take the station offline,
+21. **Full station and hardware faults.** In the simulator, jam a door or take the station offline,
     then try a delivery: nothing is confirmed and the courier is told what to do. The *Overview*,
     *Forecast* and *Policy* tabs show capacity, tomorrow's demand and the deadlines.
 
@@ -169,29 +161,29 @@ J&T Express, Ninja Van and Shopee Express here are **simulated**: SimeTown is no
 courier company, and every tracking number (`JTSIM…`, `NVSIM…`, `SPXSIM…`) is fictional. Open
 `/demo/labels` on a computer to see the labels (scannable with a phone's camera, or type the number).
 
-24. **Barcode first.** As Faizal (`courier@`), *Deliver* → *Elmina Valley Locker A*, scan or type
+22. **Barcode first.** As Faizal (`courier@`), *Deliver* → *Elmina Valley Locker A*, scan or type
     `JTSIM10000001`. J&T (simulated) confirms the shipment and that Faizal carries it (high
     assurance); SimeTown matches Aisyah by phone, name and address and shows her details masked. No
     delivery code is needed and no township admin approved Faizal: J&T's manager added him. *Open a
-    locker*, shut the door with the parcel inside; Aisyah is told and collects with her PIN as in step 21.
-25. **Replays and copied labels.** Scan `JTSIM10000001` again: *Already delivered*, no door opens,
+    locker*, shut the door with the parcel inside; Aisyah is told and collects with her PIN as in step 19.
+23. **Replays and copied labels.** Scan `JTSIM10000001` again: *Already delivered*, no door opens,
     the attempt is logged and staff see an incident. `JTSIM10000009` is already in a locker (same
     result). `JTSIM10000008` is carried by another courier: refused, a high-severity incident.
     `JTSIM99999999` is unknown to J&T, `JTSIM10000004` is being delivered by Hairul,
     `JTSIM10000005` names someone who does not live at the address, `JTSIM10000006` goes to an
     unregistered home, and `JTSIM10000007` needs a signature: each is refused for its own reason.
-26. **Medium assurance, outage and fallback.** As Nurul (`nurul@`), `NVSIM20000001` is verified for
+24. **Medium assurance, outage and fallback.** As Nurul (`nurul@`), `NVSIM20000001` is verified for
     Daniel by address and name; Ninja Van cannot say who carries it (medium assurance). As admin,
     *Couriers & companies* → Ninja Van → *Simulate an outage*; Nurul scans `NVSIM20000003`, and may
     use Mei Ling's delivery code instead (recorded as low assurance).
-27. **The company manages its couriers.** As Kavitha (`jnt-manager@`), *Team*: add a courier with a
+25. **The company manages its couriers.** As Kavitha (`jnt-manager@`), *Team*: add a courier with a
     staff number (they get a set-password link), suspend Hairul (his session ends at once), reconfirm
     Faizal. As Ahmad (`courier2@`), *Deliver* says Ninja Van has suspended him.
-28. **Signing in through the company.** Signed out, choose *Shopee Express (simulated sign-in)* on
+26. **Signing in through the company.** Signed out, choose *Shopee Express (simulated sign-in)* on
     the sign-in page, pick Lim Wei Jie (`SPX-3001`) and the demo password: SimeTown checks the
     company's signed token and creates his courier account on first sign-in. `SPX-3002` is refused
     by the company itself. `SPXSIM30000001` is matched by the delivery code Zainab gave the shop.
-29. **Staff.** As admin: *Couriers & companies* (approve, suspend, stations, agreement, assurance,
+27. **Staff.** As admin: *Couriers & companies* (approve, suspend, stations, agreement, assurance,
     representatives, access history), *Shipment checks* (every scan and its outcome, repeated scans,
     each company's system health, and the simulated companies' shipments and staff to change), and
     *Cases* (how many locker and courier cases are open, with a link to them in *Incidents & reports*;
@@ -209,23 +201,23 @@ handling it and a deadline, and the system escalates what nobody takes or what r
 already filtered. Residents follow their
 reports under *Parcels → My reports*. The courier companies' support channels are simulated.
 
-30. **A. A late parcel belongs to the courier.** As Aisyah, *Parcels* → *A parcel hasn't arrived?*,
+28. **A. A late parcel belongs to the courier.** As Aisyah, *Parcels* → *A parcel hasn't arrived?*,
     choose *My parcel is late* and enter `JTSIM10000002`. J&T (simulated) confirms it is hers and on
     its way, so SimeTown shows J&T's support channel and the tracking number to copy. No township
     case is opened and no staff member is told. (*Send it to J&T for me* files a simulated ticket.)
-31. **B. A locker door will not open.** As Aisyah, on a parcel waiting in a locker, *Report a
+29. **B. A locker door will not open.** As Aisyah, on a parcel waiting in a locker, *Report a
     problem* → *The door will not open*. It becomes a township case at once, with the locker's
     door history attached. Staff work it under *Incidents & reports*; *Smart lockers → Today* lists
     it as urgent and *Smart lockers → Cases* counts it, both linking there.
-32. **C. A critical case escalates.** As admin (Nurul Huda, `admin@`), *Incidents & reports*: the
+30. **C. A critical case escalates.** As admin (Nurul Huda, `admin@`), *Incidents & reports*: the
     door forced open at Locker A 25 minutes ago is critical, nobody has taken it, and the admins have
     already been told. Running the checks again (*Deadlines* → *Run the deadline checks now*) does
     not tell them twice.
-33. **D. "I didn't collect this."** As Aisyah, on a collected locker parcel, *Report* → *I didn’t
+31. **D. "I didn't collect this."** As Aisyah, on a collected locker parcel, *Report* → *I didn’t
     collect this*. SimeTown first shows what its records say (how the door was opened); *Please
     investigate* opens a case. An earlier dispute of hers is already resolved under *My reports*,
     with the outcome and *Not fixed? Reopen it*.
-34. **E. Moving a case.** Daniel's locker door would not open; Ravi (`staff@`) took it and is
+32. **E. Moving a case.** Daniel's locker door would not open; Ravi (`staff@`) took it and is
     investigating. As admin, open it and *Reassign* → Mei Chen, with a reason. The history keeps
     both, and Mei Chen is told. A new case shows *I’ll handle this*; if two staff press it at once,
     only one gets the case.
@@ -251,17 +243,13 @@ reports under *Parcels → My reports*. The courier companies' support channels 
 | People | Gerak | Live map tracking with checkpoints that tick themselves, speed bands, near-home trimming, 30-day route deletion; QR checkpoints as the backup; demo playback |
 | Planet | Kitar | Smart machine: rotating screen code, SimeTown QR or guest, camera + barcode + weight agreement, signed records, guest claim codes; kiosk drop-off with a photo check as the backup; “Can I recycle this?” guide in English and Malay; collections booked with partner collectors, with the gate pass made on confirmation; material accepted by month and why machines turned items away |
 | Planet | Kongsi | Give away and lend, XP on confirmed handover |
-| Planet | Jimat | Bill reading behind a file-safety gate (PDF text, or the AI service for photos), confirm with unsure fields marked, same bill only once, file never stored; typed readings, tips, leak alert, solar request |
 | Planet | Banjir | The agent: sensor, CCTV test pictures, rain gauge and resident reports; two signals must agree; one-signal drafts with 3- and 5-minute windows; 15-minute updates; four-line messages; check-ins; public status page |
-| Planet | Taman | Garden plots by ballot from a waiting list (one per home), watering roster with the garden code (Impact XP only), wildlife log confirmed by staff, share the harvest in Kongsi |
-| Planet | Solar sites | Rooftops and car parks ranked by estimated output, demand nearby from Jimat bills (per area only) and readiness; missing checks flagged; agreement with an expert's ranking |
-| Planet | Greener materials | Materials for one use checked against its requirements, missing environmental evidence flagged, an agent that explains only from the table, timed shortlists; the recycled-plastic edging trial's test plan and results |
 | Business | SimeTown Merchant | Shop Offers with the shop's own terms and monthly cap, 10% success fee, new and returning customers, Akses-friendly badge; give and accept points, refunds, weekly statement |
 | Business | SimeTown Partner Hub | Four sponsor tiers with a public Partners page and one labelled banner; campaigns with a prefunded pool and grouped results |
-| Business | SimeTown Insights | 30-day totals, the float against what it owes, machine uptime, offer pledges, visitors, flood alerts, barriers fixed on time, nature; printable monthly report |
+| Business | SimeTown Insights | 30-day totals, the float against what it owes, machine uptime, offer pledges, visitors, flood alerts and barriers fixed on time; printable monthly report |
 | Business | SimeTown Home | Home services: residents compare approved township companies (ratings, pricing and call-out fees up front), book with a photo, see the assigned worker before arrival, send a Tamu contractor pass, confirm the job and review it, or report privately to staff. Companies are Merchant accounts with services switched on (shop, services, or both). Prices are agreed in person; SimeTown takes no payment. The home logbook records every confirmed job at the home and reminds when a service (air-conditioning, every 180 days) is due, with *Book again*. Warranty records and resale are still previews |
 
-Also built because a real system needs them: moderation of flagged posts, the daily float check,
+Also built because a real system needs them: Komuniti moderation (reports with reasons, keep/hide/remove, suspensions by township admins and HQ), the daily float check,
 weekly settlement, points expiry and reminders, two-person approval for balance corrections, an
 audit trail, adjustable programme rules, data download and account deletion.
 
@@ -272,15 +260,14 @@ ledger entries an admin records); the recycling machine is a tablet page whose b
 its camera, barcode reader and scale (its signed records and their checks are real); flood sensors,
 CCTV and the rain gauge are a simulator and a fixed test set of pictures; Gerak can play back a
 route instead of GPS outside production; the sample bill is generated by the app; car park occupancy
-is simulated until bay sensors exist; the materials library holds sample values to be replaced with
-supplier datasheets; smart lockers run on the built-in simulator until real hardware is connected
+is simulated until bay sensors exist; smart lockers run on the built-in simulator until real hardware is connected
 through the gateway contract (no locker vendor's API is built in); WhatsApp and SMS
 open the phone's own apps; there is no e-mail or one-time code. Bahasa Malaysia covers navigation,
 the home screen, Simple Mode, Tamu and flood alerts.
 
 **Adding the third edition to an existing demo database:** `npm run db:migrate` then
 `npm run db:seed`. On a database that already holds the demo township, the seed only adds what the
-new features need (the guard, offers, machines, gardens, map, tiers…) and changes nothing else.
+new features need (the guard, offers, machines, map, tiers…) and changes nothing else.
 
 ---
 
@@ -362,7 +349,7 @@ Third edition (October 2026):
 
 - 123 automated tests pass on in-process PostgreSQL, including 34 new tests for Shop Offers, the
   recycling machine's signatures, Gerak tracking, the bill file gate, Tamu, the Banjir agent,
-  Akses+, Taman and sponsor tiers.
+  Akses+ and sponsor tiers.
 - Migration `004_third_edition.sql` and the seed were rehearsed on a copy of the previous database
   and on an empty one (the seed was run twice to prove it changes nothing the second time), then
   applied to the shared Supabase database; the float check passed afterwards.

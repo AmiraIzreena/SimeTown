@@ -6,6 +6,7 @@ import type { Db } from '@/server/db/client';
 import { one } from '@/server/db/client';
 import { routes } from '@/server/http/api';
 import { createRouter } from '@/server/http/router';
+import { notify } from '@/server/modules/notifications';
 import { createKiosk } from '@/server/modules/kitar/service';
 import { createLoop, listLoopsForStaff } from '@/server/modules/gerak/service';
 import { T0, expectFloatBalanced, freshDb, makeCampaign, makeHome, makeMerchant, makeResident, makeSponsorUser, makeWorld, sell, walletOf, type World } from './helpers';
@@ -58,6 +59,28 @@ beforeAll(async () => {
   handle = createRouter(routes, { prefix: '/api/v1', db: async () => db, now: () => clock.now }).handle;
 });
 afterAll(() => db.close());
+
+describe('notification API ownership and validation', () => {
+  it('requires a session and restricts read and dismiss to the notification owner', async () => {
+    const resident = await makeResident(w);
+    const neighbour = await makeResident(w);
+    await notify(db, [resident.id], { title: 'Update', body: 'Your update', link: '/app/wallet', dedupeKey: 'api-notification' });
+    expect((await call('GET', '/notifications')).status).toBe(401);
+    const inbox = await call('GET', '/notifications?unread=true&category=REWARDS', { as: resident });
+    expect(inbox.status).toBe(200);
+    const id = inbox.data.items[0].id;
+    expect((await call('POST', `/notifications/${id}/read`, { as: neighbour, body: {} })).status).toBe(404);
+    expect((await call('POST', `/notifications/${id}/dismiss`, { as: neighbour, body: {} })).status).toBe(404);
+    expect((await call('POST', `/notifications/${id}/read`, { as: resident, origin: 'https://other.test' })).status).toBe(403);
+    expect((await call('POST', `/notifications/${id}/read`, { as: resident, body: {} })).status).toBe(200);
+    expect((await call('GET', '/notifications', { as: resident })).data.unread).toBe(0);
+    expect((await call('POST', `/notifications/${id}/dismiss`, { as: resident, body: {} })).status).toBe(200);
+    expect((await call('POST', '/notifications/invalid/read', { as: resident, body: {} })).status).toBe(400);
+    expect((await call('GET', '/notifications', { as: resident })).data.items).toHaveLength(0);
+    expect((await call('GET', '/notifications?limit=0', { as: resident })).status).toBe(400);
+    expect((await call('GET', '/notifications?category=UNKNOWN', { as: resident })).status).toBe(400);
+  });
+});
 
 describe('signing in (KITA ID)', () => {
   it('registers a resident as unverified, and staff verification unlocks earning (BR1)', async () => {
@@ -304,6 +327,9 @@ describe('Jiran and Kongsi', () => {
     const post = await call('POST', '/posts', { as: asker, body: { type: 'HELP', title: 'Help carrying a cupboard', body: 'Two flights of stairs, ten minutes.' } });
     await call('POST', `/posts/${post.data.id}/respond`, { as: helper, body: {} });
 
+    expect((await call('POST', `/posts/${post.data.id}/responses/${helper.id}/confirm`, { as: asker, body: {} })).error!.code).toBe('NOT_ACCEPTED');
+    expect((await call('POST', `/posts/${post.data.id}/responses/${helper.id}/accept`, { as: helper, body: {} })).status).toBe(403);
+    await call('POST', `/posts/${post.data.id}/responses/${helper.id}/accept`, { as: asker, body: {} });
     expect((await call('POST', `/posts/${post.data.id}/responses/${helper.id}/confirm`, { as: helper, body: {} })).status).toBe(403);
     const confirm = await call('POST', `/posts/${post.data.id}/responses/${helper.id}/confirm`, { as: asker, body: {} });
     expect(confirm.data.reward.xp).toBe(40);
@@ -314,30 +340,203 @@ describe('Jiran and Kongsi', () => {
     const giver = await makeResident(w);
     const taker = await makeResident(w);
     const post = await call('POST', '/posts', { as: giver, body: { type: 'GIVE', title: "Child's chair", body: 'Good condition, collect from Jalan Tiga.' } });
+    const other = await makeResident(w);
     await call('POST', `/posts/${post.data.id}/respond`, { as: taker, body: {} });
+    await call('POST', `/posts/${post.data.id}/respond`, { as: other, body: {} });
+    await call('POST', `/posts/${post.data.id}/responses/${taker.id}/accept`, { as: giver, body: {} });
+    // Only one neighbour can be promised the item at a time.
+    expect((await call('POST', `/posts/${post.data.id}/responses/${other.id}/accept`, { as: giver, body: {} })).error!.code).toBe('ALREADY_ACCEPTED');
+    await call('POST', `/posts/${post.data.id}/responses/${other.id}/decline`, { as: giver, body: {} });
+    expect((await call('POST', `/posts/${post.data.id}/respond`, { as: other, body: {} })).status).toBe(200);
+    expect((await call('POST', `/posts/${post.data.id}/responses/${other.id}/accept`, { as: giver, body: {} })).error!.code).toBe('NOT_PENDING');
+
     await call('POST', `/posts/${post.data.id}/responses/${taker.id}/confirm`, { as: giver, body: {} });
     const xp = await one<{ xp_total: number }>(db, 'SELECT xp_total FROM users WHERE id = $1', [giver.id]);
     expect(xp!.xp_total).toBe(30);
+    const impact = await call('GET', '/posts/impact', { as: giver });
+    expect(impact.data).toEqual({ xp: 30, activities: 0, contributions: 1, neighbours_helped: 0 });
   });
 
-  it('hides a post after three different residents flag it, until a moderator decides (BR20)', async () => {
+  it('lends with a return date and gives the lender XP only when the item comes back', async () => {
+    const lender = await makeResident(w);
+    const borrower = await makeResident(w);
+    const next = await makeResident(w);
+    const post = await call('POST', '/posts', { as: lender, body: { type: 'LEND', title: 'Ladder to borrow', body: 'Three metres, aluminium.' } });
+    const responses = `/posts/${post.data.id}/responses`;
+    await call('POST', `/posts/${post.data.id}/respond`, { as: borrower, body: {} });
+    await call('POST', `/posts/${post.data.id}/respond`, { as: next, body: {} });
+
+    expect((await call('POST', `${responses}/${borrower.id}/accept`, { as: lender, body: {} })).error!.code).toBe('LOAN_NEEDS_DATE');
+    expect((await call('POST', `${responses}/${borrower.id}/accept`, { as: lender, body: { dueBack: '2026-11-01' } })).error!.code).toBe('LOAN_DATE'); // yesterday
+    expect((await call('POST', `${responses}/${borrower.id}/accept`, { as: lender, body: { dueBack: '2027-03-01' } })).error!.code).toBe('LOAN_DATE'); // too far
+    expect((await call('POST', `${responses}/${borrower.id}/accept`, { as: lender, body: { dueBack: '2026-11-05' } })).status).toBe(200);
+
+    const lent = await call('POST', `${responses}/${borrower.id}/confirm`, { as: lender, body: {} });
+    expect(lent.data.reward).toBeNull();
+    // While it is out, nobody else can be lent it.
+    expect((await call('POST', `${responses}/${next.id}/accept`, { as: lender, body: { dueBack: '2026-11-06' } })).error!.code).toBe('ALREADY_ACCEPTED');
+    const seen = (await call('GET', `/posts?type=LEND&mine=true`, { as: borrower })).data.items.find((p: { id: string }) => p.id === post.data.id);
+    expect(seen).toMatchObject({ my_response: 'CONFIRMED', my_due_back: '2026-11-05' });
+
+    expect((await call('POST', `${responses}/${next.id}/returned`, { as: lender, body: {} })).error!.code).toBe('NOT_ON_LOAN');
+    const back = await call('POST', `${responses}/${borrower.id}/returned`, { as: lender, body: {} });
+    expect(back.data.reward.xp).toBe(30);
+    expect((await call('POST', `${responses}/${next.id}/accept`, { as: lender, body: { dueBack: '2026-11-06' } })).status).toBe(200);
+
+    // Borrowing the same item again is fine, but earns the lender nothing more from the same neighbour.
+    expect((await call('POST', `/posts/${post.data.id}/respond`, { as: borrower, body: {} })).status).toBe(200);
+    const again = await call('GET', `/posts?type=LEND&mine=true`, { as: borrower });
+    expect(again.data.items.find((p: { id: string }) => p.id === post.data.id).my_response).toBe('PENDING');
+  });
+
+  it('lets a neighbour cancel an RSVP before the event, which frees the place', async () => {
+    const host = await makeResident(w);
+    const guest = await makeResident(w);
+    const late = await makeResident(w);
+    const post = await call('POST', '/posts', { as: host, body: { type: 'EVENT', title: 'Board games night', body: 'Bring a game.', startsAt: new Date(T0.getTime() + 86_400_000).toISOString(), capacity: 1 } });
+    await call('POST', `/posts/${post.data.id}/respond`, { as: guest, body: {} });
+    expect((await call('POST', `/posts/${post.data.id}/respond`, { as: late, body: {} })).error!.code).toBe('POST_FULL');
+    expect((await call('POST', `/posts/${post.data.id}/responses/${guest.id}/accept`, { as: host, body: {} })).error!.code).toBe('EVENT_NO_ACCEPT');
+
+    expect((await call('POST', `/posts/${post.data.id}/withdraw`, { as: guest, body: {} })).status).toBe(200);
+    expect((await call('POST', `/posts/${post.data.id}/withdraw`, { as: guest, body: {} })).status).toBe(404);
+    expect((await call('POST', `/posts/${post.data.id}/respond`, { as: late, body: {} })).status).toBe(200);
+
+    clock.now = new Date(T0.getTime() + 2 * 86_400_000);
+    try {
+      expect((await call('POST', `/posts/${post.data.id}/withdraw`, { as: late, body: {} })).error!.code).toBe('EVENT_STARTED');
+      const attended = await call('POST', `/posts/${post.data.id}/responses/${late.id}/confirm`, { as: host, body: {} });
+      expect(attended.data.reward.xp).toBe(30);
+      expect((await call('POST', `/posts/${post.data.id}/withdraw`, { as: late, body: {} })).error!.code).toBe('CANNOT_WITHDRAW');
+    } finally {
+      clock.now = T0;
+    }
+  });
+
+  it('lists every type in one Komuniti feed, a group of types, or a search', async () => {
+    const author = await makeResident(w);
+    const help = await call('POST', '/posts', { as: author, body: { type: 'HELP', title: 'Komuniti test: fix a tap', body: 'Kitchen tap is dripping.' } });
+    const lend = await call('POST', '/posts', { as: author, body: { type: 'LEND', title: 'Komuniti test: ladder', body: 'Three-metre ladder.' } });
+    const ids = async (query: string) => (await call('GET', `/posts?${query}`, { as: author })).data.items.map((p: { id: string }) => p.id);
+
+    expect(await ids('mine=true')).toEqual(expect.arrayContaining([help.data.id, lend.data.id]));
+    const share = await ids('type=GIVE,LEND&mine=true');
+    expect(share).toContain(lend.data.id);
+    expect(share).not.toContain(help.data.id);
+    expect(await ids('q=ladder&mine=true')).toEqual([lend.data.id]);
+    expect((await call('GET', '/posts?type=NOPE', { as: author })).status).toBe(400);
+  });
+
+});
+
+describe('Komuniti moderation (township staff, township admins and HQ)', () => {
+  const lastNotice = async (user: Actor) => one<{ title: string; body: string }>(db, 'SELECT title, body FROM notifications WHERE user_id = $1 ORDER BY created_at DESC, id DESC LIMIT 1', [user.id]);
+  const report = (postId: string, as: Actor, body: Record<string, unknown> = { category: 'SCAM' }) => call('POST', `/posts/${postId}/flag`, { as, body });
+  const queued = async (postId: string, as: Actor = w.staff) => (await call('GET', '/admin/komuniti/reports', { as })).data.some((p: { id: string }) => p.id === postId);
+
+  it('hides a post after three different residents report it, and keeping it dismisses the reports (BR20)', async () => {
     const author = await makeResident(w);
     const post = await call('POST', '/posts', { as: author, body: { type: 'LEND', title: 'Totally legit offer', body: 'Send me your bank details.' } });
-    const listed = async () => (await call('GET', '/posts?type=LEND', { as: w.staff })).data.items.some((p: { id: string }) => p.id === post.data.id);
+    const id = post.data.id as string;
+    const listed = async () => (await call('GET', '/posts?type=LEND', { as: w.staff })).data.items.some((p: { id: string }) => p.id === id);
+    expect((await report(id, await makeResident(w), { category: 'OTHER' })).error!.code).toBe('REASON_NEEDED');
 
-    for (let i = 0; i < 2; i++) await call('POST', `/posts/${post.data.id}/flag`, { as: await makeResident(w), body: { reason: 'Looks like a scam' } });
+    const reporters = [await makeResident(w), await makeResident(w), await makeResident(w)];
+    await report(id, reporters[0]!);
+    await report(id, reporters[0]!); // a second report from the same resident does not count
+    await report(id, reporters[1]!, { category: 'OTHER', reason: 'Asks for bank details' });
     expect(await listed()).toBe(true);
-    const third = await call('POST', `/posts/${post.data.id}/flag`, { as: await makeResident(w), body: { reason: 'Scam' } });
-    expect(third.data.hidden).toBe(true);
+    expect(await queued(id)).toBe(true); // staff see reports before the post is hidden
+    expect((await report(id, reporters[2]!)).data.hidden).toBe(true);
     expect(await listed()).toBe(false);
 
-    expect((await call('GET', '/moderation/posts', { as: w.staff })).data).toHaveLength(1);
-    await call('POST', `/moderation/posts/${post.data.id}`, { as: w.staff, body: { action: 'REMOVE' } });
-    expect((await call('GET', '/moderation/posts', { as: w.staff })).data).toHaveLength(0);
+    const queue = (await call('GET', '/admin/komuniti/reports', { as: w.admin })).data;
+    expect(queue[0]).toMatchObject({ id, status: 'HIDDEN', open_reports: 3, urgent: true });
+    expect((await call('GET', '/admin/komuniti/overview', { as: w.admin })).data).toMatchObject({ reported: 1, hidden: 1 });
+
+    const kept = await call('POST', `/admin/komuniti/posts/${id}/moderate`, { as: w.staff, body: { action: 'KEEP' } });
+    expect(kept.data.status).toBe('OPEN');
+    expect(await listed()).toBe(true);
+    expect(await queued(id)).toBe(false);
+    expect((await lastNotice(reporters[0]!))!.title).toBe('We reviewed "Totally legit offer"');
+    expect((await lastNotice(author))!.title).toBe('Your post "Totally legit offer" is visible again');
+    // Dismissed reports stay on record but no longer count towards hiding it.
+    const detail = (await call('GET', `/admin/komuniti/posts/${id}`, { as: w.admin })).data;
+    expect(detail.reports.map((r: { status: string }) => r.status)).toEqual(['DISMISSED', 'DISMISSED', 'DISMISSED']);
+    expect((await report(id, await makeResident(w))).data.hidden).toBe(false);
+    expect((await call('POST', `/admin/komuniti/posts/${id}/moderate`, { as: w.staff, body: { action: 'KEEP' } })).status).toBe(200);
+    expect((await call('POST', `/admin/komuniti/posts/${id}/moderate`, { as: w.staff, body: { action: 'KEEP' } })).error!.code).toBe('NOTHING_TO_REVIEW');
+  });
+
+  it('removes a post only with a reason, and tells the author, the reporters and anyone waiting on it', async () => {
+    const author = await makeResident(w);
+    const reporter = await makeResident(w);
+    const borrower = await makeResident(w);
+    const post = await call('POST', '/posts', { as: author, body: { type: 'LEND', title: 'Cheap phones, cash only', body: 'Message me.' } });
+    const id = post.data.id as string;
+    await call('POST', `/posts/${id}/respond`, { as: borrower, body: {} });
+    await report(id, reporter, { category: 'SPAM' });
+
+    expect((await call('POST', `/admin/komuniti/posts/${id}/moderate`, { as: w.admin, body: { action: 'REMOVE' } })).status).toBe(400);
+    const removed = await call('POST', `/admin/komuniti/posts/${id}/moderate`, { as: w.admin, body: { action: 'REMOVE', note: 'Selling is not allowed in Komuniti.' } });
+    expect(removed.data.status).toBe('REMOVED');
+    expect(await lastNotice(author)).toMatchObject({ title: 'Your post "Cheap phones, cash only" was removed', body: 'Selling is not allowed in Komuniti.' });
+    expect((await lastNotice(reporter))!.title).toBe('Thank you: "Cheap phones, cash only" was removed');
+    expect((await lastNotice(borrower))!.title).toBe('"Cheap phones, cash only" is no longer available');
+    expect((await report(id, await makeResident(w))).status).toBe(404);
+
+    const detail = (await call('GET', `/admin/komuniti/posts/${id}`, { as: w.hq })).data;
+    expect(detail).toMatchObject({ status: 'REMOVED', moderation_note: 'Selling is not allowed in Komuniti.', author: { removed: 1, upheld_reports: 1 } });
+    const all = (await call('GET', '/admin/komuniti/posts?status=REMOVED', { as: w.admin })).data.items.map((p: { id: string }) => p.id);
+    expect(all).toContain(id);
+  });
+
+  it('lets township admins and HQ suspend a resident from Komuniti, but not township staff', async () => {
+    const resident = await makeResident(w);
+    const post = await call('POST', '/posts', { as: await makeResident(w), body: { type: 'HELP', title: 'Help with groceries', body: 'Two bags from the car.' } });
+    const suspend = (as: Actor) => call('POST', `/admin/komuniti/suspensions/${resident.id}`, { as, body: { days: 7, reason: 'Repeated scam posts.' } });
+
+    expect((await suspend(w.staff)).status).toBe(403);
+    expect((await suspend(w.admin)).status).toBe(200);
+    expect((await lastNotice(resident))!.title).toBe('You are suspended from Komuniti');
+    expect((await call('POST', '/posts', { as: resident, body: { type: 'GIVE', title: 'Old sofa', body: 'Free to collect.' } })).error!.code).toBe('KOMUNITI_SUSPENDED');
+    expect((await call('POST', `/posts/${post.data.id}/respond`, { as: resident, body: {} })).error!.code).toBe('KOMUNITI_SUSPENDED');
+    expect((await call('GET', '/admin/komuniti/suspensions', { as: w.staff })).data.map((s: { user_id: string }) => s.user_id)).toContain(resident.id);
+
+    expect((await call('POST', `/admin/komuniti/suspensions/${resident.id}/lift`, { as: w.hq, body: {} })).status).toBe(200);
+    expect((await call('POST', `/posts/${post.data.id}/respond`, { as: resident, body: {} })).status).toBe(200);
+    expect((await call('POST', `/admin/komuniti/suspensions/${resident.id}/lift`, { as: w.admin, body: {} })).status).toBe(404);
+
+    // The suspension ends on its own.
+    expect((await suspend(w.hq)).status).toBe(200);
+    clock.now = new Date(T0.getTime() + 8 * 86_400_000);
+    try {
+      expect((await call('POST', '/posts', { as: resident, body: { type: 'GIVE', title: 'Old sofa', body: 'Free to collect.' } })).status).toBe(200);
+    } finally {
+      clock.now = T0;
+    }
+  });
+
+  it('keeps each township admin to their own township, while HQ sees all of them or picks one', async () => {
+    const other = await makeWorld(db);
+    const post = await call('POST', '/posts', { as: await makeResident(other), body: { type: 'GIVE', title: 'Spare paint', body: 'Half a tin of white.' } });
+    const id = post.data.id as string;
+    await report(id, await makeResident(other), { category: 'UNSAFE' });
+
+    expect(await queued(id, w.admin)).toBe(false);
+    expect(await queued(id, other.admin)).toBe(true);
+    expect(await queued(id, w.hq)).toBe(true);
+    const picked = (await call('GET', `/admin/komuniti/reports?townshipId=${other.townshipId}`, { as: w.hq })).data;
+    expect(picked.map((p: { id: string }) => p.id)).toEqual([id]);
+    expect((await call('GET', `/admin/komuniti/reports?townshipId=${other.townshipId}`, { as: w.admin })).status).toBe(403);
+    expect((await call('GET', `/admin/komuniti/posts/${id}`, { as: w.admin })).status).toBe(403);
+    expect((await call('POST', `/admin/komuniti/posts/${id}/moderate`, { as: w.admin, body: { action: 'HIDE' } })).status).toBe(403);
+    expect((await call('POST', `/admin/komuniti/posts/${id}/moderate`, { as: w.hq, body: { action: 'HIDE' } })).data.status).toBe('HIDDEN');
+    expect((await call('GET', '/admin/komuniti/reports', { as: await makeResident(w) })).status).toBe(403);
   });
 });
 
-describe('Gerak, Kitar and Jimat', () => {
+describe('Gerak and Kitar', () => {
   it('completes a loop when every checkpoint is scanned on the same day', async () => {
     await createLoop(db, w.staff, { name: 'Park Loop', description: 'Around the lake', mode: 'CYCLE', distanceM: 3_200, checkpoints: ['Lake gate', 'Boathouse'] });
     const loop = (await listLoopsForStaff(db, w.staff)).find((l) => (l as unknown as { name: string }).name === 'Park Loop') as unknown as { checkpoints: { code: string }[] };
@@ -371,26 +570,6 @@ describe('Gerak, Kitar and Jimat', () => {
     expect((await call('GET', '/kitar', { as: resident })).data).toMatchObject({ monthGrams: 500, dropOffs: 2 });
     expect((await call('POST', '/kitar/dropoffs', { as: resident, body: { ...body, kioskCode: 'KWRONGCODE' } })).status).toBe(404);
     await expectFloatBalanced(db);
-  });
-
-  it('compares this month’s readings with last month’s and shares solar interest only on request (BR16)', async () => {
-    const resident = await makeResident(w);
-    clock.now = new Date('2026-10-28T04:00:00Z');
-    await call('POST', '/jimat/readings', { as: resident, body: { month: '2026-10', electricityKwh: 400, waterLitres: 20_000 } });
-    clock.now = new Date('2026-11-28T04:00:00Z');
-    const nov = await call('POST', '/jimat/readings', { as: resident, body: { month: '2026-11', electricityKwh: 360, waterLitres: 19_000 } });
-    expect(nov.data).toMatchObject({ saved: true, reward: { xp: 65 } });
-    expect((await call('POST', '/jimat/readings', { as: resident, body: { month: '2026-11', electricityKwh: 1, waterLitres: 1 } })).error!.code).toBe('READING_EXISTS');
-    expect((await call('POST', '/jimat/readings', { as: resident, body: { month: '2026-05', electricityKwh: 1, waterLitres: 1 } })).error!.code).toBe('MONTH_NOT_OPEN');
-    expect((await call('GET', '/jimat', { as: resident })).data).toMatchObject({ electricityPct: -10, waterPct: -5 });
-
-    const leads = async () => (await call('GET', '/admin/solar-leads', { as: w.staff })).data.length;
-    expect(await leads()).toBe(0);
-    await call('POST', '/jimat/solar-interest', { as: resident, body: { interested: true } });
-    expect(await leads()).toBe(1);
-    await call('POST', '/jimat/solar-interest', { as: resident, body: { interested: false } });
-    expect(await leads()).toBe(0);
-    clock.now = T0;
   });
 });
 

@@ -539,10 +539,20 @@ export async function listMachines(db: Db, actor: Actor, now: Date) {
 
 /** The machines a resident can use, for the Kitar screen. */
 export async function machinesForResident(q: Queryable, townshipId: string) {
-  return q.query(
-    `SELECT m.id, m.name, m.status, m.material, k.location, k.id AS kiosk_id, k.name AS kiosk FROM kitar_machines m JOIN kitar_kiosks k ON k.id = m.kiosk_id WHERE m.township_id = $1 ORDER BY m.name`,
-    [townshipId],
-  );
+  try {
+    return await q.query(
+      `SELECT m.id, m.name, m.status, m.material, k.location, k.id AS kiosk_id, k.name AS kiosk FROM kitar_machines m JOIN kitar_kiosks k ON k.id = m.kiosk_id WHERE m.township_id = $1 ORDER BY m.name`,
+      [townshipId],
+    );
+  } catch (error) {
+    // Migration 014 adds the per-bin material. Keep an older database usable
+    // while it is being upgraded: its existing bins accepted every material.
+    if ((error as { code?: string }).code !== '42703') throw error; // undefined_column
+    return q.query(
+      `SELECT m.id, m.name, m.status, NULL::text AS material, k.location, k.id AS kiosk_id, k.name AS kiosk FROM kitar_machines m JOIN kitar_kiosks k ON k.id = m.kiosk_id WHERE m.township_id = $1 ORDER BY m.name`,
+      [townshipId],
+    );
+  }
 }
 
 /**

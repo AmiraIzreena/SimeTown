@@ -8,7 +8,7 @@ import { NextResponse, type NextRequest } from 'next/server';
  * server (see src/server/http/router.ts).
  */
 
-const PROTECTED = ['/app', '/merchant', '/sponsor', '/guard', '/courier', '/console'];
+const PROTECTED = ['/app', '/merchant', '/sponsor', '/guard', '/courier', '/console', '/notifications'];
 const SESSION_COOKIES = ['__Host-kita_session', 'kita_session'];
 
 export function proxy(request: NextRequest) {

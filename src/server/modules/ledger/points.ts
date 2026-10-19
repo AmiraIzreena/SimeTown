@@ -84,6 +84,7 @@ export async function addPoints(
   // Earning counts as activity for the 12-month rule; a refund or correction does not.
   if (m.source === 'PURCHASE' || m.source === 'CAMPAIGN') {
     await tx.query('UPDATE users SET last_points_activity_at = $2 WHERE id = $1', [m.userId, m.now]);
+    await notify(tx, [m.userId], { title: 'Points earned', body: m.label, link: '/app/wallet', dedupeKey: `points-earned:${txnId}` });
   }
   return txnId;
 }

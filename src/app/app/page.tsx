@@ -3,7 +3,7 @@
 import { Text } from '@/components/ui/localized-text';
 
 import {
-  Accessibility, Bike, Bot, CalendarClock, DoorOpen, Droplets, HandHeart, Inbox, Package, PiggyBank, Recycle, Repeat2, Sparkles, Sprout, Tag, TriangleAlert, Wallet, Zap, type LucideIcon,
+  Accessibility, Bike, Bot, CalendarClock, DoorOpen, Droplets, HandHeart, Inbox, Package, PiggyBank, Recycle, Sparkles, Tag, TriangleAlert, Wallet, type LucideIcon,
 } from 'lucide-react';
 import { LocalizedLink as Link } from '@/components/ui/localized-elements';
 import { useState } from 'react';
@@ -26,7 +26,7 @@ interface WalletOverview {
   points: number;
   offerPoints: number;
   totalPoints: number;
-  saved: { pointsSen: number; offersSen: number; billsSen: number; totalSen: number };
+  saved: { pointsSen: number; offersSen: number; totalSen: number };
   xp: number;
   level: { level: number; name: string; floor: number; next: number };
   residencyStatus: Me['residencyStatus'];
@@ -46,12 +46,9 @@ const ACTIONS: { href: string; label: string; text: string; icon: LucideIcon }[]
   { href: '/app/tamu', label: 'Tamu', text: 'Visitor passes and the guardhouse', icon: DoorOpen },
   { href: '/app/parcels', label: 'Parcels', text: 'Parcels waiting at the guardhouse', icon: Package },
   { href: '/app/lapor', label: 'Lapor', text: 'Report a problem', icon: TriangleAlert },
-  { href: '/app/requests', label: 'My requests', text: 'Everything your home is waiting on', icon: Inbox },
-  { href: '/app/jimat', label: 'Jimat', text: 'Read a bill or enter readings', icon: Zap },
+  { href: '/notifications', label: 'Notifications', text: 'Your latest updates, reminders and activity.', icon: Inbox },
   { href: '/app/banjir', label: 'Banjir', text: 'Check flood levels', icon: Droplets },
-  { href: '/app/taman', label: 'Taman', text: 'Garden plots and wildlife', icon: Sprout },
-  { href: '/app/jiran', label: 'Jiran', text: 'Events and the help board', icon: HandHeart },
-  { href: '/app/kongsi', label: 'Kongsi', text: 'Give away or lend an item', icon: Repeat2 },
+  { href: '/app/komuniti', label: 'Komuniti', text: 'Events, help and sharing with neighbours', icon: HandHeart },
   { href: '/app/wallet', label: 'Points & XP', text: 'Balance, history, badges', icon: Wallet },
   { href: '/app/akses', label: 'Akses+', text: 'Simple Mode, read-aloud and access needs', icon: Accessibility },
   { href: '/app/assistant', label: 'Assistant', text: 'Ask about the township', icon: Bot },
@@ -253,7 +250,7 @@ export default function ResidentHome() {
               <p className="mt-2 font-display text-[44px] font-bold leading-none tracking-tight text-ink-900 tabular-nums">
                 <CountUp value={w.saved.totalSen} format={formatRM} />
               </p>
-              <p className="mt-3 text-sm text-ink-600"><Text>Points </Text><Text>{formatRM(w.saved.pointsSen)}</Text><Text> · Offers </Text><Text>{formatRM(w.saved.offersSen)}</Text><Text> · Bills </Text><Text>{formatRM(w.saved.billsSen)}</Text>
+              <p className="mt-3 text-sm text-ink-600"><Text>Points </Text><Text>{formatRM(w.saved.pointsSen)}</Text><Text> · Offers </Text><Text>{formatRM(w.saved.offersSen)}</Text>
               </p>
             </Link>
           </div>

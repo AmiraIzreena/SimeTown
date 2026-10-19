@@ -48,6 +48,8 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | GET | `/leagues/streets` | RESIDENT | This month's Impact XP by street |
 | GET | `/notifications` | Any signed-in user | My notifications |
 | POST | `/notifications/read` | Any signed-in user | Mark all notifications as read |
+| POST | `/notifications/:notificationKey/read` | Any signed-in user | Notification: read |
+| POST | `/notifications/:notificationKey/dismiss` | Any signed-in user | Notification: dismiss |
 
 ## SimeTown Merchant
 
@@ -62,7 +64,9 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | GET | `/merchant/sales/:saleId` | MERCHANT | One sale (used to wait for the resident to confirm) |
 | POST | `/merchant/sales/:saleId/refund` | MERCHANT | Refund a sale: claw back earned points, return spent points |
 | GET | `/merchant/statements` | MERCHANT | Weekly statements and the amount due this week |
-| GET | `/admin/merchants` | TOWNSHIP_ADMIN, HQ_ADMIN | All shops with pool and amounts owed |
+| GET | `/admin/merchants` | TOWNSHIP_ADMIN, HQ_ADMIN | All shops with pool and amounts owed (optional search, offer type and sort) |
+| GET | `/admin/merchant-summary` | TOWNSHIP_ADMIN, HQ_ADMIN | Shop counts by status and the totals held in reward pools and owed |
+| GET | `/admin/merchants/:merchantId` | TOWNSHIP_ADMIN, HQ_ADMIN | One shop: its record, contacts, money and recent deposits |
 | POST | `/admin/merchants/:merchantId/status` | TOWNSHIP_ADMIN, HQ_ADMIN | Approve, suspend or restore a shop |
 | POST | `/admin/merchants/:merchantId/deposits` | TOWNSHIP_ADMIN, HQ_ADMIN | Record money a shop paid into its reward pool |
 
@@ -94,18 +98,29 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | GET | `/public/challenges` | Public | The Challenges page: live funded challenges and the actions that earn Impact XP (no budgets, no people) |
 | GET | `/sponsored` | RESIDENT | One labelled sponsored banner for the home screen (never on safety screens) |
 
-## Jiran & Kongsi
+## Komuniti
 
 | Method | Path | Who | What it does |
 | --- | --- | --- | --- |
-| GET | `/posts` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Events, help requests and items to give or lend |
+| GET | `/posts` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Events, help requests and items to give or lend: one type, several (GIVE,LEND) or all |
+| GET | `/posts/impact` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Your verified community XP: events attended, items shared, neighbours helped |
 | POST | `/posts` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Create an event, a help request or a sharing offer |
-| POST | `/posts/:postId/respond` | RESIDENT | Join, offer help or ask for an item |
-| POST | `/posts/:postId/responses/:userId/confirm` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Confirm it happened (gives Impact XP) |
 | POST | `/posts/:postId/close` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Close a post |
-| POST | `/posts/:postId/flag` | RESIDENT | Flag a post for moderators |
-| GET | `/moderation/posts` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Posts hidden by flags, waiting for review |
-| POST | `/moderation/posts/:postId` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Restore or remove a hidden post |
+| POST | `/posts/:postId/respond` | RESIDENT | Join, offer help or ask for an item |
+| POST | `/posts/:postId/withdraw` | RESIDENT | Cancel your RSVP or request (events: before they start) |
+| POST | `/posts/:postId/responses/:userId/accept` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Accept a help, give-away or borrow request (loans need a return date) |
+| POST | `/posts/:postId/responses/:userId/decline` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Decline a request |
+| POST | `/posts/:postId/responses/:userId/returned` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Mark a lent item returned (gives the lender Impact XP) |
+| POST | `/posts/:postId/responses/:userId/confirm` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Confirm it happened (gives Impact XP) |
+| POST | `/posts/:postId/flag` | RESIDENT | Report a post to township staff |
+| GET | `/admin/komuniti/overview` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Komuniti at a glance: open posts, reports waiting, hidden posts, overdue loans, suspensions |
+| GET | `/admin/komuniti/reports` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Reported posts waiting for a decision: hidden first, then scams and safety |
+| GET | `/admin/komuniti/posts` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Every post, including hidden and removed ones |
+| GET | `/admin/komuniti/posts/:postId` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | One post in full: responses, every report and decision, and the author’s record |
+| POST | `/admin/komuniti/posts/:postId/moderate` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Keep (dismiss the reports), hide while checking, or remove with a reason |
+| GET | `/admin/komuniti/suspensions` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Residents who cannot post or respond in Komuniti right now |
+| POST | `/admin/komuniti/suspensions/:userId` | TOWNSHIP_ADMIN, HQ_ADMIN | Suspend a resident from Komuniti for some days (replaces an earlier suspension) |
+| POST | `/admin/komuniti/suspensions/:userId/lift` | TOWNSHIP_ADMIN, HQ_ADMIN | Lift a Komuniti suspension early |
 
 ## Lapor
 
@@ -385,20 +400,6 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | POST | `/ingest/kitar/items` | Signed device (own HMAC key) | Device: one item weighed by the bin’s scale; signed by the bin |
 | POST | `/ingest/kitar/finish` | Signed device (own HMAC key) | Device: the session's summary, which must match the items; signed by the bin |
 
-## Jimat
-
-| Method | Path | Who | What it does |
-| --- | --- | --- | --- |
-| GET | `/jimat` | RESIDENT | My home's readings, the change from last month and tips |
-| POST | `/jimat/readings` | RESIDENT | Enter monthly electricity and water readings |
-| POST | `/jimat/solar-interest` | RESIDENT | Ask to be contacted about solar, or withdraw that request |
-| GET | `/admin/solar-leads` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Residents who asked to be contacted about solar |
-| GET | `/jimat/bills` | RESIDENT | Bills read and confirmed for my home (numbers only; no file is kept) |
-| POST | `/jimat/bills` | RESIDENT | Upload a bill (multipart: file, kind). Checked, read in memory, never stored |
-| POST | `/jimat/bills/:billId/confirm` | RESIDENT | Confirm or correct the numbers read from a bill |
-| POST | `/jimat/bills/:billId/discard` | RESIDENT | Throw away a bill that was read but not confirmed |
-| GET | `/jimat/sample-bill` | RESIDENT | Prototype: a sample bill (PDF) to my address, marked SAMPLE, for trying bill reading |
-
 ## Banjir
 
 | Method | Path | Who | What it does |
@@ -438,45 +439,38 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | POST | `/carers` | RESIDENT | Ask another resident (by member code) to be my carer |
 | POST | `/carers/:linkId/respond` | RESIDENT | Accept or decline being someone’s carer |
 | POST | `/carers/:linkId/end` | RESIDENT | End a carer link (either side) |
-| GET | `/access-places` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Step-free routes, ramps, lifts, accessible toilets and OKU parking |
-| POST | `/access-places` | RESIDENT | Suggest an accessible place (staff check it) |
-| POST | `/access-places/:placeId/blocked` | RESIDENT | Say an accessible place is blocked |
-| POST | `/admin/access-places` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Add a checked accessible place |
-| POST | `/admin/access-places/:placeId/review` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Confirm a place, mark it blocked, or remove it |
-
-## Taman
-
-| Method | Path | Who | What it does |
-| --- | --- | --- | --- |
-| GET | `/taman` | RESIDENT | Gardens, plots, the watering roster and the wildlife log |
-| POST | `/taman/gardens/:gardenId/apply` | RESIDENT | Join a garden's waiting list; plots are given out by ballot (one per home) |
-| POST | `/taman/applications/:applicationId/withdraw` | RESIDENT | Leave a waiting list |
-| POST | `/taman/plots/:plotId/release` | RESIDENT | Give a plot back |
-| POST | `/taman/roster` | RESIDENT | Take a day on a garden's watering roster |
-| POST | `/taman/watered` | RESIDENT | Scan the garden's code after watering |
-| POST | `/taman/sightings` | RESIDENT | Log a bird, insect or plant you spotted (multipart form; photo optional) |
-| GET | `/taman/sightings/:sightingId/photo` | Any signed-in user | A sighting photo (the person who logged it, or staff) |
-| GET | `/admin/taman/sightings` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Sightings waiting to be confirmed |
-| POST | `/admin/taman/sightings/:sightingId` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Confirm or reject a sighting |
-| GET | `/admin/taman/gardens` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Gardens with their printable gate codes |
-| POST | `/admin/taman/gardens/:gardenId/ballot` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Draw the waiting list for a garden's free plots |
-| POST | `/admin/taman/gardens` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Add a community garden and its plots |
-
-## Planet
-
-| Method | Path | Who | What it does |
-| --- | --- | --- | --- |
-| GET | `/admin/solar/sites` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Candidate solar sites ranked by output, nearby demand and readiness, with what is missing |
-| POST | `/admin/solar/sites` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Add a candidate rooftop or car park |
-| PATCH | `/admin/solar/sites/:siteId` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Update a site: survey results, checks done, or an expert’s rank |
-| DELETE | `/admin/solar/sites/:siteId` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Remove a site |
-| GET | `/admin/materials` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | The uses that can be compared and their requirements (sample library) |
-| POST | `/admin/materials/compare` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Check every material for one use against the requirements, and flag missing evidence |
-| POST | `/admin/materials/explain` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | The agent explains the comparison, using only the table |
-| GET | `/admin/materials/shortlists` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Saved shortlists and the median time to make one |
-| POST | `/admin/materials/shortlists` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Save a shortlist with the time it took |
-| GET | `/admin/edging-trial` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | The edging trial’s test plan and results, and the plastic the township has collected |
-| PATCH | `/admin/edging-trial/tests/:testId` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Record a test result for the recycled and the conventional edging |
+| GET | `/access-places` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Accessible places: verification and today’s availability, kept separate |
+| POST | `/access-places` | RESIDENT | Suggest an accessible place (checked for duplicates; verified only by an inspection) |
+| POST | `/access-places/:placeId/reports` | RESIDENT | Report a problem at a place (multipart form; optional photo). Grouped, classified and routed automatically |
+| POST | `/access-places/:placeId/follow` | RESIDENT | Follow a place to hear when it is blocked or available again |
+| GET | `/me/access-reports` | RESIDENT | My accessibility reports and their progress |
+| POST | `/access-incidents/:reference/confirm` | RESIDENT | Say whether a claimed fix is real (multipart form; optional photo) |
+| POST | `/access-incidents/:reference/reopen` | RESIDENT | The problem is back: reopen a resolved incident I reported |
+| GET | `/access-photos/:uploadId` | RESIDENT, GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | An evidence photo (who may see it depends on what it shows) |
+| GET | `/access-work` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN, GUARD | Accessibility incidents routed to the teams I belong to |
+| POST | `/access-work/:incidentId/acknowledge` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN, GUARD | Confirm the problem and start work |
+| POST | `/access-work/:incidentId/resolve` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN, GUARD | Submit a fix with evidence (multipart form; photo needed for most problems). It is verified before it counts |
+| GET | `/admin/access/overview` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Accessibility metrics and only what needs a person |
+| GET | `/admin/access/incidents` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Accessibility incidents, with filters |
+| GET | `/admin/access/incidents/:key` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | One incident (by id or ACC- reference): reports, evidence, fixes, escalations, deliveries and history |
+| POST | `/admin/access/incidents/:incidentId/assign` | TOWNSHIP_ADMIN, HQ_ADMIN | Send an unroutable or escalated incident to an organisation |
+| POST | `/admin/access/incidents/:incidentId/verify` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Accept or reject a claimed fix after an inspection |
+| POST | `/admin/access/incidents/:incidentId/override` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Confirm a problem seen on site, or (admin) close an incident, with a reason |
+| POST | `/admin/access/incidents/:incidentId/simulate` | TOWNSHIP_ADMIN, HQ_ADMIN | SIMULATION: make a simulated provider acknowledge or fix (prototype only) |
+| POST | `/admin/access/run-checks` | TOWNSHIP_ADMIN, HQ_ADMIN | Run the Akses+ reminders, escalations and deliveries now for my township (the scheduler also runs them) |
+| POST | `/admin/access-places` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Add a place staff have checked (verified, with its first inspection) |
+| POST | `/admin/access-places/:placeId/inspect` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Record an inspection: the only way verification changes (multipart form; optional photo) |
+| POST | `/admin/access-places/:placeId/party` | TOWNSHIP_ADMIN, HQ_ADMIN | Record which organisation runs a place |
+| POST | `/admin/access-places/:placeId/archive` | TOWNSHIP_ADMIN, HQ_ADMIN | Archive a place (kept with its history; never deleted) |
+| POST | `/admin/access-places/:placeId/restore` | TOWNSHIP_ADMIN, HQ_ADMIN | Bring an archived place back |
+| GET | `/admin/access/parties` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Organisations responsible for facilities, and who acts for them |
+| POST | `/admin/access/parties` | TOWNSHIP_ADMIN, HQ_ADMIN | Add an organisation |
+| POST | `/admin/access/parties/:partyId` | TOWNSHIP_ADMIN, HQ_ADMIN | Change an organisation: active, members, simulated failures |
+| GET | `/admin/access/rules` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Routing rules that apply (the township’s own, then the defaults) |
+| POST | `/admin/access/rules` | TOWNSHIP_ADMIN, HQ_ADMIN | Set where a kind of problem goes, and its priority |
+| POST | `/admin/access/rules/:ruleId/delete` | TOWNSHIP_ADMIN, HQ_ADMIN | Remove a township rule (the default applies again) |
+| GET | `/admin/access/policy` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Response targets and verification rules (proposed values) |
+| POST | `/admin/access/policy` | TOWNSHIP_ADMIN, HQ_ADMIN | Change response targets and verification rules |
 
 ## Assistant
 
@@ -525,7 +519,7 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 
 | Method | Path | Who | What it does |
 | --- | --- | --- | --- |
-| POST | `/internal/jobs/:name` | Bearer token (cron) | Run a scheduled job (expire-points, float-check, settle, cleanup, flood-agent, parcel-reminders, lockers, couriers, incidents); bearer token |
+| POST | `/internal/jobs/:name` | Bearer token (cron) | Run a scheduled job (expire-points, float-check, settle, cleanup, flood-agent, parcel-reminders, lockers, couriers, incidents, access); bearer token |
 | GET | `/health` | Public | Liveness: the process is up |
 | GET | `/ready` | Public | Readiness: the database answers and the schema is migrated |
 | GET | `/openapi.json` | Public | This API as an OpenAPI 3.1 document |

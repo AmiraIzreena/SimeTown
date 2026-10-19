@@ -11,6 +11,7 @@ import { reconcile } from '../lockers/hardware';
 import { notifyProviders } from '../carriers/providers';
 import { revalidateCouriers } from '../carriers/team';
 import { runIncidentChecks } from '../incidents/checks';
+import { runAccessChecks } from '../akses/automation';
 import { runExpiry } from '../lockers/overflow';
 import { retentionCleanup } from '../retention';
 import { runAgentClock } from '../banjir/agent';
@@ -69,7 +70,7 @@ export async function updateSettings(db: Db, actor: Actor, changes: Partial<Sett
   });
 }
 
-export const JOBS = ['expire-points', 'float-check', 'settle', 'cleanup', 'flood-agent', 'parcel-reminders', 'lockers', 'couriers', 'incidents'] as const;
+export const JOBS = ['expire-points', 'float-check', 'settle', 'cleanup', 'flood-agent', 'parcel-reminders', 'lockers', 'couriers', 'incidents', 'access'] as const;
 export type JobName = (typeof JOBS)[number];
 
 /**
@@ -97,6 +98,9 @@ export async function runJob(db: Db, name: JobName, now: Date): Promise<Record<s
     case 'incidents':
       // Every 5 minutes: escalate cases nobody took in time or past their deadline (once each), close resolved cases after the dispute window.
       return runIncidentChecks(db, now);
+    case 'access':
+      // Every 5 minutes: Akses+ reminders and escalations (once each), stalled verifications, inspection reminders, and delivering or retrying messages to parties' systems.
+      return runAccessChecks(db, now);
     case 'couriers':
       // Daily: couriers their company has not reconfirmed are paused, agreements about to end are flagged, ended ones stop access.
       return revalidateCouriers(db, now);

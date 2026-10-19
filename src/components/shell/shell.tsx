@@ -6,7 +6,7 @@ import { LocalizedButton, LocalizedNav } from '@/components/ui/localized-element
 import { Accessibility, Bell, Languages, LogOut, Menu } from 'lucide-react';
 import { LocalizedLink as Link } from '@/components/ui/localized-elements';
 import { usePathname } from 'next/navigation';
-import { useState, type ReactNode } from 'react';
+import { useCallback, useState, type ReactNode } from 'react';
 import { Drawer } from '@/components/ui/dialog';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
@@ -16,7 +16,8 @@ import { ROLE_LABELS, type Role } from '@/shared/domain';
 import { AlertTakeover } from './alert-takeover';
 import { Logo } from './logo';
 import { NAV, type Area, type NavItem } from './nav';
-import { NotificationsDrawer, type NotificationList } from './notifications';
+import { NotificationsPreview } from './notification-preview';
+import type { NotificationList } from '@/shared/notifications';
 import { ProfileCompletion } from './profile-completion';
 import { reloadTo } from '@/lib/navigate';
 import { AccountLanguage, persistLanguage } from '@/components/ui/language';
@@ -44,9 +45,7 @@ function pageMotion(pathname: string) {
     ['/app/gerak', 'motion-gerak'],
     ['/app/lapor', 'motion-lapor'],
     ['/app/tamu', 'motion-tamu'],
-    ['/app/jiran', 'motion-jiran'],
-    ['/app/kongsi', 'motion-kongsi'],
-    ['/app/jimat', 'motion-jimat'],
+    ['/app/komuniti', 'motion-komuniti'],
     ['/app/banjir', 'motion-banjir'],
     ['/app/akses', 'motion-access'],
     ['/app/assistant', 'motion-assistant'],
@@ -82,6 +81,7 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   const [inboxOpen, setInboxOpen] = useState(false);
+  const closeInbox = useCallback(() => setInboxOpen(false), []);
   const inbox = useApi<NotificationList>('/notifications', { refreshInterval: 30_000 });
   const access = useApi<AccessProfile>(area === 'resident' ? '/me/access' : null);
   const [accessibleOverride, setAccessibleOverride] = useState<boolean | null>(null);
@@ -99,6 +99,8 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
   const primary = items.filter((item) => item.primary).slice(0, 4);
   const needsMore = items.length > primary.length;
   const initials = user.fullName.split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase();
+  // Hover text for the avatar: the name stays as typed, the role is translated.
+  const whoAmI = `${user.fullName} · ${t(ROLE_LABELS[user.role])}`;
   const motion = pageMotion(pathname);
   const savedAccessible = Boolean(access.data?.simpleMode || access.data?.needs.length);
   const accessible = area === 'resident' && (accessibleOverride ?? savedAccessible);
@@ -145,13 +147,13 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
           <Text>{items.map((item) => link(item, true))}</Text>
         </LocalizedNav>
         <div className="border-t border-white/10 p-3">
-          <div className="flex items-center justify-center gap-3 lg:justify-start">
-            <span aria-hidden className="grid size-9 shrink-0 place-items-center rounded-xl border border-white/15 bg-brand-400/20 text-sm font-semibold text-white shadow-[inset_0_1px_0_rgb(255_255_255_/_0.15)]"><Text>{initials}</Text></span>
+          <div className="flex flex-col items-center justify-center gap-2 lg:flex-row lg:justify-start lg:gap-3">
+            <span aria-hidden title={whoAmI} className="grid size-9 shrink-0 place-items-center rounded-xl border border-white/15 bg-brand-400/20 text-sm font-semibold text-white shadow-[inset_0_1px_0_rgb(255_255_255_/_0.15)]"><Text>{initials}</Text></span>
             <div className="hidden min-w-0 flex-1 lg:block">
               <p className="truncate text-sm font-semibold text-white">{user.fullName}</p>
               <p className="truncate text-xs text-brand-200/70"><Text>{ROLE_LABELS[user.role]}</Text></p>
             </div>
-            <LocalizedButton type="button" onClick={signOut} aria-label="Sign out" title="Sign out" className="hidden size-9 shrink-0 place-items-center rounded-md text-brand-100/80 transition-colors duration-200 hover:bg-white/10 hover:text-white lg:grid">
+            <LocalizedButton type="button" onClick={signOut} aria-label="Sign out" title="Sign out" className="grid size-9 shrink-0 place-items-center rounded-md text-brand-100/80 transition-colors duration-200 hover:bg-white/10 hover:text-white">
               <LogOut className="size-[18px]" aria-hidden />
             </LocalizedButton>
           </div>
@@ -191,13 +193,16 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
         <LocalizedButton
           type="button"
           onClick={() => setInboxOpen(true)}
+          aria-expanded={inboxOpen}
+          aria-controls="notification-preview"
           aria-label={inbox.data?.unread ? `Notifications, ${inbox.data.unread} unread` : 'Notifications'}
           className="relative grid size-11 place-items-center rounded-md text-ink-600 transition-colors duration-200 hover:bg-ink-100 hover:text-ink-900"
         >
           <Bell className="size-5" aria-hidden />
-          {Boolean(inbox.data?.unread) && <span aria-hidden className="absolute right-2.5 top-2.5 size-2.5 rounded-full border-2 border-white bg-accent-500" />}
+          {Boolean(inbox.data?.unread) && <span aria-hidden className="absolute right-0 top-0 min-w-5 rounded-full border-2 border-white bg-accent-600 px-1 text-center text-[10px] font-bold text-white">{inbox.data!.unread > 99 ? '99+' : inbox.data!.unread}</span>}
         </LocalizedButton>
         </div>
+        {inboxOpen && <NotificationsPreview onClose={closeInbox} />}
       </header>
 
       {(area === 'resident' || area === 'console' || area === 'guard') && <AlertTakeover href={area === 'resident' ? '/app/banjir' : area === 'guard' ? '/guard' : '/console/banjir'} canCheckIn={area === 'resident'} />}
@@ -246,7 +251,6 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
         </button>
       </Drawer>
 
-      <NotificationsDrawer open={inboxOpen} onClose={() => setInboxOpen(false)} list={inbox.data} onRead={() => void inbox.mutate()} />
     </div>
     </AksesViewContext.Provider>
   );

@@ -4,6 +4,7 @@ import { Text } from '@/components/ui/localized-text';
 
 import { CheckCircle2, ClipboardCheck, DoorOpen, HeartPulse, LogOut, Route, ScanLine, Siren, TriangleAlert, UserPlus, XCircle } from 'lucide-react';
 import { useCallback, useState, type FormEvent } from 'react';
+import { AccessWorkCard } from '@/components/features/access-bits';
 import { AddressPicker } from '@/components/features/address';
 import { CameraScan } from '@/components/features/camera-scan';
 import { Button } from '@/components/ui/button';
@@ -288,6 +289,8 @@ export function GateScreen({ initialPatrol }: { initialPatrol: string }) {
             </form>
           </div>
         </Card>
+
+        <AccessWorkCard />
       </div>
     </>
   );

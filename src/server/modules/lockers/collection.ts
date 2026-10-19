@@ -202,7 +202,7 @@ export async function renewPickupCode(db: Db, actor: Actor, parcelId: string, no
     await tell(tx, others, {
       title: 'New pickup code',
       body: 'Someone in your home asked for a new pickup code for a locker parcel. The old code no longer works. Open Parcels to see the new one.',
-      link: '/app/parcels',
+      link: `/app/parcels?tab=lockers&parcel=${id}`,
     }, `pickup-code:${id}`);
     return { ok: true };
   });

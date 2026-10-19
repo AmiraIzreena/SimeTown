@@ -89,37 +89,11 @@ export async function answerByRules(ctx: ToolContext, question: string): Promise
     return reply(live.length ? `Available now: ${live.map((o) => `${o.shop}: ${o.offer}`).join('; ')}. You have ${d.offerPoints} offer points.` : 'No Shop Offers can be used right now. Some only run at set hours.', r, 'offers');
   }
 
-  if (has(q, 'bills?|bil|electric|electricity|elektrik|kwh|water bill|bil air')) {
-    const r = await runTool(ctx, 'get_my_bill_readings', {});
-    const latest = (((r.data as Data).latest as Data[] | undefined) ?? []).at(-1);
-    return reply(
-      latest ? `Your last reading (${latest.month}): ${latest.electricityKwh ?? '–'} kWh of electricity and ${latest.waterLitres ? (Number(latest.waterLitres) / 1000).toFixed(1) : '–'} m³ of water.` : 'No readings yet. Upload a bill in Jimat and it reads itself.',
-      r,
-      'bills',
-    );
-  }
-
   if (has(q, 'recycle|recycling|kitar|kitar semula|kiosk|kiosks|smart machine|mesin pintar')) {
     const r = await runTool(ctx, 'get_recycling_places', {});
     const d = r.data as Data;
     const places = [...((d.smartMachines as Data[] | undefined) ?? []), ...((d.kiosks as Data[] | undefined) ?? [])].map((p) => `${p.name} (${p.location})`);
     return reply(places.length ? `You can recycle at ${places.join('; ')}. Each drop-off earns Impact XP.` : 'There are no recycling kiosks set up yet.', r, 'recycling');
-  }
-
-  if (has(q, 'plot|plots|kebun|garden|gardens|ballot|undian')) {
-    const r = await runTool(ctx, 'get_my_garden', {});
-    const g = (((r.data as Data).gardens as Data[] | undefined) ?? [])[0];
-    return reply(
-      g
-        ? g.myPlot
-          ? `You have plot ${g.myPlot} at ${g.name} until ${g.myPlotUntil}.`
-          : g.onWaitingList
-            ? `You are on the waiting list for ${g.name}. Plots are given out by ballot.`
-            : `${g.name} has ${g.freePlots} free plots and ${g.waiting} people waiting. Plots are given out by ballot: join the list in Taman.`
-        : 'There are no community gardens set up yet.',
-      r,
-      'garden',
-    );
   }
 
   const hit = searchKnowledge(q, 1)[0];

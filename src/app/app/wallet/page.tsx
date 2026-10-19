@@ -25,7 +25,7 @@ interface Wallet {
   points: number;
   offerPoints: number;
   totalPoints: number;
-  saved: { pointsSen: number; offersSen: number; billsSen: number; totalSen: number };
+  saved: { pointsSen: number; offersSen: number; totalSen: number };
   xp: number;
   level: { level: number; name: string; floor: number; next: number };
   memberCode: string;
@@ -180,7 +180,7 @@ export default function WalletPage() {
                 <p className="text-sm font-medium text-gold-700"><Text>You saved, all together</Text></p>
                 <p className="font-display text-3xl font-bold tabular-nums text-ink-900"><Text>{formatRM(w.saved.totalSen)}</Text></p>
               </div>
-              <dl className="grid grid-cols-3 gap-4 text-sm">
+              <dl className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <dt className="text-ink-500"><Text>Points used</Text></dt>
                   <dd className="font-semibold tabular-nums"><Text>{formatRM(w.saved.pointsSen)}</Text></dd>
@@ -188,10 +188,6 @@ export default function WalletPage() {
                 <div>
                   <dt className="text-ink-500"><Text>Shop Offers</Text></dt>
                   <dd className="font-semibold tabular-nums"><Text>{formatRM(w.saved.offersSen)}</Text></dd>
-                </div>
-                <div>
-                  <dt className="text-ink-500"><Text>Lower bills</Text></dt>
-                  <dd className="font-semibold tabular-nums"><Text>{formatRM(w.saved.billsSen)}</Text></dd>
                 </div>
               </dl>
             </Card>
@@ -241,7 +237,7 @@ export default function WalletPage() {
                       <Card>
                         <CardHeader title="Your offer-backed points" description="Each batch says what stood behind it. They follow the same expiry rule as every point." />
                         {o.history.length === 0 ? (
-                          <p className="p-5 text-sm text-ink-500"><Text>Earn them from verified green actions: recycling at a kiosk bin, tracked walks and rides, watering a community garden, and lower bills read by Jimat.</Text></p>
+                          <p className="p-5 text-sm text-ink-500"><Text>Earn them from verified green actions: recycling at a kiosk bin, and tracked walks and rides.</Text></p>
                         ) : (
                           <ul className="divide-y divide-ink-100">
                             {o.history.map((lot) => (
