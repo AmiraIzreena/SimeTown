@@ -5,6 +5,7 @@ import { hashToken, newToken } from '../../auth/session';
 import { conflict, notFound, ruleViolation } from '../../errors';
 import { audit } from '../audit';
 import { randomCode } from '../identity/service';
+import { onCollectionGateEntry } from '../kitar/collection-gate';
 import { notify } from '../notifications';
 import { getSettings } from '../settings';
 import { HOME_ADDRESS_COLUMNS } from '../townships';
@@ -280,6 +281,7 @@ export async function scanPass(db: Db, actor: Actor, rawCode: string, now: Date)
     );
     const tz = (await getSettings(tx)).timezone;
     await notify(tx, [p.host_user_id], { title: `${p.visitor_name} arrived at ${timeIn(now, tz)}`, body: 'Scanned in at the main gate.', link: '/app/tamu' });
+    if (p.type === 'CONTRACTOR') await onCollectionGateEntry(tx, p.id);
     return {
       entryId: entry!.id,
       visitorName: p.visitor_name,

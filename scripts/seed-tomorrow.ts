@@ -1,7 +1,7 @@
 import type { Actor } from '../src/server/auth/actor';
 import { ACTOR_COLUMNS, toActor } from '../src/server/auth/session';
 import { one, type Db } from '../src/server/db/client';
-import { bookCollection, completeCollection, confirmCollection, createCollector } from '../src/server/modules/kitar/collections';
+import { bookCollection, completeCollection, createCollector } from '../src/server/modules/kitar/collections';
 import { handOverParcel, logParcel, myParcels } from '../src/server/modules/parcels/service';
 import { createReport, setMeToo, updateReport } from '../src/server/modules/reports/service';
 
@@ -66,7 +66,6 @@ export async function seedTomorrow(db: Db, input: { now: Date; log: (line: strin
   const eWaste = await createCollector(db, admin, { name: 'Kitar Plus Recyclers', phone: '+60355550101', materials: ['E_WASTE', 'PAPER', 'ALUMINIUM'], days: 'Tue and Sat mornings', notes: 'Demo partner' });
   await createCollector(db, admin, { name: 'Minyak Hijau Collectors', phone: '+60355550102', materials: ['COOKING_OIL', 'TEXTILE'], days: 'Every Thursday', notes: 'Demo partner' });
   const past = await bookCollection(db, daniel, { collectorId: eWaste.id, materials: ['E_WASTE'], items: 'Old desktop computer and a printer', day: dayOf(ago(6)), slot: 'MORNING' }, ago(9));
-  await confirmCollection(db, staff, past.id, ago(8));
   await completeCollection(db, staff, past.id, 14_500, ago(6));
   await bookCollection(db, aisyah, { collectorId: eWaste.id, materials: ['E_WASTE', 'PAPER'], items: 'Two boxes of old cables and a broken kettle', day: dayOf(new Date(now.getTime() + 3 * DAY)), slot: 'MORNING' }, now);
 
@@ -114,10 +113,8 @@ export async function seedRequestShowcase(db: Db, input: { now: Date; log: (line
   const oil = await collector('Minyak Hijau Collectors');
   const paper = await collector('Kitar Plus Recyclers');
   if (oil) await bookCollection(db, daniel, { collectorId: oil, materials: ['COOKING_OIL'], items: 'Two bottles of used cooking oil', day: dayOf(new Date(now.getTime() + 2 * DAY)), slot: 'AFTERNOON' }, now);
-  if (paper) {
-    const booked = await bookCollection(db, daniel, { collectorId: paper, materials: ['PAPER'], items: 'A stack of old newspapers and boxes', day: dayOf(new Date(now.getTime() + 5 * DAY)), slot: 'MORNING' }, now);
-    await confirmCollection(db, staff, booked.id, now);
-  }
+  // Bookings confirm themselves, with the collector's gate pass.
+  if (paper) await bookCollection(db, daniel, { collectorId: paper, materials: ['PAPER'], items: 'A stack of old newspapers and boxes', day: dayOf(new Date(now.getTime() + 5 * DAY)), slot: 'MORNING' }, now);
 
   log('My requests showcase: Daniel Tan has every kind of request and every report step.');
 }

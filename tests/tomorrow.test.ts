@@ -135,15 +135,17 @@ describe('Recycling guide and collections', () => {
     expect(searchGuide('')).toEqual([]);
   });
 
-  it('books a collector who takes the material, gives them a gate pass for the day, and rewards the weighed total', async () => {
+  it('books a collector who takes the material, confirms at once with a gate pass for the day, and rewards the weighed total', async () => {
     const resident = await makeResident(w);
     const { id: collectorId } = await createCollector(db, w.admin, { name: 'E-Waste Partner', materials: ['E_WASTE', 'PAPER'], days: 'Tue and Sat mornings' });
     await expect(bookCollection(db, resident, { collectorId, materials: ['GLASS'], items: 'Jars', day: '2026-11-04', slot: 'MORNING' }, T0)).rejects.toMatchObject({ code: 'NOT_ACCEPTED' });
     await expect(bookCollection(db, resident, { collectorId, materials: ['E_WASTE'], items: 'Old laptop', day: '2026-11-02', slot: 'MORNING' }, T0)).rejects.toMatchObject({ code: 'COLLECTION_DAY' });
-    const { id } = await bookCollection(db, resident, { collectorId, materials: ['E_WASTE'], items: 'Old laptop and cables', day: '2026-11-04', slot: 'MORNING' }, T0);
+    const { id, status, passCode } = await bookCollection(db, resident, { collectorId, materials: ['E_WASTE'], items: 'Old laptop and cables', day: '2026-11-04', slot: 'MORNING' }, T0);
+    expect(status).toBe('CONFIRMED');
     await expect(bookCollection(db, resident, { collectorId, materials: ['PAPER'], items: 'Boxes', day: '2026-11-04', slot: 'AFTERNOON' }, T0)).rejects.toMatchObject({ code: 'ALREADY_BOOKED' });
 
-    const { passCode } = await confirmCollection(db, w.staff, id, T0);
+    // Confirming by hand is only for requests made before bookings confirmed themselves.
+    await expect(confirmCollection(db, w.staff, id, T0)).rejects.toMatchObject({ code: 'COLLECTION_NOT_REQUESTED' });
     const pass = await one<{ type: string; valid_from: Date; valid_until: Date; visitor_name: string }>(db, 'SELECT type, valid_from, valid_until, visitor_name FROM visitor_passes WHERE code = $1', [passCode]);
     expect(pass).toMatchObject({ type: 'CONTRACTOR', visitor_name: 'E-Waste Partner (recycling collection)' });
     expect(pass!.valid_from.toISOString()).toBe('2026-11-03T16:00:00.000Z'); // midnight in Kuala Lumpur
@@ -156,9 +158,8 @@ describe('Recycling guide and collections', () => {
 
     // Cancelling a confirmed collection cancels the collector's pass too.
     const second = await bookCollection(db, resident, { collectorId, materials: ['PAPER'], items: 'Boxes', day: '2026-11-07', slot: 'MORNING' }, at(2));
-    const confirmed = await confirmCollection(db, w.staff, second.id, at(2));
     await cancelCollection(db, resident, second.id, at(2));
-    expect((await one<{ status: string }>(db, 'SELECT status FROM visitor_passes WHERE code = $1', [confirmed.passCode]))!.status).toBe('CANCELLED');
+    expect((await one<{ status: string }>(db, 'SELECT status FROM visitor_passes WHERE code = $1', [second.passCode]))!.status).toBe('CANCELLED');
   });
 });
 
@@ -190,8 +191,7 @@ describe('My requests', () => {
     await updateReport(db, w.staff, closed.id, { status: 'REJECTED' }, T0);
 
     const { id: collectorId } = await createCollector(db, w.admin, { name: 'Steps Collector', materials: ['PAPER'], days: 'Fridays' });
-    const booked = await bookCollection(db, resident, { collectorId, materials: ['PAPER'], items: 'Boxes', day: '2026-11-06', slot: 'MORNING' }, T0);
-    await confirmCollection(db, w.staff, booked.id, T0);
+    await bookCollection(db, resident, { collectorId, materials: ['PAPER'], items: 'Boxes', day: '2026-11-06', slot: 'MORNING' }, T0);
 
     const r = await myRequests(db, resident, at(3));
     const steps = r.items.filter((i) => i.kind === 'REPORT').map((i) => [i.step, i.open, i.late]);

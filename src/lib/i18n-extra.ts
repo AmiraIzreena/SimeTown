@@ -2,10 +2,11 @@ import { homeServicesMalay } from './i18n-home-services';
 import { komunitiMalay } from './i18n-komuniti';
 import { aksesMalay } from './i18n-akses';
 import { shopsMalay } from './i18n-shops';
+import { collectionsMalay } from './i18n-collections';
 import { malay } from './i18n-messages';
 
-/** Akses+ and Shops entries never replace a translation the shared catalogues already give. */
-const aksesOnly = Object.fromEntries(Object.entries({ ...aksesMalay, ...shopsMalay }).filter(([english]) => !Object.hasOwn(malay, english)));
+/** Akses+, Shops and collections entries never replace a translation the shared catalogues already give. */
+const aksesOnly = Object.fromEntries(Object.entries({ ...aksesMalay, ...shopsMalay, ...collectionsMalay }).filter(([english]) => !Object.hasOwn(malay, english)));
 
 /** Shared labels, validation and short messages used by several features. */
 export const extraMalay: Record<string, string> = {

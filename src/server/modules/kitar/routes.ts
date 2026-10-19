@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { SCHEDULE_TIMES, WEEKDAYS } from '@/shared/collector-schedule';
 import { ADMINS, MATERIALS, STAFF } from '@/shared/domain';
 import { identifyMaterial } from '../../ai/classifier';
 import { requireVerifiedResident } from '../../auth/actor';
@@ -6,6 +7,7 @@ import { badRequest } from '../../errors';
 import { emptyBody, route, zId, zText } from '../../http/router';
 import { readForm, readPhoto } from '../../http/uploads';
 import { zScanCode } from '../gerak/routes';
+import * as collectionDemo from './collection-demo';
 import * as collections from './collections';
 import * as machine from './machine';
 import * as kitar from './service';
@@ -39,8 +41,8 @@ export const kitarRoutes = [
     handler: (c) => kitar.listKiosksForStaff(c.db, c.actor),
   }),
   route({
-    method: 'POST', path: '/admin/kitar/kiosks', tag: 'Kitar', summary: 'Add a kiosk', auth: 'session', roles: STAFF,
-    body: z.object({ name: zText(80, 3), location: zText(160, 3) }),
+    method: 'POST', path: '/admin/kitar/kiosks', tag: 'Kitar', summary: 'Add a kiosk (township admin or SDP HQ)', auth: 'session', roles: ADMINS,
+    body: z.object({ name: zText(80, 3), location: zText(160, 3), townshipId: zId.optional() }),
     handler: (c) => kitar.createKiosk(c.db, c.actor, c.body),
   }),
 
@@ -111,15 +113,19 @@ export const kitarRoutes = [
   // --- Collections from partner collectors ------------------------------------------------
   route({
     method: 'GET', path: '/kitar/collectors', tag: 'Kitar', summary: 'Partner collectors, what they take and when they come', auth: 'session', roles: ['RESIDENT'],
-    query: z.object({ material: z.enum(MATERIALS).optional() }),
-    handler: (c) => collections.listCollectors(c.db, c.actor, c.query.material),
+    query: z.object({
+      material: z.enum(MATERIALS).optional(),
+      day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+      slot: z.enum(collections.COLLECTION_SLOTS).optional(),
+    }),
+    handler: (c) => collections.listCollectors(c.db, c.actor, c.query),
   }),
   route({
     method: 'GET', path: '/kitar/collections', tag: 'Kitar', summary: "My home's booked collections", auth: 'session', roles: ['RESIDENT'],
-    handler: (c) => collections.myCollections(c.db, c.actor),
+    handler: (c) => collections.myCollections(c.db, c.actor, c.now),
   }),
   route({
-    method: 'POST', path: '/kitar/collections', tag: 'Kitar', summary: 'Book a collection of bulky or special items', auth: 'session', roles: ['RESIDENT'],
+    method: 'POST', path: '/kitar/collections', tag: 'Kitar', summary: 'Book a collection of bulky or special items; confirmed at once, with the gate pass', auth: 'session', roles: ['RESIDENT'],
     rateLimit: { limit: 10, windowSec: 3600, by: 'user' },
     body: z.object({
       collectorId: zId, materials: z.array(z.enum(MATERIALS)).min(1).max(8), items: zText(300, 3),
@@ -132,12 +138,38 @@ export const kitarRoutes = [
     handler: (c) => collections.cancelCollection(c.db, c.actor, c.params.collectionId!, c.now),
   }),
   route({
-    method: 'GET', path: '/admin/kitar/collectors', tag: 'Kitar', summary: 'Partner collectors with what they have collected', auth: 'session', roles: STAFF,
-    handler: (c) => collections.listCollectorsForStaff(c.db, c.actor),
+    method: 'POST', path: '/kitar/collections/:collectionId/weight', tag: 'Kitar', summary: 'Send what the collector took: credited at once after a gate scan, within the automatic limit; otherwise checked by staff', auth: 'session', roles: ['RESIDENT'],
+    rateLimit: { limit: 20, windowSec: 3600, by: 'user' },
+    body: z.object({ weightG: z.number().int().min(1, 'Enter a weight more than 0 kg.').max(500_000, 'Enter a weight up to 500 kg.') }),
+    handler: (c) => collections.reportCollectionWeight(c.db, c.actor, c.params.collectionId!, c.body.weightG, c.now),
   }),
   route({
-    method: 'POST', path: '/admin/kitar/collectors', tag: 'Kitar', summary: 'Add a partner collector', auth: 'session', roles: STAFF,
-    body: z.object({ name: zText(80, 2), phone: z.string().trim().max(30).optional(), materials: z.array(z.enum(MATERIALS)).min(1).max(8), days: zText(80, 2), notes: z.string().trim().max(200).optional() }),
+    method: 'POST', path: '/kitar/collections/:collectionId/came', tag: 'Kitar', summary: 'Say the collector came on a collection marked missed (staff check it)', auth: 'session', roles: ['RESIDENT'], body: emptyBody,
+    rateLimit: { limit: 10, windowSec: 3600, by: 'user' },
+    handler: (c) => collections.reportCollectorCame(c.db, c.actor, c.params.collectionId!, c.now),
+  }),
+  route({
+    method: 'POST', path: '/kitar/collections/:collectionId/demo/today', tag: 'Kitar', summary: 'Local demos only (pglite in development): move my confirmed collection and its gate pass to today', auth: 'session', roles: ['RESIDENT'], body: emptyBody,
+    rateLimit: { limit: 30, windowSec: 3600, by: 'user' },
+    handler: (c) => collectionDemo.demoMoveToToday(c.db, c.actor, c.params.collectionId!, c.now),
+  }),
+  route({
+    method: 'POST', path: '/kitar/collections/:collectionId/demo/gate-scan', tag: 'Kitar', summary: "Local demos only (pglite in development): the real gate scan of my collection's pass, made with the township's guard account", auth: 'session', roles: ['RESIDENT'], body: emptyBody,
+    rateLimit: { limit: 30, windowSec: 3600, by: 'user' },
+    handler: (c) => collectionDemo.demoGateScan(c.db, c.actor, c.params.collectionId!, c.now),
+  }),
+  route({
+    method: 'GET', path: '/admin/kitar/collectors', tag: 'Kitar', summary: 'Partner collectors with what they have collected', auth: 'session', roles: STAFF,
+    query: z.object({ townshipId: zId.optional() }),
+    handler: (c) => collections.listCollectorsForStaff(c.db, c.actor, c.query.townshipId),
+  }),
+  route({
+    method: 'POST', path: '/admin/kitar/collectors', tag: 'Kitar', summary: 'Add a partner collector (township admin or SDP HQ)', auth: 'session', roles: ADMINS,
+    body: z.object({
+      name: zText(80, 2), phone: z.string().trim().max(30).optional(), materials: z.array(z.enum(MATERIALS)).min(1).max(8),
+      schedule: z.object({ days: z.array(z.enum(WEEKDAYS)).min(1, 'Choose at least one day.').max(7), time: z.enum(SCHEDULE_TIMES) }),
+      notes: z.string().trim().max(200).optional(), townshipId: zId.optional(),
+    }),
     handler: (c) => collections.createCollector(c.db, c.actor, c.body),
   }),
   route({
@@ -146,12 +178,26 @@ export const kitarRoutes = [
     handler: (c) => collections.setCollectorActive(c.db, c.actor, c.params.collectorId!, c.body.active),
   }),
   route({
-    method: 'GET', path: '/admin/kitar/collections', tag: 'Kitar', summary: 'Booked collections, open ones first', auth: 'session', roles: STAFF,
-    query: z.object({ status: z.enum(['REQUESTED', 'CONFIRMED', 'COLLECTED', 'CANCELLED', 'MISSED']).optional() }),
-    handler: (c) => collections.collectionsForStaff(c.db, c.actor, c.query.status),
+    method: 'GET', path: '/admin/kitar/collectors/:collectorId/today', tag: 'Kitar', summary: "A collector's collections today, to copy or print for them", auth: 'session', roles: STAFF,
+    handler: (c) => collections.collectorDaySheet(c.db, c.actor, c.params.collectorId!, c.now),
   }),
   route({
-    method: 'POST', path: '/admin/kitar/collections/:collectionId/confirm', tag: 'Kitar', summary: 'Confirm a collection; the collector gets a gate pass for the day', auth: 'session', roles: STAFF, body: emptyBody,
+    method: 'GET', path: '/admin/kitar/collections', tag: 'Kitar', summary: 'Recent collections, newest first, and how each was settled', auth: 'session', roles: STAFF,
+    query: z.object({ status: z.enum(['REQUESTED', 'CONFIRMED', 'COLLECTED', 'CANCELLED', 'MISSED']).optional(), townshipId: zId.optional() }),
+    handler: (c) => collections.collectionsForStaff(c.db, c.actor, c.query),
+  }),
+  route({
+    method: 'GET', path: '/admin/kitar/collections/exceptions', tag: 'Kitar', summary: 'Only what needs a person: weights and disputes to check, homes and collectors to look at', auth: 'session', roles: STAFF,
+    query: z.object({ townshipId: zId.optional() }),
+    handler: (c) => collections.collectionExceptions(c.db, c.actor, c.now, c.query.townshipId),
+  }),
+  route({
+    method: 'POST', path: '/admin/kitar/collections/:collectionId/review', tag: 'Kitar', summary: 'Settle a collection waiting for review: accept a weight, or close it with no points', auth: 'session', roles: STAFF,
+    body: z.object({ decision: z.enum(['ACCEPT', 'REJECT']), weightG: z.number().int().min(1).max(500_000).optional() }),
+    handler: (c) => collections.reviewCollection(c.db, c.actor, c.params.collectionId!, c.body, c.now),
+  }),
+  route({
+    method: 'POST', path: '/admin/kitar/collections/:collectionId/confirm', tag: 'Kitar', summary: 'Confirm a request made before bookings were confirmed at once; the collector gets a gate pass for the day', auth: 'session', roles: STAFF, body: emptyBody,
     handler: (c) => collections.confirmCollection(c.db, c.actor, c.params.collectionId!, c.now),
   }),
   route({
@@ -161,11 +207,12 @@ export const kitarRoutes = [
   }),
   route({
     method: 'POST', path: '/admin/kitar/collections/:collectionId/missed', tag: 'Kitar', summary: 'The collector did not come', auth: 'session', roles: STAFF, body: emptyBody,
-    handler: (c) => collections.missCollection(c.db, c.actor, c.params.collectionId!),
+    handler: (c) => collections.missCollection(c.db, c.actor, c.params.collectionId!, c.now),
   }),
   route({
     method: 'GET', path: '/admin/kitar/stats', tag: 'Kitar', summary: 'Material accepted by month and why machines turned items away (the recycling test)', auth: 'session', roles: STAFF,
-    handler: (c) => collections.recyclingStats(c.db, c.actor, c.now),
+    query: z.object({ townshipId: zId.optional() }),
+    handler: (c) => collections.recyclingStats(c.db, c.actor, c.now, c.query.townshipId),
   }),
   route({
     method: 'POST', path: '/ingest/kitar/start', tag: 'Kitar', summary: 'Device: start a session (SimeTown QR read, or guest); signed by the bin', auth: 'machine',

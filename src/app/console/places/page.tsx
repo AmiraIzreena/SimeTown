@@ -14,6 +14,8 @@ import { TabPanel, Tabs } from '@/components/ui/tabs';
 import { api } from '@/lib/api';
 import { formatKg, formatKm, timeAgo } from '@/lib/format';
 import { useAction, useApi } from '@/lib/hooks';
+import type { Me } from '@/lib/types';
+import { ADMINS } from '@/shared/domain';
 
 type Tab = 'machines' | 'kiosks' | 'loops' | 'patrol';
 interface Machine {
@@ -36,6 +38,7 @@ interface Kiosk {
   name: string;
   location: string;
   code: string;
+  township: string;
   total_g: number;
 }
 interface Loop {
@@ -100,35 +103,49 @@ export default function PlacesPage() {
 
 function Kiosks({ onPoster }: { onPoster: (poster: Poster) => void }) {
   const kiosks = useApi<Kiosk[]>('/admin/kitar/kiosks');
-  const create = useAction((body: { name: string; location: string }) => api.post('/admin/kitar/kiosks', body), { success: 'Kiosk added.', onSuccess: () => void kiosks.mutate() });
+  // SDP HQ works across townships, so it says which one the kiosk is in.
+  const me = useApi<Me>('/me');
+  const hq = me.data?.role === 'HQ_ADMIN';
+  // Adding a kiosk is set-up work for township admins and SDP HQ, like adding a bin.
+  const canSetUp = me.data ? ADMINS.includes(me.data.role) : false;
+  const townships = useApi<{ id: string; name: string }[]>(hq ? '/townships' : null);
+  const create = useAction((body: { name: string; location: string; townshipId?: string }) => api.post('/admin/kitar/kiosks', body), { success: 'Kiosk added.', onSuccess: () => void kiosks.mutate() });
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const element = event.currentTarget;
     const form = Object.fromEntries(new FormData(element)) as Record<string, string>;
-    void create.run({ name: form.name!, location: form.location! }).then((ok) => ok && element.reset());
+    void create.run({ name: form.name!, location: form.location!, townshipId: hq ? form.townshipId || undefined : undefined }).then((ok) => ok && element.reset());
   };
   return (
     <div className="space-y-5">
-      <Card>
-        <CardHeader title="Add a kiosk" />
-        <form method="post" onSubmit={submit} className="grid gap-4 p-5 sm:grid-cols-[1fr_1.4fr_auto] sm:items-start" noValidate>
-          <Input label="Name" name="name" maxLength={80} required error={create.fields.name} />
-          <Input label="Where it is" name="location" maxLength={160} required error={create.fields.location} />
-          <Button type="submit" pending={create.pending} className="sm:mt-[26px]">
-            <Plus className="size-4" aria-hidden /><Text>Add</Text></Button>
-        </form>
-      </Card>
+      {canSetUp && (
+        <Card>
+          <CardHeader title="Add a kiosk" />
+          <form method="post" onSubmit={submit} className={hq ? 'grid gap-4 p-5 sm:grid-cols-[1fr_1fr_1.4fr_auto] sm:items-start' : 'grid gap-4 p-5 sm:grid-cols-[1fr_1.4fr_auto] sm:items-start'} noValidate>
+            {hq && (
+              <Select label="Township" name="townshipId" defaultValue="" required error={create.fields.townshipId}>
+                <option value="" disabled><Text>Choose a township</Text></option>
+                {(townships.data ?? []).map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </Select>
+            )}
+            <Input label="Name" name="name" maxLength={80} required error={create.fields.name} />
+            <Input label="Where it is" name="location" maxLength={160} required error={create.fields.location} />
+            <Button type="submit" pending={create.pending} className="sm:mt-[26px]">
+              <Plus className="size-4" aria-hidden /><Text>Add</Text></Button>
+          </form>
+        </Card>
+      )}
       <Async state={kiosks}>
         {(list) =>
           list.length === 0 ? (
-            <EmptyState title="No kiosks yet"><Text>Add the first recycling kiosk above.</Text></EmptyState>
+            <EmptyState title="No kiosks yet">{canSetUp && <Text>Add the first recycling kiosk above.</Text>}</EmptyState>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
               {list.map((k) => (
                 <Card key={k.id} className="flex items-center justify-between gap-4 p-5">
                   <div className="min-w-0">
                     <p className="text-[15px] font-semibold text-ink-900">{k.name}</p>
-                    <p className="text-sm text-ink-600"><Text>{k.location}</Text></p>
+                    <p className="text-sm text-ink-600"><Text>{k.location}</Text>{hq && ` · ${k.township}`}</p>
                     <p className="mt-1 text-sm text-ink-500"><Text>{formatKg(k.total_g)}</Text><Text> collected</Text></p>
                   </div>
                   <Button variant="secondary" size="sm" onClick={() => onPoster({ title: k.name, subtitle: `Kitar recycling kiosk · ${k.location}`, code: k.code, path: '/app/kitar?kiosk=' })}>
