@@ -1,5 +1,7 @@
 import { homeServicesTemplates } from './i18n-home-services';
 import { komunitiTemplates } from './i18n-komuniti';
+import { aksesTemplates } from './i18n-akses';
+import { shopsTemplates } from './i18n-shops';
 
 /** Templates for application-generated messages; interpolated personal values stay unchanged. */
 export const messageTemplates: readonly (readonly [string, string])[] = [
@@ -1176,4 +1178,7 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
   ["There is already an access request for {0}.", "Permintaan akses untuk {0} sudah wujud."],
   ["{0} requested controlled access to {1} occupied doors at {2}.", "{0} meminta akses terkawal kepada {1} pintu berisi di {2}."],
   ["{0} ms", "{0} milisaat"],
+  // Akses+ last, so an existing template always matches first.
+  ...aksesTemplates,
+  ...shopsTemplates,
 ];

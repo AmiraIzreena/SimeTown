@@ -64,7 +64,9 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | GET | `/merchant/sales/:saleId` | MERCHANT | One sale (used to wait for the resident to confirm) |
 | POST | `/merchant/sales/:saleId/refund` | MERCHANT | Refund a sale: claw back earned points, return spent points |
 | GET | `/merchant/statements` | MERCHANT | Weekly statements and the amount due this week |
-| GET | `/admin/merchants` | TOWNSHIP_ADMIN, HQ_ADMIN | All shops with pool and amounts owed |
+| GET | `/admin/merchants` | TOWNSHIP_ADMIN, HQ_ADMIN | All shops with pool and amounts owed (optional search, offer type and sort) |
+| GET | `/admin/merchant-summary` | TOWNSHIP_ADMIN, HQ_ADMIN | Shop counts by status and the totals held in reward pools and owed |
+| GET | `/admin/merchants/:merchantId` | TOWNSHIP_ADMIN, HQ_ADMIN | One shop: its record, contacts, money and recent deposits |
 | POST | `/admin/merchants/:merchantId/status` | TOWNSHIP_ADMIN, HQ_ADMIN | Approve, suspend or restore a shop |
 | POST | `/admin/merchants/:merchantId/deposits` | TOWNSHIP_ADMIN, HQ_ADMIN | Record money a shop paid into its reward pool |
 
@@ -423,11 +425,38 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | POST | `/carers` | RESIDENT | Ask another resident (by member code) to be my carer |
 | POST | `/carers/:linkId/respond` | RESIDENT | Accept or decline being someone’s carer |
 | POST | `/carers/:linkId/end` | RESIDENT | End a carer link (either side) |
-| GET | `/access-places` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Step-free routes, ramps, lifts, accessible toilets and OKU parking |
-| POST | `/access-places` | RESIDENT | Suggest an accessible place (staff check it) |
-| POST | `/access-places/:placeId/blocked` | RESIDENT | Say an accessible place is blocked |
-| POST | `/admin/access-places` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Add a checked accessible place |
-| POST | `/admin/access-places/:placeId/review` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Confirm a place, mark it blocked, or remove it |
+| GET | `/access-places` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Accessible places: verification and today’s availability, kept separate |
+| POST | `/access-places` | RESIDENT | Suggest an accessible place (checked for duplicates; verified only by an inspection) |
+| POST | `/access-places/:placeId/reports` | RESIDENT | Report a problem at a place (multipart form; optional photo). Grouped, classified and routed automatically |
+| POST | `/access-places/:placeId/follow` | RESIDENT | Follow a place to hear when it is blocked or available again |
+| GET | `/me/access-reports` | RESIDENT | My accessibility reports and their progress |
+| POST | `/access-incidents/:reference/confirm` | RESIDENT | Say whether a claimed fix is real (multipart form; optional photo) |
+| POST | `/access-incidents/:reference/reopen` | RESIDENT | The problem is back: reopen a resolved incident I reported |
+| GET | `/access-photos/:uploadId` | RESIDENT, GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | An evidence photo (who may see it depends on what it shows) |
+| GET | `/access-work` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN, GUARD | Accessibility incidents routed to the teams I belong to |
+| POST | `/access-work/:incidentId/acknowledge` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN, GUARD | Confirm the problem and start work |
+| POST | `/access-work/:incidentId/resolve` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN, GUARD | Submit a fix with evidence (multipart form; photo needed for most problems). It is verified before it counts |
+| GET | `/admin/access/overview` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Accessibility metrics and only what needs a person |
+| GET | `/admin/access/incidents` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Accessibility incidents, with filters |
+| GET | `/admin/access/incidents/:key` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | One incident (by id or ACC- reference): reports, evidence, fixes, escalations, deliveries and history |
+| POST | `/admin/access/incidents/:incidentId/assign` | TOWNSHIP_ADMIN, HQ_ADMIN | Send an unroutable or escalated incident to an organisation |
+| POST | `/admin/access/incidents/:incidentId/verify` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Accept or reject a claimed fix after an inspection |
+| POST | `/admin/access/incidents/:incidentId/override` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Confirm a problem seen on site, or (admin) close an incident, with a reason |
+| POST | `/admin/access/incidents/:incidentId/simulate` | TOWNSHIP_ADMIN, HQ_ADMIN | SIMULATION: make a simulated provider acknowledge or fix (prototype only) |
+| POST | `/admin/access/run-checks` | TOWNSHIP_ADMIN, HQ_ADMIN | Run the Akses+ reminders, escalations and deliveries now for my township (the scheduler also runs them) |
+| POST | `/admin/access-places` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Add a place staff have checked (verified, with its first inspection) |
+| POST | `/admin/access-places/:placeId/inspect` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Record an inspection: the only way verification changes (multipart form; optional photo) |
+| POST | `/admin/access-places/:placeId/party` | TOWNSHIP_ADMIN, HQ_ADMIN | Record which organisation runs a place |
+| POST | `/admin/access-places/:placeId/archive` | TOWNSHIP_ADMIN, HQ_ADMIN | Archive a place (kept with its history; never deleted) |
+| POST | `/admin/access-places/:placeId/restore` | TOWNSHIP_ADMIN, HQ_ADMIN | Bring an archived place back |
+| GET | `/admin/access/parties` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Organisations responsible for facilities, and who acts for them |
+| POST | `/admin/access/parties` | TOWNSHIP_ADMIN, HQ_ADMIN | Add an organisation |
+| POST | `/admin/access/parties/:partyId` | TOWNSHIP_ADMIN, HQ_ADMIN | Change an organisation: active, members, simulated failures |
+| GET | `/admin/access/rules` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Routing rules that apply (the township’s own, then the defaults) |
+| POST | `/admin/access/rules` | TOWNSHIP_ADMIN, HQ_ADMIN | Set where a kind of problem goes, and its priority |
+| POST | `/admin/access/rules/:ruleId/delete` | TOWNSHIP_ADMIN, HQ_ADMIN | Remove a township rule (the default applies again) |
+| GET | `/admin/access/policy` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Response targets and verification rules (proposed values) |
+| POST | `/admin/access/policy` | TOWNSHIP_ADMIN, HQ_ADMIN | Change response targets and verification rules |
 
 ## Assistant
 
@@ -476,7 +505,7 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 
 | Method | Path | Who | What it does |
 | --- | --- | --- | --- |
-| POST | `/internal/jobs/:name` | Bearer token (cron) | Run a scheduled job (expire-points, float-check, settle, cleanup, flood-agent, parcel-reminders, lockers, couriers, incidents); bearer token |
+| POST | `/internal/jobs/:name` | Bearer token (cron) | Run a scheduled job (expire-points, float-check, settle, cleanup, flood-agent, parcel-reminders, lockers, couriers, incidents, access); bearer token |
 | GET | `/health` | Public | Liveness: the process is up |
 | GET | `/ready` | Public | Readiness: the database answers and the schema is migrated |
 | GET | `/openapi.json` | Public | This API as an OpenAPI 3.1 document |

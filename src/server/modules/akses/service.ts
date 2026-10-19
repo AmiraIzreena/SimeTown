@@ -1,10 +1,8 @@
-import type { AccessNeed, PlaceKind } from '@/shared/domain';
+import type { AccessNeed } from '@/shared/domain';
 import { one, type Db } from '../../db/client';
-import { assertTownshipAccess, requireVerifiedResident, townshipOf, type Actor } from '../../auth/actor';
-import { conflict, notFound, ruleViolation } from '../../errors';
-import { audit } from '../audit';
+import { requireVerifiedResident, type Actor } from '../../auth/actor';
+import { notFound, ruleViolation } from '../../errors';
 import { notify } from '../notifications';
-import { recordAction, rewardUserById } from '../rewards';
 
 /**
  * Akses+ (proposal 6.6, BR32). A resident tells the app their access needs
@@ -135,69 +133,4 @@ export async function carerOverview(db: Db, actor: Actor) {
   };
 }
 
-// --- Accessible places ----------------------------------------------------------------
-
-export async function listPlaces(db: Db, actor: Actor) {
-  return db.query(
-    `SELECT id, name, kind, location, status, note, verified_at, updated_at FROM access_places WHERE township_id = $1 ORDER BY status = 'BLOCKED' DESC, kind, name`,
-    [townshipOf(actor)],
-  );
-}
-
-/** A resident adds a place, or says one is blocked. Staff check it before it counts (and before XP is given). */
-export async function suggestPlace(db: Db, actor: Actor, input: { name: string; kind: PlaceKind; location: string; note?: string }, now: Date) {
-  const resident = requireVerifiedResident(actor);
-  const row = await one<{ id: string }>(
-    db,
-    `INSERT INTO access_places (township_id, name, kind, location, status, note, reported_by, created_at, updated_at)
-     VALUES ($1, $2, $3, $4, 'REPORTED', $5, $6, $7, $7) RETURNING id`,
-    [resident.townshipId, input.name, input.kind, input.location, input.note ?? null, resident.id, now],
-  );
-  return { id: row!.id };
-}
-
-export async function reportPlaceBlocked(db: Db, actor: Actor, placeId: string, note: string, now: Date) {
-  const resident = requireVerifiedResident(actor);
-  const rows = await db.query(
-    `UPDATE access_places SET status = 'BLOCKED', note = $3, reported_by = $4, updated_at = $5 WHERE id = $1 AND township_id = $2 RETURNING id`,
-    [placeId, resident.townshipId, note, resident.id, now],
-  );
-  if (rows.length === 0) throw notFound('Place');
-  const staff = await db.query<{ id: string }>(`SELECT id FROM users WHERE township_id = $1 AND role IN ('TOWNSHIP_STAFF', 'TOWNSHIP_ADMIN') AND status = 'ACTIVE'`, [resident.townshipId]);
-  await notify(db, staff.map((s) => s.id), { title: 'An accessible place is reported blocked', body: note, link: '/console/akses' });
-  return { ok: true };
-}
-
-/** Staff confirm a place (or that it is blocked, or remove it). A resident's confirmed update earns Impact XP. */
-export async function reviewPlace(db: Db, actor: Actor, placeId: string, decision: 'VERIFIED' | 'BLOCKED' | 'REMOVE', now: Date) {
-  return db.tx(async (tx) => {
-    const place = await one<{ township_id: string; status: string; reported_by: string | null }>(tx, 'SELECT township_id, status, reported_by FROM access_places WHERE id = $1 FOR UPDATE', [placeId]);
-    if (!place) throw notFound('Place');
-    assertTownshipAccess(actor, place.township_id);
-    if (decision === 'REMOVE') {
-      await tx.query('DELETE FROM access_places WHERE id = $1', [placeId]);
-    } else {
-      await tx.query('UPDATE access_places SET status = $2, verified_by = $3, verified_at = $4, updated_at = $4 WHERE id = $1', [placeId, decision, actor.id, now]);
-    }
-    if (place.reported_by && place.status !== decision && decision !== 'REMOVE') {
-      const reporter = await rewardUserById(tx, place.reported_by);
-      if (reporter) await recordAction(tx, { user: reporter, activity: 'AKSES_UPDATE', ref: `${placeId}:${decision}:${now.toISOString().slice(0, 10)}`, now });
-    }
-    await audit(tx, actor.id, 'ACCESS_PLACE_REVIEWED', 'access_place', placeId, { decision });
-    return { status: decision };
-  });
-}
-
-export async function createPlace(db: Db, actor: Actor, input: { name: string; kind: PlaceKind; location: string; note?: string }, now: Date) {
-  const townshipId = townshipOf(actor);
-  if (await one(db, 'SELECT 1 FROM access_places WHERE township_id = $1 AND lower(name) = lower($2) AND kind = $3', [townshipId, input.name, input.kind])) {
-    throw conflict('PLACE_EXISTS', 'This place is already listed.');
-  }
-  const row = await one<{ id: string }>(
-    db,
-    `INSERT INTO access_places (township_id, name, kind, location, status, note, verified_by, verified_at, created_at, updated_at)
-     VALUES ($1, $2, $3, $4, 'VERIFIED', $5, $6, $7, $7, $7) RETURNING id`,
-    [townshipId, input.name, input.kind, input.location, input.note ?? null, actor.id, now],
-  );
-  return { id: row!.id };
-}
+// Accessible places, their incidents and the automation around them live in places.ts, incidents.ts and automation.ts.

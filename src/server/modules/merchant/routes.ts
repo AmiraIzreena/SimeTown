@@ -63,8 +63,17 @@ export const merchantRoutes = [
     handler: (c) => merchant.listStatements(c.db, c.actor),
   }),
   route({
-    method: 'GET', path: '/admin/merchants', tag: 'SimeTown Merchant', summary: 'All shops with pool and amounts owed', auth: 'session', roles: ADMINS,
-    handler: (c) => admin.listMerchantsForAdmin(c.db, c.actor),
+    method: 'GET', path: '/admin/merchants', tag: 'SimeTown Merchant', summary: 'All shops with pool and amounts owed (optional search, offer type and sort)', auth: 'session', roles: ADMINS,
+    query: z.object({ q: z.string().trim().max(60).optional(), kind: z.enum(MERCHANT_KINDS).optional(), sort: z.enum(admin.MERCHANT_SORTS).optional() }),
+    handler: (c) => admin.listMerchantsForAdmin(c.db, c.actor, c.query),
+  }),
+  route({
+    method: 'GET', path: '/admin/merchant-summary', tag: 'SimeTown Merchant', summary: 'Shop counts by status and the totals held in reward pools and owed', auth: 'session', roles: ADMINS,
+    handler: (c) => admin.merchantSummary(c.db, c.actor, c.now),
+  }),
+  route({
+    method: 'GET', path: '/admin/merchants/:merchantId', tag: 'SimeTown Merchant', summary: 'One shop: its record, contacts, money and recent deposits', auth: 'session', roles: ADMINS,
+    handler: (c) => admin.merchantDetail(c.db, c.actor, c.params.merchantId!),
   }),
   route({
     method: 'POST', path: '/admin/merchants/:merchantId/status', tag: 'SimeTown Merchant', summary: 'Approve, suspend or restore a shop', auth: 'session', roles: ADMINS,

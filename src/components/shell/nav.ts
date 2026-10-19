@@ -90,7 +90,7 @@ export const NAV: Record<Area, { title: string; items: NavItem[] }> = {
       { href: '/console/finance', label: 'Float & payments', icon: Landmark },
       { href: '/console/places', label: 'Kiosks, machines & trails', icon: MapPin },
       { href: '/console/recycling', label: 'Recycling collections', icon: Recycle },
-      { href: '/console/nature', label: 'Access places', icon: Accessibility },
+      { href: '/console/access', label: 'Access places', icon: Accessibility },
       { href: '/console/komuniti', label: 'Komuniti', gloss: 'Reports & posts', icon: ShieldAlert },
       { href: '/console/home-services', label: 'Home service reports', icon: Wrench },
       { href: '/console/audit', label: 'Audit trail', icon: History, roles: ADMINS },

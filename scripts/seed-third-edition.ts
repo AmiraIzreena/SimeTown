@@ -5,13 +5,13 @@ import { LEGAL } from "../src/shared/legal";
 import type { Actor } from "../src/server/auth/actor";
 import { ACTOR_COLUMNS, toActor } from "../src/server/auth/session";
 import { one, type Db } from "../src/server/db/client";
+import { createParty, updateParty } from "../src/server/modules/akses/config";
+import { reportIssue } from "../src/server/modules/akses/incidents";
+import { createPlace, followPlace, inspectPlace, setPlaceParty, suggestPlace } from "../src/server/modules/akses/places";
 import {
-  createPlace,
   inviteCarer,
-  reportPlaceBlocked,
   respondToCarerInvite,
   saveAccessProfile,
-  suggestPlace,
 } from "../src/server/modules/akses/service";
 import { simulateSignal } from "../src/server/modules/banjir/agent";
 import { setSponsorTier } from "../src/server/modules/campaigns/tiers";
@@ -119,6 +119,28 @@ function walkAlong(
     }
   }
   return points;
+}
+
+/**
+ * Akses+ responsible teams: SDP's own operations and verification teams, the
+ * guardhouse as the security team, and the apartment's lift contractor, which
+ * is reached through a SIMULATED integration. Places nobody runs yet are given
+ * to operations, and lifts to the contractor.
+ */
+async function seedAccessParties(db: Db, townshipId: string, admin: Actor, staff: Actor) {
+  const ops = await createParty(db, admin, { name: "SDP Township Operations", kind: "TOWNSHIP_OPERATIONS", integration: "IN_APP", contact: "Elmina township office" });
+  const security = await createParty(db, admin, { name: "Elmina Security", kind: "SECURITY", integration: "IN_APP", contact: "Main gate guardhouse" });
+  const verifier = await createParty(db, admin, { name: "SDP Accessibility Verification", kind: "ACCESS_VERIFIER", integration: "IN_APP" });
+  const lifts = await createParty(db, admin, { name: "LiftCare Maintenance (simulated)", kind: "MAINTENANCE_CONTRACTOR", integration: "SIMULATED", contact: "Contractor for Pangsapuri Harmoni Elmina JMB" });
+  await updateParty(db, admin, ops.id, { addMember: staff.id });
+  await updateParty(db, admin, verifier.id, { addMember: staff.id });
+  const guard = await actorByEmail(db, "guard");
+  if (guard) await updateParty(db, admin, security.id, { addMember: guard.id });
+  await db.query(
+    `UPDATE access_places SET party_id = CASE WHEN kind = 'LIFT' THEN $2::uuid ELSE $3::uuid END WHERE township_id = $1 AND party_id IS NULL`,
+    [townshipId, lifts.id, ops.id],
+  );
+  return { ops, security, verifier, lifts };
 }
 
 export async function seedThirdEdition(
@@ -631,6 +653,9 @@ export async function seedThirdEdition(
     ]) {
       await createPlace(db, staff, place, daysAgo(7));
     }
+    const { ops } = await seedAccessParties(db, township.id, admin, staff);
+
+    // A resident's suggestion, inspected and verified by staff, then blocked by parked motorcycles: routed to security, not the township office.
     const ramp = await suggestPlace(
       db,
       zainab,
@@ -641,17 +666,23 @@ export async function seedThirdEdition(
       },
       daysAgo(3),
     );
-    await db.query(
-      `UPDATE access_places SET status = 'VERIFIED', verified_by = $2, verified_at = $3 WHERE id = $1`,
-      [ramp.id, staff.id, daysAgo(2)],
-    );
-    await reportPlaceBlocked(
+    await inspectPlace(db, staff, ramp.id, { outcome: "VERIFIED", note: "Gradient and width checked on site." }, daysAgo(2));
+    await setPlaceParty(db, admin, ramp.id, ops.id);
+    await followPlace(db, meiling, ramp.id, true, daysAgo(2));
+    await reportIssue(
       db,
       zainab,
       ramp.id,
-      "Motorcycles parked across the ramp after prayers.",
+      { category: "PARKING_OBSTRUCTION", description: "Motorcycles parked across the ramp after prayers.", idempotencyKey: "seed-surau-ramp-1" },
       daysAgo(1),
     );
+    // The apartment lift is out: a high-priority incident for the contractor's (simulated) system.
+    const lift = await one<{ id: string }>(db, `SELECT id FROM access_places WHERE township_id = $1 AND kind = 'LIFT' LIMIT 1`, [township.id]);
+    if (lift) {
+      await reportIssue(db, priya, lift.id, { category: "OUT_OF_SERVICE", description: "Lift stuck on level 3, doors not opening.", idempotencyKey: "seed-lift-1" }, daysAgo(0, 2));
+    }
+    // Waiting for verification: a resident's suggestion nobody has inspected yet.
+    await suggestPlace(db, hafiz, { name: "Elmina Valley clinic side ramp", kind: "RAMP", location: "Klinik Elmina Valley, side entrance" }, daysAgo(1));
     await saveAccessProfile(
       db,
       zainab,
@@ -669,8 +700,13 @@ export async function seedThirdEdition(
     const link = await inviteCarer(db, zainab, meiling.memberCode!, daysAgo(5));
     await respondToCarerInvite(db, meiling, link.id, true, daysAgo(5));
     log(
-      "Akses+: accessible places, a blocked ramp, a carer link and one home on the priority help list.",
+      "Akses+: responsible parties, accessible places, a ramp blocked (routed to security), a lift outage (simulated contractor), a suggestion to verify, a carer link and the priority help list.",
     );
+  }
+  // An older demo database already has places: add the teams that run them, once.
+  if (!(await one(db, "SELECT 1 FROM access_parties WHERE township_id = $1", [township.id]))) {
+    await seedAccessParties(db, township.id, admin, staff);
+    log("Akses+: responsible teams for existing places (the lift with a simulated contractor). Legacy blocked places wait in the exception queue.");
   }
 
   // --- Assistant: one saved chat, so the history list has something in it -------------

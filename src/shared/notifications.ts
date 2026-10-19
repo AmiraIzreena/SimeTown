@@ -26,6 +26,6 @@ export function notificationDestination(link: string | null): string | null {
   if (!link || !/^\/(app|console|merchant|courier|guard|sponsor)(\/|\?|#|$)/.test(link) || /[\\\u0000-\u0020]/.test(link)) return null;
   const path = link.split(/[?#]/)[0];
   if (/^\/app\/lapor\/[0-9a-f-]{36}$/i.test(path ?? '')) return link;
-  const sections = /^\/(app(?:\/(?:wallet|parcels|home-services|lapor|reports|requests|komuniti|jiran|kongsi|kitar|banjir|akses|assistant|tamu|account))?|console(?:\/(?:komuniti|operations|lockers|parcels|reports|incidents|people|home-services|recycling|places|finance|assistant|banjir|account))?|merchant(?:\/(?:bookings|services|sales|statements|account))?|courier(?:\/(?:team|account|history))?|guard(?:\/parcels)?|sponsor)$/;
+  const sections = /^\/(app(?:\/(?:wallet|parcels|home-services|lapor|reports|requests|komuniti|jiran|kongsi|kitar|banjir|akses|assistant|tamu|account))?|console(?:\/(?:komuniti|operations|lockers|parcels|reports|incidents|people|home-services|recycling|places|access|finance|assistant|banjir|account))?|merchant(?:\/(?:bookings|services|sales|statements|account))?|courier(?:\/(?:team|account|history))?|guard(?:\/parcels)?|sponsor)$/;
   return sections.test(path ?? '') ? link : null;
 }

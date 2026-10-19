@@ -67,7 +67,8 @@ const canonical = (v: unknown): string =>
     : Array.isArray(v) ? `[${v.map(canonical).join(',')}]`
       : `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${canonical((v as Record<string, unknown>)[k])}`).join(',')}}`;
 
-const chain = (prev: string | null, e: { incidentId: string; kind: string; visibility: string; body: string | null; data: unknown; actorId: string | null; at: Date }) =>
+/** The hash of one history step, linked to the one before. Shared with the Akses+ incident history. */
+export const chain = (prev: string | null, e: { incidentId: string; kind: string; visibility: string; body: string | null; data: unknown; actorId: string | null; at: Date }) =>
   createHash('sha256').update([prev ?? '', e.incidentId, e.kind, e.visibility, e.body ?? '', canonical(e.data ?? {}), e.actorId ?? '', e.at.toISOString()].join('|')).digest('hex');
 
 /** Adds one step to a case's history. Call with the incident row locked, so steps never interleave. */

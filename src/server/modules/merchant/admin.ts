@@ -63,7 +63,33 @@ export async function applyAsMerchant(db: Db, input: MerchantApplication, now: D
   });
 }
 
-export async function listMerchantsForAdmin(db: Db, actor: Actor) {
+export const MERCHANT_SORTS = ['ACTION', 'NAME', 'POOL', 'OWED', 'NEWEST'] as const;
+export interface MerchantFilter {
+  /** Matches the business name, registration number or category. */
+  q?: string;
+  kind?: MerchantKind;
+  sort?: (typeof MERCHANT_SORTS)[number];
+}
+
+/** A search term as a literal: % and _ typed by the admin are matched as themselves, not as wildcards. */
+const likeTerm = (q: string) => `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+
+const ORDER_BY: Record<NonNullable<MerchantFilter['sort']>, string> = {
+  ACTION: `(m.status = 'PENDING') DESC, (m.status = 'SUSPENDED') DESC, lower(m.name)`,
+  NAME: 'lower(m.name)',
+  POOL: 'pool_sen DESC, lower(m.name)',
+  OWED: 'owed_sen DESC, lower(m.name)',
+  NEWEST: 'm.created_at DESC, lower(m.name)',
+};
+
+/**
+ * Every business in the admin's township (all of them for HQ), with its reward
+ * pool and what the township owes it, read from the same ledger accounts the
+ * money moves through. Filters are optional; without them the list is as before.
+ */
+export async function listMerchantsForAdmin(db: Db, actor: Actor, filter: MerchantFilter = {}) {
+  const q = filter.q?.trim() || null;
+  const kind = filter.kind ?? null;
   return db.query(
     `SELECT m.id, m.name, m.registration_no, m.category, m.status, m.plan, m.created_at, m.approved_at, m.offers_retail, m.offers_services,
             concat_ws(', ', m.address_line, concat_ws(' ', m.postcode, m.city), m.state) AS address,
@@ -72,9 +98,64 @@ export async function listMerchantsForAdmin(db: Db, actor: Actor) {
        LEFT JOIN ledger_accounts p ON p.merchant_id = m.id AND p.kind = 'FUNDER_POOL'
        LEFT JOIN ledger_accounts o ON o.merchant_id = m.id AND o.kind = 'MERCHANT_PAYABLE'
       WHERE ($1::uuid IS NULL OR m.township_id = $1)
-      ORDER BY (m.status = 'PENDING') DESC, m.name`,
-    [actor.townshipId],
+        AND ($2::text IS NULL OR m.name ILIKE $2 ESCAPE '\\' OR m.registration_no ILIKE $2 ESCAPE '\\' OR m.category ILIKE $2 ESCAPE '\\')
+        AND ($3::text IS NULL
+          OR ($3 = 'RETAIL' AND m.offers_retail AND NOT m.offers_services)
+          OR ($3 = 'SERVICES' AND m.offers_services AND NOT m.offers_retail)
+          OR ($3 = 'BOTH' AND m.offers_retail AND m.offers_services))
+      ORDER BY ${ORDER_BY[filter.sort ?? 'ACTION'] ?? ORDER_BY.ACTION}`,
+    [actor.townshipId, q ? likeTerm(q) : null, kind],
   );
+}
+
+/** Headline numbers for the console, from the ledger, independent of any filter. */
+export async function merchantSummary(db: Db, actor: Actor, now: Date) {
+  return (await one<Record<string, number>>(
+    db,
+    `SELECT count(*) FILTER (WHERE m.status = 'PENDING')::int AS pending,
+            count(*) FILTER (WHERE m.status = 'ACTIVE')::int AS active,
+            count(*) FILTER (WHERE m.status = 'SUSPENDED')::int AS suspended,
+            coalesce(sum(p.balance), 0)::bigint AS pool_sen,
+            coalesce(sum(o.balance), 0)::bigint AS owed_sen,
+            count(*) FILTER (WHERE m.status = 'ACTIVE' AND coalesce(p.balance, 0) = 0)::int AS active_unfunded,
+            (SELECT coalesce(sum(d.amount_sen), 0)::bigint FROM deposits d JOIN merchants dm ON dm.id = d.merchant_id
+              WHERE ($1::uuid IS NULL OR dm.township_id = $1) AND d.created_at > $2::timestamptz - interval '30 days') AS deposits_30d_sen
+       FROM merchants m
+       LEFT JOIN ledger_accounts p ON p.merchant_id = m.id AND p.kind = 'FUNDER_POOL'
+       LEFT JOIN ledger_accounts o ON o.merchant_id = m.id AND o.kind = 'MERCHANT_PAYABLE'
+      WHERE ($1::uuid IS NULL OR m.township_id = $1)`,
+    [actor.townshipId, now],
+  ))!;
+}
+
+/** One business for the review panel: its record, contact people, money and recent deposits. */
+export async function merchantDetail(db: Db, actor: Actor, merchantId: string) {
+  const m = await one<{ township_id: string }>(
+    db,
+    `SELECT m.id, m.township_id, m.name, m.registration_no, m.category, m.status, m.plan, m.created_at, m.approved_at, m.offers_retail, m.offers_services,
+            concat_ws(', ', m.address_line, concat_ws(' ', m.postcode, m.city), m.state) AS address,
+            coalesce(p.balance, 0) AS pool_sen, coalesce(o.balance, 0) AS owed_sen,
+            (SELECT count(*)::int FROM shop_offers s WHERE s.merchant_id = m.id AND s.status = 'ACTIVE') AS live_offers
+       FROM merchants m
+       LEFT JOIN ledger_accounts p ON p.merchant_id = m.id AND p.kind = 'FUNDER_POOL'
+       LEFT JOIN ledger_accounts o ON o.merchant_id = m.id AND o.kind = 'MERCHANT_PAYABLE'
+      WHERE m.id = $1`,
+    [merchantId],
+  );
+  if (!m) throw notFound('Shop');
+  assertTownshipAccess(actor, m.township_id);
+  const [contacts, deposits, totals] = await Promise.all([
+    db.query(`SELECT full_name, email, phone, status FROM users WHERE merchant_id = $1 ORDER BY created_at`, [merchantId]),
+    db.query(
+      `SELECT d.amount_sen, d.bank_ref, d.created_at, u.full_name AS recorded_by FROM deposits d LEFT JOIN users u ON u.id = d.recorded_by
+        WHERE d.merchant_id = $1 ORDER BY d.created_at DESC LIMIT 10`, [merchantId],
+    ),
+    one<{ count: number; total_sen: number }>(db, 'SELECT count(*)::int AS count, coalesce(sum(amount_sen), 0)::bigint AS total_sen FROM deposits WHERE merchant_id = $1', [merchantId]),
+  ]);
+  // The township id is only for the access check; it is not part of what the screen shows.
+  const merchant: Record<string, unknown> = { ...m };
+  delete merchant.township_id;
+  return { merchant, contacts, deposits, depositTotals: totals };
 }
 
 /** Approve, suspend or restore a shop. Its ledger accounts are opened on first approval. */

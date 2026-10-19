@@ -1,0 +1,67 @@
+/** Bahasa Malaysia for the Shops console: the list, the review panel and recording deposits. */
+export const shopsMalay: Record<string, string> = {
+  'Approve businesses after checking their registration, set what each one offers, and record payments into their reward pools.':
+    'Luluskan perniagaan selepas menyemak pendaftarannya, tetapkan apa yang ditawarkan setiap satu, dan rekodkan bayaran ke dalam dana ganjarannya.',
+  'Active businesses': 'Perniagaan aktif',
+  'All businesses': 'Semua perniagaan',
+  'All reward pools funded': 'Semua dana ganjaran telah dibiayai',
+  'Check registration, then approve': 'Semak pendaftaran, kemudian luluskan',
+  'Held in reward pools': 'Dipegang dalam dana ganjaran',
+  'Owed to businesses': 'Terhutang kepada perniagaan',
+  'Paid in the weekly settlement': 'Dibayar dalam penyelesaian mingguan',
+  'None waiting': 'Tiada yang menunggu',
+  'None suspended': 'Tiada yang digantung',
+  'Search businesses': 'Cari perniagaan',
+  'Business name, registration number or category, e.g. Kafe or DEMO-0001': 'Nama perniagaan, nombor pendaftaran atau kategori, cth. Kafe atau DEMO-0001',
+  'Needs action first': 'Perlu tindakan dahulu',
+  'Name A to Z': 'Nama A hingga Z',
+  'Largest reward pool': 'Dana ganjaran terbesar',
+  'Most owed': 'Paling banyak terhutang',
+  'businesses': 'perniagaan',
+  'No businesses yet': 'Belum ada perniagaan',
+  'Businesses apply from the “Join as a shop” page.': 'Perniagaan memohon melalui halaman “Sertai sebagai kedai”.',
+  'No businesses match': 'Tiada perniagaan yang sepadan',
+  'Try another name, status or offer type.': 'Cuba nama, status atau jenis tawaran lain.',
+  'Loading businesses': 'Memuatkan perniagaan',
+  'Not funded yet': 'Belum dibiayai',
+  'reward pool': 'dana ganjaran',
+  'owed this week': 'terhutang minggu ini',
+  'Check the business registration number against SSM records and confirm the contact person before approving.':
+    'Semak nombor pendaftaran perniagaan dengan rekod SSM dan sahkan orang yang boleh dihubungi sebelum meluluskan.',
+  'This business cannot give or accept points. Restore it when the issue is settled.': 'Perniagaan ini tidak boleh memberi atau menerima mata. Pulihkannya apabila isu telah selesai.',
+  'This business can accept points, and give points while its reward pool has money.': 'Perniagaan ini boleh menerima mata, dan memberi mata selagi dana ganjarannya mempunyai wang.',
+  'Restore business': 'Pulihkan perniagaan',
+  'Business details': 'Butiran perniagaan',
+  'Registration no.': 'No. pendaftaran',
+  'Applied': 'Memohon',
+  'Not given': 'Tidak diberikan',
+  'Contact people': 'Orang untuk dihubungi',
+  'No accounts linked.': 'Tiada akaun dipautkan.',
+  'What it offers': 'Apa yang ditawarkan',
+  'A shop gives and accepts points at the counter. Home services take bookings. A change is refused while bookings or a Shop Offer are still open.':
+    'Kedai memberi dan menerima mata di kaunter. Perkhidmatan rumah menerima tempahan. Perubahan ditolak selagi tempahan atau Tawaran Kedai masih terbuka.',
+  'Money': 'Wang',
+  'Total deposited': 'Jumlah didepositkan',
+  'No deposits yet.': 'Belum ada deposit.',
+  'Restore this business?': 'Pulihkan perniagaan ini?',
+  'It will stop giving and accepting points straight away. Its reward pool and what is owed to it are kept.': 'Ia akan berhenti memberi dan menerima mata serta-merta. Dana ganjarannya dan jumlah terhutang kepadanya disimpan.',
+  'It can accept points straight away, and give points once its reward pool is funded. Its contact people are notified.':
+    'Ia boleh menerima mata serta-merta, dan memberi mata setelah dana ganjarannya dibiayai. Orang yang boleh dihubungi akan dimaklumkan.',
+  'It can give and accept points again.': 'Ia boleh memberi dan menerima mata semula.',
+  'The business is active.': 'Perniagaan kini aktif.',
+  'The business is suspended.': 'Perniagaan telah digantung.',
+  'Record this only after the transfer shows in the trust account. The money can only be used for this business’s points and its service fee.':
+    'Rekodkan ini hanya selepas pindahan muncul dalam akaun amanah. Wang ini hanya boleh digunakan untuk mata perniagaan ini dan yuran perkhidmatannya.',
+  'Enter an amount such as 250 or 250.50.': 'Masukkan jumlah seperti 250 atau 250.50.',
+  'As shown on the bank statement. Each reference can be recorded once.': 'Seperti dalam penyata bank. Setiap rujukan boleh direkodkan sekali sahaja.',
+  'Reward pool after this deposit': 'Dana ganjaran selepas deposit ini',
+};
+
+/** Shops console messages with names, amounts or counts in them. */
+export const shopsTemplates: readonly (readonly [string, string])[] = [
+  ['{0} with an empty reward pool', '{0} dengan dana ganjaran kosong'],
+  ['{0} deposited in 30 days', '{0} didepositkan dalam 30 hari'],
+  ['Recent deposits ({0})', 'Deposit terkini ({0})'],
+  ['Deposit recorded. The reward pool is now {0}.', 'Deposit direkodkan. Dana ganjaran kini {0}.'],
+  ['Current reward pool {0} · approved {1}', 'Dana ganjaran semasa {0} · diluluskan {1}'],
+];
