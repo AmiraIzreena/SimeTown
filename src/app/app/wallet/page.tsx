@@ -237,7 +237,7 @@ export default function WalletPage() {
                       <Card>
                         <CardHeader title="Your offer-backed points" description="Each batch says what stood behind it. They follow the same expiry rule as every point." />
                         {o.history.length === 0 ? (
-                          <p className="p-5 text-sm text-ink-500"><Text>Earn them from verified green actions: recycling at a kiosk bin, tracked walks and rides, and watering a community garden.</Text></p>
+                          <p className="p-5 text-sm text-ink-500"><Text>Earn them from verified green actions: recycling at a kiosk bin, and tracked walks and rides.</Text></p>
                         ) : (
                           <ul className="divide-y divide-ink-100">
                             {o.history.map((lot) => (

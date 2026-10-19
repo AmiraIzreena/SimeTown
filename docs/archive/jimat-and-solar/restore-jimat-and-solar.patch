@@ -1,5 +1,5 @@
 diff --git a/README.md b/README.md
-index bd38a56..828947b 100644
+index bd38a56..e5077fa 100644
 --- a/README.md
 +++ b/README.md
 @@ -31,7 +31,7 @@ password yourself, set `SEED_DEMO_PASSWORD` in `.env` (10+ characters) before ru
@@ -181,7 +181,7 @@ index bd38a56..828947b 100644
  | Business | SimeTown Partner Hub | Four sponsor tiers with a public Partners page and one labelled banner; campaigns with a prefunded pool and grouped results |
  | Business | SimeTown Insights | 30-day totals, the float against what it owes, machine uptime, offer pledges, visitors, flood alerts and barriers fixed on time; printable monthly report |
 diff --git a/docs/ARCHITECTURE.md b/docs/ARCHITECTURE.md
-index 88fc9e6..0c8e865 100644
+index 88fc9e6..e6fc163 100644
 --- a/docs/ARCHITECTURE.md
 +++ b/docs/ARCHITECTURE.md
 @@ -50,8 +50,9 @@ assessment below is therefore of the *specification*.
@@ -205,7 +205,7 @@ index 88fc9e6..0c8e865 100644
  4. **Human in the loop.** A proposal runs only when the resident taps Yes (`POST /assistant/actions/:id/confirm`), with their own permissions and the feature's usual checks; it expires after 15 minutes. Before that the resident can change its details on the card (`POST /assistant/actions/:id/edit`: the pass's day, time, length, kind and plate, or the question's wording), checked by the same rules, and a newer proposal in the conversation replaces any older one still open. The rules read pass details in English and Malay (`pass-request.ts`). A visitor pass's share link is returned once and never stored in the chat.
  5. **Handover.** A question sent to the township office (`assistant_handoffs`) appears under *Assistant questions* in the console; the answer goes back into the resident's chat with a notification. Staff see that question only, not the conversation.
 diff --git a/docs/BUSINESS_RULES.md b/docs/BUSINESS_RULES.md
-index 3334eaa..b1b0c80 100644
+index 3334eaa..f3d4f9d 100644
 --- a/docs/BUSINESS_RULES.md
 +++ b/docs/BUSINESS_RULES.md
 @@ -22,7 +22,7 @@ and "Third edition" refer to `tests/ledger.test.ts`, `tests/api.test.ts`,
@@ -255,7 +255,7 @@ index 3334eaa..b1b0c80 100644
  | What if a one-signal Warning draft is not answered? | It is not sent by itself; the township admins are told once. A one-signal Danger is sent after 3 minutes only if the water is still rising. A draft whose signal has gone stale is dropped. | `runAgentClock` |
  | Does an officer setting a level by hand need a second signal? | No. A person deciding is the human check the rule asks for; it is sent at once and logged as the officer's decision. | `banjir/service.ts → recordLevel` |
 diff --git a/docs/SECURITY.md b/docs/SECURITY.md
-index ac464ec..d1f0474 100644
+index ac464ec..2f8dfbf 100644
 --- a/docs/SECURITY.md
 +++ b/docs/SECURITY.md
 @@ -24,14 +24,14 @@ ledger first, then access control, then everything else.
@@ -285,7 +285,7 @@ index ac464ec..d1f0474 100644
  - **Printed codes can be photographed and shared.** Daily caps apply; a pilot should rotate codes or
    add a location check.
 diff --git a/scripts/seed-tomorrow.ts b/scripts/seed-tomorrow.ts
-index 285050c..4fc3d68 100644
+index 285050c..6cc1239 100644
 --- a/scripts/seed-tomorrow.ts
 +++ b/scripts/seed-tomorrow.ts
 @@ -3,13 +3,15 @@ import { ACTOR_COLUMNS, toActor } from '../src/server/auth/session';
@@ -330,7 +330,7 @@ index 285050c..4fc3d68 100644
  
  /**
 diff --git a/scripts/seed.ts b/scripts/seed.ts
-index 0f387ee..84e4b13 100644
+index 0f387ee..f522f49 100644
 --- a/scripts/seed.ts
 +++ b/scripts/seed.ts
 @@ -13,6 +13,7 @@ import { acceptResponse, confirmResponse, respondToPost } from '../src/server/mo
@@ -360,7 +360,7 @@ index 0f387ee..84e4b13 100644
    await recordLevel(db, { zoneId: zones['Elmina Valley 3, 4 & 5']!, levelPct: 18, actor: staff }, now);
 diff --git a/src/app/app/jimat/page.tsx b/src/app/app/jimat/page.tsx
 new file mode 100644
-index 0000000..617d7cc
+index 0000000..95cb597
 --- /dev/null
 +++ b/src/app/app/jimat/page.tsx
 @@ -0,0 +1,218 @@
@@ -622,7 +622,7 @@ index 96b5ec6..3bc512e 100644
              </Link>
            </div>
 diff --git a/src/app/app/wallet/page.tsx b/src/app/app/wallet/page.tsx
-index 2cf7b4a..2786e9b 100644
+index 486d626..b7961b4 100644
 --- a/src/app/app/wallet/page.tsx
 +++ b/src/app/app/wallet/page.tsx
 @@ -25,7 +25,7 @@ interface Wallet {
@@ -658,13 +658,13 @@ index 2cf7b4a..2786e9b 100644
                        <Card>
                          <CardHeader title="Your offer-backed points" description="Each batch says what stood behind it. They follow the same expiry rule as every point." />
                          {o.history.length === 0 ? (
--                          <p className="p-5 text-sm text-ink-500"><Text>Earn them from verified green actions: recycling at a kiosk bin, tracked walks and rides, and watering a community garden.</Text></p>
-+                          <p className="p-5 text-sm text-ink-500"><Text>Earn them from verified green actions: recycling at a kiosk bin, tracked walks and rides, watering a community garden, and lower bills read by Jimat.</Text></p>
+-                          <p className="p-5 text-sm text-ink-500"><Text>Earn them from verified green actions: recycling at a kiosk bin, and tracked walks and rides.</Text></p>
++                          <p className="p-5 text-sm text-ink-500"><Text>Earn them from verified green actions: recycling at a kiosk bin, tracked walks and rides, and lower bills read by Jimat.</Text></p>
                          ) : (
                            <ul className="divide-y divide-ink-100">
                              {o.history.map((lot) => (
 diff --git a/src/app/console/campaigns/page.tsx b/src/app/console/campaigns/page.tsx
-index 1324f12..13c9fd4 100644
+index 1324f12..9ee54fa 100644
 --- a/src/app/console/campaigns/page.tsx
 +++ b/src/app/console/campaigns/page.tsx
 @@ -25,6 +25,7 @@ const GOALS: { value: string; label: string; activity: string; metric: 'COUNT' |
@@ -676,7 +676,7 @@ index 1324f12..13c9fd4 100644
  ];
  
 diff --git a/src/app/console/page.tsx b/src/app/console/page.tsx
-index 8fca960..f7ada69 100644
+index 8fca960..2dd3709 100644
 --- a/src/app/console/page.tsx
 +++ b/src/app/console/page.tsx
 @@ -2,7 +2,7 @@
@@ -729,7 +729,7 @@ index 8fca960..f7ada69 100644
                        [Droplets, 'Flood alerts sent', String(d.smart.flood_alerts)],
                        [Accessibility, 'Barriers fixed within 7 days', `${d.smart.barriers_fixed_on_time} of ${d.smart.barriers_reported}`],
 diff --git a/src/app/console/people/page.tsx b/src/app/console/people/page.tsx
-index fe4c698..9117f40 100644
+index fe4c698..9424c48 100644
 --- a/src/app/console/people/page.tsx
 +++ b/src/app/console/people/page.tsx
 @@ -2,7 +2,7 @@
@@ -815,7 +815,7 @@ index fe4c698..9117f40 100644
 +}
 diff --git a/src/app/console/solar/page.tsx b/src/app/console/solar/page.tsx
 new file mode 100644
-index 0000000..8dc656b
+index 0000000..10f6a81
 --- /dev/null
 +++ b/src/app/console/solar/page.tsx
 @@ -0,0 +1,229 @@
@@ -1049,7 +1049,7 @@ index 0000000..8dc656b
 +  );
 +}
 diff --git a/src/app/privacy/page.tsx b/src/app/privacy/page.tsx
-index 23a67e6..9faa0d9 100644
+index 23a67e6..c429919 100644
 --- a/src/app/privacy/page.tsx
 +++ b/src/app/privacy/page.tsx
 @@ -45,7 +45,7 @@ const sections: LegalSection[] = [
@@ -1080,7 +1080,7 @@ index 23a67e6..9faa0d9 100644
            ]}
          />
 diff --git a/src/app/sponsorship/page.tsx b/src/app/sponsorship/page.tsx
-index 384c717..5fb435d 100644
+index 384c717..1d4ec1a 100644
 --- a/src/app/sponsorship/page.tsx
 +++ b/src/app/sponsorship/page.tsx
 @@ -1,7 +1,8 @@
@@ -1127,7 +1127,7 @@ index 384c717..5fb435d 100644
                  <article className="glass-surface offer-card h-full rounded-2xl border p-5 shadow-sm">
 diff --git a/src/components/features/bill-reader.tsx b/src/components/features/bill-reader.tsx
 new file mode 100644
-index 0000000..6fa27d9
+index 0000000..3ea0c4d
 --- /dev/null
 +++ b/src/components/features/bill-reader.tsx
 @@ -0,0 +1,330 @@
@@ -1462,7 +1462,7 @@ index 0000000..6fa27d9
 +  );
 +}
 diff --git a/src/components/features/offer-content.ts b/src/components/features/offer-content.ts
-index fb0fd5c..72b58b7 100644
+index fb0fd5c..22ce0f6 100644
 --- a/src/components/features/offer-content.ts
 +++ b/src/components/features/offer-content.ts
 @@ -1,5 +1,5 @@
@@ -1481,7 +1481,7 @@ index fb0fd5c..72b58b7 100644
        { icon: Bot, name: 'SimeTown Assistant', gloss: 'Preview', text: 'Ask in English or Bahasa Malaysia. It acts only after you confirm, and never decides an alert.' },
      ],
 diff --git a/src/components/features/showcase-content.ts b/src/components/features/showcase-content.ts
-index 9b27621..ceab978 100644
+index 9b27621..3524e4c 100644
 --- a/src/components/features/showcase-content.ts
 +++ b/src/components/features/showcase-content.ts
 @@ -1,5 +1,5 @@
@@ -1562,7 +1562,7 @@ index ff1b45c..b5e93e3 100644
      ['/app/akses', 'motion-access'],
      ['/app/assistant', 'motion-assistant'],
 diff --git a/src/lib/i18n-extra.ts b/src/lib/i18n-extra.ts
-index cc5b30d..fd009e7 100644
+index af5f376..7f7c907 100644
 --- a/src/lib/i18n-extra.ts
 +++ b/src/lib/i18n-extra.ts
 @@ -70,6 +70,7 @@ export const extraMalay: Record<string, string> = {
@@ -1594,7 +1594,7 @@ index cc5b30d..fd009e7 100644
    's': '',
    // Public top bar and the "What we offer" page.
    'What we offer': 'Apa yang kami tawarkan', 'Guests': 'Tetamu', 'Open menu': 'Buka menu', 'Close menu': 'Tutup menu',
-@@ -141,6 +147,9 @@ export const extraMalay: Record<string, string> = {
+@@ -140,6 +146,9 @@ export const extraMalay: Record<string, string> = {
    'Shops across City of Elmina that give and accept SimeTown Points.': 'Kedai di seluruh City of Elmina yang memberi dan menerima Mata SimeTown.',
    'Current sponsors, highest tier first.': 'Penaja semasa, peringkat tertinggi dahulu.',
    'Tier fees are separate from challenge budgets, which go into each challenge’s own locked pool.': 'Fi peringkat diasingkan daripada bajet cabaran, yang dimasukkan ke dalam dana terkunci setiap cabaran.',
@@ -1604,7 +1604,7 @@ index cc5b30d..fd009e7 100644
    'Demo environment': 'Persekitaran demo',
    'Accounts, shops, sponsors and figures are sample data. No real payments are made, and sensors and machines are simulated. SimeTown is not an official Sime Darby Property service.': 'Akaun, kedai, penaja dan angka ialah data contoh. Tiada bayaran sebenar dibuat, dan sensor serta mesin disimulasikan. SimeTown bukan perkhidmatan rasmi Sime Darby Property.',
    'In the SimeTown app': 'Dalam aplikasi SimeTown',
-@@ -367,6 +376,9 @@ export const extraMalay: Record<string, string> = {
+@@ -366,6 +375,9 @@ export const extraMalay: Record<string, string> = {
    'Partnerships': 'Perkongsian',
    'Sponsors fund the township. Partners help run it.': 'Penaja membiayai perbandaran. Rakan kongsi membantu menjalankannya.',
    'A sponsor pays for visibility and results. A partner brings a service, equipment or expertise, and both sides gain from the work.': 'Penaja membayar untuk keterlihatan dan hasil. Rakan kongsi membawa perkhidmatan, peralatan atau kepakaran, dan kedua-dua pihak mendapat manfaat.',
@@ -1614,7 +1614,7 @@ index cc5b30d..fd009e7 100644
    'Sime Darby Property launched Malaysia’s first residential rooftop solar programme under the National Energy Transition Roadmap. SimeTown would connect it to residents in the township.': 'Sime Darby Property melancarkan program solar bumbung kediaman pertama Malaysia di bawah Pelan Hala Tuju Peralihan Tenaga Negara. SimeTown akan menghubungkannya dengan penduduk perbandaran.',
    'A proposed partnership: no agreement exists yet.': 'Perkongsian yang dicadangkan: belum ada perjanjian.',
    'Gives': 'Memberi',
-@@ -402,6 +414,9 @@ export const extraMalay: Record<string, string> = {
+@@ -401,6 +413,9 @@ export const extraMalay: Record<string, string> = {
    'Resident data for local biodiversity work': 'Data penduduk untuk kerja biodiversiti tempatan',
    'Accept points as redemption partners': 'Menerima mata sebagai rakan penebusan',
    'Customers who live a few streets away': 'Pelanggan yang tinggal beberapa jalan sahaja',
@@ -1624,16 +1624,16 @@ index cc5b30d..fd009e7 100644
    'All shops': 'Semua kedai',
    'Solar energy': 'Tenaga solar',
    'Cleaner power for every City of Elmina roof': 'Tenaga lebih bersih untuk setiap bumbung City of Elmina',
-@@ -622,7 +637,7 @@ export const extraMalay: Record<string, string> = {
+@@ -620,7 +635,7 @@ export const extraMalay: Record<string, string> = {
    // Wording pass 2: kiosk, bin and scale across the app. Every entry below: native review.
    'Put out paper and cans tonight, or drop them in a kiosk bin for XP.': 'Keluarkan kertas dan tin malam ini, atau masukkan ke dalam tong kiosk untuk XP.', // native review
    'Bins go out before 8am. Missed it? The recycling kiosks are open daily, 8:00 AM to 10:00 PM.': 'Letakkan tong di luar sebelum 8 pagi. Terlepas? Kiosk kitar semula dibuka setiap hari, 8:00 pagi hingga 10:00 malam.', // native review
--  'Earn them from verified green actions: recycling at a kiosk bin, tracked walks and rides, and watering a community garden.': 'Peroleh melalui aktiviti hijau yang disahkan: kitar semula di tong kiosk, berjalan dan berbasikal yang dijejak, dan menyiram kebun komuniti.', // native review
-+  'Earn them from verified green actions: recycling at a kiosk bin, tracked walks and rides, watering a community garden, and lower bills read by Jimat.': 'Peroleh melalui aktiviti hijau yang disahkan: kitar semula di tong kiosk, berjalan dan berbasikal yang dijejak, menyiram kebun komuniti, dan bil lebih rendah yang dibaca oleh Jimat.', // native review
+-  'Earn them from verified green actions: recycling at a kiosk bin, and tracked walks and rides.': 'Peroleh melalui aktiviti hijau yang disahkan: kitar semula di tong kiosk, dan berjalan serta berbasikal yang dijejak.', // native review
++  'Earn them from verified green actions: recycling at a kiosk bin, tracked walks and rides, and lower bills read by Jimat.': 'Peroleh melalui aktiviti hijau yang disahkan: kitar semula di tong kiosk, berjalan dan berbasikal yang dijejak, dan bil lebih rendah yang dibaca oleh Jimat.', // native review
    'Recycle at a kiosk bin, finish a park loop, water a garden or help a neighbour.': 'Kitar semula di tong kiosk, habiskan laluan taman, siram kebun atau bantu jiran.', // native review
    'A bin’s scale, a QR checkpoint, GPS or a staff member confirms it. There is no form to fill in.': 'Penimbang tong, pusat semak QR, GPS atau kakitangan mengesahkannya. Tiada borang perlu diisi.', // native review
    'Tap “Recycle as guest” on the screen of any kiosk bin. You get a claim code: join SimeTown within 14 days to claim the Impact XP. Guests are not tracked.': 'Ketik “Kitar semula sebagai tetamu” pada skrin mana-mana tong kiosk. Anda mendapat kod tuntutan: sertai SimeTown dalam masa 14 hari untuk menuntut XP Impak. Tetamu tidak dijejak.', // native review
-@@ -657,6 +672,7 @@ export const extraMalay: Record<string, string> = {
+@@ -655,6 +670,7 @@ export const extraMalay: Record<string, string> = {
    'Kiosk bins, kiosks, trail checkpoints and patrol points. Each printed code proves someone was there.': 'Tong kiosk, kiosk, pusat semak laluan dan titik rondaan. Setiap kod bercetak membuktikan kehadiran seseorang.', // native review
    'Kiosk bins': 'Tong kiosk', // native review
    'The Elmina Community Edible Gardens opened in January 2019 in Elmina Central Park, Elmina West, with over 100 plots given to residents by ballot.': 'Elmina Community Edible Gardens dibuka pada Januari 2019 di Elmina Central Park, Elmina West, dengan lebih 100 plot yang diberikan kepada penduduk melalui undian.', // native review
@@ -1641,7 +1641,7 @@ index cc5b30d..fd009e7 100644
    'No kiosk bins yet': 'Belum ada tong kiosk', // native review
    'An admin puts a bin at a kiosk. Its signing key is made on the server and never shown here.': 'Pentadbir menempatkan tong di kiosk. Kunci tandatangannya dijana pada pelayan dan tidak dipaparkan di sini.', // native review
    'Open the bin screen': 'Buka skrin tong', // native review
-@@ -708,6 +724,7 @@ export const extraMalay: Record<string, string> = {
+@@ -706,6 +722,7 @@ export const extraMalay: Record<string, string> = {
    'My requests': 'Permintaan saya',
    'Parcels': 'Bungkusan',
    'Recycling collections': 'Kutipan kitar semula',
@@ -1649,7 +1649,7 @@ index cc5b30d..fd009e7 100644
    'Report a hazard or an access barrier in under a minute, then follow it until it is fixed. You earn Impact XP once township staff confirm it.': 'Laporkan bahaya atau halangan akses dalam masa kurang seminit, kemudian ikuti sehingga ia dibaiki. Anda memperoleh XP Impak sebaik kakitangan perbandaran mengesahkannya.',
    'Following': 'Mengikuti',
    'You said “Me too” to this report, so you hear every update.': 'Anda menekan “Saya juga” pada laporan ini, jadi anda menerima setiap kemas kini.',
-@@ -1059,6 +1076,7 @@ export const extraMalay: Record<string, string> = {
+@@ -1057,6 +1074,7 @@ export const extraMalay: Record<string, string> = {
    'Space': 'Ada ruang',
    'Busy': 'Sibuk',
    'Book': 'Tempah',
@@ -1657,7 +1657,7 @@ index cc5b30d..fd009e7 100644
    'Time': 'Masa',
    'Day': 'Hari',
    'Vehicle number': 'Nombor kenderaan',
-@@ -1126,17 +1144,68 @@ export const extraMalay: Record<string, string> = {
+@@ -1124,17 +1142,68 @@ export const extraMalay: Record<string, string> = {
    'Last 90 days. Use these to improve the guide and the signs at each machine.': '90 hari lalu. Gunakan ini untuk menambah baik panduan dan papan tanda di setiap mesin.',
    'No items turned away': 'Tiada barang ditolak',
    'Confirm': 'Sahkan',
@@ -1726,7 +1726,7 @@ index cc5b30d..fd009e7 100644
    'no data': 'tiada data',
    'yes': 'ya',
    'no': 'tidak',
-@@ -1227,6 +1296,7 @@ export const extraMalay: Record<string, string> = {
+@@ -1225,6 +1294,7 @@ export const extraMalay: Record<string, string> = {
    'Only a parcel marked collected can be reported missing.': 'Hanya bungkusan yang ditandakan dituntut boleh dilaporkan hilang.',
    'You have already told us about this parcel.': 'Anda sudah memaklumkan kami tentang bungkusan ini.',
    'Parcel handover queried': 'Serahan bungkusan dipersoalkan',
@@ -1735,18 +1735,18 @@ index cc5b30d..fd009e7 100644
    'Choose a day.': 'Pilih hari.',
    'Add a photo of the fix.': 'Tambah foto pembaikan.',
 diff --git a/src/lib/i18n-messages.ts b/src/lib/i18n-messages.ts
-index 8202e03..64849ca 100644
+index 2d95720..f0fee01 100644
 --- a/src/lib/i18n-messages.ts
 +++ b/src/lib/i18n-messages.ts
-@@ -36,6 +36,7 @@ export const malay: Record<string, string> = {
+@@ -40,6 +40,7 @@ export const malay: Record<string, string> = {
    "Report a problem": "Laporkan masalah",
    "Events and the help board": "Acara dan papan bantuan",
    "Give away or lend an item": "Beri atau pinjamkan barang",
 +  "Read a bill or enter readings": "Baca bil atau masukkan bacaan",
    "Check flood levels": "Semak paras banjir",
    "Visitor passes and the guardhouse": "Pas pelawat dan pondok pengawal",
-   "Garden plots and wildlife": "Plot kebun dan hidupan liar",
-@@ -48,6 +49,10 @@ export const malay: Record<string, string> = {
+   "Balance, history, badges": "Baki, sejarah, lencana",
+@@ -51,6 +52,10 @@ export const malay: Record<string, string> = {
    "What would you like to ask?": "Apakah yang ingin anda tanyakan?",
    "Enter checkpoint code": "Masukkan kod pusat semak",
    "Check in at a checkpoint": "Daftar masuk di pusat semak",
@@ -1755,9 +1755,9 @@ index 8202e03..64849ca 100644
 +  "Please enter a valid electricity reading.": "Sila masukkan bacaan elektrik yang sah.",
 +  "Please enter a valid water reading.": "Sila masukkan bacaan air yang sah.",
    "8-letter code": "Kod 8 huruf",
-   "Enter garden code": "Masukkan kod kebun",
-   "Log a sighting one step at a time": "Rekod pemerhatian satu langkah demi satu",
-@@ -60,8 +65,22 @@ export const malay: Record<string, string> = {
+   "What you saw": "Apakah yang anda lihat?",
+   "Where you saw it": "Di manakah anda melihatnya?",
+@@ -61,8 +66,22 @@ export const malay: Record<string, string> = {
    "Change password one step at a time": "Tukar kata laluan satu langkah demi satu",
    "Edit profile": "Edit profil",
    "Phone number": "Nombor telefon",
@@ -1780,7 +1780,7 @@ index 8202e03..64849ca 100644
    "Update access needs one step at a time": "Kemas kini keperluan akses satu langkah demi satu",
    "Akses+ preferences": "Tetapan Akses+",
    "What support would help you?": "Sokongan apakah yang membantu anda?",
-@@ -81,6 +100,7 @@ export const malay: Record<string, string> = {
+@@ -82,6 +101,7 @@ export const malay: Record<string, string> = {
    "Accessible view": "Paparan mesra akses",
    "Standard view": "Paparan biasa",
    "More services": "Perkhidmatan lain",
@@ -1788,7 +1788,7 @@ index 8202e03..64849ca 100644
    "Is someone coming?": "Adakah seseorang akan datang?",
    "Back": "Kembali",
    "Next": "Seterusnya",
-@@ -140,11 +160,13 @@ export const malay: Record<string, string> = {
+@@ -141,11 +161,13 @@ export const malay: Record<string, string> = {
    ". Enough for": ". Cukup untuk",
    ". Finish it to be credited.": ". Tamatkan aktiviti untuk menerima ganjaran.",
    ". If you do not agree, please do not use SimeTown.": ". Jika anda tidak bersetuju, sila jangan gunakan SimeTown.",
@@ -1802,7 +1802,7 @@ index 8202e03..64849ca 100644
    "· ends": "· tamat",
    "· float": "· dana sandaran",
    "· from": "· daripada",
-@@ -164,14 +186,18 @@ export const malay: Record<string, string> = {
+@@ -165,13 +187,17 @@ export const malay: Record<string, string> = {
    "% · Danger at": "% · Bahaya pada",
    "% · updates every few seconds": "% · dikemas kini setiap beberapa saat",
    "% of the bill, in whole ringgit": "% daripada bil, dalam ringgit penuh",
@@ -1812,7 +1812,6 @@ index 8202e03..64849ca 100644
 +  "2. Reading and sense checks": "2. Bacaan dan semakan kesahihan",
    "3 reports confirmed by staff": "3 laporan disahkan kakitangan",
    "3 tracked walks, runs or rides": "3 aktiviti berjalan, berlari atau berbasikal dijejak",
-   "3 wildlife sightings confirmed": "3 pemerhatian hidupan liar disahkan",
 +  "3. Confirm the numbers": "3. Sahkan angka",
    "5 recycling drop-offs": "5 serahan SimeTown Recycle semula",
    "8 letters and numbers": "8 huruf dan angka",
@@ -1821,7 +1820,7 @@ index 8202e03..64849ca 100644
    "A cool morning at Elmina Central Park": "Pagi yang nyaman di Taman Pusat Elmina",
    "A deposit with this bank reference is already recorded.": "Deposit dengan rujukan bank ini telah direkodkan.",
    "A family member who is also a resident can be your carer. They hear about flood alerts in your area and see whether you have checked in safe. Never your access needs.": "Ahli keluarga yang juga penduduk boleh menjadi penjaga anda. Mereka menerima amaran banjir di kawasan anda dan melihat sama ada anda sudah melaporkan diri selamat. Keperluan akses anda tidak dikongsi.",
-@@ -218,6 +244,7 @@ export const malay: Record<string, string> = {
+@@ -216,6 +242,7 @@ export const malay: Record<string, string> = {
    "Access barrier": "Halangan akses",
    "Accessible places": "Tempat mesra akses",
    "Accessible toilet": "Tandas mesra akses",
@@ -1829,7 +1828,7 @@ index 8202e03..64849ca 100644
    "Account request": "Permintaan akaun",
    "Accounts": "Akaun",
    "Acknowledge or close an SOS call": "Akui atau tutup panggilan SOS",
-@@ -235,6 +262,7 @@ export const malay: Record<string, string> = {
+@@ -232,6 +259,7 @@ export const malay: Record<string, string> = {
    "Add an accessible place": "Tambah tempat mesra akses",
    "Add the first recycling kiosk above.": "Tambah kiosk SimeTown Recycle semula pertama di atas.",
    "Address": "Alamat",
@@ -1837,7 +1836,7 @@ index 8202e03..64849ca 100644
    "Address saved. The township office will confirm your home.": "Alamat disimpan. Pejabat perbandaran akan mengesahkan rumah anda.",
    "Admin account requested": "Akaun pentadbir diminta",
    "Agent:": "Ejen:",
-@@ -256,6 +284,7 @@ export const malay: Record<string, string> = {
+@@ -253,6 +281,7 @@ export const malay: Record<string, string> = {
    "Aluminium and tins": "Aluminium dan tin",
    "Always labelled Sponsored": "Sentiasa dilabel Ditaja",
    "Amount (RM)": "Jumlah (RM)",
@@ -1845,7 +1844,7 @@ index 8202e03..64849ca 100644
    "Amount received (RM)": "Jumlah diterima (RM)",
    "An accessible place is reported blocked": "Tempat mesra akses dilaporkan terhalang",
    "An account request needs your approval": "Permintaan akaun memerlukan kelulusan anda",
-@@ -288,6 +317,7 @@ export const malay: Record<string, string> = {
+@@ -285,6 +314,7 @@ export const malay: Record<string, string> = {
    "Area (optional)": "Kawasan (pilihan)",
    "Arrived": "Telah tiba",
    "Ask": "Tanya",
@@ -1853,7 +1852,7 @@ index 8202e03..64849ca 100644
    "Ask about the township": "Tanya tentang perbandaran",
    "Ask about the township in English or Bahasa Malaysia. It does small tasks after you confirm, and hands over to staff when unsure.": "Tanya tentang perbandaran dalam Bahasa Inggeris atau Bahasa Malaysia. Ia melaksanakan tugas kecil selepas pengesahan anda dan merujuk kepada kakitangan apabila tidak pasti.",
    "Ask about the township…": "Tanya tentang perbandaran…",
-@@ -296,13 +326,16 @@ export const malay: Record<string, string> = {
+@@ -293,13 +323,16 @@ export const malay: Record<string, string> = {
    "Ask for help": "Minta bantuan",
    "Ask in English or Bahasa Malaysia. It acts only after you confirm, and never decides an alert.": "Tanya dalam Bahasa Inggeris atau Bahasa Malaysia. Ia hanya bertindak selepas pengesahan anda dan tidak menentukan amaran.",
    "Ask the household": "Tanya isi rumah",
@@ -1870,7 +1869,7 @@ index 8202e03..64849ca 100644
    "Audit trail": "Jejak audit",
    "Authorities": "Pihak berkuasa",
    "Automated suggestions": "Cadangan automatik",
-@@ -323,7 +356,11 @@ export const malay: Record<string, string> = {
+@@ -320,7 +353,11 @@ export const malay: Record<string, string> = {
    "Between 2 and 12. A resident must scan all of them on the same day.": "Antara 2 hingga 12. Penduduk mesti mengimbas semuanya pada hari yang sama.",
    "Bila kutipan sampah?": "Bila kutipan sampah?",
    "Bill": "Bil",
@@ -1882,7 +1881,7 @@ index 8202e03..64849ca 100644
    "Bin full": "Tong penuh",
    "Bin-full and offline alerts go to township staff.": "Amaran tong penuh dan luar talian dihantar kepada kakitangan perbandaran.",
    "Bird": "Burung",
-@@ -393,6 +430,7 @@ export const malay: Record<string, string> = {
+@@ -388,6 +425,7 @@ export const malay: Record<string, string> = {
    "Checked by residents and staff. Say when something is blocked.": "Diperiksa oleh penduduk dan kakitangan. Maklumkan jika terdapat halangan.",
    "checked in safe ·": "telah melaporkan diri selamat ·",
    "Checked in safe.": "Telah melaporkan diri selamat.",
@@ -1890,8 +1889,8 @@ index 8202e03..64849ca 100644
    "Checkpoint code": "Kod pusat semak",
    "Checkpoints with their positions, the activity in progress and recent trips": "Pusat semak dengan kedudukannya, aktiviti sedang berjalan dan perjalanan terkini",
    "Checkpoints, one per line, in order": "Pusat semak, satu setiap baris, mengikut turutan",
-@@ -437,7 +475,7 @@ export const malay: Record<string, string> = {
-   "Community gardens and more nature in the township. Apply for a plot, take a day on the watering roster, and log the birds and insects you spot.": "Kebun komuniti dan lebih banyak alam semula jadi di perbandaran. Mohon plot, pilih hari dalam jadual menyiram dan rekodkan burung serta serangga yang anda temui.",
+@@ -431,7 +469,7 @@ export const malay: Record<string, string> = {
+   "Community Friend": "Rakan Komuniti",
    "Community pool": "Dana komuniti",
    "Community pool top-up · Sime Darby Property": "Tambah nilai dana komuniti · Sime Darby Property",
 -  "Community posts and responses, and reports with their description, the location you type and an optional photo.": "Siaran dan respons komuniti, serta laporan beserta penerangan, lokasi yang ditaip dan foto pilihan.",
@@ -1899,7 +1898,7 @@ index 8202e03..64849ca 100644
    "Complaints:": "Aduan:",
    "Complete any verified action": "Lengkapkan sebarang aktiviti yang disahkan",
    "Complete now": "Lengkapkan sekarang",
-@@ -447,15 +485,18 @@ export const malay: Record<string, string> = {
+@@ -441,14 +479,17 @@ export const malay: Record<string, string> = {
    "Confirm": "Sahkan",
    "Confirm a": "Sahkan",
    "Confirm a place, mark it blocked, or remove it": "Sahkan tempat, tandakan terhalang atau padamkannya",
@@ -1913,12 +1912,11 @@ index 8202e03..64849ca 100644
 +  "Confirm or correct the numbers read from a bill": "Sahkan atau betulkan angka yang dibaca daripada bil",
    "Confirm or decline using points on a bill": "Sahkan atau tolak penggunaan mata untuk bil",
    "Confirm or reject a resident against the property record": "Sahkan atau tolak penduduk berdasarkan rekod hartanah",
-   "Confirm or reject a sighting": "Sahkan atau tolak pemerhatian",
 +  "Confirm residents’ homes, manage shop, sponsor and staff accounts, and see who asked to be contacted about solar.": "Sahkan rumah penduduk, urus akaun kedai, penaja dan kakitangan, serta lihat siapa yang meminta dihubungi tentang solar.",
-   "Confirm the wildlife residents log in Taman, and check accessible places and blocked ramps reported in Akses+.": "Sahkan hidupan liar yang direkodkan penduduk di Taman dan semak tempat mesra akses serta tanjakan terhalang yang dilaporkan di Akses+.",
    "Confirm they helped": "Sahkan bantuan diberikan",
    "Confirmed": "Disahkan",
-@@ -479,6 +520,7 @@ export const malay: Record<string, string> = {
+   "Confirmed by staff": "Disahkan kakitangan",
+@@ -470,6 +511,7 @@ export const malay: Record<string, string> = {
    "Corrections": "Pembetulan",
    "Could not copy. Press and hold the link to copy it.": "Tidak dapat menyalin. Tekan dan tahan pautan untuk menyalinnya.",
    "Could not finish. Please try again.": "Tidak dapat menamatkan. Sila cuba lagi.",
@@ -1926,7 +1924,7 @@ index 8202e03..64849ca 100644
    "Could not start. Please try again.": "Tidak dapat bermula. Sila cuba lagi.",
    "Counter": "Kaunter",
    "Counts (fair play)": "Kiraan (permainan adil)",
-@@ -542,6 +584,8 @@ export const malay: Record<string, string> = {
+@@ -533,6 +575,8 @@ export const malay: Record<string, string> = {
    "Device: one item recognised, counted and weighed; signed by the machine": "Peranti: satu barang dikenal pasti, dikira dan ditimbang; ditandatangani mesin",
    "Device: start a session (SimeTown QR read, or guest); signed by the machine": "Peranti: mulakan sesi (QR SimeTown dibaca atau tetamu); ditandatangani mesin",
    "Device: the session's summary, which must match the items; signed by the machine": "Peranti: ringkasan sesi mesti sepadan dengan barang; ditandatangani mesin",
@@ -1935,7 +1933,7 @@ index 8202e03..64849ca 100644
    "Discount (RM, whole ringgit)": "Diskaun (RM, ringgit penuh)",
    "Discounts given": "Diskaun diberikan",
    "Dismiss": "Tutup",
-@@ -597,6 +641,12 @@ export const malay: Record<string, string> = {
+@@ -588,6 +632,12 @@ export const malay: Record<string, string> = {
    "Earning and spending": "Memperoleh dan membelanjakan",
    "Earning at shops": "Memperoleh di kedai",
    "Effective": "Berkuat kuasa",
@@ -1948,7 +1946,7 @@ index 8202e03..64849ca 100644
    "Email": "E-mel",
    "Empty it, rinse it and put the cap back on.": "Kosongkan, bilas dan pasang semula penutup.",
    "End": "Tamat",
-@@ -611,7 +661,12 @@ export const malay: Record<string, string> = {
+@@ -602,7 +652,12 @@ export const malay: Record<string, string> = {
    "Enter a bill of at least": "Masukkan bil sekurang-kurangnya",
    "Enter a sale to give points. If the customer wants to use points, they confirm on their own phone.": "Masukkan jualan untuk memberikan mata. Jika pelanggan mahu menggunakan mata, mereka mengesahkannya pada telefon sendiri.",
    "Enter a valid phone number, such as 012-345 6789.": "Masukkan nombor telefon yang sah seperti 012-345 6789.",
@@ -1961,7 +1959,7 @@ index 8202e03..64849ca 100644
    "Enter your password to confirm": "Masukkan kata laluan untuk mengesahkan",
    "Error": "Ralat",
    "Event attendances": "Kehadiran acara",
-@@ -638,6 +693,8 @@ export const malay: Record<string, string> = {
+@@ -629,6 +684,8 @@ export const malay: Record<string, string> = {
    "Favours done": "Bantuan diberikan",
    "Feed the agent (prototype)": "Bekalkan data kepada ejen (prototaip)",
    "Fees waiting": "Fi menunggu",
@@ -1970,7 +1968,7 @@ index 8202e03..64849ca 100644
    "Finance sections": "Bahagian kewangan",
    "Finish": "Tamatkan",
    "Finish 5 township loops": "Selesaikan 5 laluan perbandaran",
-@@ -681,6 +738,7 @@ export const malay: Record<string, string> = {
+@@ -672,6 +729,7 @@ export const malay: Record<string, string> = {
    "Fri": "Jum",
    "Frog or toad": "Katak atau kodok",
    "From 100 points, in whole ringgit.": "Daripada 100 mata, dalam ringgit penuh.",
@@ -1978,7 +1976,7 @@ index 8202e03..64849ca 100644
    "From the township team": "Daripada pasukan perbandaran",
    "From verified green actions. The proposal’s example is 800 (RM8).": "Daripada aktiviti hijau disahkan. Contoh dalam cadangan ialah 800 (RM8).",
    "Full name": "Nama penuh",
-@@ -745,6 +803,7 @@ export const malay: Record<string, string> = {
+@@ -730,6 +788,7 @@ export const malay: Record<string, string> = {
    "Home not confirmed yet": "Rumah belum disahkan",
    "Home services from people Sime Darby Property trusts: a home logbook, bookings with contractor passes, and resale and rental inside the township.": "Perkhidmatan rumah daripada pihak yang dipercayai Sime Darby Property: buku log rumah, tempahan dengan pas kontraktor serta jualan semula dan sewaan dalam perbandaran.",
    "homes in the zone": "rumah dalam zon",
@@ -1986,7 +1984,7 @@ index 8202e03..64849ca 100644
    "House or unit number": "Nombor rumah atau unit",
    "Houses and units on one street, for the address picker (addresses only)": "Rumah dan unit di satu jalan untuk pemilih alamat (alamat sahaja)",
    "How it works": "Cara ia berfungsi",
-@@ -763,6 +822,7 @@ export const malay: Record<string, string> = {
+@@ -748,6 +807,7 @@ export const malay: Record<string, string> = {
    "If a personal data breach is likely to cause you significant harm, we will tell you and the Personal Data Protection Commissioner as the PDPA requires.": "Jika pelanggaran data peribadi berkemungkinan menyebabkan mudarat ketara, kami akan memaklumkan anda dan Pesuruhjaya Perlindungan Data Peribadi seperti diwajibkan APDP.",
    "If a purchase is refunded, points earned on it are taken back, and points you spent on it are returned as points, never as cash.": "Jika pembelian dibayar balik, mata yang diperoleh daripadanya ditarik balik dan mata yang dibelanjakan dipulangkan sebagai mata, bukan tunai.",
    "If someone is in immediate danger, call 999 first.": "Jika seseorang dalam bahaya serta-merta, hubungi 999 dahulu.",
@@ -1994,7 +1992,7 @@ index 8202e03..64849ca 100644
    "If you choose a different home, your account is confirmed again before you can earn or spend.": "Jika anda memilih rumah lain, akaun anda disahkan semula sebelum boleh memperoleh atau membelanjakan mata.",
    "If you choose a different home, your account must be confirmed again.": "Jika anda memilih rumah lain, akaun anda mesti disahkan semula.",
    "If you did not ask for this, contact the township office straight away.": "Jika anda tidak meminta ini, hubungi pejabat perbandaran segera.",
-@@ -793,6 +853,7 @@ export const malay: Record<string, string> = {
+@@ -778,6 +838,7 @@ export const malay: Record<string, string> = {
    "Its design on two recycling machines": "Reka bentuknya pada dua mesin SimeTown Recycle semula",
    "Its name on one Gerak loop or street league": "Namanya pada satu laluan Gerak atau liga jalan",
    "Jimat": "Jimat",
@@ -2002,7 +2000,7 @@ index 8202e03..64849ca 100644
    "Jiran": "Jiran",
    "Jiran, Kongsi and Lapor let you post events, ask for or offer help, give away or lend items, and report problems. When you post or report:": "Jiran, Kongsi dan Lapor membolehkan anda menyiarkan acara, meminta atau menawarkan bantuan, memberi atau meminjamkan barang serta melaporkan masalah. Apabila menyiarkan atau melaporkan:",
    "Jiran: events attended": "Jiran: acara dihadiri",
-@@ -815,6 +876,7 @@ export const malay: Record<string, string> = {
+@@ -800,6 +861,7 @@ export const malay: Record<string, string> = {
    "Kelantan": "Kelantan",
    "Kept for 90 days, then deleted.": "Disimpan selama 90 hari, kemudian dipadamkan.",
    "Kind": "Jenis",
@@ -2010,7 +2008,7 @@ index 8202e03..64849ca 100644
    "Kiosk added.": "Kiosk ditambah.",
    "Kiosks with their printable codes": "Kiosk dengan kod yang boleh dicetak",
    "Kiosks, machines & trails": "Kiosk, mesin & laluan",
-@@ -860,6 +922,7 @@ export const malay: Record<string, string> = {
+@@ -845,6 +907,7 @@ export const malay: Record<string, string> = {
    "Legal": "Perundangan",
    "Lend": "Pinjamkan",
    "Lend an item": "Pinjamkan barang",
@@ -2018,7 +2016,7 @@ index 8202e03..64849ca 100644
    "Let in:": "Benarkan masuk:",
    "Let the township team know how you are.": "Maklumkan keadaan anda kepada pasukan perbandaran.",
    "Level": "Paras",
-@@ -897,7 +960,9 @@ export const malay: Record<string, string> = {
+@@ -879,7 +942,9 @@ export const malay: Record<string, string> = {
    "Lot, building and street": "Lot, bangunan dan jalan",
    "Low": "Rendah",
    "Low. No pool, no points: top up to keep giving points.": "Rendah. Tiada dana, tiada mata: tambah nilai untuk terus memberikan mata.",
@@ -2028,7 +2026,7 @@ index 8202e03..64849ca 100644
    "Main": "Utama",
    "Main gate": "Pintu utama",
    "Make a visitor pass for Ali tomorrow": "Buat pas pelawat untuk Ali esok",
-@@ -924,21 +989,25 @@ export const malay: Record<string, string> = {
+@@ -906,21 +971,25 @@ export const malay: Record<string, string> = {
    "Mon": "Isn",
    "Mon–Fri": "Isn–Jum",
    "Month": "Bulan",
@@ -2054,7 +2052,7 @@ index 8202e03..64849ca 100644
    "Name": "Nama",
    "Native plant": "Tumbuhan tempatan",
    "Naturalist": "Pencinta Alam",
-@@ -1004,7 +1073,10 @@ export const malay: Record<string, string> = {
+@@ -983,7 +1052,10 @@ export const malay: Record<string, string> = {
    "No points yet": "Belum ada mata",
    "No pool, no points.": "Tiada dana, tiada mata.",
    "No posts are waiting.": "Tiada siaran menunggu.",
@@ -2065,7 +2063,7 @@ index 8202e03..64849ca 100644
    "No sales yet": "Belum ada jualan",
    "No Shop Offers are available right now. Some only run at set hours.": "Tiada Tawaran Kedai tersedia sekarang. Sesetengahnya hanya pada waktu tertentu.",
    "No Shop Offers right now": "Tiada Tawaran Kedai sekarang",
-@@ -1044,6 +1116,7 @@ export const malay: Record<string, string> = {
+@@ -1023,6 +1095,7 @@ export const malay: Record<string, string> = {
    "Nothing to give away right now. Clearing out a cupboard?": "Tiada barang untuk diberi sekarang. Sedang mengemas almari?",
    "Nothing to review": "Tiada apa-apa untuk disemak",
    "Nothing was due.": "Tiada bayaran tertunggak.",
@@ -2073,15 +2071,15 @@ index 8202e03..64849ca 100644
    "Nothing was lost. Please try again; if it keeps happening, tell the township office.": "Tiada data hilang. Cuba lagi; jika berterusan, maklumkan pejabat perbandaran.",
    "Nothing yet": "Belum ada apa-apa",
    "Nothing yet.": "Belum ada apa-apa.",
-@@ -1079,6 +1152,7 @@ export const malay: Record<string, string> = {
+@@ -1058,6 +1131,7 @@ export const malay: Record<string, string> = {
    "One app for township life: recycle, move, report, share and shop locally, with rewards that are always paid for first.": "Satu aplikasi untuk kehidupan perbandaran: SimeTown Recycle semula, bergerak, melapor, berkongsi dan membeli-belah tempatan dengan ganjaran yang sentiasa dibiayai terlebih dahulu.",
    "One app where people, businesses and nature": "Satu aplikasi tempat manusia, perniagaan dan alam semula jadi",
    "One booth day at a township event": "Satu hari reruai di acara perbandaran",
 +  "One entry per home per month, for this month or last month. Typed readings earn Impact XP only.": "Satu rekod setiap rumah sebulan, bagi bulan ini atau bulan lalu. Bacaan ditaip hanya memperoleh XP Impak.",
    "One Green Champion per category, and one Title Partner.": "Satu Juara Hijau setiap kategori dan satu Rakan Utama.",
    "One labelled sponsored banner for the home screen (never on safety screens)": "Satu sepanduk ditaja berlabel untuk skrin utama (bukan skrin keselamatan)",
-   "One plot per home": "Satu plot setiap rumah",
-@@ -1095,12 +1169,14 @@ export const malay: Record<string, string> = {
+   "One report": "Satu laporan",
+@@ -1073,12 +1147,14 @@ export const malay: Record<string, string> = {
    "Online": "Dalam talian",
    "Only a completed sale can be refunded.": "Hanya jualan selesai boleh dibayar balik.",
    "Only a confirmed owner can do this.": "Hanya pemilik disahkan boleh melakukan ini.",
@@ -2096,7 +2094,7 @@ index 8202e03..64849ca 100644
    "Open SimeTown": "Buka SimeTown",
    "Open SimeTown Recycle": "Buka SimeTown Recycle",
    "Open Points & XP": "Buka Mata & XP",
-@@ -1111,6 +1187,7 @@ export const malay: Record<string, string> = {
+@@ -1089,6 +1165,7 @@ export const malay: Record<string, string> = {
    "Open your wallet to confirm or decline.": "Buka dompet anda untuk mengesahkan atau menolak.",
    "Or scan a checkpoint poster": "Atau imbas poster pusat semak",
    "Or show your SimeTown QR": "Atau tunjukkan QR SimeTown anda",
@@ -2104,7 +2102,7 @@ index 8202e03..64849ca 100644
    "Other residents": "Penduduk lain",
    "Our database is hosted in Singapore, and an AI service provider, if used, may process data in other countries. When personal data leaves Malaysia we take steps, as the PDPA requires, to make sure it is protected to a standard comparable to Malaysian law, including choosing providers with strong security and contractual protections.": "Pangkalan data kami dihoskan di Singapura dan pembekal AI, jika digunakan, mungkin memproses data di negara lain. Apabila data peribadi meninggalkan Malaysia, kami mengambil langkah mengikut APDP untuk memastikan perlindungan setanding undang-undang Malaysia, termasuk memilih pembekal dengan keselamatan dan perlindungan kontrak yang kukuh.",
    "Our own demo rule; set with the drainage team in a pilot.": "Peraturan demo kami; ditetapkan bersama pasukan saliran dalam projek rintis.",
-@@ -1239,6 +1316,7 @@ export const malay: Record<string, string> = {
+@@ -1214,6 +1291,7 @@ export const malay: Record<string, string> = {
    "Points, XP, level, badges, limits and requests waiting for confirmation": "Mata, XP, tahap, lencana, had dan permintaan menunggu pengesahan",
    "Pool not yet given": "Dana belum diagihkan",
    "Pool, fee and costs must add up to 100%.": "Dana, fi dan kos mesti berjumlah 100%.",
@@ -2112,7 +2110,7 @@ index 8202e03..64849ca 100644
    "Post": "Siarkan",
    "Postcode": "Poskod",
    "Posted.": "Disiarkan.",
-@@ -1270,6 +1348,7 @@ export const malay: Record<string, string> = {
+@@ -1245,6 +1323,7 @@ export const malay: Record<string, string> = {
    "Property record": "Rekod hartanah",
    "prototype": "prototaip",
    "Prototype preview": "Pratonton prototaip",
@@ -2120,7 +2118,7 @@ index 8202e03..64849ca 100644
    "Prototype: a signal from the sensor simulator, a camera test picture or the rain gauge": "Prototaip: isyarat simulator sensor, gambar ujian kamera atau tolok hujan",
    "Prototype: the machine reads a SimeTown QR, or a guest taps \"Recycle as guest\"": "Prototaip: mesin membaca QR SimeTown atau tetamu mengetik “SimeTown Recycle semula sebagai tetamu”",
    "Prototype: the machine signs its summary and closes the session": "Prototaip: mesin menandatangani ringkasan dan menutup sesi",
-@@ -1287,10 +1366,17 @@ export const malay: Record<string, string> = {
+@@ -1262,10 +1341,17 @@ export const malay: Record<string, string> = {
    "Rain gauge:": "Tolok hujan:",
    "Ramp": "Tanjakan",
    "Read": "Baca",
@@ -2138,7 +2136,7 @@ index 8202e03..64849ca 100644
    "Reason": "Sebab",
    "Received": "Diterima",
    "Recent checks": "Semakan terkini",
-@@ -1368,10 +1454,13 @@ export const malay: Record<string, string> = {
+@@ -1343,10 +1429,13 @@ export const malay: Record<string, string> = {
    "Resident accounts are for people who live in, or own a home in, a participating township. You must be 18 or older, or have the consent of a parent or guardian.": "Akaun penduduk untuk orang yang tinggal atau memiliki rumah di perbandaran yang menyertai. Anda mesti berumur 18 tahun ke atas atau mendapat persetujuan ibu bapa atau penjaga.",
    "Residents": "Penduduk",
    "Residents and their families see new launches first. Engaged residents are the warmest leads for Sime Darby Property, and SimeTown Home is where they would hear first.": "Penduduk dan keluarga mereka melihat pelancaran baharu dahulu. Penduduk aktif ialah prospek terbaik Sime Darby Property dan SimeTown Home tempat mereka mendapat berita awal.",
@@ -2152,7 +2150,7 @@ index 8202e03..64849ca 100644
    "Residents’ photo reports": "Laporan foto penduduk",
    "Residents’ reports for this township. The type and urgency are suggestions: correct them whenever they are wrong. Every correction is logged.": "Laporan penduduk untuk perbandaran ini. Jenis dan tahap kecemasan ialah cadangan: betulkan jika salah. Setiap pembetulan direkodkan.",
    "Resolved": "Diselesaikan",
-@@ -1422,18 +1511,22 @@ export const malay: Record<string, string> = {
+@@ -1397,18 +1486,22 @@ export const malay: Record<string, string> = {
    "Sales value": "Nilai jualan",
    "Sales you record at the counter appear here.": "Jualan yang direkodkan di kaunter dipaparkan di sini.",
    "Sales, last 7 days": "Jualan, 7 hari lalu",
@@ -2175,7 +2173,7 @@ index 8202e03..64849ca 100644
    "Say an accessible place is blocked": "Maklumkan tempat mesra akses terhalang",
    "says they are a tenant in your home. Is that right?": "menyatakan mereka penyewa di rumah anda. Betulkah?",
    "Scan a checkpoint code": "Imbas kod pusat semak",
-@@ -1457,7 +1550,7 @@ export const malay: Record<string, string> = {
+@@ -1430,7 +1523,7 @@ export const malay: Record<string, string> = {
    "See all our": "Lihat semua",
    "see grouped totals only, and nothing at all for very small groups. They see your details only if you choose to share them.": "hanya melihat jumlah berkumpulan, dan tiada data bagi kumpulan sangat kecil. Butiran anda dilihat hanya jika anda memilih untuk berkongsi.",
    "see only your first name and initial when you buy or use points with them, never your contact details or address.": "hanya melihat nama pertama dan huruf awal apabila anda membeli atau menggunakan mata, bukan butiran hubungan atau alamat.",
@@ -2184,7 +2182,7 @@ index 8202e03..64849ca 100644
    "see your first name on posts and responses. Street leagues show street totals, not individuals.": "melihat nama pertama anda pada siaran dan respons. Liga jalan memaparkan jumlah jalan, bukan individu.",
    "Seen a pothole, a broken light, a blocked drain or a blocked ramp? Tell the township team.": "Nampak jalan berlubang, lampu rosak, longkang tersumbat atau tanjakan terhalang? Maklumkan pasukan perbandaran.",
    "sees township-level results that do not identify anyone.": "melihat hasil peringkat perbandaran yang tidak mengenal pasti sesiapa.",
-@@ -1550,10 +1643,8 @@ export const malay: Record<string, string> = {
+@@ -1522,10 +1615,8 @@ export const malay: Record<string, string> = {
    "Smallest amount you can use": "Jumlah minimum yang boleh digunakan",
    "Smallest group shown to a sponsor": "Kumpulan terkecil dipaparkan kepada penaja",
    "Smart township, last 30 days": "Perbandaran pintar, 30 hari lalu",
@@ -2196,7 +2194,7 @@ index 8202e03..64849ca 100644
    "Someone else is on the roster today.": "Orang lain bertugas mengikut jadual hari ini.",
    "Someone has already taken that day.": "Hari itu sudah diambil orang lain.",
    "Someone in your home has already answered.": "Seseorang di rumah anda sudah menjawab.",
-@@ -1637,6 +1728,7 @@ export const malay: Record<string, string> = {
+@@ -1604,6 +1695,7 @@ export const malay: Record<string, string> = {
    "Terrace house, 4 bedrooms (sample listing)": "Rumah teres, 4 bilik tidur (penyenaraian contoh)",
    "Thank you for moving.": "Terima kasih kerana bergerak.",
    "Thank you for recycling.": "Terima kasih kerana mengitar semula.",
@@ -2204,7 +2202,7 @@ index 8202e03..64849ca 100644
    "Thank you!": "Terima kasih!",
    "Thank you. A moderator will look at it.": "Terima kasih. Moderator akan menyemaknya.",
    "Thank you. Staff will check it; a confirmed update earns Impact XP.": "Terima kasih. Kakitangan akan menyemak; kemas kini disahkan memperoleh XP Impak.",
-@@ -1652,6 +1744,7 @@ export const malay: Record<string, string> = {
+@@ -1619,6 +1711,7 @@ export const malay: Record<string, string> = {
    "The Banjir agent: each zone's signals, drafts waiting for the officer and the decision timeline": "Ejen Banjir: isyarat setiap zon, draf menunggu pegawai dan garis masa keputusan",
    "The camera could not be opened. Allow camera access, or type the code instead.": "Kamera tidak dapat dibuka. Benarkan akses kamera atau taip kod.",
    "The campaign was never funded, so nothing is refunded. This cannot be undone.": "Kempen tidak pernah dibiayai, jadi tiada bayaran balik. Tindakan ini tidak boleh dibatalkan.",
@@ -2212,7 +2210,7 @@ index 8202e03..64849ca 100644
    "The community pool cannot cover this correction.": "Dana komuniti tidak mencukupi untuk pembetulan ini.",
    "The customer declined": "Pelanggan menolak",
    "The customer has reached their earning limit": "Pelanggan telah mencapai had perolehan",
-@@ -1681,6 +1774,7 @@ export const malay: Record<string, string> = {
+@@ -1648,6 +1741,7 @@ export const malay: Record<string, string> = {
    "The machine record is too old.": "Rekod mesin terlalu lama.",
    "The machine’s summary does not match the items it sent.": "Ringkasan mesin tidak sepadan dengan barang yang dihantar.",
    "The minimum spend must be more than the discount.": "Belanja minimum mesti melebihi diskaun.",
@@ -2220,7 +2218,7 @@ index 8202e03..64849ca 100644
    "The monthly budget must cover at least one discount.": "Bajet bulanan mesti menampung sekurang-kurangnya satu diskaun.",
    "The most important rule": "Peraturan paling penting",
    "The most you give in discounts in a month.": "Had diskaun yang diberikan sebulan.",
-@@ -1714,6 +1808,7 @@ export const malay: Record<string, string> = {
+@@ -1681,6 +1775,7 @@ export const malay: Record<string, string> = {
    "The Terms have been updated since you opened them. Please read them again.": "Terma telah dikemas kini sejak dibuka. Sila baca semula.",
    "The Terms of Use and Privacy Notice have changed since you last accepted them. You will be asked to review them.": "Terma Penggunaan dan Notis Privasi berubah sejak penerimaan terakhir. Anda akan diminta menyemaknya.",
    "The terms that apply when you use SimeTown.": "Terma yang terpakai apabila menggunakan SimeTown.",
@@ -2228,7 +2226,7 @@ index 8202e03..64849ca 100644
    "The township map has not been drawn yet.": "Peta perbandaran belum dilukis.",
    "The township office checks your business registration. You can sign in now and will be able to give and accept points once approved.": "Pejabat perbandaran menyemak pendaftaran perniagaan anda. Anda boleh log masuk sekarang dan memberi serta menerima mata selepas diluluskan.",
    "The township office is checking your business registration. You can record sales once approved.": "Pejabat perbandaran sedang menyemak pendaftaran perniagaan anda. Anda boleh merekodkan jualan selepas diluluskan.",
-@@ -1734,6 +1829,7 @@ export const malay: Record<string, string> = {
+@@ -1700,6 +1795,7 @@ export const malay: Record<string, string> = {
    "These Terms are governed by the laws of Malaysia. The courts of Malaysia have jurisdiction over any dispute about them.": "Terma ini tertakluk kepada undang-undang Malaysia. Mahkamah Malaysia mempunyai bidang kuasa bagi sebarang pertikaian berkaitan.",
    "They find it under Points & XP, “Show my code”.": "Mereka boleh mencarinya di Mata & XP, “Tunjukkan kod saya”.",
    "They have been updated since you last accepted them.": "Dikemas kini sejak penerimaan terakhir anda.",
@@ -2236,7 +2234,7 @@ index 8202e03..64849ca 100644
    "Thinking…": "Sedang berfikir…",
    "This account is no longer active.": "Akaun ini tidak lagi aktif.",
    "This activity has already ended.": "Aktiviti ini telah tamat.",
-@@ -1741,11 +1837,14 @@ export const malay: Record<string, string> = {
+@@ -1707,11 +1803,14 @@ export const malay: Record<string, string> = {
    "This API as an OpenAPI 3.1 document": "API ini sebagai dokumen OpenAPI 3.1",
    "This bill does not meet the offer’s minimum spend.": "Bil ini tidak memenuhi belanja minimum tawaran.",
    "This bill does not meet the offer’s terms.": "Bil ini tidak memenuhi syarat tawaran.",
@@ -2251,7 +2249,7 @@ index 8202e03..64849ca 100644
    "This draft has already been sent or cancelled.": "Draf ini telah dihantar atau dibatalkan.",
    "This has already been recorded.": "Ini telah direkodkan.",
    "This is how SimeTown sounds when it reads aloud.": "Beginilah suara SimeTown apabila membaca dengan kuat.",
-@@ -1788,9 +1887,11 @@ export const malay: Record<string, string> = {
+@@ -1752,9 +1851,11 @@ export const malay: Record<string, string> = {
    "This would break one of the programme rules.": "Ini akan melanggar peraturan program.",
    "Three groups gain together.": "Tiga kumpulan mendapat manfaat bersama.",
    "thrive together": "berkembang bersama",
@@ -2263,7 +2261,7 @@ index 8202e03..64849ca 100644
    "Title": "Tajuk",
    "Title Partner": "Rakan Utama",
    "to": "kepada",
-@@ -1831,6 +1932,8 @@ export const malay: Record<string, string> = {
+@@ -1794,6 +1895,8 @@ export const malay: Record<string, string> = {
    "Two kinds of backing": "Dua jenis sandaran",
    "Type": "Jenis",
    "Type of shop": "Jenis kedai",
@@ -2272,7 +2270,7 @@ index 8202e03..64849ca 100644
    "Unanswered: admins told": "Tiada jawapan: pentadbir dimaklumkan",
    "Under Malaysia’s Personal Data Protection Act you can see and remove what we hold about you.": "Di bawah Akta Perlindungan Data Peribadi Malaysia, anda boleh melihat dan memadamkan data yang kami simpan tentang anda.",
    "Unknown township.": "Perbandaran tidak diketahui.",
-@@ -1840,11 +1943,16 @@ export const malay: Record<string, string> = {
+@@ -1803,11 +1906,16 @@ export const malay: Record<string, string> = {
    "update your name, phone and address on your Account page, or ask the township office to change your email.": "kemas kini nama, telefon dan alamat pada halaman Akaun atau minta pejabat perbandaran menukar e-mel anda.",
    "Updated": "Dikemas kini",
    "Updates about your points, reports and township alerts will appear here.": "Kemas kini mata, laporan dan amaran perbandaran dipaparkan di sini.",
@@ -2289,13 +2287,12 @@ index 8202e03..64849ca 100644
    "Use points for up to 30% of a bill at any township shop. You confirm on your own phone.": "Gunakan mata sehingga 30% daripada bil di mana-mana kedai perbandaran. Anda mengesahkan pada telefon sendiri.",
    "Used": "Digunakan",
    "Used as a signal": "Digunakan sebagai isyarat",
-@@ -1891,11 +1999,16 @@ export const malay: Record<string, string> = {
+@@ -1854,10 +1962,15 @@ export const malay: Record<string, string> = {
    "Watchful Eye": "Mata Prihatin",
    "Watching. Nothing above normal.": "Memantau. Tiada bacaan melebihi normal.",
    "Water": "Air",
 +  "Water (m³ × 10)": "Air (m³ × 10)",
 +  "Water (m³)": "Air (m³)",
-   "Water a community garden 3 times": "Siram kebun komuniti 3 kali",
 +  "Water bill": "Bil air",
    "Water heater manual and receipt": "Manual dan resit pemanas air",
    "Water level": "Paras air",
@@ -2304,10 +2301,10 @@ index 8202e03..64849ca 100644
 +  "Water used (m³)": "Air digunakan (m³)",
 +  "Water vs last month": "Air berbanding bulan lalu",
    "Watered today?": "Sudah menyiram hari ini?",
-   "Watering roster, next 7 days": "Jadual menyiram, 7 hari akan datang",
    "We collect what SimeTown needs to work: your contact details, your address in the township, and what you do in the app. Shops see only your first name and initial; sponsors see grouped totals only. We never sell your data or use it for advertising. You can download or delete your data at any time from your Account page.": "Kami mengumpul data yang diperlukan SimeTown: butiran hubungan, alamat perbandaran dan aktiviti aplikasi. Kedai hanya melihat nama pertama serta huruf awal; penaja hanya melihat jumlah berkumpulan. Kami tidak menjual data atau menggunakannya untuk iklan. Anda boleh memuat turun atau memadamkan data pada bila-bila masa melalui halaman Akaun.",
-@@ -1956,7 +2069,8 @@ export const malay: Record<string, string> = {
-   "Wildlife sightings": "Pemerhatian hidupan liar",
+   "We could not confirm your home. Please contact the township office.": "Kami tidak dapat mengesahkan rumah anda. Sila hubungi pejabat perbandaran.",
+@@ -1916,7 +2029,8 @@ export const malay: Record<string, string> = {
+   "Wilayah Persekutuan Putrajaya": "Wilayah Persekutuan Putrajaya",
    "With a pass": "Dengan pas",
    "with your phone camera. Its code changes every 30 seconds, so a photo of an old code is useless.": "dengan kamera telefon anda. Kodnya berubah setiap 30 saat, jadi foto kod lama tidak berguna.",
 -  "remove your access needs in Akses+ at any time, or delete your account from your Account page. Some features need certain data, so withdrawing consent may mean you can no longer use them.": "buang keperluan akses anda dalam Akses+ pada bila-bila masa atau padam akaun melalui halaman Akaun. Sesetengah ciri memerlukan data tertentu, jadi penarikan persetujuan mungkin menyebabkan anda tidak boleh menggunakannya.",
@@ -2316,8 +2313,8 @@ index 8202e03..64849ca 100644
    "Withdrawing consent and deletion:": "Penarikan persetujuan dan pemadaman:",
    "Worth": "Bernilai",
    "worth RM6.75 at township shops": "bernilai RM6.75 di kedai perbandaran",
-@@ -1972,8 +2086,10 @@ export const malay: Record<string, string> = {
-   "You are on the watering roster.": "Anda dalam jadual menyiram.",
+@@ -1931,8 +2045,10 @@ export const malay: Record<string, string> = {
+   "You are connected to": "Anda disambungkan ke",
    "You asked for help. The team has been told.": "Anda meminta bantuan. Pasukan telah dimaklumkan.",
    "You asked for this": "Anda meminta ini",
 +  "You asked to be contacted. The township office can see your name, unit and contact details for this purpose only. You can withdraw at any time.": "Anda meminta dihubungi. Pejabat perbandaran boleh melihat nama, unit dan butiran hubungan untuk tujuan ini sahaja. Anda boleh menarik balik pada bila-bila masa.",
@@ -2327,7 +2324,7 @@ index 8202e03..64849ca 100644
    "You can look around now. Earning and spending start once the": "Anda boleh melihat-lihat sekarang. Perolehan dan perbelanjaan bermula selepas",
    "You can use points from 100 points, in whole ringgit, for up to 30% of one bill. You confirm every use on your own phone. No points are earned on the part of a bill paid with points.": "Anda boleh menggunakan mata bermula 100 mata, dalam ringgit penuh, sehingga 30% satu bil. Sahkan setiap penggunaan pada telefon sendiri. Tiada mata diperoleh bagi bahagian bil dibayar dengan mata.",
    "You cannot be your own carer.": "Anda tidak boleh menjadi penjaga sendiri.",
-@@ -1993,6 +2109,7 @@ export const malay: Record<string, string> = {
+@@ -1952,6 +2068,7 @@ export const malay: Record<string, string> = {
    "You see grouped totals only, never anyone’s personal data, and your content never appears on safety screens.": "Anda hanya melihat jumlah berkumpulan, bukan data peribadi, dan kandungan anda tidak muncul pada skrin keselamatan.",
    "You seem to be offline. Check your connection and try again.": "Anda kelihatan luar talian. Semak sambungan dan cuba lagi.",
    "You still earn Impact XP for every verified action. Points appear here when a sponsor or SDP funds a challenge.": "Anda masih memperoleh XP Impak bagi setiap aktiviti disahkan. Mata dipaparkan apabila penaja atau SDP membiayai cabaran.",
@@ -2335,15 +2332,15 @@ index 8202e03..64849ca 100644
    "You will be told how much cash to give back.": "Anda akan dimaklumkan jumlah tunai untuk dipulangkan.",
    "You will be told the moment the guard scans their pass.": "Anda dimaklumkan sebaik pengawal mengimbas pas mereka.",
    "You, all time": "Anda, sepanjang masa",
-@@ -2045,6 +2162,7 @@ export const malay: Record<string, string> = {
-   "Your sightings": "Pemerhatian anda",
+@@ -2000,6 +2117,7 @@ export const malay: Record<string, string> = {
+   "Your shop’s address": "Alamat kedai anda",
    "Your SOS is already with the guardhouse.": "SOS anda sudah diterima pondok pengawal.",
    "Your street, this month": "Jalan anda, bulan ini",
 +  "Your water use is well above your recent average. Turn off every tap and watch the meter: if it still moves, call a plumber.": "Penggunaan air jauh melebihi purata terkini. Tutup semua paip dan perhatikan meter: jika masih bergerak, hubungi tukang paip.",
    "Your zone": "Zon anda",
    "Yours": "Milik anda",
-   "Apply for a plot": "Mohon plot",
-@@ -2176,6 +2294,7 @@ export const malay: Record<string, string> = {
+   "Give it back": "Pulangkan",
+@@ -2119,6 +2237,7 @@ export const malay: Record<string, string> = {
    "offline": "di luar talian",
    "online": "dalam talian",
    "full": "penuh",
@@ -2351,7 +2348,7 @@ index 8202e03..64849ca 100644
    "The request is too large.": "Permintaan terlalu besar.",
    "This action is not available here.": "Tindakan ini tidak tersedia di sini.",
    "Enter the 5-digit postcode.": "Masukkan poskod 5 digit.",
-@@ -2185,6 +2304,7 @@ export const malay: Record<string, string> = {
+@@ -2128,6 +2247,7 @@ export const malay: Record<string, string> = {
    "Check the member code.": "Semak kod ahli.",
    "Choose a day.": "Pilih hari.",
    "Check the code.": "Semak kod.",
@@ -2360,10 +2357,10 @@ index 8202e03..64849ca 100644
    "The offer has paused: this month’s budget is used up.": "Tawaran dihentikan sementara: bajet bulan ini telah habis.",
    "The offer is not available at this time.": "Tawaran tidak tersedia pada masa ini.",
 diff --git a/src/lib/i18n-templates.ts b/src/lib/i18n-templates.ts
-index 8d7e192..49c462f 100644
+index a55a384..57a08d9 100644
 --- a/src/lib/i18n-templates.ts
 +++ b/src/lib/i18n-templates.ts
-@@ -79,6 +79,10 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
+@@ -82,6 +82,10 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
      "{0} by shops · {1} by campaigns",
      "{0} oleh kedai · {1} oleh kempen"
    ],
@@ -2374,7 +2371,7 @@ index 8d7e192..49c462f 100644
    [
      "{0} of {1} online",
      "{0} daripada {1} dalam talian"
-@@ -147,6 +151,18 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
+@@ -150,6 +154,18 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
      "Your tier runs until {0}{1}.",
      "Peringkat anda aktif hingga {0}{1}."
    ],
@@ -2393,7 +2390,7 @@ index 8d7e192..49c462f 100644
    [
      "{0} – {1} · funded by {2}",
      "{0} – {1} · dibiayai oleh {2}"
-@@ -215,6 +231,18 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
+@@ -218,6 +234,18 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
      "Fair play: parts faster than {0} km/h do not count.",
      "Permainan adil: bahagian melebihi {0} km/j tidak dikira."
    ],
@@ -2412,7 +2409,7 @@ index 8d7e192..49c462f 100644
    [
      "Signed-in {0}.",
      "{0} yang log masuk."
-@@ -259,6 +287,10 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
+@@ -262,6 +290,10 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
      "Available now: {0}. You have {1} offer points.",
      "Tersedia sekarang: {0}. Anda mempunyai {1} mata tawaran."
    ],
@@ -2423,7 +2420,7 @@ index 8d7e192..49c462f 100644
    [
      "{0} scanned. {1} more to finish {2}. {3}",
      "{0} diimbas. {1} lagi untuk melengkapkan {2}. {3}"
-@@ -607,6 +639,30 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
+@@ -606,6 +638,30 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
      "Bil {0} / {1} Bill",
      "Bil {0} / {1} Bill"
    ],
@@ -2454,7 +2451,7 @@ index 8d7e192..49c462f 100644
    [
      "The weight does not match {0}.",
      "Berat tidak sepadan dengan {0}."
-@@ -985,7 +1041,13 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
+@@ -936,7 +992,13 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
    ["{0} collections · {1}", "{0} kutipan · {1}"],
    ["{0}{1}% on last month", "{0}{1}% berbanding bulan lalu"],
    ["Confirmed. Gate pass {0} made for the household.", "Disahkan. Pas pintu pagar {0} dibuat untuk isi rumah."],
@@ -2468,7 +2465,7 @@ index 8d7e192..49c462f 100644
    ["Update {0}", "Kemas kini {0}"],
    ["{0} days", "{0} hari"],
    ["{0} does not take {1}.", "{0} tidak menerima {1}."],
-@@ -1005,6 +1067,7 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
+@@ -956,6 +1018,7 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
    ["Shelf {0} at the guardhouse. Please collect it soon.", "Rak {0} di pondok pengawal. Sila tuntut segera."],
    ["{0} will fix it", "{0} akan membaikinya"],
    ["{0}: expected by {1}.", "{0}: dijangka siap menjelang {1}."],
@@ -2477,7 +2474,7 @@ index 8d7e192..49c462f 100644
    ["{0} of {1} held", "{0} daripada {1} disimpan"],
    ["applied {0}", "memohon {0}"],
 diff --git a/src/server/ai/classifier.ts b/src/server/ai/classifier.ts
-index df5df69..b3af346 100644
+index df5df69..9aacb1a 100644
 --- a/src/server/ai/classifier.ts
 +++ b/src/server/ai/classifier.ts
 @@ -149,3 +149,48 @@ export async function identifyMaterial(photo: Photo): Promise<{ material: Materi
@@ -2531,7 +2528,7 @@ index df5df69..b3af346 100644
 +}
 diff --git a/src/server/files/gate.ts b/src/server/files/gate.ts
 new file mode 100644
-index 0000000..3695fcc
+index 0000000..97b350e
 --- /dev/null
 +++ b/src/server/files/gate.ts
 @@ -0,0 +1,107 @@
@@ -2644,7 +2641,7 @@ index 0000000..3695fcc
 +}
 diff --git a/src/server/files/pdf.ts b/src/server/files/pdf.ts
 new file mode 100644
-index 0000000..b8e08ee
+index 0000000..979f263
 --- /dev/null
 +++ b/src/server/files/pdf.ts
 @@ -0,0 +1,153 @@
@@ -2802,7 +2799,7 @@ index 0000000..b8e08ee
 +  return Buffer.concat(parts);
 +}
 diff --git a/src/server/http/api.ts b/src/server/http/api.ts
-index 22006ac..5ec319a 100644
+index 22006ac..5fbf492 100644
 --- a/src/server/http/api.ts
 +++ b/src/server/http/api.ts
 @@ -9,11 +9,13 @@ import { communityRoutes } from '../modules/community/routes';
@@ -2850,7 +2847,7 @@ index 8da4112..ca33f29 100644
      sources: [],
      checked: CHECKED,
 diff --git a/src/server/modules/assistant/rules.ts b/src/server/modules/assistant/rules.ts
-index f503430..3ffd4af 100644
+index f503430..809c4b3 100644
 --- a/src/server/modules/assistant/rules.ts
 +++ b/src/server/modules/assistant/rules.ts
 @@ -89,6 +89,16 @@ export async function answerByRules(ctx: ToolContext, question: string): Promise
@@ -2871,7 +2868,7 @@ index f503430..3ffd4af 100644
      const r = await runTool(ctx, 'get_recycling_places', {});
      const d = r.data as Data;
 diff --git a/src/server/modules/assistant/tools.ts b/src/server/modules/assistant/tools.ts
-index e735923..2c22ba0 100644
+index e735923..73958db 100644
 --- a/src/server/modules/assistant/tools.ts
 +++ b/src/server/modules/assistant/tools.ts
 @@ -5,6 +5,7 @@ import type { Actor } from '../../auth/actor';
@@ -2906,7 +2903,7 @@ index e735923..2c22ba0 100644
      kind: 'read',
      spec: { name: 'get_recycling_places', description: "The township's recycling kiosks and their bins, with where they are, and the resident's recycling this month.", parameters: noArgs },
 diff --git a/src/server/modules/insights/service.ts b/src/server/modules/insights/service.ts
-index dc8261b..b1bf156 100644
+index dc8261b..de335d4 100644
 --- a/src/server/modules/insights/service.ts
 +++ b/src/server/modules/insights/service.ts
 @@ -31,7 +31,11 @@ export async function insightsOverview(db: Db, actor: Actor, now: Date) {
@@ -2932,7 +2929,7 @@ index dc8261b..b1bf156 100644
                  WHERE f.status = 'SENT' AND f.kind = 'ALERT' AND ($1::uuid IS NULL OR z.township_id = $1) AND f.sent_at >= ${since}) AS flood_alerts,
 diff --git a/src/server/modules/jimat/bills.ts b/src/server/modules/jimat/bills.ts
 new file mode 100644
-index 0000000..0a13afc
+index 0000000..ae548d2
 --- /dev/null
 +++ b/src/server/modules/jimat/bills.ts
 @@ -0,0 +1,304 @@
@@ -3242,7 +3239,7 @@ index 0000000..0a13afc
 +}
 diff --git a/src/server/modules/jimat/routes.ts b/src/server/modules/jimat/routes.ts
 new file mode 100644
-index 0000000..07a97d8
+index 0000000..764c04d
 --- /dev/null
 +++ b/src/server/modules/jimat/routes.ts
 @@ -0,0 +1,68 @@
@@ -3316,7 +3313,7 @@ index 0000000..07a97d8
 +];
 diff --git a/src/server/modules/jimat/service.ts b/src/server/modules/jimat/service.ts
 new file mode 100644
-index 0000000..061330d
+index 0000000..3413400
 --- /dev/null
 +++ b/src/server/modules/jimat/service.ts
 @@ -0,0 +1,125 @@
@@ -3447,7 +3444,7 @@ index 0000000..061330d
 +}
 diff --git a/src/server/modules/planet/routes.ts b/src/server/modules/planet/routes.ts
 new file mode 100644
-index 0000000..a318c33
+index 0000000..634373b
 --- /dev/null
 +++ b/src/server/modules/planet/routes.ts
 @@ -0,0 +1,39 @@
@@ -3492,7 +3489,7 @@ index 0000000..a318c33
 +];
 diff --git a/src/server/modules/planet/solar.ts b/src/server/modules/planet/solar.ts
 new file mode 100644
-index 0000000..3f52759
+index 0000000..40563d7
 --- /dev/null
 +++ b/src/server/modules/planet/solar.ts
 @@ -0,0 +1,206 @@
@@ -3703,7 +3700,7 @@ index 0000000..3f52759
 +  return { ok: true };
 +}
 diff --git a/src/server/modules/wallet/service.ts b/src/server/modules/wallet/service.ts
-index a2109d8..81491b9 100644
+index a2109d8..3a92372 100644
 --- a/src/server/modules/wallet/service.ts
 +++ b/src/server/modules/wallet/service.ts
 @@ -16,23 +16,39 @@ const BADGES: { id: string; label: string; hint: string; activity?: Activity; ne
@@ -3755,7 +3752,7 @@ index a2109d8..81491b9 100644
  
  export async function walletOverview(db: Db, actor: Actor, now: Date) {
 diff --git a/tests/ai.test.ts b/tests/ai.test.ts
-index ed99cdd..3737594 100644
+index ed99cdd..cdce254 100644
 --- a/tests/ai.test.ts
 +++ b/tests/ai.test.ts
 @@ -7,7 +7,7 @@ const env = { APP_URL: 'http://kita.test', DATABASE_URL: 'pglite://memory' };
@@ -3783,7 +3780,7 @@ index ed99cdd..3737594 100644
      expect(() => parseConfig({ ...env, AI_MAX_OUTPUT_TOKENS: '50' })).toThrow(/AI_MAX_OUTPUT_TOKENS/);
      expect(parseConfig(env).AI_TIMEOUT_SECONDS).toBe(8);
 diff --git a/tests/api.test.ts b/tests/api.test.ts
-index de4b9c8..36fd0c0 100644
+index de4b9c8..f78d808 100644
 --- a/tests/api.test.ts
 +++ b/tests/api.test.ts
 @@ -536,7 +536,7 @@ describe('Komuniti moderation (township staff, township admins and HQ)', () => {
@@ -3823,7 +3820,7 @@ index de4b9c8..36fd0c0 100644
  
  describe('Banjir', () => {
 diff --git a/tests/third-edition.test.ts b/tests/third-edition.test.ts
-index 9e1009d..00428eb 100644
+index 9e1009d..b3aa304 100644
 --- a/tests/third-edition.test.ts
 +++ b/tests/third-edition.test.ts
 @@ -3,6 +3,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -3899,7 +3896,7 @@ index 9e1009d..00428eb 100644
    let zoneId: string;
    let resident: Actor;
 diff --git a/tests/tomorrow.test.ts b/tests/tomorrow.test.ts
-index 40250ce..be40652 100644
+index 40250ce..2b0dc74 100644
 --- a/tests/tomorrow.test.ts
 +++ b/tests/tomorrow.test.ts
 @@ -4,6 +4,7 @@ import { one, type Db } from '@/server/db/client';

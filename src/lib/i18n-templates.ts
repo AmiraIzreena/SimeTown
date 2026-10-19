@@ -3,6 +3,9 @@ import { komunitiTemplates } from './i18n-komuniti';
 
 /** Templates for application-generated messages; interpolated personal values stay unchanged. */
 export const messageTemplates: readonly (readonly [string, string])[] = [
+  // Old Taman notifications are still stored in residents' inboxes; keep translating them.
+  ["You won plot {0} at {1}", "Anda memenangi plot {0} di {1}"],
+  ["Your {0} sighting is confirmed", "Pemerhatian {0} anda disahkan"],
   ["Photo: {0}", "Foto: {0}"],
   ["{0} challenges a year", "{0} cabaran setahun"],
   [
@@ -278,10 +281,6 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
   [
     "Until {0}",
     "Hingga {0}"
-  ],
-  [
-    "Book plot {0} ({1} m²)",
-    "Tempah plot {0} ({1} m²)"
   ],
   [
     "Salam! Here is your visitor pass for City of Elmina. Show the QR code at the main gate: {0}",
@@ -757,10 +756,6 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
     "Pilih hari dalam {0} hari akan datang."
   ],
   [
-    "Your {0} sighting is confirmed",
-    "Pemerhatian {0} anda disahkan"
-  ],
-  [
     "A {0} pass can last at most {1} day{2}.",
     "Pas {0} boleh bertahan maksimum {1} hari{2}."
   ],
@@ -797,40 +792,8 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
     "Kod tuntutan {0}"
   ],
   [
-    "Plot {0}, {1} m² (yours)",
-    "Plot {0}, {1} m² (milik anda)"
-  ],
-  [
-    "Plot {0}, {1} m² (taken)",
-    "Plot {0}, {1} m² (sudah diambil)"
-  ],
-  [
-    "Plot {0}, {1} m² (free)",
-    "Plot {0}, {1} m² (kosong)"
-  ],
-  [
-    "Plot {0} is yours until {1}.",
-    "Plot {0} milik anda sehingga {1}."
-  ],
-  [
-    "You are on the waiting list (since {0}). The township office draws names when plots are free.",
-    "Anda dalam senarai menunggu (sejak {0}). Pejabat perbandaran mencabut nama apabila ada plot kosong."
-  ],
-  [
-    "{0} free · {1} waiting. Join the list and you are in the next ballot.",
-    "{0} kosong · {1} menunggu. Sertai senarai dan anda masuk undian seterusnya."
-  ],
-  [
     "{0} on the waiting list",
     "{0} dalam senarai menunggu"
-  ],
-  [
-    "Ballot drawn: {0} plots given out, {1} still waiting.",
-    "Undian dicabut: {0} plot diberikan, {1} masih menunggu."
-  ],
-  [
-    "You won plot {0} at {1}",
-    "Anda memenangi plot {0} di {1}"
   ],
   [
     "Still on the waiting list for {0}",
@@ -899,18 +862,6 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
   [
     "You can recycle at {0}. Each drop-off earns Impact XP.",
     "Anda boleh kitar semula di {0}. Setiap hantaran memberi XP Impak."
-  ],
-  [
-    "You have plot {0} at {1} until {2}.",
-    "Anda mempunyai plot {0} di {1} sehingga {2}."
-  ],
-  [
-    "You are on the waiting list for {0}. Plots are given out by ballot.",
-    "Anda dalam senarai menunggu untuk {0}. Plot diberikan melalui undian."
-  ],
-  [
-    "{0} has {1} free plots and {2} people waiting. Plots are given out by ballot: join the list in Taman.",
-    "{0} mempunyai {1} plot kosong dan {2} orang menunggu. Plot diberikan melalui undian: sertai senarai dalam Taman."
   ],
   [
     "If anyone is in danger, call 999 now. {0}",

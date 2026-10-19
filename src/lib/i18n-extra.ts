@@ -130,7 +130,6 @@ export const extraMalay: Record<string, string> = {
   'SimeTown Home is not open yet. The records, listings and launches below are examples.': 'SimeTown Home belum dibuka. Rekod, senarai dan pelancaran di bawah ialah contoh.',
   'Booking opens soon': 'Tempahan dibuka tidak lama lagi',
   'Registration opens soon': 'Pendaftaran dibuka tidak lama lagi',
-  'Sample plots, holders and waiting list.': 'Contoh plot, pemegang dan senarai menunggu.',
   'Test signals': 'Isyarat ujian',
   'Test mode: sensor, CCTV and rain readings are entered here by hand. The agent’s rules, drafts, timers and messages run as normal.': 'Mod ujian: bacaan sensor, CCTV dan hujan dimasukkan di sini secara manual. Peraturan, draf, pemasa dan mesej ejen berjalan seperti biasa.',
   'Sponsors join in one of four yearly tiers.': 'Penaja menyertai salah satu daripada empat peringkat tahunan.',
@@ -416,7 +415,6 @@ export const extraMalay: Record<string, string> = {
   'Grown in Selangor, sold on your street': 'Ditanam di Selangor, dijual di jalan anda',
   'Zero-waste Saturdays': 'Sabtu sifar sisa',
   'Native seedlings for every community plot': 'Anak benih tempatan untuk setiap plot komuniti',
-  'Taman planting days': 'Hari menanam Taman',
   'Health and fitness': 'Kesihatan dan kecergasan',
   'Move more, together, every morning': 'Lebih bergerak, bersama, setiap pagi',
   'Central Park loop league': 'Liga laluan Central Park',
@@ -622,7 +620,7 @@ export const extraMalay: Record<string, string> = {
   // Wording pass 2: kiosk, bin and scale across the app. Every entry below: native review.
   'Put out paper and cans tonight, or drop them in a kiosk bin for XP.': 'Keluarkan kertas dan tin malam ini, atau masukkan ke dalam tong kiosk untuk XP.', // native review
   'Bins go out before 8am. Missed it? The recycling kiosks are open daily, 8:00 AM to 10:00 PM.': 'Letakkan tong di luar sebelum 8 pagi. Terlepas? Kiosk kitar semula dibuka setiap hari, 8:00 pagi hingga 10:00 malam.', // native review
-  'Earn them from verified green actions: recycling at a kiosk bin, tracked walks and rides, and watering a community garden.': 'Peroleh melalui aktiviti hijau yang disahkan: kitar semula di tong kiosk, berjalan dan berbasikal yang dijejak, dan menyiram kebun komuniti.', // native review
+  'Earn them from verified green actions: recycling at a kiosk bin, and tracked walks and rides.': 'Peroleh melalui aktiviti hijau yang disahkan: kitar semula di tong kiosk, dan berjalan serta berbasikal yang dijejak.', // native review
   'Recycle at a kiosk bin, finish a park loop, water a garden or help a neighbour.': 'Kitar semula di tong kiosk, habiskan laluan taman, siram kebun atau bantu jiran.', // native review
   'A bin’s scale, a QR checkpoint, GPS or a staff member confirms it. There is no form to fill in.': 'Penimbang tong, pusat semak QR, GPS atau kakitangan mengesahkannya. Tiada borang perlu diisi.', // native review
   'Tap “Recycle as guest” on the screen of any kiosk bin. You get a claim code: join SimeTown within 14 days to claim the Impact XP. Guests are not tracked.': 'Ketik “Kitar semula sebagai tetamu” pada skrin mana-mana tong kiosk. Anda mendapat kod tuntutan: sertai SimeTown dalam masa 14 hari untuk menuntut XP Impak. Tetamu tidak dijejak.', // native review
