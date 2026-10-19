@@ -80,9 +80,15 @@ export interface Campaign {
   ends_at: string;
   status: 'DRAFT' | 'FUNDED' | 'CLOSED';
   refunded_sen: number | null;
+  sponsor_id: string | null;
   funder: string;
   live: boolean;
   pool_left_sen: number;
+  /** Staff views only. */
+  rewards_given?: number;
+  /** Staff views only: the sponsor's tier today, and whether this campaign is beyond what it includes this year. */
+  sponsor_tier?: string;
+  extra?: boolean;
   my_progress?: number;
   my_rewards?: number;
 }

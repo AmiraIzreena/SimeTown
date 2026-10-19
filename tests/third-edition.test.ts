@@ -15,7 +15,7 @@ import { claimGuestSession, createMachine, itemText, joinFromScreen, machineScre
 import { createKiosk } from '@/server/modules/kitar/service';
 import { runJob } from '@/server/modules/admin/service';
 import { createPass, logWalkIn, publicPass, replyToWalkIn, scanPass, tamuOverview } from '@/server/modules/tamu/service';
-import { T0, at, expectFloatBalanced, freshDb, makeCampaign, makeHome, makeResident, makeWorld, type World } from './helpers';
+import { T0, at, closeCampaign, expectFloatBalanced, freshDb, makeCampaign, makeHome, makeResident, makeWorld, type World } from './helpers';
 
 /** The features added for the proposal's third edition, one business rule at a time. */
 
@@ -327,6 +327,42 @@ describe('sponsor tiers', () => {
     const partners = await call('GET', '/public/partners');
     expect(partners.data.map((g: { tier: string }) => g.tier)).toEqual(['TITLE_PARTNER', 'COMMUNITY_FRIEND']);
     expect((await call('POST', `/admin/sponsors/${a!.id}/tier`, { as: w.admin, body: { tier: 'COMMUNITY_FRIEND', bankRef: 'X-1' } })).status).toBe(403);
+  });
+
+  it('counts challenges against what a tier includes, and runs more as extra one-offs instead of refusing them', async () => {
+    const s = await one<{ id: string }>(db, `INSERT INTO sponsors (name) VALUES ('Allowance Co') RETURNING id`);
+    await setSponsorTier(db, w.hq, s!.id, { tier: 'COMMUNITY_FRIEND', bankRef: 'TIER-ALLOW' }, T0); // one challenge included
+    const cancelled = await makeCampaign(w, { sponsorId: s!.id }, false);
+    await closeCampaign(db, w.admin, cancelled, T0); // a cancelled draft does not count
+    const included = await makeCampaign(w, { sponsorId: s!.id }); // the included one
+    const extra = await makeCampaign(w, { sponsorId: s!.id }); // an extra one-off, still allowed and still paying the fee
+    const fee = await one<{ fee_bps: number }>(db, 'SELECT fee_bps FROM campaigns WHERE id = $1', [extra]);
+    expect(fee!.fee_bps).toBe(2500);
+    await makeCampaign(w, { sponsorId: s!.id }, false); // a draft waiting for payment counts too
+    await makeCampaign(w, { sponsorId: s!.id, startsAt: at(400), endsAt: at(420) }, false); // next year counts against next year
+
+    clock.now = T0;
+    const row = (await call('GET', '/sponsors', { as: w.admin })).data.find((x: { id: string }) => x.id === s!.id);
+    expect(row).toMatchObject({ active_tier: 'COMMUNITY_FRIEND', allowance: 1, challenges_this_year: 3 });
+    // On the campaign list, the first of the year is included and the later ones are marked extra.
+    const mine = (await call('GET', '/campaigns', { as: w.admin })).data.filter((c: { sponsor_id: string }) => c.sponsor_id === s!.id);
+    const flag = (id: string) => mine.find((c: { id: string }) => c.id === id)?.extra;
+    expect(flag(cancelled)).toBe(false);
+    expect(flag(included)).toBe(false);
+    expect(flag(extra)).toBe(true);
+    expect(mine.filter((c: { extra: boolean }) => c.extra)).toHaveLength(2); // the extra one and the waiting draft; next year's is included there
+  });
+
+  it('sets the budget split on the server, whatever the browser sends', async () => {
+    const s = await one<{ id: string }>(db, `INSERT INTO sponsors (name) VALUES ('Split Co') RETURNING id`);
+    clock.now = T0;
+    const body = { title: 'No fee please', description: 'Trying to skip the fee', activity: 'KITAR_DROPOFF', rewardPoints: 100, budgetSen: 10_000, startsAt: at(-1).toISOString(), endsAt: at(10).toISOString() };
+    const sponsored = await call('POST', '/campaigns', { as: w.admin, body: { ...body, sponsorId: s!.id, poolBps: 10_000, feeBps: 0, costsBps: 0 } });
+    expect(sponsored.status).toBe(200);
+    const community = await call('POST', '/campaigns', { as: w.admin, body: { ...body, sponsorId: null } });
+    const split = (id: string) => one<{ pool_bps: number; fee_bps: number; costs_bps: number }>(db, 'SELECT pool_bps, fee_bps, costs_bps FROM campaigns WHERE id = $1', [id]);
+    expect(await split(sponsored.data.id)).toEqual({ pool_bps: 6000, fee_bps: 2500, costs_bps: 1500 });
+    expect(await split(community.data.id)).toEqual({ pool_bps: 10_000, fee_bps: 0, costs_bps: 0 });
   });
 });
 

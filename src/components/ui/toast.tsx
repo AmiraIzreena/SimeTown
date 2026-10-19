@@ -4,7 +4,7 @@ import { Text } from '@/components/ui/localized-text';
 import { LocalizedButton } from '@/components/ui/localized-elements';
 
 import { AlertCircle, CheckCircle2, X } from 'lucide-react';
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 
 type Kind = 'success' | 'error';
@@ -37,11 +37,20 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     [dismiss],
   );
   const value = useMemo(() => ({ show }), [show]);
+  // An open dialog sits in the browser's top layer, above any z-index. Showing the toasts as a popover, reopened
+  // on each new toast, puts them in the top layer too, above the dialog that is open now.
+  const region = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = region.current;
+    if (!el || typeof el.showPopover !== 'function') return;
+    if (el.matches(':popover-open')) el.hidePopover();
+    if (toasts.length > 0) el.showPopover();
+  }, [toasts]);
 
   return (
     <ToastContext.Provider value={value}>
       <Text>{children}</Text>
-      <div aria-live="polite" className="no-print pointer-events-none fixed inset-x-0 bottom-20 z-[60] flex flex-col items-center gap-2 px-4 md:bottom-6 md:items-end md:px-6">
+      <div ref={region} popover="manual" aria-live="polite" className="no-print pointer-events-none fixed inset-x-0 top-auto bottom-20 z-[60] m-0 flex w-auto flex-col items-center gap-2 overflow-visible border-0 bg-transparent px-4 py-0 md:bottom-6 md:items-end md:px-6">
         {toasts.map((toast) => (
           <div
             key={toast.id}

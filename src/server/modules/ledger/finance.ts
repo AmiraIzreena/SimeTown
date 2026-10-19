@@ -1,6 +1,6 @@
 import { one, type Db, type Queryable } from '../../db/client';
 import { assertTownshipAccess, type Actor } from '../../auth/actor';
-import { conflict, forbidden, notFound, ruleViolation } from '../../errors';
+import { conflict, duplicateBankRef, forbidden, notFound, ruleViolation } from '../../errors';
 import { audit } from '../audit';
 import { notify } from '../notifications';
 import { collectDueOfferFees } from '../offers/service';
@@ -28,7 +28,7 @@ export async function recordMerchantDeposit(
     assertTownshipAccess(actor, merchant.township_id);
     if (merchant.status !== 'ACTIVE') throw ruleViolation('MERCHANT_NOT_ACTIVE', 'Approve the shop before recording money for it.');
     if (await one(tx, 'SELECT 1 FROM deposits WHERE bank_ref = $1', [input.bankRef])) {
-      throw conflict('DUPLICATE_BANK_REF', 'A deposit with this bank reference is already recorded.');
+      throw duplicateBankRef();
     }
     const sys = await systemAccounts(tx);
     const pool = await getAccount(tx, 'FUNDER_POOL', { merchantId }, true);
@@ -56,7 +56,7 @@ export async function recordMerchantDeposit(
 export async function recordCommunityDeposit(db: Db, actor: Actor, input: { amountSen: number; bankRef: string }, now: Date) {
   return db.tx(async (tx) => {
     if (await one(tx, 'SELECT 1 FROM deposits WHERE bank_ref = $1', [input.bankRef])) {
-      throw conflict('DUPLICATE_BANK_REF', 'A deposit with this bank reference is already recorded.');
+      throw duplicateBankRef();
     }
     const sys = await systemAccounts(tx);
     const txnId = await postTxn(tx, {
