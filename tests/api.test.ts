@@ -304,6 +304,9 @@ describe('Jiran and Kongsi', () => {
     const post = await call('POST', '/posts', { as: asker, body: { type: 'HELP', title: 'Help carrying a cupboard', body: 'Two flights of stairs, ten minutes.' } });
     await call('POST', `/posts/${post.data.id}/respond`, { as: helper, body: {} });
 
+    expect((await call('POST', `/posts/${post.data.id}/responses/${helper.id}/confirm`, { as: asker, body: {} })).error!.code).toBe('NOT_ACCEPTED');
+    expect((await call('POST', `/posts/${post.data.id}/responses/${helper.id}/accept`, { as: helper, body: {} })).status).toBe(403);
+    await call('POST', `/posts/${post.data.id}/responses/${helper.id}/accept`, { as: asker, body: {} });
     expect((await call('POST', `/posts/${post.data.id}/responses/${helper.id}/confirm`, { as: helper, body: {} })).status).toBe(403);
     const confirm = await call('POST', `/posts/${post.data.id}/responses/${helper.id}/confirm`, { as: asker, body: {} });
     expect(confirm.data.reward.xp).toBe(40);
@@ -314,12 +317,77 @@ describe('Jiran and Kongsi', () => {
     const giver = await makeResident(w);
     const taker = await makeResident(w);
     const post = await call('POST', '/posts', { as: giver, body: { type: 'GIVE', title: "Child's chair", body: 'Good condition, collect from Jalan Tiga.' } });
+    const other = await makeResident(w);
     await call('POST', `/posts/${post.data.id}/respond`, { as: taker, body: {} });
+    await call('POST', `/posts/${post.data.id}/respond`, { as: other, body: {} });
+    await call('POST', `/posts/${post.data.id}/responses/${taker.id}/accept`, { as: giver, body: {} });
+    // Only one neighbour can be promised the item at a time.
+    expect((await call('POST', `/posts/${post.data.id}/responses/${other.id}/accept`, { as: giver, body: {} })).error!.code).toBe('ALREADY_ACCEPTED');
+    await call('POST', `/posts/${post.data.id}/responses/${other.id}/decline`, { as: giver, body: {} });
+    expect((await call('POST', `/posts/${post.data.id}/respond`, { as: other, body: {} })).status).toBe(200);
+    expect((await call('POST', `/posts/${post.data.id}/responses/${other.id}/accept`, { as: giver, body: {} })).error!.code).toBe('NOT_PENDING');
+
     await call('POST', `/posts/${post.data.id}/responses/${taker.id}/confirm`, { as: giver, body: {} });
     const xp = await one<{ xp_total: number }>(db, 'SELECT xp_total FROM users WHERE id = $1', [giver.id]);
     expect(xp!.xp_total).toBe(30);
     const impact = await call('GET', '/posts/impact', { as: giver });
     expect(impact.data).toEqual({ xp: 30, activities: 0, contributions: 1, neighbours_helped: 0 });
+  });
+
+  it('lends with a return date and gives the lender XP only when the item comes back', async () => {
+    const lender = await makeResident(w);
+    const borrower = await makeResident(w);
+    const next = await makeResident(w);
+    const post = await call('POST', '/posts', { as: lender, body: { type: 'LEND', title: 'Ladder to borrow', body: 'Three metres, aluminium.' } });
+    const responses = `/posts/${post.data.id}/responses`;
+    await call('POST', `/posts/${post.data.id}/respond`, { as: borrower, body: {} });
+    await call('POST', `/posts/${post.data.id}/respond`, { as: next, body: {} });
+
+    expect((await call('POST', `${responses}/${borrower.id}/accept`, { as: lender, body: {} })).error!.code).toBe('LOAN_NEEDS_DATE');
+    expect((await call('POST', `${responses}/${borrower.id}/accept`, { as: lender, body: { dueBack: '2026-11-01' } })).error!.code).toBe('LOAN_DATE'); // yesterday
+    expect((await call('POST', `${responses}/${borrower.id}/accept`, { as: lender, body: { dueBack: '2027-03-01' } })).error!.code).toBe('LOAN_DATE'); // too far
+    expect((await call('POST', `${responses}/${borrower.id}/accept`, { as: lender, body: { dueBack: '2026-11-05' } })).status).toBe(200);
+
+    const lent = await call('POST', `${responses}/${borrower.id}/confirm`, { as: lender, body: {} });
+    expect(lent.data.reward).toBeNull();
+    // While it is out, nobody else can be lent it.
+    expect((await call('POST', `${responses}/${next.id}/accept`, { as: lender, body: { dueBack: '2026-11-06' } })).error!.code).toBe('ALREADY_ACCEPTED');
+    const seen = (await call('GET', `/posts?type=LEND&mine=true`, { as: borrower })).data.items.find((p: { id: string }) => p.id === post.data.id);
+    expect(seen).toMatchObject({ my_response: 'CONFIRMED', my_due_back: '2026-11-05' });
+
+    expect((await call('POST', `${responses}/${next.id}/returned`, { as: lender, body: {} })).error!.code).toBe('NOT_ON_LOAN');
+    const back = await call('POST', `${responses}/${borrower.id}/returned`, { as: lender, body: {} });
+    expect(back.data.reward.xp).toBe(30);
+    expect((await call('POST', `${responses}/${next.id}/accept`, { as: lender, body: { dueBack: '2026-11-06' } })).status).toBe(200);
+
+    // Borrowing the same item again is fine, but earns the lender nothing more from the same neighbour.
+    expect((await call('POST', `/posts/${post.data.id}/respond`, { as: borrower, body: {} })).status).toBe(200);
+    const again = await call('GET', `/posts?type=LEND&mine=true`, { as: borrower });
+    expect(again.data.items.find((p: { id: string }) => p.id === post.data.id).my_response).toBe('PENDING');
+  });
+
+  it('lets a neighbour cancel an RSVP before the event, which frees the place', async () => {
+    const host = await makeResident(w);
+    const guest = await makeResident(w);
+    const late = await makeResident(w);
+    const post = await call('POST', '/posts', { as: host, body: { type: 'EVENT', title: 'Board games night', body: 'Bring a game.', startsAt: new Date(T0.getTime() + 86_400_000).toISOString(), capacity: 1 } });
+    await call('POST', `/posts/${post.data.id}/respond`, { as: guest, body: {} });
+    expect((await call('POST', `/posts/${post.data.id}/respond`, { as: late, body: {} })).error!.code).toBe('POST_FULL');
+    expect((await call('POST', `/posts/${post.data.id}/responses/${guest.id}/accept`, { as: host, body: {} })).error!.code).toBe('EVENT_NO_ACCEPT');
+
+    expect((await call('POST', `/posts/${post.data.id}/withdraw`, { as: guest, body: {} })).status).toBe(200);
+    expect((await call('POST', `/posts/${post.data.id}/withdraw`, { as: guest, body: {} })).status).toBe(404);
+    expect((await call('POST', `/posts/${post.data.id}/respond`, { as: late, body: {} })).status).toBe(200);
+
+    clock.now = new Date(T0.getTime() + 2 * 86_400_000);
+    try {
+      expect((await call('POST', `/posts/${post.data.id}/withdraw`, { as: late, body: {} })).error!.code).toBe('EVENT_STARTED');
+      const attended = await call('POST', `/posts/${post.data.id}/responses/${late.id}/confirm`, { as: host, body: {} });
+      expect(attended.data.reward.xp).toBe(30);
+      expect((await call('POST', `/posts/${post.data.id}/withdraw`, { as: late, body: {} })).error!.code).toBe('CANNOT_WITHDRAW');
+    } finally {
+      clock.now = T0;
+    }
   });
 
   it('lists every type in one Komuniti feed, a group of types, or a search', async () => {

@@ -98,9 +98,14 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 
 | Method | Path | Who | What it does |
 | --- | --- | --- | --- |
-| GET | `/posts` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Events, help requests and items to give or lend |
+| GET | `/posts` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Events, help requests and items to give or lend: one type, several (GIVE,LEND) or all |
+| GET | `/posts/impact` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Your verified community XP: events attended, items shared, neighbours helped |
 | POST | `/posts` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Create an event, a help request or a sharing offer |
 | POST | `/posts/:postId/respond` | RESIDENT | Join, offer help or ask for an item |
+| POST | `/posts/:postId/withdraw` | RESIDENT | Cancel your RSVP or request (events: before they start) |
+| POST | `/posts/:postId/responses/:userId/accept` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Accept a help, give-away or borrow request (loans need a return date) |
+| POST | `/posts/:postId/responses/:userId/decline` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Decline a request |
+| POST | `/posts/:postId/responses/:userId/returned` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Mark a lent item returned (gives the lender Impact XP) |
 | POST | `/posts/:postId/responses/:userId/confirm` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Confirm it happened (gives Impact XP) |
 | POST | `/posts/:postId/close` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Close a post |
 | POST | `/posts/:postId/flag` | RESIDENT | Flag a post for moderators |

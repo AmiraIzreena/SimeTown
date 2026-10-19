@@ -34,9 +34,25 @@ interface Post {
   by_township: boolean;
   is_mine: boolean;
   responses: number;
-  my_response: 'PENDING' | 'CONFIRMED' | null;
-  responders: { user_id: string; name: string; status: 'PENDING' | 'CONFIRMED' }[];
+  my_response: ResponseStatus | null;
+  /** When I have borrowed it: the date it should come back (YYYY-MM-DD). */
+  my_due_back: string | null;
+  responders: Responder[];
 }
+
+type ResponseStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'CONFIRMED' | 'RETURNED';
+
+interface Responder {
+  user_id: string;
+  name: string;
+  status: ResponseStatus;
+  due_back: string | null;
+}
+
+/** Today in the township (Malaysia, UTC+8), as YYYY-MM-DD. */
+const today = () => new Date(Date.now() + 8 * 3_600_000).toISOString().slice(0, 10);
+const addDays = (date: string, days: number) => new Date(new Date(`${date}T00:00:00Z`).getTime() + days * 86_400_000).toISOString().slice(0, 10);
+const formatDay = (date: string) => new Date(`${date}T00:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', timeZone: 'UTC' });
 
 interface Impact {
   xp: number;
@@ -59,16 +75,20 @@ interface PostKind {
   /** What a neighbour presses to respond. */
   respond: string;
   responded: string;
+  /** What the neighbour sees once the author has picked them. */
+  accepted: string;
+  /** What the neighbour presses to take it back. */
+  withdraw: string;
   /** What the author presses once it really happened. */
   confirm: string;
   xpNote: string;
 }
 
 const KINDS: Record<PostType, PostKind> = {
-  EVENT: { type: 'EVENT', group: 'Jiran', label: 'Activity', icon: CalendarDays, tone: 'bg-brand-50 text-brand-700', create: 'New event', pitch: 'A clean-up, a game, a street potluck.', respond: 'I’m coming', responded: 'You’re going', confirm: 'Confirm attended', xpNote: 'Guests earn Impact XP when you confirm they attended.' },
-  HELP: { type: 'HELP', group: 'Jiran', label: 'Help', icon: HandHeart, tone: 'bg-success-50 text-success-700', create: 'Ask for help', pitch: 'Moving a table, a lift to the clinic, fixing a tap.', respond: 'I can help', responded: 'You offered to help', confirm: 'Confirm they helped', xpNote: 'Your helper earns Impact XP when you confirm the favour was done.' },
-  GIVE: { type: 'GIVE', group: 'Kongsi', label: 'Give away', icon: Gift, tone: 'bg-gold-50 text-gold-700', create: 'Give an item', pitch: 'Books, clothes, furniture you no longer need.', respond: 'I’d like this', responded: 'You asked for this', confirm: 'Confirm handed over', xpNote: 'You earn Impact XP when you confirm the item was collected.' },
-  LEND: { type: 'LEND', group: 'Kongsi', label: 'Lend', icon: Repeat2, tone: 'bg-gold-50 text-gold-700', create: 'Lend an item', pitch: 'A ladder, a drill, a folding table.', respond: 'I’d like to borrow this', responded: 'You asked to borrow this', confirm: 'Confirm lent', xpNote: 'You earn Impact XP each time you confirm a loan.' },
+  EVENT: { type: 'EVENT', group: 'Jiran', label: 'Activity', icon: CalendarDays, tone: 'bg-brand-50 text-brand-700', create: 'New event', pitch: 'A clean-up, a game, a street potluck.', respond: 'I’m coming', responded: 'You’re going', accepted: 'You’re going', withdraw: 'Cancel RSVP', confirm: 'Confirm attended', xpNote: 'Guests earn Impact XP when you confirm they attended.' },
+  HELP: { type: 'HELP', group: 'Jiran', label: 'Help', icon: HandHeart, tone: 'bg-success-50 text-success-700', create: 'Ask for help', pitch: 'Moving a table, a lift to the clinic, fixing a tap.', respond: 'I can help', responded: 'You offered to help', accepted: 'Accepted: arrange a time to help', withdraw: 'Withdraw offer', confirm: 'Confirm they helped', xpNote: 'Accept one helper, then confirm once the favour is done. Your helper earns Impact XP then.' },
+  GIVE: { type: 'GIVE', group: 'Kongsi', label: 'Give away', icon: Gift, tone: 'bg-gold-50 text-gold-700', create: 'Give an item', pitch: 'Books, clothes, furniture you no longer need.', respond: 'I’d like this', responded: 'You asked for this', accepted: 'Accepted: arrange to collect it', withdraw: 'Withdraw request', confirm: 'Confirm handed over', xpNote: 'Accept one neighbour, then confirm when they collect it. You earn Impact XP then.' },
+  LEND: { type: 'LEND', group: 'Kongsi', label: 'Lend', icon: Repeat2, tone: 'bg-gold-50 text-gold-700', create: 'Lend an item', pitch: 'A ladder, a drill, a folding table.', respond: 'I’d like to borrow this', responded: 'You asked to borrow this', accepted: 'Accepted: arrange to collect it', withdraw: 'Withdraw request', confirm: 'Confirm lent', xpNote: 'Accept a borrower with a return date. You earn Impact XP when the item comes back and you mark it returned.' },
 };
 
 export type KomunitiTab = 'all' | 'activities' | 'help' | 'share';
@@ -96,6 +116,7 @@ function useDebounced<T>(value: T, ms = 300) {
  */
 export function KomunitiBoard({ initialTab = 'all' }: { initialTab?: KomunitiTab }) {
   const akses = useAksesMode();
+  const t = useT();
   const [tab, setTab] = useState<KomunitiTab>(initialTab);
   const [search, setSearch] = useState('');
   const [mine, setMine] = useState(false);
@@ -123,10 +144,20 @@ export function KomunitiBoard({ initialTab = 'all' }: { initialTab?: KomunitiTab
     async (post: Post, userId: string) => ({ type: post.type, ...(await api.post<{ reward: ActionRewardView | null }>(`/posts/${post.id}/responses/${userId}/confirm`)) }),
     {
       onSuccess: reload,
-      success: (r) => (KINDS[r.type].group === 'Kongsi' ? rewardMessage(r.reward, 'Confirmed.') : 'Confirmed. Their Impact XP has been added.'),
+      success: (r) => (r.type === 'LEND' ? 'Lent. Mark it returned when it comes back.' : r.type === 'GIVE' ? rewardMessage(r.reward, 'Confirmed.') : 'Confirmed. Their Impact XP has been added.'),
     },
   );
+  const accept = useAction((postId: string, userId: string) => api.post(`/posts/${postId}/responses/${userId}/accept`, {}), { onSuccess: reload, success: 'Accepted. They have been told.' });
+  const decline = useAction((postId: string, userId: string) => api.post(`/posts/${postId}/responses/${userId}/decline`), { onSuccess: reload, success: 'Declined. They have been told.' });
+  const returned = useAction((postId: string, userId: string) => api.post<{ reward: ActionRewardView | null }>(`/posts/${postId}/responses/${userId}/returned`), {
+    onSuccess: reload,
+    success: (r) => rewardMessage(r.reward, 'Marked returned.'),
+  });
+  const withdraw = useAction((id: string) => api.post(`/posts/${id}/withdraw`), { onSuccess: reload, success: 'Cancelled. The person who posted has been told.' });
   const close = useAction((id: string) => api.post(`/posts/${id}/close`), { onSuccess: reload, success: 'Closed.' });
+  const [lending, setLending] = useState<{ post: Post; responder: Responder } | null>(null);
+  const busy = confirm.pending || accept.pending || decline.pending || returned.pending;
+  const small = akses.simple ? 'lg' : 'sm';
 
   return (
     <AksesPage profile={akses.profile} simple={akses.simple} largeText={akses.largeText} largeTargets={akses.largeTargets}>
@@ -213,32 +244,78 @@ export function KomunitiBoard({ initialTab = 'all' }: { initialTab?: KomunitiTab
 
                   {post.responders.length > 0 && (
                     <ul className="mt-4 space-y-2 border-t border-ink-100 pt-3">
-                      {post.responders.map((r) => (
-                        <li key={r.user_id} className="flex items-center justify-between gap-3 text-sm">
-                          <span className="font-medium text-ink-800">{r.name}</span>
-                          {r.status === 'CONFIRMED' ? (
-                            <Badge tone="success"><Text>Confirmed</Text></Badge>
-                          ) : (
-                            <Button size={akses.simple ? 'lg' : 'sm'} variant="secondary" onClick={() => confirm.run(post, r.user_id)} disabled={confirm.pending}>
-                              <Text>{kind.confirm}</Text>
-                            </Button>
-                          )}
-                        </li>
-                      ))}
+                      {post.responders.map((r) => {
+                        const onLoan = post.type === 'LEND' && r.status === 'CONFIRMED';
+                        const overdue = onLoan && r.due_back !== null && r.due_back < today();
+                        return (
+                          <li key={r.user_id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                            <span className="font-medium text-ink-800">
+                              {r.name}
+                              {r.due_back && (r.status === 'ACCEPTED' || onLoan) && <span className="ml-2 font-normal text-ink-500">{t('Return by {date}', { date: t(formatDay(r.due_back)) })}</span>}
+                            </span>
+                            <span className="flex flex-wrap items-center gap-2">
+                              {post.type === 'EVENT' ? (
+                                r.status === 'CONFIRMED' ? <Badge tone="success"><Text>Attended</Text></Badge> : (
+                                  <Button size={small} variant="secondary" onClick={() => confirm.run(post, r.user_id)} disabled={busy}><Text>{kind.confirm}</Text></Button>
+                                )
+                              ) : r.status === 'PENDING' ? (
+                                post.status === 'OPEN' && (
+                                  <>
+                                    <Button size={small} onClick={() => (post.type === 'LEND' ? setLending({ post, responder: r }) : accept.run(post.id, r.user_id))} disabled={busy}><Text>Accept</Text></Button>
+                                    <Button size={small} variant="ghost" onClick={() => decline.run(post.id, r.user_id)} disabled={busy}><Text>Decline</Text></Button>
+                                  </>
+                                )
+                              ) : r.status === 'ACCEPTED' ? (
+                                <>
+                                  <Button size={small} variant="secondary" onClick={() => confirm.run(post, r.user_id)} disabled={busy}><Text>{kind.confirm}</Text></Button>
+                                  <Button size={small} variant="ghost" onClick={() => decline.run(post.id, r.user_id)} disabled={busy}><Text>Decline</Text></Button>
+                                </>
+                              ) : onLoan ? (
+                                <>
+                                  <Badge tone={overdue ? 'warning' : 'brand'}><Text>{overdue ? 'Overdue' : 'On loan'}</Text></Badge>
+                                  <Button size={small} variant="secondary" onClick={() => returned.run(post.id, r.user_id)} disabled={busy}><Text>Mark returned</Text></Button>
+                                </>
+                              ) : r.status === 'CONFIRMED' ? (
+                                <Badge tone="success"><Text>Confirmed</Text></Badge>
+                              ) : r.status === 'RETURNED' ? (
+                                <Badge tone="success"><Text>Returned</Text></Badge>
+                              ) : (
+                                <Badge><Text>Declined</Text></Badge>
+                              )}
+                            </span>
+                          </li>
+                        );
+                      })}
                     </ul>
                   )}
 
                   <div className="mt-4 flex flex-wrap items-center gap-2">
                     {post.is_mine ? (
                       post.status === 'OPEN' && (
-                        <Button size={akses.simple ? 'lg' : 'sm'} variant="ghost" onClick={() => close.run(post.id)} disabled={close.pending}><Text>Close</Text></Button>
+                        <Button size={small} variant="ghost" onClick={() => close.run(post.id)} disabled={close.pending}><Text>Close</Text></Button>
                       )
-                    ) : post.my_response ? (
-                      <Badge tone={post.my_response === 'CONFIRMED' ? 'success' : 'brand'}><Text>{post.my_response === 'CONFIRMED' ? 'Confirmed' : kind.responded}</Text></Badge>
+                    ) : post.my_response === 'PENDING' || post.my_response === 'ACCEPTED' ? (
+                      <>
+                        <Badge tone="brand"><Text>{post.my_response === 'ACCEPTED' ? kind.accepted : kind.responded}</Text></Badge>
+                        {post.my_due_back && <span className="text-sm text-ink-500">{t('Return by {date}', { date: t(formatDay(post.my_due_back)) })}</span>}
+                        {!(post.type === 'EVENT' && post.starts_at && new Date(post.starts_at) <= new Date()) && (
+                          <Button size={small} variant="ghost" onClick={() => withdraw.run(post.id)} disabled={withdraw.pending}><Text>{kind.withdraw}</Text></Button>
+                        )}
+                      </>
+                    ) : post.my_response === 'CONFIRMED' ? (
+                      post.type === 'LEND' && post.my_due_back ? (
+                        <Badge tone={post.my_due_back < today() ? 'warning' : 'brand'}>
+                          {t(post.my_due_back < today() ? 'Overdue: please return it ({date})' : 'Borrowed: return by {date}', { date: t(formatDay(post.my_due_back)) })}
+                        </Badge>
+                      ) : (
+                        <Badge tone="success"><Text>Confirmed</Text></Badge>
+                      )
+                    ) : post.my_response === 'DECLINED' ? (
+                      <Badge><Text>Not this time</Text></Badge>
                     ) : (
                       post.status === 'OPEN' && !full && (
-                        <Button size={akses.simple ? 'lg' : 'sm'} onClick={() => respond.run(post.id)} disabled={respond.pending}>
-                          <Text>{kind.respond}</Text>
+                        <Button size={small} onClick={() => respond.run(post.id)} disabled={respond.pending}>
+                          <Text>{post.my_response === 'RETURNED' ? 'Borrow again' : kind.respond}</Text>
                         </Button>
                       )
                     )}
@@ -269,6 +346,7 @@ export function KomunitiBoard({ initialTab = 'all' }: { initialTab?: KomunitiTab
           setCreating(kind);
         }}
       />
+      {lending && <LendItem post={lending.post} responder={lending.responder} large={akses.simple} onClose={() => setLending(null)} onLent={reload} />}
       {creating && <CreatePost kind={creating} accessible={akses.guided} onClose={() => setCreating(null)} onCreated={reload} />}
       <FlagPost post={flagging} onClose={() => setFlagging(null)} onFlagged={reload} />
     </AksesPage>
@@ -299,6 +377,43 @@ function ChooseKind({ open, types, large, onClose, onChoose }: { open: boolean; 
           );
         })}
       </div>
+    </Modal>
+  );
+}
+
+/** Accepting a borrower: agree the date the item should come back. */
+function LendItem({ post, responder, large, onClose, onLent }: { post: Post; responder: Responder; large: boolean; onClose: () => void; onLent: () => void }) {
+  const t = useT();
+  const [dueBack, setDueBack] = useState(() => addDays(today(), 3));
+  const accept = useAction((date: string) => api.post(`/posts/${post.id}/responses/${responder.user_id}/accept`, { dueBack: date }), {
+    success: 'Accepted. They have been told the return date.',
+    onSuccess: () => {
+      onLent();
+      onClose();
+    },
+  });
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={t('Lend to {name}', { name: responder.name })}
+      description="Agree when it should come back. You earn Impact XP once you mark it returned."
+      footer={
+        <>
+          <Button size={large ? 'lg' : 'md'} variant="secondary" onClick={onClose}><Text>Cancel</Text></Button>
+          <Button size={large ? 'lg' : 'md'} type="submit" form="lend-item" pending={accept.pending}><Text>Accept</Text></Button>
+        </>
+      }
+    >
+      <form method="post"
+        id="lend-item"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void accept.run(dueBack);
+        }}
+      >
+        <Input label="Return by" name="dueBack" type="date" value={dueBack} min={today()} max={addDays(today(), 60)} onChange={(event) => setDueBack(event.target.value)} required error={accept.fields.dueBack} />
+      </form>
     </Modal>
   );
 }
