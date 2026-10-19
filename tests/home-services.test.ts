@@ -85,7 +85,8 @@ describe('the booking flow (Aisyah and the plumber)', () => {
     expect(mine.status).toBe('SCHEDULED');
     expect(mine.worker?.name).toBe('Ahmad Faizal');
     expect(mine.merchantName).toBeTruthy();
-    expect(mine.can.sendPass).toBe(true);
+    expect(mine.pass?.code).toBeTruthy(); // made automatically with the worker
+    expect(mine.can.sendPass).toBe(false);
 
     await home.startVisit(db, merchant, id, T0);
     await home.markWorkDone(db, merchant, id, 'Replaced the trap. RM120 agreed and paid in cash.', T0);
@@ -109,8 +110,10 @@ describe('the booking flow (Aisyah and the plumber)', () => {
 
     // Every step is on the record, with who did it.
     const history = (await home.getMyBooking(db, aisyah, id, T0)).history;
-    expect(history.map((e) => e.to_status)).toEqual(['REQUESTED', 'ACCEPTED', 'SCHEDULED', 'IN_PROGRESS', 'WORK_DONE', 'COMPLETED']);
+    expect(history.filter((e) => e.kind !== 'PASS').map((e) => e.to_status)).toEqual(['REQUESTED', 'ACCEPTED', 'SCHEDULED', 'IN_PROGRESS', 'WORK_DONE', 'COMPLETED']);
     expect(history.find((e) => e.kind === 'WORKER')?.worker_name).toBe('Ahmad Faizal');
+    // The gate pass was made by the system, not by a person.
+    expect(history.find((e) => e.kind === 'PASS')?.actor).toBe('SYSTEM');
   });
 
   it('accepts with a worker in one step, and the resident may confirm once the worker is on site', async () => {
@@ -120,6 +123,17 @@ describe('the booking flow (Aisyah and the plumber)', () => {
     expect((await home.acceptBooking(db, merchant, id, { scheduledAt: visitAt, workerId }, T0)).status).toBe('SCHEDULED');
     await expect(home.confirmCompleted(db, resident, id, T0)).rejects.toMatchObject({ code: 'BOOKING_STATE' });
     await home.startVisit(db, merchant, id, T0);
+    expect((await home.confirmCompleted(db, resident, id, T0)).status).toBe('COMPLETED');
+  });
+
+  it('lets the company mark the work done without tapping "worker has arrived" first, but not before a worker is set', async () => {
+    const { merchant, listingId, workerId } = await makeServiceCompany();
+    const resident = await makeResident(w);
+    const { id } = await book(resident, listingId);
+    await home.acceptBooking(db, merchant, id, { scheduledAt: visitAt }, T0);
+    await expect(home.markWorkDone(db, merchant, id, undefined, T0)).rejects.toMatchObject({ code: 'BOOKING_STATE' });
+    await home.assignWorker(db, merchant, id, workerId, T0);
+    expect((await home.markWorkDone(db, merchant, id, 'Fixed the tap.', T0)).status).toBe('WORK_DONE');
     expect((await home.confirmCompleted(db, resident, id, T0)).status).toBe('COMPLETED');
   });
 
@@ -293,6 +307,9 @@ describe('private reports', () => {
 
     const urgent = await one<{ n: number }>(db, `SELECT count(*)::int AS n FROM notifications WHERE user_id = $1 AND priority = 'URGENT'`, [w.staff.id]);
     expect(urgent!.n).toBeGreaterThan(0);
+    // HQ is told about harassment too, and the notification opens the report itself.
+    const hqNote = await one<{ link: string }>(db, `SELECT link FROM notifications WHERE user_id = $1 AND priority = 'URGENT' ORDER BY id DESC LIMIT 1`, [w.hq.id]);
+    expect(hqNote?.link).toBe(`/console/home-services?report=${reportId}`);
 
     const queue = await home.listServiceReports(db, w.staff, undefined);
     expect(queue.map((r) => r.id)).toContain(reportId);
@@ -311,6 +328,10 @@ describe('private reports', () => {
     await expect(home.getServiceReport(db, other.staff, reportId, T0)).rejects.toMatchObject({ status: 404 });
     expect((await home.listServiceReports(db, other.staff, undefined)).map((r) => r.id)).not.toContain(reportId);
 
+    // A note alone still reaches the resident.
+    await home.updateServiceReport(db, w.staff, reportId, { status: 'NEW', staffNote: 'We have called the company and will update you tomorrow.' }, T0);
+    expect(await one(db, `SELECT 1 FROM notifications WHERE user_id = $1 AND title = 'Update on your home service report'`, [resident.id])).toBeDefined();
+
     await home.updateServiceReport(db, w.staff, reportId, { status: 'CLOSED', staffNote: 'Spoke to the company; the worker was removed from township jobs.' }, T0);
     await expect(home.updateServiceReport(db, w.staff, reportId, { status: 'REVIEWING' }, T0)).rejects.toMatchObject({ code: 'REPORT_CLOSED' });
     expect((await home.getMyBooking(db, resident, id, T0)).reports[0]).toMatchObject({ status: 'CLOSED' });
@@ -318,40 +339,48 @@ describe('private reports', () => {
 });
 
 describe('Tamu contractor pass', () => {
-  it('is made for the assigned worker, shown to the company, and withdrawn when the worker changes', async () => {
+  it('is made automatically for the assigned worker, shown to the company, and replaced when the worker changes', async () => {
     const { merchant, listingId, workerId, worker2Id } = await makeServiceCompany();
     const resident = await makeResident(w);
     const { id } = await book(resident, listingId);
     await home.acceptBooking(db, merchant, id, { scheduledAt: visitAt }, T0);
+    // No worker yet, so no pass.
+    expect((await home.getMyBooking(db, resident, id, T0)).pass).toBeNull();
     await expect(home.sendGatePass(db, resident, id, T0)).rejects.toMatchObject({ code: 'BOOKING_STATE' });
     await home.assignWorker(db, merchant, id, workerId, T0);
 
-    const pass = await home.sendGatePass(db, resident, id, T0);
-    expect(pass.token).toBeTruthy();
-    const stored = await one<{ type: string; visitor_name: string; status: string; valid_from: Date; valid_until: Date }>(
-      db, 'SELECT type, visitor_name, status, valid_from, valid_until FROM visitor_passes WHERE code = $1', [pass.code]);
-    expect(stored).toMatchObject({ type: 'CONTRACTOR', status: 'ACTIVE' });
+    const first = (await home.getMyBooking(db, resident, id, T0)).pass!;
+    expect(first.code).toBeTruthy();
+    const stored = await one<{ type: string; visitor_name: string; status: string; valid_from: Date; valid_until: Date; host_user_id: string }>(
+      db, 'SELECT type, visitor_name, status, valid_from, valid_until, host_user_id FROM visitor_passes WHERE code = $1', [first.code]);
+    expect(stored).toMatchObject({ type: 'CONTRACTOR', status: 'ACTIVE', host_user_id: resident.id });
     expect(stored!.visitor_name).toMatch(/^Ahmad Faizal \(/);
     expect(stored!.valid_from.getTime()).toBeLessThanOrEqual(visitAt.getTime());
     expect(stored!.valid_until.getTime()).toBeGreaterThan(visitAt.getTime());
-    expect((await home.getMerchantBooking(db, merchant, id, T0)).passCode).toBe(pass.code);
+    expect((await home.getMerchantBooking(db, merchant, id, T0)).passCode).toBe(first.code);
+    // The resident has nothing to send; the manual button is only a fallback.
+    expect((await home.getMyBooking(db, resident, id, T0)).can.sendPass).toBe(false);
     await expect(home.sendGatePass(db, resident, id, T0)).rejects.toMatchObject({ code: 'PASS_SENT' });
 
     await home.assignWorker(db, merchant, id, worker2Id, T0);
-    const after = await one<{ status: string }>(db, 'SELECT status FROM visitor_passes WHERE code = $1', [pass.code]);
-    expect(after!.status).toBe('CANCELLED');
-    const mine = await home.getMyBooking(db, resident, id, T0);
-    expect(mine.pass).toBeNull();
-    expect(mine.can.sendPass).toBe(true);
-    expect((await home.sendGatePass(db, resident, id, T0)).code).not.toBe(pass.code);
+    expect((await one<{ status: string }>(db, 'SELECT status FROM visitor_passes WHERE code = $1', [first.code]))!.status).toBe('CANCELLED');
+    const second = (await home.getMyBooking(db, resident, id, T0)).pass!;
+    expect(second.code).not.toBe(first.code);
+    expect((await one<{ visitor_name: string }>(db, 'SELECT visitor_name FROM visitor_passes WHERE code = $1', [second.code]))!.visitor_name).not.toMatch(/^Ahmad Faizal/);
+
+    // If the pass is cancelled in Tamu, the resident can make a new one.
+    await db.query(`UPDATE visitor_passes SET status = 'CANCELLED' WHERE code = $1`, [second.code]);
+    expect((await home.getMyBooking(db, resident, id, T0)).can.sendPass).toBe(true);
+    expect((await home.sendGatePass(db, resident, id, T0)).code).not.toBe(second.code);
   });
 
-  it('is cancelled with the booking', async () => {
+  it('is made when the company accepts with a worker, and cancelled with the booking', async () => {
     const { merchant, listingId, workerId } = await makeServiceCompany();
     const resident = await makeResident(w);
     const { id } = await book(resident, listingId);
     await home.acceptBooking(db, merchant, id, { scheduledAt: visitAt, workerId }, T0);
-    const pass = await home.sendGatePass(db, resident, id, T0);
+    const pass = (await home.getMyBooking(db, resident, id, T0)).pass!;
+    expect(pass.code).toBeTruthy();
     await home.cancelByMerchant(db, merchant, id, 'Our van broke down', T0);
     const after = await one<{ status: string }>(db, 'SELECT status FROM visitor_passes WHERE code = $1', [pass.code]);
     expect(after!.status).toBe('CANCELLED');

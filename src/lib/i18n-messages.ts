@@ -1808,6 +1808,7 @@ export const malay: Record<string, string> = {
   "urgency. You can change either below.": "tahap kecemasan. Anda boleh mengubah kedua-duanya di bawah.",
   "Urgent": "Segera",
   "Urgent safety report": "Laporan keselamatan segera",
+  "New Lapor report": "Laporan Lapor baharu",
   "Use points for up to 30% of a bill at any township shop. You confirm on your own phone.": "Gunakan mata sehingga 30% daripada bil di mana-mana kedai perbandaran. Anda mengesahkan pada telefon sendiri.",
   "Used": "Digunakan",
   "Used as a signal": "Digunakan sebagai isyarat",

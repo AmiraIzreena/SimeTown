@@ -40,7 +40,7 @@ export const NAV: Record<Area, { title: string; items: NavItem[] }> = {
     ],
   },
   merchant: {
-    title: 'Shop',
+    title: 'Business',
     items: [
       { href: '/merchant', label: 'Counter', icon: Store, primary: true, offer: 'retail' },
       { href: '/merchant/bookings', label: 'Bookings', icon: CalendarCheck, primary: true, offer: 'services' },
@@ -48,6 +48,7 @@ export const NAV: Record<Area, { title: string; items: NavItem[] }> = {
       { href: '/merchant/services', label: 'Services & workers', icon: Wrench, primary: true, offer: 'services' },
       { href: '/merchant/sales', label: 'Sales', icon: Receipt, primary: true, offer: 'retail' },
       { href: '/merchant/statements', label: 'Statements', icon: ScrollText, primary: true, offer: 'retail' },
+      { href: '/notifications', label: 'Notifications', icon: Inbox },
       { href: '/merchant/account', label: 'Account', icon: UserRound },
     ],
   },
@@ -81,6 +82,7 @@ export const NAV: Record<Area, { title: string; items: NavItem[] }> = {
     items: [
       { href: '/console', label: 'Insights', icon: Gauge, primary: true },
       { href: '/console/reports', label: 'Lapor', icon: ClipboardList, primary: true },
+      { href: '/notifications', label: 'Notifications', icon: Inbox },
       { href: '/console/operations', label: 'Parcels', icon: Package },
       { href: '/console/assistant', label: 'Assistant questions', icon: MessageCircleQuestionMark },
       { href: '/console/banjir', label: 'Flood dashboard', icon: Droplets, primary: true },
