@@ -80,10 +80,6 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
     "{0} oleh kedai · {1} oleh kempen"
   ],
   [
-    "{0} sets of meter readings",
-    "{0} set bacaan meter"
-  ],
-  [
     "{0} of {1} online",
     "{0} daripada {1} dalam talian"
   ],
@@ -150,18 +146,6 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
   [
     "Your tier runs until {0}{1}.",
     "Peringkat anda aktif hingga {0}{1}."
-  ],
-  [
-    "{0}{1} The file was not kept.",
-    "{0}{1} Fail tidak disimpan."
-  ],
-  [
-    "You used less than last month{0}.",
-    "Anda menggunakan kurang daripada bulan lalu{0}."
-  ],
-  [
-    ", {0} less on the bill",
-    ", {0} kurang pada bil"
   ],
   [
     "{0} – {1} · funded by {2}",
@@ -232,18 +216,6 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
     "Permainan adil: bahagian melebihi {0} km/j tidak dikira."
   ],
   [
-    "{0}, checked by the file’s own signature.",
-    "{0}, disemak menggunakan tandatangan fail sendiri."
-  ],
-  [
-    "A bill has at most {0} pages; this file has {1}.",
-    "Bil maksimum {0} halaman; fail ini mempunyai {1}."
-  ],
-  [
-    "The PDF contains active content ({0}), so it was not opened.",
-    "PDF mengandungi kandungan aktif ({0}), jadi tidak dibuka."
-  ],
-  [
     "Signed-in {0}.",
     "{0} yang log masuk."
   ],
@@ -286,10 +258,6 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
   [
     "Available now: {0}. You have {1} offer points.",
     "Tersedia sekarang: {0}. Anda mempunyai {1} mata tawaran."
-  ],
-  [
-    "Your last reading ({0}): {1} kWh of electricity and {2} m³ of water.",
-    "Bacaan terakhir anda ({0}): {1} kWh elektrik dan {2} m³ air."
   ],
   [
     "{0} scanned. {1} more to finish {2}. {3}",
@@ -638,30 +606,6 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
   [
     "Bil {0} / {1} Bill",
     "Bil {0} / {1} Bill"
-  ],
-  [
-    "Alamat / Address: {0}",
-    "Alamat: {0}"
-  ],
-  [
-    "No. Akaun / Account No: {0}",
-    "No. Akaun: {0}"
-  ],
-  [
-    "Tempoh Bil / Billing Period: {0}",
-    "Tempoh Bil: {0}"
-  ],
-  [
-    "Jumlah Penggunaan / Total Usage: {0} {1}",
-    "Jumlah Penggunaan: {0} {1}"
-  ],
-  [
-    "Caj Semasa / Current Charges: {0}",
-    "Caj Semasa: {0}"
-  ],
-  [
-    "Jumlah Perlu Dibayar / Amount Due: {0}",
-    "Jumlah Perlu Dibayar: {0}"
   ],
   [
     "The weight does not match {0}.",
@@ -1041,22 +985,8 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
   ["{0} collections · {1}", "{0} kutipan · {1}"],
   ["{0}{1}% on last month", "{0}{1}% berbanding bulan lalu"],
   ["Confirmed. Gate pass {0} made for the household.", "Disahkan. Pas pintu pagar {0} dibuat untuk isi rumah."],
-  ["{0} kWp per m² of usable area, {1} kWh per kWp a year, adjusted for orientation and shading. Unsurveyed shading counts as some shade. Estimates only: the detailed study replaces them.", "{0} kWp setiap m² keluasan boleh guna, {1} kWh setiap kWp setahun, dilaraskan mengikut arah dan teduhan. Teduhan yang belum ditinjau dikira sebagai sedikit sebanyak teduhan. Anggaran sahaja: kajian terperinci akan menggantikannya."],
-  ["{0} of the top {1} here are also in the expert’s top {2}.", "{0} daripada {1} teratas di sini juga dalam {2} teratas pakar."],
-  ["Expert rank {0}", "Kedudukan pakar {0}"],
   ["{0} m²", "{0} m²"],
-  ["{0} MWh a year", "{0} MWh setahun"],
-  ["{0} kWh a month, {1} homes", "{0} kWh sebulan, {1} rumah"],
-  ["Output {0}/45 · demand {1}/20 · interest {2}/10 · readiness {3}/25", "Keluaran {0}/45 · permintaan {1}/20 · minat {2}/10 · kesediaan {3}/25"],
   ["Update {0}", "Kemas kini {0}"],
-  ["{0}: best fit first", "{0}: paling sesuai dahulu"],
-  ["{0} kg CO2e per {1}", "{0} kg CO2e setiap {1}"],
-  ["{0}{1}% against conventional", "{0}{1}% berbanding konvensional"],
-  ["{0}% recycled content", "{0}% kandungan kitar semula"],
-  ["{0} materials ticked", "{0} bahan ditanda"],
-  ["Median time to shortlist: {0} min", "Masa median untuk senarai pendek: {0} min"],
-  ["Enough for about {0} m of edging", "Cukup untuk kira-kira {0} m bingkai"],
-  ["{0} failed · {1} running", "{0} gagal · {1} sedang dijalankan"],
   ["{0} days", "{0} hari"],
   ["{0} does not take {1}.", "{0} tidak menerima {1}."],
   ["Choose a day from tomorrow up to {0} days ahead.", "Pilih hari dari esok hingga {0} hari ke hadapan."],
@@ -1075,7 +1005,6 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
   ["Shelf {0} at the guardhouse. Please collect it soon.", "Rak {0} di pondok pengawal. Sila tuntut segera."],
   ["{0} will fix it", "{0} akan membaikinya"],
   ["{0}: expected by {1}.", "{0}: dijangka siap menjelang {1}."],
-  ["{0} kWh a month, 1 home", "{0} kWh sebulan, 1 rumah"],
   ["door {0}", "pintu {0}"],
   ["{0} of {1} held", "{0} daripada {1} disimpan"],
   ["applied {0}", "memohon {0}"],

@@ -14,7 +14,7 @@ describe('English and Bahasa Malaysia coverage', () => {
       ...Object.values(SPONSOR_TIER_INFO).flatMap(tier => [tier.label, ...tier.benefits]),
       ...Object.values(MATERIAL_INFO).flatMap(material => [material.label, material.tip]),
     ];
-    const brands = new Set(['Kitar', 'Gerak', 'Lapor', 'Jiran', 'Kongsi', 'Komuniti', 'Jimat', 'Banjir', 'Tamu', 'Taman', 'Akses+', 'KITA Home']);
+    const brands = new Set(['Kitar', 'Gerak', 'Lapor', 'Jiran', 'Kongsi', 'Komuniti', 'Jimat', 'Banjir', 'Tamu', 'Akses+', 'KITA Home']);
     for (const label of labels) {
       expect(brands.has(label) || Object.hasOwn(malay, label) || Object.hasOwn(extraMalay, label), label).toBe(true);
       expect(translateMessage('en', label)).toBe(label);

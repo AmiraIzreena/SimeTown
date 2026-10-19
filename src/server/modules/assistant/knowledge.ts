@@ -126,10 +126,9 @@ export const KNOWLEDGE: KnowledgeEntry[] = [
     title: 'Elmina Community Edible Gardens',
     keywords: ['garden', 'kebun', 'edible garden', 'kebun komuniti', 'plot', 'plant', 'tanam', 'farming', 'berkebun', 'allotment', 'ballot', 'undian'],
     short:
-      'The Elmina Community Edible Gardens opened in January 2019 in Elmina Central Park, Elmina West, with over 100 plots given to residents by ballot. In this app, Taman lets you join the waiting list.',
+      'The Elmina Community Edible Gardens opened in January 2019 in Elmina Central Park, Elmina West, with over 100 plots given to residents by ballot.',
     details:
-      'Sime Darby Property opened the Elmina Community Edible Gardens in January 2019 at Elmina Central Park in Elmina West, with support from Majlis Bandaraya Shah Alam (MBSA). It has over 100 plots of 2 m by 1 m up to 6.5 m by 1 m, allotted to residents by ballot. Whether it still runs and how to apply today are not confirmed: suggest contacting Sime Darby Property. In SimeTown, Taman shows a demo version where residents join a waiting list and staff run the ballot.',
-    appLink: { href: '/app/taman', label: 'Open Taman' },
+      'Sime Darby Property opened the Elmina Community Edible Gardens in January 2019 at Elmina Central Park in Elmina West, with support from Majlis Bandaraya Shah Alam (MBSA). It has over 100 plots of 2 m by 1 m up to 6.5 m by 1 m, allotted to residents by ballot. Whether it still runs and how to apply today are not confirmed: suggest contacting Sime Darby Property.',
     sources: [{ title: 'Sime Darby Property: City of Elmina’s first community edible gardens', url: 'https://www.simedarbyproperty.com/press-releases/sime-darby-property-launches-city-elminas-first-community-edible-gardens' }],
     checked: CHECKED,
   },
@@ -249,11 +248,11 @@ export const KNOWLEDGE: KnowledgeEntry[] = [
   {
     id: 'app-features',
     title: 'What SimeTown can do',
-    keywords: ['app', 'aplikasi', 'simetown', 'how', 'bagaimana', 'feature', 'ciri', 'help', 'bantuan', 'what can you do', 'apa boleh', 'gerak', 'lapor', 'tamu', 'kitar', 'jimat', 'banjir', 'taman', 'akses', 'jiran', 'kongsi', 'komuniti', 'community'],
+    keywords: ['app', 'aplikasi', 'simetown', 'how', 'bagaimana', 'feature', 'ciri', 'help', 'bantuan', 'what can you do', 'apa boleh', 'gerak', 'lapor', 'tamu', 'kitar', 'banjir', 'taman', 'akses', 'jiran', 'kongsi', 'komuniti', 'community'],
     short:
-      'SimeTown covers Gerak (walks and rides), Lapor (reports), Tamu (visitor passes), Jiran and Kongsi (neighbours and sharing), Kitar (recycling), Jimat (energy bills), Banjir (flood status), Taman (gardens) and Akses+ (access needs), with points you can spend at township shops.',
+      'SimeTown covers Gerak (walks and rides), Lapor (reports), Tamu (visitor passes), Jiran and Kongsi (neighbours and sharing), Kitar (recycling), Banjir (flood status) and Akses+ (access needs), with points you can spend at township shops.',
     details:
-      'SimeTown features: Gerak tracks walks and rides on the township loops; Lapor reports problems such as potholes or broken lights to the township team with a photo; Tamu makes visitor passes and lets the guard check visitors; Jiran is the neighbours’ help board and Kongsi is for sharing and lending; Kitar records recycling at kiosk bins; Jimat reads electricity and water bills and tracks savings; Banjir shows the official flood status and alerts; Taman has the edible gardens waiting list, the watering roster and the wildlife log; Akses+ records access needs and a carer. Points earned from green actions can be spent at township shops. The Assistant can make a visitor pass or pass a question to the township office after the resident confirms.',
+      'SimeTown features: Gerak tracks walks and rides on the township loops; Lapor reports problems such as potholes or broken lights to the township team with a photo; Tamu makes visitor passes and lets the guard check visitors; Jiran is the neighbours’ help board and Kongsi is for sharing and lending; Kitar records recycling at kiosk bins; Banjir shows the official flood status and alerts; Akses+ records access needs and a carer. Points earned from green actions can be spent at township shops. The Assistant can make a visitor pass or pass a question to the township office after the resident confirms.',
     // About this app itself: no outside source.
     sources: [],
     checked: CHECKED,

@@ -153,7 +153,7 @@ export async function confirmResponse(db: Db, actor: Actor, postId: string, resp
     const reward = earner ? await recordAction(tx, { user: earner, activity: rule.activity, ref: `${postId}:${responderId}`, now }) : null;
     // An item can only be given once, and a favour is done once.
     if (post.type === 'GIVE' || post.type === 'HELP') await tx.query(`UPDATE posts SET status = 'CLOSED' WHERE id = $1`, [postId]);
-    await notify(tx, [responderId], { title: `Confirmed: ${post.title}`, body: rule.to === 'responder' ? 'Thank you. Your Impact XP has been added.' : 'The exchange is complete.' });
+    await notify(tx, [responderId], { title: `Confirmed: ${post.title}`, body: rule.to === 'responder' ? 'Thank you. Your Impact XP has been added.' : 'The exchange is complete.', category: 'COMMUNITY', link: '/app/komuniti', dedupeKey: `community-confirmed:${postId}:${responderId}` });
     return { reward };
   });
 }
@@ -170,7 +170,7 @@ export async function markReturned(db: Db, actor: Actor, postId: string, respond
     // One reward per borrower per item, however many times they borrow it.
     const earner = await rewardUserById(tx, post.author_id);
     const reward = earner ? await recordAction(tx, { user: earner, activity: 'KONGSI_SHARE', ref: `${postId}:${responderId}`, now }) : null;
-    await notify(tx, [responderId], { title: `Returned: ${post.title}`, body: 'Thank you for bringing it back.' });
+    await notify(tx, [responderId], { title: `Returned: ${post.title}`, body: 'Thank you for bringing it back.', category: 'COMMUNITY', link: '/app/komuniti' });
     return { reward };
   });
 }

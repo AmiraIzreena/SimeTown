@@ -464,11 +464,14 @@ describe('GET /kitar: rates, kg per material, limits and the points status', () 
     expect(JSON.stringify(data)).not.toMatch(/12345|123\.45|pledge|promised|issued/i);
   });
 
-  it('returns no rates instead of failing when the rates table is missing (migration 014 not applied)', async () => {
+  it('keeps the overview usable when migration 014 has not been applied', async () => {
     const bare = await freshDb();
     try {
       const world = await makeWorld(bare);
-      await bare.exec('DROP TABLE kitar_material_rates');
+      await createKiosk(bare, world.staff, { name: 'Old Kiosk', location: 'Hall' });
+      const kiosk = (await one<{ id: string }>(bare, `SELECT id FROM kitar_kiosks WHERE name = 'Old Kiosk'`))!;
+      await createMachine(bare, world.admin, { name: 'Old Bin', kioskId: kiosk.id });
+      await bare.exec('DROP TABLE kitar_material_rates; ALTER TABLE kitar_machines DROP COLUMN material');
       const resident = await makeResident(world);
       const router = createRouter(routes, { prefix: '/api/v1', db: async () => bare, now: () => T0 });
       const res = await router.handle(
@@ -477,7 +480,9 @@ describe('GET /kitar: rates, kg per material, limits and the points status', () 
       expect(res.status).toBe(200);
       const body = (await res.json()) as { data: { rates: unknown[]; machines: unknown[] } };
       expect(body.data.rates).toEqual([]);
-      expect(body.data.machines).toEqual([]);
+      expect(body.data.machines).toEqual([
+        { id: expect.any(String), name: 'Old Bin', status: 'ONLINE', material: null, location: 'Hall', kiosk_id: kiosk.id, kiosk: 'Old Kiosk' },
+      ]);
     } finally {
       await bare.close();
     }

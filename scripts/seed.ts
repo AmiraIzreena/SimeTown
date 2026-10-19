@@ -13,7 +13,6 @@ import { acceptResponse, confirmResponse, respondToPost } from '../src/server/mo
 import { recordLevel } from '../src/server/modules/banjir/service';
 import { checkIn, createLoop, listLoopsForStaff } from '../src/server/modules/gerak/service';
 import { randomCode } from '../src/server/modules/identity/service';
-import { submitReading } from '../src/server/modules/jimat/service';
 import { createKiosk, recordDropOff } from '../src/server/modules/kitar/service';
 import { createAccount } from '../src/server/modules/ledger/ledger';
 import { recordCommunityDeposit, recordMerchantDeposit, runFloatCheck, runSettlement } from '../src/server/modules/ledger/finance';
@@ -268,23 +267,13 @@ async function main() {
   await report(neighbours[3]!, 'Pothole on the bend, getting bigger', 'Persiaran Metafasa, before SJK (T) Ladang Rasak', 'Elmina Valley 3, 4 & 5', daysAgo(1, 7));
   await report(aisyah, 'Rubbish left beside the recycling kiosk', 'Kiosk Elmina Valley, Elmina Valley Central Park', 'Elmina Valley 1 & 2', daysAgo(0, 1));
 
-  // --- Jimat: last month and the month before, typed in on the 3rd -------------------
-  const firstOfMonth = (back: number) => new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - back, 3, 4));
-  const monthKey = (d: Date) => d.toISOString().slice(0, 7);
-  for (const person of [aisyah, neighbours[0]!, neighbours[3]!, neighbours[6]!]) {
-    const kwh = 320 + Math.floor(random() * 200);
-    const litres = 16_000 + Math.floor(random() * 9_000);
-    await submitReading(db, person, { month: monthKey(firstOfMonth(2)), electricityKwh: kwh, waterLitres: litres }, firstOfMonth(1)).catch(() => undefined);
-    await submitReading(db, person, { month: monthKey(firstOfMonth(1)), electricityKwh: Math.round(kwh * (0.88 + random() * 0.2)), waterLitres: Math.round(litres * (0.9 + random() * 0.15)) }, firstOfMonth(0)).catch(() => undefined);
-  }
-
   // --- Banjir: a calm day ---------------------------------------------------------------
   await recordLevel(db, { zoneId: zones['Elmina Valley 1 & 2']!, levelPct: 42, actor: staff }, now);
   await recordLevel(db, { zoneId: zones['Elmina Valley 3, 4 & 5']!, levelPct: 18, actor: staff }, now);
   await recordLevel(db, { zoneId: zones['Elmina Gardens']!, levelPct: 9, actor: staff }, now);
   await recordLevel(db, { zoneId: zones['Elmina West']!, levelPct: 6, actor: staff }, now);
 
-  // --- Third edition: Tamu, Shop Offers, the smart machine, map tracking, Akses+, Taman ---------
+  // --- Third edition: Tamu, Shop Offers, the smart machine, map tracking and Akses+ -------------
   await seedThirdEdition(db, { passwordHash, now, log: () => undefined });
   await seedHomeServices(db, { passwordHash, now, log: () => undefined });
   await seedTomorrow(db, { now, log: () => undefined });

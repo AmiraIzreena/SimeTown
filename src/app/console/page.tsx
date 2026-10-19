@@ -2,7 +2,7 @@
 
 import { Text } from '@/components/ui/localized-text';
 
-import { Accessibility, Bike, CheckCircle2, ClipboardList, Cpu, DoorOpen, Droplets, FileText, Home, Leaf, Printer, Recycle, ShieldCheck, Store, Tag, Zap } from 'lucide-react';
+import { Accessibility, Bike, CheckCircle2, ClipboardList, Cpu, DoorOpen, Droplets, Home, Printer, Recycle, ShieldCheck, Store, Tag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, PageHeader, Stat } from '@/components/ui/card';
 import { BarChart, RankBars } from '@/components/ui/charts';
@@ -13,7 +13,7 @@ import { REPORT_CATEGORY_LABELS, formatPoints, formatRM, type ReportCategory } f
 
 interface Insights {
   people: { homes: number; residents: number; waiting: number; active_homes: number };
-  planet: { recycled_g: number; drop_offs: number; moved_m: number; readings: number; saver_homes: number };
+  planet: { recycled_g: number; drop_offs: number; moved_m: number };
   reports: { open: number; urgent_new: number; received: number; resolved: number; median_hours: number | null };
   community: { events: number; attendances: number; favours: number; items_shared: number };
   shops: { active_shops: number; sales: number; bill_sen: number; points_given: number; points_accepted: number; fees_sen: number };
@@ -29,13 +29,10 @@ interface Insights {
     machine_g: number;
     guest_sessions: number;
     tracked_m: number;
-    bills_read: number;
     visits: number;
     flood_alerts: number;
     barriers_reported: number;
     barriers_fixed_on_time: number;
-    sightings: number;
-    plots_booked: number;
   };
   offers: { month: string; pledged: number; issued: number; used: number; shops: number };
 }
@@ -74,7 +71,6 @@ export default function InsightsPage() {
                 <Stat label="Shop sales through SimeTown" value={d.shops.bill_sen} format={formatRM} icon={Store} hint={`${d.shops.sales} sales at ${d.shops.active_shops} shops`} />
                 <Stat label="Points given" value={d.points.from_shops + d.points.from_campaigns} icon={CheckCircle2} tone="gold" hint={`${formatPoints(d.points.from_shops)} by shops · ${formatPoints(d.points.from_campaigns)} by campaigns`} />
                 <Stat label="Points spent locally" value={d.shops.points_accepted} format={formatRM} icon={Store} tone="success" hint="Accepted by township shops" />
-                <Stat label="Homes that used less" value={d.planet.saver_homes} icon={Zap} hint={`${d.planet.readings} sets of meter readings`} />
               </div>
 
               <Card className={matched ? 'border-success-600/30' : 'border-accent-200'}>
@@ -128,18 +124,15 @@ export default function InsightsPage() {
                   </div>
                 </Card>
                 <Card className="lg:col-span-2">
-                  <CardHeader title="Smart township, last 30 days" description="The third edition's features: machines, tracked trips, read bills, visitors, flood alerts, access and nature." />
+                  <CardHeader title="Smart township, last 30 days" description="The third edition's features: machines, tracked trips, visitors, flood alerts, access and nature." />
                   <dl className="grid grid-cols-2 gap-px bg-ink-100 sm:grid-cols-3 lg:grid-cols-6">
                     {[
                       [Cpu, 'Machine uptime', `${d.smart.machines_online} of ${d.smart.machines} online`],
                       [Recycle, 'Recycled at machines', formatKg(d.smart.machine_g)],
                       [Bike, 'Tracked walks and rides', formatKm(d.smart.tracked_m)],
-                      [FileText, 'Bills read', String(d.smart.bills_read)],
                       [DoorOpen, 'Visitors at the gate', String(d.smart.visits)],
                       [Droplets, 'Flood alerts sent', String(d.smart.flood_alerts)],
                       [Accessibility, 'Barriers fixed within 7 days', `${d.smart.barriers_fixed_on_time} of ${d.smart.barriers_reported}`],
-                      [Leaf, 'Wildlife sightings', String(d.smart.sightings)],
-                      [Leaf, 'Garden plots in use', String(d.smart.plots_booked)],
                       [Recycle, 'Guest recycling sessions', String(d.smart.guest_sessions)],
                       [Tag, 'Shop pledges this month', formatRM(d.offers.pledged)],
                       [Tag, 'Offer points given / used', `${formatPoints(d.offers.issued)} / ${formatPoints(d.offers.used)}`],

@@ -7,7 +7,7 @@ const env = { APP_URL: 'http://kita.test', DATABASE_URL: 'pglite://memory' };
 let config: Config = parseConfig(env);
 vi.mock('@/server/config', async (actual) => ({ ...(await actual<typeof import('@/server/config')>()), getConfig: () => config }));
 
-const { readBillWithModel, suggestReport } = await import('@/server/ai/classifier');
+const { suggestReport } = await import('@/server/ai/classifier');
 
 /** A fake provider: records the request and answers with `reply`. */
 function fakeProvider(reply: unknown, status = 200) {
@@ -56,14 +56,6 @@ describe('OpenAI requests', () => {
       { type: 'image_url', image_url: { url: `data:image/png;base64,${Buffer.from(photo.bytes).toString('base64')}` } },
       { type: 'text', text: 'Report text: "Lampu jalan rosak"' },
     ]);
-  });
-
-  it('sends a PDF bill as a file part', async () => {
-    config = parseConfig({ ...env, AI_PROVIDER: 'openai', AI_API_KEY: 'sk-test', AI_MODEL: 'gpt-4.1-mini' });
-    const sent = fakeProvider({ choices: [{ message: { content: '{"is_bill": true, "kind": "ELECTRICITY", "usage": 412, "amount_rm": 98.5, "period": "2026-09", "account_no": "220012345678"}' } }] });
-
-    expect(await readBillWithModel({ mime: 'application/pdf', bytes: new Uint8Array([0x25, 0x50, 0x44, 0x46]) })).toMatchObject({ kind: 'ELECTRICITY', usage: 412, amountSen: 9850, period: '2026-09' });
-    expect(sent().body.messages[1].content[0]).toEqual({ type: 'file', file: { filename: 'bill.pdf', file_data: 'data:application/pdf;base64,JVBERg==' } });
   });
 
   it('gives a reasoning model the larger output budget when one is set', async () => {

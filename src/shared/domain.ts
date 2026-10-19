@@ -49,6 +49,21 @@ export const ACTIVITIES = [
 ] as const;
 export type Activity = (typeof ACTIVITIES)[number];
 
+/** Activities that can still be selected for a new sponsor campaign. */
+export const CAMPAIGN_ACTIVITIES = [
+  'JIRAN_EVENT',
+  'JIRAN_HELP',
+  'KONGSI_SHARE',
+  'LAPOR_REPORT',
+  'GERAK_CHECKIN',
+  'GERAK_LOOP',
+  'KITAR_DROPOFF',
+  'JIMAT_READING',
+  'JIMAT_SAVER',
+  'GERAK_TRIP',
+  'AKSES_UPDATE',
+] as const satisfies readonly Activity[];
+
 export const POST_TYPES = ['EVENT', 'HELP', 'GIVE', 'LEND'] as const;
 export type PostType = (typeof POST_TYPES)[number];
 export const POST_STATUSES = ['OPEN', 'CLOSED', 'HIDDEN', 'REMOVED'] as const;
@@ -267,20 +282,6 @@ export const PLACE_KIND_LABELS: Record<PlaceKind, string> = {
   ACCESSIBLE_TOILET: 'Accessible toilet',
   OKU_PARKING: 'OKU parking',
   SEATING: 'Rest seating',
-};
-
-// --- Taman --------------------------------------------------------------------
-
-export const WILDLIFE_KINDS = ['BIRD', 'INSECT', 'MAMMAL', 'REPTILE', 'AMPHIBIAN', 'PLANT', 'OTHER'] as const;
-export type WildlifeKind = (typeof WILDLIFE_KINDS)[number];
-export const WILDLIFE_KIND_LABELS: Record<WildlifeKind, string> = {
-  BIRD: 'Bird',
-  INSECT: 'Insect or butterfly',
-  MAMMAL: 'Mammal',
-  REPTILE: 'Reptile',
-  AMPHIBIAN: 'Frog or toad',
-  PLANT: 'Native plant',
-  OTHER: 'Something else',
 };
 
 // --- Gerak ----------------------------------------------------------------------

@@ -4,7 +4,8 @@ import { Text } from '@/components/ui/localized-text';
 import { LocalizedImg } from '@/components/ui/localized-elements';
 
 import { CheckCircle2, Flag, Package, PackageOpen, Share2, Undo2 } from 'lucide-react';
-import { useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { LockerParcels } from '@/components/features/locker-parcels';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, PageHeader } from '@/components/ui/card';
@@ -35,13 +36,27 @@ interface Parcel {
 type Tab = 'lockers' | 'guardhouse';
 
 export default function ParcelsPage() {
+  return <Suspense fallback={<SkeletonList rows={2} />}><ParcelsScreen /></Suspense>;
+}
+
+function ParcelsScreen() {
+  const search = useSearchParams();
+  const requestedTab = search.get('tab');
+  const parcelId = search.get('parcel');
+  const scrolledTo = useRef<string | null>(null);
   const parcels = useApi<{ parcels: Parcel[] }>('/parcels', { refreshInterval: 30_000 });
   const lockers = useApi<{ parcels: { state: string }[] }>('/lockers/my-parcels', { refreshInterval: 5_000 });
   const [chosen, setChosen] = useState<Tab | null>(null);
   const atGuardhouse = parcels.data?.parcels.filter((p) => p.status === 'WAITING').length ?? 0;
   const inLockers = lockers.data?.parcels.filter((p) => !['COLLECTED', 'RETURNED'].includes(p.state)).length ?? 0;
   // Until the resident picks a tab, open the one with something waiting.
-  const tab: Tab = chosen ?? (inLockers === 0 && atGuardhouse > 0 ? 'guardhouse' : 'lockers');
+  const tab: Tab = chosen ?? (requestedTab === 'guardhouse' || requestedTab === 'lockers' ? requestedTab : inLockers === 0 && atGuardhouse > 0 ? 'guardhouse' : 'lockers');
+  useEffect(() => {
+    if (parcelId && tab === 'guardhouse' && parcels.data && scrolledTo.current !== parcelId) {
+      const target = document.getElementById(`parcel-${parcelId}`);
+      if (target) { target.scrollIntoView({ block: 'center' }); scrolledTo.current = parcelId; }
+    }
+  }, [parcelId, tab, parcels.data]);
   const toast = useToast();
   const t = useT();
   // Which guardhouse parcel is being reported, and from where; or a parcel that has not arrived at all.
@@ -96,7 +111,7 @@ export default function ParcelsPage() {
               ) : (
                 <div className="grid gap-4 md:grid-cols-2">
                   {waiting.map((p) => (
-                    <Card key={p.id} className="overflow-hidden">
+                    <Card key={p.id} id={`parcel-${p.id}`} className={`scroll-mt-20 overflow-hidden ${parcelId === p.id ? 'ring-2 ring-brand-400' : ''}`}>
                       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-ink-100 p-5">
                         <div>
                           <p className="font-display text-lg font-bold text-ink-900"><Text>{`From ${p.courier}`}</Text></p>
@@ -134,7 +149,7 @@ export default function ParcelsPage() {
                   <CardHeader title="Collected from the guardhouse" description="The last 30 days. Told that a parcel was collected, but it was not you? Tell us the same day." />
                   <ul className="divide-y divide-ink-100">
                     {past.map((p) => (
-                      <li key={p.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
+                      <li key={p.id} id={`parcel-${p.id}`} className={`flex scroll-mt-20 flex-wrap items-center justify-between gap-3 px-5 py-3 ${parcelId === p.id ? 'bg-brand-50' : ''}`}>
                         <div className="flex min-w-0 items-start gap-3">
                           {p.status === 'COLLECTED' ? <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-success-700" aria-hidden /> : <Undo2 className="mt-0.5 size-5 shrink-0 text-ink-400" aria-hidden />}
                           <div className="min-w-0">

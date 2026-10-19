@@ -16,41 +16,23 @@ const BADGES: { id: string; label: string; hint: string; activity?: Activity; ne
   { id: 'joiner', label: 'Joiner', hint: 'Join 3 township events', activity: 'JIRAN_EVENT', need: 3 },
   { id: 'sharer', label: 'Sharer', hint: 'Give or lend 3 items', activity: 'KONGSI_SHARE', need: 3 },
   { id: 'watchful-eye', label: 'Watchful Eye', hint: '3 reports confirmed by staff', activity: 'LAPOR_REPORT', need: 3 },
-  { id: 'saver', label: 'Saver', hint: 'Use less energy or water than last month', activity: 'JIMAT_SAVER', need: 1 },
   { id: 'explorer', label: 'Explorer', hint: '3 tracked walks, runs or rides', activity: 'GERAK_TRIP', need: 3 },
-  { id: 'gardener', label: 'Gardener', hint: 'Water a community garden 3 times', activity: 'TAMAN_WATERING', need: 3 },
-  { id: 'naturalist', label: 'Naturalist', hint: '3 wildlife sightings confirmed', activity: 'TAMAN_SIGHTING', need: 3 },
 ];
 
 /**
  * "You saved" (proposal section 8): points and Shop Offers used at township
- * shops, plus the fall in the home's utility bills measured by Jimat from read
- * bills. Everything is in sen, so it shows as ringgit.
+ * shops. Everything is in sen, so it shows as ringgit.
  */
 async function savedSoFar(db: Db, actor: Actor) {
-  const [shops, bills] = await Promise.all([
-    one<{ points: number; offers: number }>(
-      db,
-      `SELECT coalesce(sum(redeem_points), 0)::int AS points, coalesce(sum(offer_points), 0)::int AS offers
-         FROM sales WHERE user_id = $1 AND status = 'COMPLETED'`,
-      [actor.id],
-    ),
-    actor.homeId
-      ? one<{ sen: number }>(
-          db,
-          `SELECT coalesce(sum(GREATEST(0, prev_e - electricity_sen)) FILTER (WHERE prev_e IS NOT NULL AND electricity_sen IS NOT NULL), 0)::int
-                + coalesce(sum(GREATEST(0, prev_w - water_sen)) FILTER (WHERE prev_w IS NOT NULL AND water_sen IS NOT NULL), 0)::int AS sen
-             FROM (SELECT electricity_sen, water_sen,
-                          lag(electricity_sen) OVER (ORDER BY month) AS prev_e, lag(water_sen) OVER (ORDER BY month) AS prev_w
-                     FROM jimat_readings WHERE home_id = $1) r`,
-          [actor.homeId],
-        )
-      : Promise.resolve({ sen: 0 }),
-  ]);
+  const shops = await one<{ points: number; offers: number }>(
+    db,
+    `SELECT coalesce(sum(redeem_points), 0)::int AS points, coalesce(sum(offer_points), 0)::int AS offers
+       FROM sales WHERE user_id = $1 AND status = 'COMPLETED'`,
+    [actor.id],
+  );
   const pointsSen = shops!.points;
   const offersSen = shops!.offers;
-  const billsSen = bills!.sen;
-  return { pointsSen, offersSen, billsSen, totalSen: pointsSen + offersSen + billsSen };
+  return { pointsSen, offersSen, totalSen: pointsSen + offersSen };
 }
 
 export async function walletOverview(db: Db, actor: Actor, now: Date) {

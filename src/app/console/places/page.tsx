@@ -2,7 +2,7 @@
 
 import { Text } from '@/components/ui/localized-text';
 
-import { Cpu, MonitorSmartphone, Plus, Printer, QrCode as QrIcon, Route, Sprout } from 'lucide-react';
+import { Cpu, MonitorSmartphone, Plus, Printer, QrCode as QrIcon, Route } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, PageHeader } from '@/components/ui/card';
@@ -15,7 +15,7 @@ import { api } from '@/lib/api';
 import { formatKg, formatKm, timeAgo } from '@/lib/format';
 import { useAction, useApi } from '@/lib/hooks';
 
-type Tab = 'machines' | 'kiosks' | 'loops' | 'gardens' | 'patrol';
+type Tab = 'machines' | 'kiosks' | 'loops' | 'patrol';
 interface Machine {
   id: string;
   name: string;
@@ -24,15 +24,6 @@ interface Machine {
   kiosk: string;
   sessions_today: number;
   grams_today: number;
-}
-interface Garden {
-  id: string;
-  name: string;
-  location: string;
-  code: string;
-  plots: number;
-  booked: number;
-  waiting: number;
 }
 interface PatrolPoint {
   id: string;
@@ -68,7 +59,7 @@ export default function PlacesPage() {
   const [poster, setPoster] = useState<Poster | null>(null);
   return (
     <>
-      <PageHeader title="Kiosks, bins & trails" description="Kiosk bins, kiosks, trail checkpoints, garden gates and patrol points. Each printed code proves someone was there." />
+      <PageHeader title="Kiosks, bins & trails" description="Kiosk bins, kiosks, trail checkpoints and patrol points. Each printed code proves someone was there." />
       <Tabs<Tab>
         label="Places"
         value={tab}
@@ -77,7 +68,6 @@ export default function PlacesPage() {
           { key: 'machines', label: 'Kiosk bins' },
           { key: 'kiosks', label: 'Kitar kiosks' },
           { key: 'loops', label: 'Gerak loops' },
-          { key: 'gardens', label: 'Taman gardens' },
           { key: 'patrol', label: 'Patrol points' },
         ]}
       />
@@ -88,8 +78,6 @@ export default function PlacesPage() {
           <Kiosks onPoster={setPoster} />
         ) : tab === 'loops' ? (
           <Loops onPoster={setPoster} />
-        ) : tab === 'gardens' ? (
-          <Gardens onPoster={setPoster} />
         ) : (
           <Patrol onPoster={setPoster} />
         )}
@@ -269,48 +257,6 @@ function Machines() {
                 </p>
                 <Button href={`/console/machine/${m.id}`} variant="secondary" size="sm" className="mt-4">
                   <MonitorSmartphone className="size-4" aria-hidden /><Text>Open the bin screen</Text></Button>
-              </Card>
-            ))}
-          </div>
-        )
-      }
-    </Async>
-  );
-}
-
-function Gardens({ onPoster }: { onPoster: (poster: Poster) => void }) {
-  const gardens = useApi<Garden[]>('/admin/taman/gardens');
-  const ballot = useAction((id: string) => api.post<{ allocated: number; stillWaiting: number }>(`/admin/taman/gardens/${id}/ballot`), {
-    onSuccess: () => void gardens.mutate(),
-    success: (r) => `Ballot drawn: ${r.allocated} plots given out, ${r.stillWaiting} still waiting.`,
-  });
-  return (
-    <Async state={gardens}>
-      {(list) =>
-        list.length === 0 ? (
-          <EmptyState icon={Sprout} title="No community gardens yet" />
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2">
-            {list.map((g) => (
-              <Card key={g.id} className="flex items-center justify-between gap-4 p-5">
-                <div className="min-w-0">
-                  <p className="text-[15px] font-semibold text-ink-900">{g.name}</p>
-                  <p className="text-sm text-ink-600"><Text>{g.location}</Text></p>
-                  <p className="mt-1 text-sm text-ink-500">
-                    <Text>{g.booked}</Text><Text> of </Text><Text>{g.plots}</Text><Text> plots booked</Text> · <Text>{`${g.waiting} on the waiting list`}</Text></p>
-                </div>
-                <div className="flex shrink-0 flex-col gap-2">
-                  <Button
-                    size="sm"
-                    pending={ballot.pending}
-                    disabled={g.waiting === 0 || g.booked >= g.plots}
-                    title="Draws names at random for the free plots. Everyone hears the result."
-                    onClick={() => void ballot.run(g.id)}
-                  >
-                    <Sprout className="size-4" aria-hidden /><Text>Run ballot</Text></Button>
-                  <Button variant="secondary" size="sm" onClick={() => onPoster({ title: g.name, subtitle: 'Taman · scan after watering', code: g.code, path: '/app/taman?garden=' })}>
-                    <QrIcon className="size-4" aria-hidden /><Text>Gate poster</Text></Button>
-                </div>
               </Card>
             ))}
           </div>

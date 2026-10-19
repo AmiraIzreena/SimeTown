@@ -25,9 +25,7 @@ const GOALS: { value: string; label: string; activity: string; metric: 'COUNT' |
   { value: 'jiran-help', label: 'Jiran: neighbours helped', activity: 'JIRAN_HELP', metric: 'COUNT' },
   { value: 'jiran-event', label: 'Jiran: events attended', activity: 'JIRAN_EVENT', metric: 'COUNT' },
   { value: 'kongsi', label: 'Kongsi: items given or lent', activity: 'KONGSI_SHARE', metric: 'COUNT' },
-  { value: 'jimat', label: 'Jimat: months using less', activity: 'JIMAT_SAVER', metric: 'COUNT' },
   { value: 'trip-km', label: 'Gerak: kilometres on tracked trips', activity: 'GERAK_TRIP', metric: 'QUANTITY', unit: 'km', per: 1000 },
-  { value: 'taman', label: 'Taman: days watering a community garden', activity: 'TAMAN_WATERING', metric: 'COUNT' },
 ];
 
 interface SponsorRow {

@@ -57,6 +57,7 @@ export async function createReport(db: Db, actor: Actor, input: ReportInput, now
     }
     // Water in a drain, reported with its area, is a second opinion for the Banjir agent (never a decision on its own).
     if (category === 'DRAINAGE' && input.zoneId) await reportSignal(tx, input.zoneId, report!.id, now);
+    await notify(tx, [resident.id], { title: 'Report received', body: input.locationText, link: `/app/lapor/${report!.id}`, dedupeKey: `report-received:${report!.id}` });
     return { id: report!.id, category, urgency: suggestion.urgency, suggestion };
   });
 }
@@ -237,12 +238,13 @@ export async function updateReport(db: Db, actor: Actor, id: string, update: Rep
         if (reporter) await recordAction(tx, { user: reporter, activity: 'LAPOR_REPORT', ref: id, now });
       }
       const words: Record<ReportStatus, string> = { NEW: 'received', IN_PROGRESS: 'being worked on', RESOLVED: 'resolved', REJECTED: 'closed without action' };
-      await notify(tx, people, { title: `Your report is ${words[status]}`, body: update.staffNote ?? 'Open Lapor to see the details.', link: '/app/lapor' });
+      await notify(tx, people, { title: `Your report is ${words[status]}`, body: update.staffNote ?? 'Open Lapor to see the details.', link: `/app/lapor/${id}`, dedupeKey: `report-status:${id}:${status}:${now.getTime()}` });
     } else if (targetDate && targetDate !== r.target_date && OPEN.includes(status)) {
       await notify(tx, people, {
         title: assignedTo ? `${assignedTo} will fix it` : 'A fix date is set',
         body: `${where}: expected by ${targetDate}.`,
-        link: '/app/lapor',
+        link: `/app/lapor/${id}`,
+        dedupeKey: `report-target:${id}:${targetDate}:${now.getTime()}`,
       });
     }
     if (assignedTo !== r.assigned_to || targetDate !== r.target_date) {

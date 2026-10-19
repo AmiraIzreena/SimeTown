@@ -3,17 +3,13 @@ import { ACTOR_COLUMNS, toActor } from '../src/server/auth/session';
 import { one, type Db } from '../src/server/db/client';
 import { bookCollection, completeCollection, confirmCollection, createCollector } from '../src/server/modules/kitar/collections';
 import { handOverParcel, logParcel, myParcels } from '../src/server/modules/parcels/service';
-import { edgingTrial, updateTrialTest } from '../src/server/modules/planet/edging';
-import { saveShortlist } from '../src/server/modules/planet/materials';
-import { createSolarSite } from '../src/server/modules/planet/solar';
 import { createReport, setMeToo, updateReport } from '../src/server/modules/reports/service';
 
 /**
  * Demo data for the hackathon brief's PEOPLE and PLANET features: report
- * progress and "Me too", parcels at the guardhouse, recycling collections,
- * solar sites, a material shortlist and the edging trial. Safe to run again: it
- * does nothing once the demo recycling collectors exist. People, businesses
- * and figures are invented; the site areas and ranks are demo values.
+ * progress and "Me too", parcels at the guardhouse and recycling collections.
+ * Safe to run again: it does nothing once the demo recycling collectors exist.
+ * People, businesses and figures are invented.
  */
 
 const DOMAIN = 'demo.kita.test';
@@ -74,28 +70,7 @@ export async function seedTomorrow(db: Db, input: { now: Date; log: (line: strin
   await completeCollection(db, staff, past.id, 14_500, ago(6));
   await bookCollection(db, aisyah, { collectorId: eWaste.id, materials: ['E_WASTE', 'PAPER'], items: 'Two boxes of old cables and a broken kettle', day: dayOf(new Date(now.getTime() + 3 * DAY)), slot: 'MORNING' }, now);
 
-  // --- Solar sites (demo areas and an engineer's demo ranking) --------------------------------
-  const zone = async (name: string) => (await one<{ id: string }>(db, 'SELECT id FROM flood_zones WHERE township_id = $1 AND name = $2', [township.id, name]))?.id ?? null;
-  const sites = [
-    { name: 'Community hall roof', kind: 'ROOFTOP', zone: 'Elmina Valley 1 & 2', usableM2: 650, orientation: 'FLAT', shading: 'LOW', roofAgeYears: 6, structuralChecked: true, expertRank: 1 },
-    { name: 'Central Park north car park', kind: 'CAR_PARK', zone: 'Elmina Valley 3, 4 & 5', usableM2: 1800, orientation: 'FLAT', shading: 'LOW', roofAgeYears: null, structuralChecked: false, expertRank: 2 },
-    { name: 'Sales gallery roof', kind: 'ROOFTOP', zone: 'Elmina West', usableM2: 900, orientation: 'FLAT', shading: null, roofAgeYears: null, structuralChecked: false, expertRank: 3 },
-    { name: 'Surau Elmina Gardens roof', kind: 'ROOFTOP', zone: 'Elmina Gardens', usableM2: 280, orientation: 'SW', shading: 'MEDIUM', roofAgeYears: 18, structuralChecked: false, expertRank: 4 },
-    { name: 'Guardhouse roof', kind: 'ROOFTOP', zone: 'Elmina Valley 1 & 2', usableM2: 35, orientation: 'E', shading: 'HIGH', roofAgeYears: 10, structuralChecked: true, expertRank: 5 },
-  ] as const;
-  for (const s of sites) {
-    await createSolarSite(db, admin, { ...s, zoneId: await zone(s.zone), notes: 'Demo values' });
-  }
-
-  // --- Material shortlist and the edging trial -------------------------------------------------
-  await saveShortlist(db, staff, { use: 'LANDSCAPE_EDGING', requirements: { costRm: 40, lifeYears: 15, uvStable: true }, materialIds: ['edging-steel', 'edging-plastic'], secondsTaken: 260, note: 'Ask both suppliers for EPDs; plastic edging pending the trial.' }, ago(2));
-  const trial = await edgingTrial(db, staff);
-  const [sharp, trip, , dims] = trial.tests;
-  if (sharp) await updateTrialTest(db, staff, sharp.id, { status: 'PASSED', resultRecycled: 'No sharp edges after cutting to length.', resultConventional: 'Two chipped corners after laying.' }, ago(5));
-  if (trip) await updateTrialTest(db, staff, trip.id, { status: 'PASSED', resultRecycled: '8 to 12 mm above the path.', resultConventional: '10 to 15 mm above the path.' }, ago(5));
-  if (dims) await updateTrialTest(db, staff, dims.id, { status: 'RUNNING' }, ago(1));
-
-  log('Brief features: report progress, parcels, recycling collections, solar sites and the edging trial added.');
+  log('Brief features: report progress, parcels and recycling collections added.');
 }
 
 /**

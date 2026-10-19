@@ -1,5 +1,5 @@
 import {
-  Accessibility, Bike, HandHeart, Leaf, Recycle, Repeat2, Sprout, TriangleAlert, Zap, type LucideIcon,
+  Accessibility, Bike, HandHeart, Leaf, Recycle, Repeat2, TriangleAlert, type LucideIcon,
 } from 'lucide-react';
 
 /**
@@ -57,10 +57,6 @@ export const ACTIVITY_MEDIA: Record<string, { image: string; icon: LucideIcon; h
   JIRAN_HELP: { image: '/images/challenges/neighbours.jpg', icon: HandHeart, href: '/app/komuniti', module: 'Komuniti' },
   KONGSI_SHARE: { image: '/images/challenges/share.jpg', icon: Repeat2, href: '/app/komuniti?tab=share', module: 'Komuniti' },
   LAPOR_REPORT: { image: '/images/challenges/report.jpg', icon: TriangleAlert, href: '/app/lapor', module: 'Lapor' },
-  JIMAT_READING: { image: '/images/challenges/save.jpg', icon: Zap, href: '/app/jimat', module: 'Jimat' },
-  JIMAT_SAVER: { image: '/images/challenges/save.jpg', icon: Zap, href: '/app/jimat', module: 'Jimat' },
-  TAMAN_WATERING: { image: '/images/challenges/garden.jpg', icon: Sprout, href: '/app/taman', module: 'Taman' },
-  TAMAN_SIGHTING: { image: '/images/challenges/garden.jpg', icon: Leaf, href: '/app/taman', module: 'Taman' },
   AKSES_UPDATE: { image: '/images/challenges/report.jpg', icon: Accessibility, href: '/app/akses', module: 'Akses+' },
 };
 

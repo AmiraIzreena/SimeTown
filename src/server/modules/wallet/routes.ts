@@ -2,7 +2,9 @@ import { z } from 'zod';
 import { pageQuery } from '../../http/pagination';
 import { emptyBody, route } from '../../http/router';
 import { decideSale } from '../merchant/service';
-import { listNotifications, markAllRead } from '../notifications';
+import { listNotifications, markAllRead, updateNotification } from '../notifications';
+import { NOTIFICATION_CATEGORIES } from '@/shared/notifications';
+import { badRequest } from '../../errors';
 import * as wallet from './service';
 
 export const walletRoutes = [
@@ -26,7 +28,8 @@ export const walletRoutes = [
   }),
   route({
     method: 'GET', path: '/notifications', tag: 'Points & XP', summary: 'My notifications', auth: 'session',
-    handler: (c) => listNotifications(c.db, c.actor.id),
+    query: pageQuery.extend({ unread: z.enum(['true', 'false']).optional(), category: z.enum(NOTIFICATION_CATEGORIES).optional() }),
+    handler: (c) => listNotifications(c.db, c.actor.id, { ...c.query, unread: c.query.unread === 'true' }),
   }),
   route({
     method: 'POST', path: '/notifications/read', tag: 'Points & XP', summary: 'Mark all notifications as read', auth: 'session', body: emptyBody,
@@ -35,4 +38,13 @@ export const walletRoutes = [
       return { ok: true };
     },
   }),
+  ...(['read', 'dismiss'] as const).map((action) => route({
+    // The router reserves *Id parameters for UUIDs; notification keys are bigint sequences.
+    method: 'POST', path: `/notifications/:notificationKey/${action}`, tag: 'Points & XP', summary: `Notification: ${action}`, auth: 'session', body: emptyBody,
+    handler: (c) => {
+      const key = c.params.notificationKey ?? '';
+      if (!/^\d{1,18}$/.test(key)) throw badRequest('The notification key is not valid.');
+      return updateNotification(c.db, c.actor.id, key, action, c.now);
+    },
+  })),
 ];

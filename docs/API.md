@@ -48,6 +48,8 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | GET | `/leagues/streets` | RESIDENT | This month's Impact XP by street |
 | GET | `/notifications` | Any signed-in user | My notifications |
 | POST | `/notifications/read` | Any signed-in user | Mark all notifications as read |
+| POST | `/notifications/:notificationKey/read` | Any signed-in user | Notification: read |
+| POST | `/notifications/:notificationKey/dismiss` | Any signed-in user | Notification: dismiss |
 
 ## SimeTown Merchant
 
@@ -396,20 +398,6 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | POST | `/ingest/kitar/items` | Bearer token (machine) | Device: one item weighed by the bin’s scale; signed by the bin |
 | POST | `/ingest/kitar/finish` | Bearer token (machine) | Device: the session's summary, which must match the items; signed by the bin |
 
-## Jimat
-
-| Method | Path | Who | What it does |
-| --- | --- | --- | --- |
-| GET | `/jimat` | RESIDENT | My home's readings, the change from last month and tips |
-| POST | `/jimat/readings` | RESIDENT | Enter monthly electricity and water readings |
-| POST | `/jimat/solar-interest` | RESIDENT | Ask to be contacted about solar, or withdraw that request |
-| GET | `/admin/solar-leads` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Residents who asked to be contacted about solar |
-| GET | `/jimat/bills` | RESIDENT | Bills read and confirmed for my home (numbers only; no file is kept) |
-| POST | `/jimat/bills` | RESIDENT | Upload a bill (multipart: file, kind). Checked, read in memory, never stored |
-| POST | `/jimat/bills/:billId/confirm` | RESIDENT | Confirm or correct the numbers read from a bill |
-| POST | `/jimat/bills/:billId/discard` | RESIDENT | Throw away a bill that was read but not confirmed |
-| GET | `/jimat/sample-bill` | RESIDENT | Prototype: a sample bill (PDF) to my address, marked SAMPLE, for trying bill reading |
-
 ## Banjir
 
 | Method | Path | Who | What it does |
@@ -440,40 +428,6 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | POST | `/access-places/:placeId/blocked` | RESIDENT | Say an accessible place is blocked |
 | POST | `/admin/access-places` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Add a checked accessible place |
 | POST | `/admin/access-places/:placeId/review` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Confirm a place, mark it blocked, or remove it |
-
-## Taman
-
-| Method | Path | Who | What it does |
-| --- | --- | --- | --- |
-| GET | `/taman` | RESIDENT | Gardens, plots, the watering roster and the wildlife log |
-| POST | `/taman/gardens/:gardenId/apply` | RESIDENT | Join a garden's waiting list; plots are given out by ballot (one per home) |
-| POST | `/taman/applications/:applicationId/withdraw` | RESIDENT | Leave a waiting list |
-| POST | `/taman/plots/:plotId/release` | RESIDENT | Give a plot back |
-| POST | `/taman/roster` | RESIDENT | Take a day on a garden's watering roster |
-| POST | `/taman/watered` | RESIDENT | Scan the garden's code after watering |
-| POST | `/taman/sightings` | RESIDENT | Log a bird, insect or plant you spotted (multipart form; photo optional) |
-| GET | `/taman/sightings/:sightingId/photo` | Any signed-in user | A sighting photo (the person who logged it, or staff) |
-| GET | `/admin/taman/sightings` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Sightings waiting to be confirmed |
-| POST | `/admin/taman/sightings/:sightingId` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Confirm or reject a sighting |
-| GET | `/admin/taman/gardens` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Gardens with their printable gate codes |
-| POST | `/admin/taman/gardens/:gardenId/ballot` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Draw the waiting list for a garden's free plots |
-| POST | `/admin/taman/gardens` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Add a community garden and its plots |
-
-## Planet
-
-| Method | Path | Who | What it does |
-| --- | --- | --- | --- |
-| GET | `/admin/solar/sites` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Candidate solar sites ranked by output, nearby demand and readiness, with what is missing |
-| POST | `/admin/solar/sites` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Add a candidate rooftop or car park |
-| PATCH | `/admin/solar/sites/:siteId` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Update a site: survey results, checks done, or an expert’s rank |
-| DELETE | `/admin/solar/sites/:siteId` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Remove a site |
-| GET | `/admin/materials` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | The uses that can be compared and their requirements (sample library) |
-| POST | `/admin/materials/compare` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Check every material for one use against the requirements, and flag missing evidence |
-| POST | `/admin/materials/explain` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | The agent explains the comparison, using only the table |
-| GET | `/admin/materials/shortlists` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Saved shortlists and the median time to make one |
-| POST | `/admin/materials/shortlists` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Save a shortlist with the time it took |
-| GET | `/admin/edging-trial` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | The edging trial’s test plan and results, and the plastic the township has collected |
-| PATCH | `/admin/edging-trial/tests/:testId` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Record a test result for the recycled and the conventional edging |
 
 ## Assistant
 

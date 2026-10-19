@@ -217,9 +217,9 @@ export async function moderatePost(db: Db, actor: Actor, postId: string, input: 
       status = 'REMOVED';
       await tx.query(`UPDATE post_flags SET status = 'UPHELD', reviewed_by = $2, reviewed_at = $3 WHERE post_id = $1 AND status = 'OPEN'`, [postId, actor.id, now]);
       const waiting = (await tx.query<{ user_id: string }>(`SELECT user_id FROM post_responses WHERE post_id = $1 AND status IN ('PENDING', 'ACCEPTED')`, [postId])).map((r) => r.user_id);
-      await notify(tx, [post.author_id], { title: `Your post "${post.title}" was removed`, body: input.note });
-      await notify(tx, reporters, { title: `Thank you: "${post.title}" was removed`, body: 'Township staff agreed it broke the community guidelines.' });
-      await notify(tx, waiting, { title: `"${post.title}" is no longer available`, body: 'Township staff removed the post.' });
+      await notify(tx, [post.author_id], { title: `Your post "${post.title}" was removed`, body: input.note, category: 'COMMUNITY' });
+      await notify(tx, reporters, { title: `Thank you: "${post.title}" was removed`, body: 'Township staff agreed it broke the community guidelines.', category: 'COMMUNITY' });
+      await notify(tx, waiting, { title: `"${post.title}" is no longer available`, body: 'Township staff removed the post.', category: 'COMMUNITY' });
       auditAction = 'POST_REMOVED';
     }
 

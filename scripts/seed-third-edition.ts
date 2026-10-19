@@ -29,15 +29,6 @@ import {
 } from "../src/server/modules/kitar/machine";
 import { createOffer } from "../src/server/modules/offers/service";
 import {
-  addSighting,
-  applyForPlot,
-  createGarden,
-  decideSighting,
-  markWatered,
-  runBallot,
-  takeRosterDay,
-} from "../src/server/modules/taman/service";
-import {
   createPass,
   logWalkIn,
   scanPass,
@@ -679,96 +670,6 @@ export async function seedThirdEdition(
     await respondToCarerInvite(db, meiling, link.id, true, daysAgo(5));
     log(
       "Akses+: accessible places, a blocked ramp, a carer link and one home on the priority help list.",
-    );
-  }
-
-  // --- Taman: gardens, plots, the roster and the wildlife log ---------------------------
-  if (
-    !(await one(db, "SELECT 1 FROM gardens WHERE township_id = $1", [
-      township.id,
-    ]))
-  ) {
-    // Named after the real Elmina Community Edible Gardens (Sime Darby Property with MBSA,
-    // opened January 2019: over 100 plots of 2 m x 1 m to 6.5 m x 1 m, given out by ballot).
-    // The 24 plots, their holders and the waiting list here are demo data.
-    const valley = await createGarden(db, staff, {
-      name: "Elmina Community Edible Gardens",
-      location: "Elmina Central Park, Elmina West",
-      plots: 24,
-      plotSizeM2: 2,
-    });
-    await db.query(
-      `UPDATE garden_plots SET size_m2 = CASE WHEN plot_no <= '08' THEN 2 WHEN plot_no <= '16' THEN 4 ELSE 6 END WHERE garden_id = $1`,
-      [valley.id],
-    );
-    // Three neighbours won plots in the last ballot; Zainab is waiting for the next one.
-    for (const person of [priya, hafiz, meiling])
-      await applyForPlot(db, person, valley.id, daysAgo(30));
-    await runBallot(db, staff, valley.id, daysAgo(20));
-    await applyForPlot(db, zainab, valley.id, daysAgo(5));
-    const today = new Date(now.getTime());
-    const isoDay = (d: Date) => d.toISOString().slice(0, 10);
-    const code = (await one<{ code: string }>(
-      db,
-      "SELECT code FROM gardens WHERE id = $1",
-      [valley.id],
-    ))!.code;
-    await markWatered(db, priya, code, daysAgo(1, 1));
-    await takeRosterDay(
-      db,
-      hafiz,
-      valley.id,
-      isoDay(new Date(today.getTime() + DAY)),
-      now,
-    );
-    await takeRosterDay(
-      db,
-      meiling,
-      valley.id,
-      isoDay(new Date(today.getTime() + 3 * DAY)),
-      now,
-    );
-    for (const [person, kind, species, location, confirm] of [
-      [priya, "BIRD", "Oriental magpie-robin", "Edible garden fence, Elmina Central Park", true],
-      [
-        hafiz,
-        "INSECT",
-        "Common birdwing butterfly",
-        "Elmina Community Edible Gardens",
-        true,
-      ],
-      [
-        meiling,
-        "REPTILE",
-        "Asian water monitor",
-        "Lake, Elmina Valley Central Park",
-        true,
-      ],
-      [
-        daniel,
-        "BIRD",
-        "Collared kingfisher",
-        "Elmina Central Park entrance",
-        true,
-      ],
-      [
-        aisyah,
-        "AMPHIBIAN",
-        "Common toad",
-        "Jalan Metafasa U16/171 drain, after rain",
-        false,
-      ],
-    ] as const) {
-      const s = await addSighting(
-        db,
-        person,
-        { kind, species, location },
-        daysAgo(4),
-      );
-      if (confirm) await decideSighting(db, staff, s.id, true, daysAgo(3));
-    }
-    log(
-      "Taman: the edible gardens, a ballot and its waiting list, a watering roster and the wildlife log.",
     );
   }
 

@@ -45,7 +45,7 @@ const sections: LegalSection[] = [
             <Row what="Home (residents)" details="The address you choose from the township’s property record, whether you are the owner or a tenant, and whether your home has been confirmed." />
             <Row what="Shop (shops)" details="Business name, registration number, type and business address, and the contact person’s name, email and phone number." />
             <Row what="Points and activity" details="Points earned and spent and who funded them; purchases at member shops (shop, amount, points); recycling drop-offs (material and weight); trail check-ins; monthly electricity and water readings; Impact XP and badges." />
-            <Row what="What you post" details="Community posts and responses, reports with their description, the location you type and an optional photo, and whether you asked to be contacted about solar." />
+            <Row what="What you post" details="Community posts and responses, and reports with their description, the location you type and an optional photo." />
             <Row what="Technical" details="A sign-in cookie, records of requests (time, page, result and account), and your internet address to limit repeated attempts." />
           </tbody>
         </table>
@@ -80,7 +80,7 @@ const sections: LegalSection[] = [
     body: (
       <Bullets
         items={[
-          <><strong><Text>Township office staff</Text></strong><Text> see what they need to confirm homes, handle reports, moderate posts and contact residents who asked about solar.</Text></>,
+          <><strong><Text>Township office staff</Text></strong><Text> see what they need to confirm homes, handle reports and moderate posts.</Text></>,
           <><strong><Text>Shops</Text></strong><Text> see only your first name and initial when you buy or use points with them, never your contact details or address.</Text></>,
           <><strong><Text>Sponsors</Text></strong><Text> see grouped totals only, and nothing at all for very small groups. They see your details only if you choose to share them.</Text></>,
           <><strong><Text>Other residents</Text></strong><Text> see your first name on posts and responses. Street leagues show street totals, not individuals.</Text></>,
@@ -136,7 +136,7 @@ const sections: LegalSection[] = [
           items={[
             <><strong><Text>Access and portability:</Text></strong><Text> download everything we hold about you, in a machine-readable file, from your Account page.</Text></>,
             <><strong><Text>Correction:</Text></strong><Text> update your name, phone and address on your Account page, or ask the township office to change your email.</Text></>,
-            <><strong><Text>Withdrawing consent and deletion:</Text></strong><Text> withdraw a solar request at any time, or delete your account from your Account page. Some features need certain data, so withdrawing consent may mean you can no longer use them.</Text></>,
+            <><strong><Text>Withdrawing consent and deletion:</Text></strong><Text> remove your access needs in Akses+ at any time, or delete your account from your Account page. Some features need certain data, so withdrawing consent may mean you can no longer use them.</Text></>,
             <><strong><Text>Complaints:</Text></strong><Text> contact us first. You may also complain to the Personal Data Protection Commissioner (Jabatan Perlindungan Data Peribadi).</Text></>,
           ]}
         />

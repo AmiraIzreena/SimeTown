@@ -5,7 +5,7 @@ import { LocalizedDiv } from '@/components/ui/localized-elements';
 
 import { BellRing, Flag, Package, CheckCircle2, Clock, DoorOpen, LockKeyhole, MapPin, RefreshCw, Store, Undo2 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader } from '@/components/ui/card';
 import { EmptyState, SkeletonList } from '@/components/ui/feedback';
@@ -81,12 +81,22 @@ export function LockerParcels() {
 }
 
 function LockerParcelList() {
-  const station = (useSearchParams().get('station') ?? '').toUpperCase();
+  const search = useSearchParams();
+  const station = (search.get('station') ?? '').toUpperCase();
+  const parcelId = search.get('parcel');
+  const scrolledTo = useRef<string | null>(null);
   const mine = useApi<Mine>('/lockers/my-parcels', { refreshInterval: 5_000 });
   const [reporting, setReporting] = useState<LockerParcel | null>(null);
+  useEffect(() => {
+    if (parcelId && mine.data && scrolledTo.current !== parcelId) {
+      const target = document.getElementById(`parcel-${parcelId}`);
+      if (target) { target.scrollIntoView({ block: 'center' }); scrolledTo.current = parcelId; }
+    }
+  }, [parcelId, mine.data]);
   if (!mine.data) return <SkeletonList rows={2} />;
   const live = mine.data.parcels.filter((p) => !['COLLECTED', 'RETURNED'].includes(p.state));
-  const done = mine.data.parcels.filter((p) => ['COLLECTED', 'RETURNED'].includes(p.state)).slice(0, 5);
+  const completed = mine.data.parcels.filter((p) => ['COLLECTED', 'RETURNED'].includes(p.state));
+  const done = completed.filter((p, index) => index < 5 || p.id === parcelId);
   if (mine.data.parcels.length === 0) {
     return <EmptyState icon={Package} title="Nothing in the lockers"><Text>When a courier puts a parcel in a locker for your home, you are told at once and the code appears here.</Text></EmptyState>;
   }
@@ -94,14 +104,14 @@ function LockerParcelList() {
     <LocalizedDiv className="space-y-4" aria-label="Parcel lockers">
       {live.length === 0 && <p className="text-[15px] text-ink-600"><Text>Nothing waiting in the lockers right now.</Text></p>}
       <div className="grid gap-4 lg:grid-cols-2">
-        {live.map((p) => <LockerCard key={p.id} parcel={p} policy={mine.data!.policy} atStation={station} onChange={() => void mine.mutate()} />)}
+        {live.map((p) => <div key={p.id} id={`parcel-${p.id}`} className={`scroll-mt-20 rounded-xl ${parcelId === p.id ? 'ring-2 ring-brand-400' : ''}`}><LockerCard parcel={p} policy={mine.data!.policy} atStation={station} onChange={() => void mine.mutate()} /></div>)}
       </div>
       {done.length > 0 && (
         <Card>
           <CardHeader title="Collected from the lockers" description="The most recent, from the last 30 days." />
           <ul className="divide-y divide-ink-100">
             {done.map((p) => (
-              <li key={p.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
+              <li key={p.id} id={`parcel-${p.id}`} className={`flex scroll-mt-20 flex-wrap items-center justify-between gap-3 px-5 py-3 ${parcelId === p.id ? 'bg-brand-50' : ''}`}>
                 <span className="text-[15px] text-ink-900">{p.company} <span className="text-ink-500">· {p.trackingNo}</span></span>
                 <span className="inline-flex items-center gap-1.5 text-sm text-ink-600">
                   {p.state === 'COLLECTED' ? <CheckCircle2 className="size-4 text-success-700" aria-hidden /> : <Undo2 className="size-4 text-ink-400" aria-hidden />}

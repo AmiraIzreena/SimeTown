@@ -423,7 +423,7 @@ export async function completeDeposit(tx: Queryable, p: ParcelRow, comp: Compart
   await tell(tx, await householdOf(tx, p.home_id!), {
     title: `Parcel from ${company!.name} in ${station.name}`,
     body: `Door ${comp.label}. Collect by ${by}: open Parcels in SimeTown for your QR code and PIN.`,
-    link: '/app/parcels',
+    link: `/app/parcels?tab=lockers&parcel=${p.id}`,
   }, `locker-ready:${p.id}`);
 }
 
@@ -434,7 +434,7 @@ export async function completeCollection(tx: Queryable, p: ParcelRow, comp: Comp
   await spendCredential(tx, p.id, now);
   await custody(tx, p.id, { kind: 'LOCKER', ref: comp.label }, { kind: 'RESIDENT', ref: p.home_id }, actor.id, now);
   await tx.query(`UPDATE relocation_tasks SET status = 'CANCELLED', failure_reason = 'Collected by the household' WHERE parcel_id = $1 AND status = 'OPEN'`, [p.id]);
-  await tell(tx, await householdOf(tx, p.home_id!), { title: 'Parcel collected', body: `Collected from door ${comp.label}. Not you? Tell the township office.`, link: '/app/parcels' }, `locker-collected:${p.id}`);
+  await tell(tx, await householdOf(tx, p.home_id!), { title: 'Parcel collected', body: `Collected from door ${comp.label}. Not you? Tell the township office.`, link: `/app/parcels?tab=lockers&parcel=${p.id}` }, `locker-collected:${p.id}`);
 }
 
 // --- Reconciliation -------------------------------------------------------------------------

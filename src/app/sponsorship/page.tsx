@@ -1,8 +1,7 @@
 import { Text } from '@/components/ui/localized-text';
 import { LocalizedDiv, LocalizedLink as Link } from '@/components/ui/localized-elements';
-import { ArrowRight, Award, BadgeCheck, Building2, ChartColumn, Check, HandCoins, Landmark, Recycle, RadioTower, Sprout, Store, Sun, Trophy, type LucideIcon } from 'lucide-react';
+import { ArrowRight, Award, BadgeCheck, Building2, ChartColumn, Check, HandCoins, Landmark, Recycle, RadioTower, Sprout, Store, Trophy, type LucideIcon } from 'lucide-react';
 import type { Metadata } from 'next';
-import Image from 'next/image';
 import type { CSSProperties } from 'react';
 import { OfferTabs } from '@/components/features/offer-tabs';
 import { SponsorSlider } from '@/components/features/sponsor-slider';
@@ -194,30 +193,7 @@ export default async function SponsorshipPage() {
             <p className="mt-4 max-w-2xl text-[15px] leading-relaxed text-ink-600"><Text>A partner brings a service, equipment or expertise, and both sides gain from the work. No money changes hands for visibility. A partner that also buys a sponsor tier appears under Our sponsors as well.</Text></p>
           </Reveal>
 
-          <Reveal className="mt-10">
-            <article className="solar-feature group grid overflow-hidden rounded-3xl bg-brand-950 text-white shadow-lg lg:grid-cols-[1.15fr_1fr]">
-              <div className="relative min-h-[260px] overflow-hidden lg:min-h-[420px]">
-                <Image src="/images/sdp-solar-homes.jpg" alt="Solar-powered homes in a Sime Darby Property township" fill sizes="(min-width: 1024px) 55vw, 100vw" className="object-cover transition-transform duration-[1200ms] ease-soft group-hover:scale-105" />
-                <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-brand-950/70 via-transparent to-transparent lg:bg-gradient-to-r lg:from-transparent lg:via-transparent lg:to-brand-950" />
-              </div>
-              <div className="relative flex flex-col justify-center p-7 sm:p-10">
-                <span className="inline-flex items-center gap-2 self-start rounded-full bg-gold-300/15 px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] text-gold-300"><Sun className="size-4" aria-hidden /><Text>Partnership spotlight</Text></span>
-                <h3 className="mt-4 text-2xl font-bold leading-tight tracking-tight text-white sm:text-3xl"><Text>Solar homes, one roof at a time</Text></h3>
-                <p className="mt-4 text-[15px] leading-relaxed text-white/80"><Text>Sime Darby Property launched Malaysia’s first residential rooftop solar programme under the National Energy Transition Roadmap. SimeTown connects it to residents in the township.</Text></p>
-                <ul className="mt-5 space-y-3 text-sm text-white/85">
-                  {[
-                    'Jimat bill readings show which homes would save the most',
-                    'Residents ask for a quote in the app, only if they want one',
-                    'A partner installer pays a referral fee; nothing is sold to anyone who did not ask',
-                  ].map((line) => (
-                    <li key={line} className="flex gap-2.5"><span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-gold-300 text-brand-950"><Check className="size-3" aria-hidden /></span><Text>{line}</Text></li>
-                  ))}
-                </ul>
-              </div>
-            </article>
-          </Reveal>
-
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             {PARTNERS.map((partner, i) => (
               <Reveal key={partner.who} index={i}>
                 <article className="glass-surface offer-card h-full rounded-2xl border p-5 shadow-sm">

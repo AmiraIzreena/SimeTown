@@ -3,8 +3,6 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Actor } from '@/server/auth/actor';
 import { createSession } from '@/server/auth/session';
 import { one, type Db } from '@/server/db/client';
-import { checkBillFile } from '@/server/files/gate';
-import { pdfText, simplePdf } from '@/server/files/pdf';
 import { routes } from '@/server/http/api';
 import { createRouter } from '@/server/http/router';
 import { deleteAccessProfile, getAccessProfile, inviteCarer, respondToCarerInvite, saveAccessProfile } from '@/server/modules/akses/service';
@@ -13,11 +11,9 @@ import { recordLevel } from '@/server/modules/banjir/service';
 import { setSponsorTier } from '@/server/modules/campaigns/tiers';
 import { addPoints, finishActivity, startActivity, trimNearEnds } from '@/server/modules/gerak/tracking';
 import { createLoop } from '@/server/modules/gerak/service';
-import { confirmBill, parseBillText, readBill } from '@/server/modules/jimat/bills';
 import { claimGuestSession, createMachine, itemText, joinFromScreen, machineScreen, simulateFinish, simulateItem, simulateStart } from '@/server/modules/kitar/machine';
 import { createKiosk } from '@/server/modules/kitar/service';
 import { runJob } from '@/server/modules/admin/service';
-import { addSighting, applyForPlot, createGarden, decideSighting, markWatered, runBallot, withdrawApplication } from '@/server/modules/taman/service';
 import { createPass, logWalkIn, publicPass, replyToWalkIn, scanPass, tamuOverview } from '@/server/modules/tamu/service';
 import { T0, at, expectFloatBalanced, freshDb, makeCampaign, makeHome, makeResident, makeWorld, type World } from './helpers';
 
@@ -218,54 +214,6 @@ describe('Gerak map tracking (BR24)', () => {
   });
 });
 
-describe('Jimat bill reading (BR25)', () => {
-  const bill = (lines: string[]) => simplePdf(lines.map((text, i) => ({ text, x: 50, y: 780 - i * 20 })));
-
-  it('refuses a file by its real signature, a PDF with a script hidden by #-escapes, and the EICAR test file', () => {
-    expect(() => checkBillFile(new TextEncoder().encode('hello, I am a text file'))).toThrow(/Only JPG, PNG, WebP or PDF/);
-    const sneaky = Buffer.concat([simplePdf([{ text: 'Bill', x: 50, y: 700 }]), Buffer.from('\n<< /S /J#61vaScript /JS (app.alert(1)) >>\n')]);
-    expect(() => checkBillFile(sneaky)).toThrow(/active content/);
-    const eicar = Buffer.from('%PDF-1.4\nX5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*\n');
-    expect(() => checkBillFile(eicar)).toThrow(/malware/);
-  });
-
-  it('reads a bill’s own text, checks it, and lets the same bill be used once only; the file is never stored', async () => {
-    const homeId = await makeHome(w, 'Jalan Bil', 'Precinct 9');
-    const resident = await makeResident(w, { homeId });
-    const pdf = bill([
-      'KITA Demo Electricity',
-      'Alamat / Address: No. 1, Jalan Bil, Precinct 9',
-      'No. Akaun / Account No: 2201234567890',
-      'Tempoh Bil / Billing Period: 01/10/2026 - 31/10/2026',
-      'Jumlah Penggunaan / Total Usage: 342 kWh',
-      'Jumlah Perlu Dibayar / Amount Due: RM 149.11',
-    ]);
-    expect(pdfText(pdf)).toContain('342 kWh');
-    const read = await readBill(db, resident, { bytes: pdf, kind: 'ELECTRICITY' }, T0);
-    expect(read).toMatchObject({ source: 'TEXT' });
-    expect(read.fields).toMatchObject({ usage: { value: 342, unsure: false }, amountSen: { value: 14_911, unsure: false }, month: { value: '2026-10', unsure: false } });
-    expect(read.checks.every((c) => c.ok)).toBe(true);
-    // Only the last four digits ever leave the reading step; the full account number is kept as a hash only.
-    expect(JSON.stringify(read)).not.toContain('2201234567890');
-    expect(read.fields.accountLast4.value).toBe('7890');
-    const stored = await one<{ fields: unknown; account_hash: string }>(db, 'SELECT fields, account_hash FROM jimat_bills WHERE id = $1', [read.billId]);
-    expect(JSON.stringify(stored!.fields)).not.toContain('2201234567890');
-    expect(stored!.account_hash).toMatch(/^[0-9a-f]{64}$/);
-    const columns = await db.query<{ column_name: string }>(`SELECT column_name FROM information_schema.columns WHERE table_name = 'jimat_bills'`);
-    expect(columns.some((c) => /bytes|file_data|content/.test(c.column_name))).toBe(false);
-
-    await confirmBill(db, resident, read.billId, { kind: 'ELECTRICITY', usage: 342, amountSen: 14_911, month: '2026-10' }, T0);
-    const again = await readBill(db, resident, { bytes: pdf, kind: 'ELECTRICITY' }, T0);
-    await expect(confirmBill(db, resident, again.billId, { kind: 'ELECTRICITY', usage: 342, amountSen: 14_911, month: '2026-10' }, T0)).rejects.toMatchObject({ code: 'BILL_USED' });
-  });
-
-  it('marks a field unsure when it is not next to its label', () => {
-    const parsed = parseBillText('Bill RM 80.00 for 200 kWh in Okt 2026', 'ELECTRICITY');
-    expect(parsed.usage).toEqual({ value: 200, unsure: true });
-    expect(parsed.month).toEqual({ value: '2026-10', unsure: true });
-  });
-});
-
 describe('Banjir agent (BR28)', () => {
   let zoneId: string;
   let resident: Actor;
@@ -339,7 +287,7 @@ describe('Banjir agent (BR28)', () => {
   });
 });
 
-describe('Akses+ (BR32) and Taman', () => {
+describe('Akses+ (BR32)', () => {
   it('stores access needs only with consent, and deletes them on request', async () => {
     const resident = await makeResident(w);
     const input = { needs: ['MOBILITY' as const], simpleMode: true, readAloud: false, flashAlerts: true, priorityHelp: true, consent: false };
@@ -358,43 +306,6 @@ describe('Akses+ (BR32) and Taman', () => {
     expect((await respondToCarerInvite(db, carer, link.id, true, T0)).status).toBe('ACTIVE');
   });
 
-  it('gives plots out by ballot, one per home, and keeps the rest on the waiting list', async () => {
-    const { id: gardenId } = await createGarden(db, w.staff, { name: 'Ballot Garden', location: 'Central park', plots: 2, plotSizeM2: 4 });
-    const applicants = [await makeResident(w), await makeResident(w), await makeResident(w)];
-    await expect(runBallot(db, w.staff, gardenId, T0)).rejects.toMatchObject({ code: 'NO_APPLICANTS' });
-    const applications = [];
-    for (const r of applicants) applications.push(await applyForPlot(db, r, gardenId, T0));
-    await expect(applyForPlot(db, applicants[0]!, gardenId, T0)).rejects.toMatchObject({ code: 'ALREADY_APPLIED' });
-
-    expect(await runBallot(db, w.staff, gardenId, T0)).toEqual({ allocated: 2, stillWaiting: 1, freePlotsLeft: 0 });
-    const holders = await db.query<{ holder_user_id: string }>('SELECT holder_user_id FROM garden_plots WHERE garden_id = $1 AND holder_home_id IS NOT NULL', [gardenId]);
-    expect(new Set(holders.map((h) => h.holder_user_id)).size).toBe(2);
-    const loser = applicants.find((r) => !holders.some((h) => h.holder_user_id === r.id))!;
-    const winner = applicants.find((r) => r.id !== loser.id)!;
-    await expect(applyForPlot(db, winner, gardenId, T0)).rejects.toMatchObject({ code: 'ONE_PLOT' });
-    await expect(runBallot(db, w.staff, gardenId, T0)).rejects.toMatchObject({ code: 'NO_FREE_PLOTS' });
-    const inbox = await db.query<{ user_id: string; title: string }>(`SELECT user_id, title FROM notifications WHERE title LIKE '%Ballot Garden'`);
-    expect(inbox.filter((n) => n.title.startsWith('You won plot'))).toHaveLength(2);
-    expect(inbox.find((n) => n.user_id === loser.id)?.title).toBe('Still on the waiting list for Ballot Garden');
-
-    // The resident who was not drawn can leave the list, and only their own home's entry.
-    const loserApp = applications[applicants.indexOf(loser)]!;
-    await expect(withdrawApplication(db, winner, loserApp.id, T0)).rejects.toMatchObject({ code: 'NOT_FOUND' });
-    await withdrawApplication(db, loser, loserApp.id, T0);
-    expect((await one<{ waiting: number }>(db, `SELECT count(*)::int AS waiting FROM garden_applications WHERE garden_id = $1 AND status = 'WAITING'`, [gardenId]))!.waiting).toBe(0);
-  });
-
-  it('records watering by the garden code, and gives XP for confirmed sightings', async () => {
-    const { id: gardenId } = await createGarden(db, w.staff, { name: 'Test Garden', location: 'By the lake', plots: 2, plotSizeM2: 6 });
-    const resident = await makeResident(w);
-    const code = (await one<{ code: string }>(db, 'SELECT code FROM gardens WHERE id = $1', [gardenId]))!.code;
-    const watered = await markWatered(db, resident, code, T0);
-    expect(watered.reward.xp).toBe(15);
-    expect(watered.reward.offerPoints).toBe(0); // a printed gate code proves too little for points
-    const sighting = await addSighting(db, resident, { kind: 'BIRD', species: 'Oriental magpie-robin', location: 'Lake' }, T0);
-    await decideSighting(db, w.staff, sighting.id, true, T0);
-    expect((await one<{ n: number }>(db, `SELECT count(*)::int AS n FROM xp_events WHERE user_id = $1 AND activity = 'TAMAN_SIGHTING'`, [resident.id]))!.n).toBe(1);
-  });
 });
 
 describe('sponsor tiers', () => {

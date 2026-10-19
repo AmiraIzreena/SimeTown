@@ -52,7 +52,7 @@ export async function runExpiry(db: Db, now: Date) {
         if (hoursLeft <= 0) {
           await transition(tx, p.id, 'RETURN_PENDING', SYSTEM, 'Not collected from the counter in time', now);
           await tell(tx, await staffOf(tx, p.township_id), { title: 'Parcel to return to the courier', body: `${p.tracking_no} was not collected from the counter in time.`, link: '/console/lockers' }, `return-due:${p.id}`);
-          await tell(tx, people, { title: 'Your parcel is going back to the courier', body: 'It was not collected from the parcel counter in time. You can still collect it until the courier takes it back.', link: '/app/parcels' }, `return-due:${p.id}`);
+          await tell(tx, people, { title: 'Your parcel is going back to the courier', body: 'It was not collected from the parcel counter in time. You can still collect it until the courier takes it back.', link: `/app/parcels?tab=lockers&parcel=${p.id}` }, `return-due:${p.id}`);
           counts.returns++;
         }
         return;
@@ -66,13 +66,13 @@ export async function runExpiry(db: Db, now: Date) {
       if (now.getTime() >= firstAt && !p.first_reminder_at && !quiet && now.getTime() < finalAt) {
         await tx.query('UPDATE locker_parcels SET first_reminder_at = $2 WHERE id = $1', [p.id, now]);
         await recordEvent(tx, p.id, 'OVERDUE', 'OVERDUE', SYSTEM, `First reminder sent to ${people.length} household member(s)`, now);
-        await tell(tx, people, { title: 'Your parcel is still in the locker', body: `${p.station}, door ${p.compartment}. Please collect it by ${fmt(p.deadline_at!, tz)}.`, link: '/app/parcels' }, `locker-reminder-1:${p.id}`);
+        await tell(tx, people, { title: 'Your parcel is still in the locker', body: `${p.station}, door ${p.compartment}. Please collect it by ${fmt(p.deadline_at!, tz)}.`, link: `/app/parcels?tab=lockers&parcel=${p.id}` }, `locker-reminder-1:${p.id}`);
         counts.firstReminders++;
       }
       if (now.getTime() >= finalAt && !p.final_reminder_at && !quiet && hoursLeft > 0) {
         await tx.query('UPDATE locker_parcels SET final_reminder_at = $2, first_reminder_at = coalesce(first_reminder_at, $2) WHERE id = $1', [p.id, now]);
         await recordEvent(tx, p.id, 'OVERDUE', 'OVERDUE', SYSTEM, `Final reminder sent to ${people.length} household member(s)`, now);
-        await tell(tx, people, { priority: 'URGENT', title: 'Last reminder: collect your parcel', body: `${p.station}, door ${p.compartment}. After ${fmt(p.deadline_at!, tz)} it moves to the parcel counter.`, link: '/app/parcels' }, `locker-reminder-2:${p.id}`);
+        await tell(tx, people, { priority: 'URGENT', title: 'Last reminder: collect your parcel', body: `${p.station}, door ${p.compartment}. After ${fmt(p.deadline_at!, tz)} it moves to the parcel counter.`, link: `/app/parcels?tab=lockers&parcel=${p.id}` }, `locker-reminder-2:${p.id}`);
         counts.finalReminders++;
       }
       if (hoursLeft <= 0) {
@@ -81,7 +81,7 @@ export async function runExpiry(db: Db, now: Date) {
         await transition(tx, p.id, 'RELOCATION_PENDING', SYSTEM, 'Collection deadline passed: due to move to overflow storage', now);
         await tx.query('INSERT INTO relocation_tasks (parcel_id, created_at) VALUES ($1, $2) ON CONFLICT DO NOTHING', [p.id, now]);
         await tell(tx, await staffOf(tx, p.township_id), { title: 'Parcel to move to the counter', body: `${p.station}, door ${p.compartment}: past its collection deadline.`, link: '/console/lockers' }, `relocation-task:${p.id}`);
-        await tell(tx, people, { title: 'Your parcel will move to the parcel counter', body: `It can still be collected from ${p.station} until staff move it. We will tell you where it is.`, link: '/app/parcels' }, `relocation-due:${p.id}`);
+        await tell(tx, people, { title: 'Your parcel will move to the parcel counter', body: `It can still be collected from ${p.station} until staff move it. We will tell you where it is.`, link: `/app/parcels?tab=lockers&parcel=${p.id}` }, `relocation-due:${p.id}`);
         counts.relocationTasks++;
       }
     });
@@ -264,7 +264,7 @@ export async function completeRelocation(db: Db, actor: Actor, taskId: string, e
     await tell(tx, await householdOf(tx, p.home_id!), {
       title: `Your parcel is now at ${dest.name}`,
       body: `${dest.location}. Open ${dest.hours}. ${dest.instructions} Collect by ${fmt(deadline, tz)}. Your pickup code has changed: see Parcels.`,
-      link: '/app/parcels',
+      link: `/app/parcels?tab=lockers&parcel=${p.id}`,
     }, `relocated:${p.id}`);
     return { ok: true };
   });
@@ -395,7 +395,7 @@ export async function handOverAtCounter(db: Db, actor: Actor, locationId: string
     await transition(tx, p.id, 'COLLECTED', userActor(actor.id), `Handed over at ${loc.name}; ID checked`, now, { collected_at: now });
     await spendCredential(tx, p.id, now);
     await custody(tx, p.id, { kind: 'OVERFLOW', ref: loc.name }, { kind: 'RESIDENT', ref: p.home_id }, actor.id, now, 'Pickup code and ID checked by staff');
-    await tell(tx, await householdOf(tx, p.home_id!), { title: 'Parcel collected', body: `Handed over at ${loc.name}. Not you? Tell the township office.`, link: '/app/parcels' }, `counter-collected:${p.id}`);
+    await tell(tx, await householdOf(tx, p.home_id!), { title: 'Parcel collected', body: `Handed over at ${loc.name}. Not you? Tell the township office.`, link: `/app/parcels?tab=lockers&parcel=${p.id}` }, `counter-collected:${p.id}`);
     return { ok: true };
   });
 }
@@ -420,7 +420,7 @@ export async function completeReturn(db: Db, actor: Actor, parcelId: string, now
     await transition(tx, p.id, 'RETURNED', userActor(actor.id), 'Taken back by the courier', now);
     await revokeCredentials(tx, p.id, now);
     await custody(tx, p.id, { kind: 'OVERFLOW', ref: p.overflow_location_id }, { kind: 'COURIER', ref: p.company_id }, actor.id, now, 'Returned to the courier');
-    if (p.home_id) await tell(tx, await householdOf(tx, p.home_id), { title: 'Parcel returned to the courier', body: `${p.tracking_no} went back to the courier. Contact them to arrange delivery again.`, link: '/app/parcels' }, `returned:${p.id}`);
+    if (p.home_id) await tell(tx, await householdOf(tx, p.home_id), { title: 'Parcel returned to the courier', body: `${p.tracking_no} went back to the courier. Contact them to arrange delivery again.`, link: `/app/parcels?tab=lockers&parcel=${p.id}` }, `returned:${p.id}`);
     return { ok: true };
   });
 }
@@ -438,7 +438,7 @@ export async function resolveException(db: Db, actor: Actor, parcelId: string, o
       const policy = await getPolicy(tx, p.township_id, null);
       await transition(tx, p.id, outcome, userActor(actor.id), `Resolved: ${note}`, now, { overflow_location_id: dest.id, relocated_at: now, deadline_at: new Date(now.getTime() + policy.overflow_collect_days * 86_400_000), compartment_id: null });
       await issueCredential(tx, p.id, 'OVERFLOW', dest.id, now);
-      await tell(tx, await householdOf(tx, p.home_id!), { title: `Your parcel is at ${dest.name}`, body: 'Your pickup code has changed: see Parcels.', link: '/app/parcels' }, `resolved:${p.id}`);
+      await tell(tx, await householdOf(tx, p.home_id!), { title: `Your parcel is at ${dest.name}`, body: 'Your pickup code has changed: see Parcels.', link: `/app/parcels?tab=lockers&parcel=${p.id}` }, `resolved:${p.id}`);
     } else {
       await transition(tx, p.id, outcome, userActor(actor.id), `Resolved: ${note}`, now, outcome === 'COLLECTED' ? { collected_at: now } : {});
       if (outcome === 'COLLECTED') await spendCredential(tx, p.id, now);

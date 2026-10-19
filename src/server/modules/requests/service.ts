@@ -4,7 +4,7 @@ import { requireVerifiedResident, type Actor } from '../../auth/actor';
 import { todayIn } from '../settings';
 
 /**
- * "My requests": everything a household is waiting on, in one list (the
+ * Request tracking: everything a household is waiting on, in one list (the
  * brief's single resident hub). Reports and the ones followed with "Me too",
  * parcels at the guardhouse and in the lockers, and booked recycling
  * collections, each with where it stands and the next step, so nobody has to

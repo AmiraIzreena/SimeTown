@@ -83,17 +83,24 @@ describe('Kitar test mode: the locks', () => {
     expect(testEntryEnabled(PRODUCTION)).toBe(false);
   });
 
-  // The real route reads the app's own DATABASE_URL, so this only holds when the run itself uses pglite
-  // (the PostgreSQL CI job sets TEST_DATABASE_URL and is covered by the refusal tests below).
-  it.skipIf(!process.env.DATABASE_URL?.startsWith('pglite://'))('is allowed on pglite in development: the real route saves it, and GET /kitar offers it', async () => {
-    // The tests run as the local demo does: APP_ENV=development with a pglite database.
+  it('the real route and GET /kitar follow the active database lock', async () => {
     const { world, machineId } = await township({ pledgeSen: 100_000 });
     const resident = await makeResident(world);
     const res = await post('/kitar/test-entry', resident, { machineId, material: 'PAPER', weightG: 1_200 });
-    expect(res.status).toBe(200);
-    expect(res.body.data).toMatchObject({ test: true, reward: { xp: 20, offerPoints: 12 } });
-    expect(await testRows(resident.id)).toBe(1);
-    expect((await kitarOverview(db, resident, T0)).testEntry).toEqual({ xp: 20 });
+
+    // The normal suite uses PGlite, where the local-demo route is enabled. The
+    // real-concurrency CI job sets TEST_DATABASE_URL, so the same route must stay
+    // disabled there even though the lower-level reward code is tested below.
+    if (process.env.DATABASE_URL!.startsWith('pglite://')) {
+      expect(res.status).toBe(200);
+      expect(res.body.data).toMatchObject({ test: true, reward: { xp: 20, offerPoints: 12 } });
+      expect(await testRows(resident.id)).toBe(1);
+      expect((await kitarOverview(db, resident, T0)).testEntry).toEqual({ xp: 20 });
+    } else {
+      expect(res).toMatchObject({ status: 403, body: { error: { message: 'Test mode is off.' } } });
+      expect(await testRows(resident.id)).toBe(0);
+      expect((await kitarOverview(db, resident, T0)).testEntry).toBeUndefined();
+    }
   });
 
   it('refuses when the database is not pglite, and stores nothing', async () => {

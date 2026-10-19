@@ -326,7 +326,7 @@ export async function receiveAtCounter(db: Db, actor: Actor, parcelId: string, n
     await transition(tx, p.id, 'RELOCATED_TO_STORAGE', userActor(actor.id), `Received from the courier at ${loc.name}`, now, { relocated_at: now, ready_at: now, deadline_at: deadline });
     await custody(tx, p.id, { kind: 'COURIER', ref: p.courier_user_id }, { kind: 'OVERFLOW', ref: loc.name }, actor.id, now, 'Lockers full; handed to staff');
     await issueCredential(tx, p.id, 'OVERFLOW', loc.id, now);
-    await tell(tx, await householdOf(tx, p.home_id!), { title: `Parcel waiting at ${loc.name}`, body: `${loc.location}. Open ${loc.hours}. Show your pickup code from Parcels in SimeTown.`, link: '/app/parcels' }, `counter-ready:${p.id}`);
+    await tell(tx, await householdOf(tx, p.home_id!), { title: `Parcel waiting at ${loc.name}`, body: `${loc.location}. Open ${loc.hours}. Show your pickup code from Parcels in SimeTown.`, link: `/app/parcels?tab=lockers&parcel=${p.id}` }, `counter-ready:${p.id}`);
     return { ok: true };
   });
 }

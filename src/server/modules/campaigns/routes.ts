@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ACTIVITIES, ADMINS, SPONSOR_TIERS, STAFF } from '@/shared/domain';
+import { ADMINS, CAMPAIGN_ACTIVITIES, SPONSOR_TIERS, STAFF } from '@/shared/domain';
 import { emptyBody, route, zId, zSen, zText } from '../../http/router';
 import * as campaigns from './service';
 import * as tiers from './tiers';
@@ -10,7 +10,7 @@ const campaignBody = z
     sponsorId: zId.nullable(),
     title: zText(100, 3),
     description: zText(600, 3),
-    activity: z.enum(ACTIVITIES),
+    activity: z.enum(CAMPAIGN_ACTIVITIES),
     goalMetric: z.enum(['COUNT', 'QUANTITY']).default('COUNT'),
     goalTarget: z.number().int().positive().max(10_000_000).default(1),
     rewardPoints: z.number().int().positive().max(100_000),

@@ -70,7 +70,8 @@ export async function logParcel(db: Db, actor: Actor, input: ParcelInput, now: D
       await notify(tx, people, {
         title: `Parcel from ${input.courier.trim()} at the guardhouse`,
         body: `Shelf ${shelf}. Show code ${code} to collect it.`,
-        link: '/app/parcels',
+        link: `/app/parcels?tab=guardhouse&parcel=${row.id}`,
+        dedupeKey: `guard-ready:${row.id}`,
       });
       return { id: row.id, house: shortAddress(home), notified: people.length };
     }
@@ -174,7 +175,8 @@ export async function handOverParcel(db: Db, actor: Actor, id: string, input: { 
     await notify(tx, await household(tx, p.home_id), {
       title: `Parcel from ${p.courier} collected`,
       body: by ? `Collected by ${by}. Not you? Tell us in SimeTown.` : 'Not you? Tell us in SimeTown.',
-      link: '/app/parcels',
+      link: `/app/parcels?tab=guardhouse&parcel=${id}`,
+      dedupeKey: `guard-collected:${id}`,
     });
     return { ok: true };
   });
@@ -189,7 +191,7 @@ export async function returnParcel(db: Db, actor: Actor, id: string, now: Date) 
       [id, townshipId, now, actor.id],
     );
     if (!p) throw notFound('Parcel');
-    await notify(tx, await household(tx, p.home_id), { title: `Parcel from ${p.courier} returned to the courier`, body: 'Contact the courier to arrange delivery again.', link: '/app/parcels' });
+    await notify(tx, await household(tx, p.home_id), { title: `Parcel from ${p.courier} returned to the courier`, body: 'Contact the courier to arrange delivery again.', link: `/app/parcels?tab=guardhouse&parcel=${id}`, dedupeKey: `guard-returned:${id}` });
     await audit(tx, actor.id, 'PARCEL_RETURNED', 'parcel', id);
     return { ok: true };
   });
@@ -282,7 +284,7 @@ export async function sendParcelReminders(db: Db, now: Date): Promise<number> {
       await notify(tx, await household(tx, p.home_id), {
         title: `Your parcel from ${p.courier} is still waiting`,
         body: `Shelf ${p.shelf} at the guardhouse. Please collect it soon.`,
-        link: '/app/parcels',
+        link: `/app/parcels?tab=guardhouse&parcel=${p.id}`,
         dedupeKey: `parcel-reminder:${p.id}`,
       });
     }

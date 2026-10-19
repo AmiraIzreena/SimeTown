@@ -6,6 +6,7 @@ import type { Db } from '@/server/db/client';
 import { one } from '@/server/db/client';
 import { routes } from '@/server/http/api';
 import { createRouter } from '@/server/http/router';
+import { notify } from '@/server/modules/notifications';
 import { createKiosk } from '@/server/modules/kitar/service';
 import { createLoop, listLoopsForStaff } from '@/server/modules/gerak/service';
 import { T0, expectFloatBalanced, freshDb, makeCampaign, makeHome, makeMerchant, makeResident, makeSponsorUser, makeWorld, sell, walletOf, type World } from './helpers';
@@ -58,6 +59,28 @@ beforeAll(async () => {
   handle = createRouter(routes, { prefix: '/api/v1', db: async () => db, now: () => clock.now }).handle;
 });
 afterAll(() => db.close());
+
+describe('notification API ownership and validation', () => {
+  it('requires a session and restricts read and dismiss to the notification owner', async () => {
+    const resident = await makeResident(w);
+    const neighbour = await makeResident(w);
+    await notify(db, [resident.id], { title: 'Update', body: 'Your update', link: '/app/wallet', dedupeKey: 'api-notification' });
+    expect((await call('GET', '/notifications')).status).toBe(401);
+    const inbox = await call('GET', '/notifications?unread=true&category=REWARDS', { as: resident });
+    expect(inbox.status).toBe(200);
+    const id = inbox.data.items[0].id;
+    expect((await call('POST', `/notifications/${id}/read`, { as: neighbour, body: {} })).status).toBe(404);
+    expect((await call('POST', `/notifications/${id}/dismiss`, { as: neighbour, body: {} })).status).toBe(404);
+    expect((await call('POST', `/notifications/${id}/read`, { as: resident, origin: 'https://other.test' })).status).toBe(403);
+    expect((await call('POST', `/notifications/${id}/read`, { as: resident, body: {} })).status).toBe(200);
+    expect((await call('GET', '/notifications', { as: resident })).data.unread).toBe(0);
+    expect((await call('POST', `/notifications/${id}/dismiss`, { as: resident, body: {} })).status).toBe(200);
+    expect((await call('POST', '/notifications/invalid/read', { as: resident, body: {} })).status).toBe(400);
+    expect((await call('GET', '/notifications', { as: resident })).data.items).toHaveLength(0);
+    expect((await call('GET', '/notifications?limit=0', { as: resident })).status).toBe(400);
+    expect((await call('GET', '/notifications?category=UNKNOWN', { as: resident })).status).toBe(400);
+  });
+});
 
 describe('signing in (KITA ID)', () => {
   it('registers a resident as unverified, and staff verification unlocks earning (BR1)', async () => {
@@ -513,7 +536,7 @@ describe('Komuniti moderation (township staff, township admins and HQ)', () => {
   });
 });
 
-describe('Gerak, Kitar and Jimat', () => {
+describe('Gerak and Kitar', () => {
   it('completes a loop when every checkpoint is scanned on the same day', async () => {
     await createLoop(db, w.staff, { name: 'Park Loop', description: 'Around the lake', mode: 'CYCLE', distanceM: 3_200, checkpoints: ['Lake gate', 'Boathouse'] });
     const loop = (await listLoopsForStaff(db, w.staff)).find((l) => (l as unknown as { name: string }).name === 'Park Loop') as unknown as { checkpoints: { code: string }[] };
@@ -547,26 +570,6 @@ describe('Gerak, Kitar and Jimat', () => {
     expect((await call('GET', '/kitar', { as: resident })).data).toMatchObject({ monthGrams: 500, dropOffs: 2 });
     expect((await call('POST', '/kitar/dropoffs', { as: resident, body: { ...body, kioskCode: 'KWRONGCODE' } })).status).toBe(404);
     await expectFloatBalanced(db);
-  });
-
-  it('compares this month’s readings with last month’s and shares solar interest only on request (BR16)', async () => {
-    const resident = await makeResident(w);
-    clock.now = new Date('2026-10-28T04:00:00Z');
-    await call('POST', '/jimat/readings', { as: resident, body: { month: '2026-10', electricityKwh: 400, waterLitres: 20_000 } });
-    clock.now = new Date('2026-11-28T04:00:00Z');
-    const nov = await call('POST', '/jimat/readings', { as: resident, body: { month: '2026-11', electricityKwh: 360, waterLitres: 19_000 } });
-    expect(nov.data).toMatchObject({ saved: true, reward: { xp: 65 } });
-    expect((await call('POST', '/jimat/readings', { as: resident, body: { month: '2026-11', electricityKwh: 1, waterLitres: 1 } })).error!.code).toBe('READING_EXISTS');
-    expect((await call('POST', '/jimat/readings', { as: resident, body: { month: '2026-05', electricityKwh: 1, waterLitres: 1 } })).error!.code).toBe('MONTH_NOT_OPEN');
-    expect((await call('GET', '/jimat', { as: resident })).data).toMatchObject({ electricityPct: -10, waterPct: -5 });
-
-    const leads = async () => (await call('GET', '/admin/solar-leads', { as: w.staff })).data.length;
-    expect(await leads()).toBe(0);
-    await call('POST', '/jimat/solar-interest', { as: resident, body: { interested: true } });
-    expect(await leads()).toBe(1);
-    await call('POST', '/jimat/solar-interest', { as: resident, body: { interested: false } });
-    expect(await leads()).toBe(0);
-    clock.now = T0;
   });
 });
 

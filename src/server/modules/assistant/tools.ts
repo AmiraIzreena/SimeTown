@@ -5,12 +5,10 @@ import type { Actor } from '../../auth/actor';
 import { one, type Db, type Queryable } from '../../db/client';
 import { AppError } from '../../errors';
 import { banjirOverview } from '../banjir/service';
-import { jimatOverview } from '../jimat/service';
 import { kitarOverview } from '../kitar/service';
 import { listLiveOffers, offerBalance } from '../offers/service';
 import { myRequests } from '../requests/service';
 import { getSettings } from '../settings';
-import { tamanOverview } from '../taman/service';
 import { tamuOverview } from '../tamu/service';
 import { walletOverview } from '../wallet/service';
 import { searchKnowledge, type KnowledgeSource } from './knowledge';
@@ -201,22 +199,6 @@ const TOOLS: Tool[] = [
   },
   {
     kind: 'read',
-    spec: { name: 'get_my_bill_readings', description: "The home's latest electricity (kWh) and water (litres) readings in Jimat, and the change from the month before.", parameters: noArgs },
-    run: async ({ db, actor }) => {
-      const j = await jimatOverview(db, actor);
-      return {
-        data: {
-          latest: j.readings.slice(-3).map((r) => ({ month: r.month.slice(0, 7), electricityKwh: r.electricity_kwh, waterLitres: r.water_litres })),
-          electricityChangePercent: j.electricityPct,
-          waterChangePercent: j.waterPct,
-          possibleLeak: j.leakSuspected,
-        },
-        link: { href: '/app/jimat', label: 'Open Jimat' },
-      };
-    },
-  },
-  {
-    kind: 'read',
     spec: { name: 'get_recycling_places', description: "The township's recycling kiosks and their bins, with where they are, and the resident's recycling this month.", parameters: noArgs },
     run: async ({ db, actor, now }) => {
       const k = await kitarOverview(db, actor, now);
@@ -277,29 +259,7 @@ const TOOLS: Tool[] = [
             }
           }),
         },
-        link: { href: '/app/requests', label: 'Open My requests' },
-      };
-    },
-  },
-  {
-    kind: 'read',
-    spec: { name: 'get_my_garden', description: "The resident's garden plot or place on a garden's waiting list, and free plots.", parameters: noArgs },
-    run: async ({ db, actor, now }) => {
-      const t = await tamanOverview(db, actor, now);
-      return {
-        data: {
-          plotsGivenOutBy: 'ballot, one per home, for six months',
-          gardens: t.gardens.map((g) => ({
-            name: g.name,
-            location: g.location,
-            myPlot: g.plots.find((p) => p.mine)?.plot_no ?? null,
-            myPlotUntil: g.plots.find((p) => p.mine)?.booked_until ?? null,
-            onWaitingList: Boolean(g.myApplication),
-            freePlots: g.freePlots,
-            waiting: g.waiting,
-          })),
-        },
-        link: { href: '/app/taman', label: 'Open Taman' },
+        link: { href: '/app/requests', label: 'Request tracking' },
       };
     },
   },

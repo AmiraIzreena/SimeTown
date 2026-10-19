@@ -4,9 +4,6 @@ import { one, type Db } from '@/server/db/client';
 import { runJob } from '@/server/modules/admin/service';
 import { bookCollection, cancelCollection, completeCollection, confirmCollection, createCollector, recyclingStats } from '@/server/modules/kitar/collections';
 import { checkParcelCode, guardParcels, handOverParcel, logParcel, myParcels, parcelStats, reportParcelProblem } from '@/server/modules/parcels/service';
-import { edgingTrial, updateTrialTest, DEFAULT_TEST_PLAN } from '@/server/modules/planet/edging';
-import { compareMaterials, explainComparison, saveShortlist, listShortlists } from '@/server/modules/planet/materials';
-import { createSolarSite, solarSites, updateSolarSite } from '@/server/modules/planet/solar';
 import { createReport, getReport, listReports, reportStats, setMeToo, similarReports, updateReport } from '@/server/modules/reports/service';
 import { myRequests } from '@/server/modules/requests/service';
 import { searchGuide } from '@/shared/recycling-guide';
@@ -162,56 +159,6 @@ describe('Recycling guide and collections', () => {
     const confirmed = await confirmCollection(db, w.staff, second.id, at(2));
     await cancelCollection(db, resident, second.id, at(2));
     expect((await one<{ status: string }>(db, 'SELECT status FROM visitor_passes WHERE code = $1', [confirmed.passCode]))!.status).toBe('CANCELLED');
-  });
-});
-
-describe('Solar opportunity mapper', () => {
-  it('ranks by output, demand and readiness, flags what is missing, and compares with an expert', async () => {
-    const big = await createSolarSite(db, w.admin, { name: 'Community hall roof', kind: 'ROOFTOP', zoneId: w.zoneId, usableM2: 900, orientation: 'FLAT', shading: 'LOW', roofAgeYears: 5, structuralChecked: true, expertRank: 1 });
-    await createSolarSite(db, w.admin, { name: 'Car park C', kind: 'CAR_PARK', usableM2: 1200, orientation: 'FLAT', expertRank: 2 });
-    await createSolarSite(db, w.admin, { name: 'Guardhouse roof', kind: 'ROOFTOP', usableM2: 40, orientation: 'E', shading: 'HIGH', expertRank: 3 });
-    const data = await solarSites(db, w.staff);
-    expect(data.sites[0]!.id).toBe(big.id); // ready and checked beats bigger but unchecked
-    const carPark = data.sites.find((s) => s.name === 'Car park C')!;
-    expect(carPark.annualKwh).toBe(Math.round(1200 * 0.15 * 1200 * 0.85));
-    expect(carPark.flags).toEqual(expect.arrayContaining(['Shading survey needed', 'Canopy structure and foundations need an engineering check']));
-    expect(data.sites.find((s) => s.name === 'Guardhouse roof')!.flags).toEqual(expect.arrayContaining(['Roof age unknown', 'Small site: may not justify a separate study']));
-    expect(data.sites.at(-1)!.name).toBe('Guardhouse roof'); // too small to climb on readiness
-    expect(data.agreement).toEqual({ compared: 2, inBoth: 2 });
-    await updateSolarSite(db, w.admin, big.id, { expertRank: 9 });
-    expect((await solarSites(db, w.staff)).sites.find((s) => s.id === big.id)!.expert_rank).toBe(9);
-  });
-});
-
-describe('Material comparison and the edging trial', () => {
-  it('checks each requirement, flags missing evidence and never invents data', async () => {
-    const r = compareMaterials('LANDSCAPE_EDGING', { costRm: 40, lifeYears: 15, uvStable: true });
-    const plastic = r.rows.find((x) => x.id === 'edging-plastic')!;
-    expect(plastic.checks.find((c) => c.key === 'uvStable')!.verdict).toBe('NO_DATA');
-    expect(plastic.missingEvidence).toEqual(expect.arrayContaining(['No Environmental Product Declaration', 'Recycled content claimed without a certificate']));
-    const timber = r.rows.find((x) => x.id === 'edging-timber')!;
-    expect(timber.checks.find((c) => c.key === 'lifeYears')!.verdict).toBe('FAILS');
-    expect(r.rows[0]!.id).toBe('edging-steel'); // meets all, lowest carbon of those that do
-    expect(r.rows[0]!.carbonVsBaselinePct).toBe(-25);
-
-    const explained = await explainComparison('LANDSCAPE_EDGING', { costRm: 40, lifeYears: 15, uvStable: true });
-    expect(explained.source).toBe('RULES'); // no AI service in tests
-    expect(explained.summary).toContain('Galvanised steel edging meets every requirement');
-    expect(explained.summary).toContain('sample values');
-
-    await expect(saveShortlist(db, w.staff, { use: 'LANDSCAPE_EDGING', requirements: {}, materialIds: ['paver-clay'], secondsTaken: 60 }, T0)).rejects.toMatchObject({ status: 404 });
-    await saveShortlist(db, w.staff, { use: 'LANDSCAPE_EDGING', requirements: { costRm: 40 }, materialIds: ['edging-steel', 'edging-plastic'], secondsTaken: 240 }, T0);
-    expect(await listShortlists(db)).toMatchObject({ medianSeconds: 240 });
-  });
-
-  it('sets up the test plan once and records results for both strips', async () => {
-    const first = await edgingTrial(db, w.staff);
-    expect(first.tests).toHaveLength(DEFAULT_TEST_PLAN.length);
-    expect((await edgingTrial(db, w.staff)).tests).toHaveLength(DEFAULT_TEST_PLAN.length);
-    await updateTrialTest(db, w.staff, first.tests[0]!.id, { status: 'PASSED', resultRecycled: 'No sharp edges', resultConventional: 'One chipped corner' }, T0);
-    const after = await edgingTrial(db, w.staff);
-    expect(after.counts.PASSED).toBe(1);
-    expect(after.tests[0]).toMatchObject({ result_recycled: 'No sharp edges', result_conventional: 'One chipped corner' });
   });
 });
 
