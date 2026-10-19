@@ -205,7 +205,7 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
         {inboxOpen && <NotificationsPreview onClose={closeInbox} />}
       </header>
 
-      {(area === 'resident' || area === 'console' || area === 'guard') && <AlertTakeover href={area === 'resident' ? '/app/banjir' : area === 'guard' ? '/guard' : '/console/banjir'} />}
+      {(area === 'resident' || area === 'console' || area === 'guard') && <AlertTakeover href={area === 'resident' ? '/app/banjir' : area === 'guard' ? '/guard' : '/console/banjir'} canCheckIn={area === 'resident'} />}
 
       <main id="main" className={cn('mx-auto w-full max-w-7xl px-4 pb-28 pt-7 sm:px-6 md:pb-14 md:pt-9 lg:px-10 lg:pt-10', accessible && 'akses-view')}>
         <ProfileCompletion accountHref={`${root}/account`} />

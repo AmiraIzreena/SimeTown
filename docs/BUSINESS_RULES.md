@@ -70,6 +70,24 @@ and "Third edition" refer to `tests/ledger.test.ts`, `tests/api.test.ts`,
 | BR60 | The resident may reopen a resolved report within the dispute window (7 days by default); it goes back to its owner and the admins are told. After the window the case closes | `incidents/engine.ts → reopenIncident`; `incidents/checks.ts` | Incidents: "reopens a disputed outcome…", "…closes resolved cases only after the dispute window" |
 | BR61 | A courier company's support channel is shown only after an admin has checked and recorded it; tickets are filed for the resident only through a connected adapter (simulated only, and labelled so) | `incidents/courier-support.ts` | Incidents: "files a simulated courier ticket only for a simulated company…" |
 
+### Banjir with real sensors (proposal Appendix E)
+
+"Flood sensors" refers to `tests/flood-sensors.test.ts`. Rules 1 to 4 and 9 of Appendix E.2 are BR28 above.
+
+| Appendix E rule | In short | Enforced in | Proved by |
+| --- | --- | --- | --- |
+| Signed readings | A reading counts only if signed with that sensor's own key and naming its own zone; a duplicate from a gateway's buffer is dropped; nothing from the future or older than 24 hours | `banjir/ingest.ts → storeReadings` (HMAC-SHA256, `flood_readings_dedupe_idx`); `POST /flood/readings` | Flood sensors: "stores a signed reading, rejects a bad signature or the wrong zone, and drops a duplicate", "never shows a sensor key again after registration" |
+| E.1 Last verified and source | Every warning shows when the level was last verified and what it came from: the signals that agreed (sensor, CCTV, rain gauge, residents) or the duty officer; nothing while the zone is normal, and never the raw signals | `banjir/agent.ts` (`VERIFIED_JOIN`, `messageSources`, `withSources`), used by `banjir/service.ts` (`banjirOverview`, `activeAlerts`) and `publicFloodStatus`; shown by `components/features/flood.tsx → useVerifiedText` | Flood sensors: "shows the signals that agreed on the takeover, the Banjir page and the public status page", "falls back to every trusted signal…" |
+| 1 | A level is a percentage of the sensor's calibrated base-to-overflow height | `banjir/sensors.ts → pctOf`; calibrated in the Sensors tab | Flood sensors: every test (0–200 cm sensors) |
+| 5 Rate of rise | A climb of more than X cm in 10 minutes is a warning signal even below 75%; X is set per sensor | `banjir/agent.ts → sensorSignal` (`rise_cm_10min`) | Flood sensors: "counts a fast climb as a warning signal well below 75%", "does not count a slow climb" |
+| 6 Sensor health | Silent for 5 minutes, stuck for 20 minutes, or a low battery: faulty, not counted, and one ticket for staff until maintenance is logged | `banjir/sensors.ts` (`checkReadingHealth`, `checkSilentSensors` in the `flood-agent` job, `setHealth`, `logMaintenance`) | Flood sensors: the three "Rule 6" tests |
+| 7 Debounce and hysteresis | A level must hold for two readings in a row; the all clear needs every sensor below 60% for 30 minutes | `banjir/agent.ts → sensorSignal`, `assessZone` (`CLEAR_PCT`, `CLEAR_HOLD_MS`) | Flood sensors: "needs two readings in a row to trigger", "clears only after every sensor has stayed below 60% for 30 minutes" |
+| 8 Independence | All of a zone's sensors are one signal; the second must be another type (camera, rain, residents) | `assessZone` keeps one reading per source type | Flood sensors: "counts two sensors in the same zone as one signal" |
+| 9, BR19 SMS | Danger also goes by SMS | `banjir/agent.ts → sendLevel` → `sms.ts → queueSms` (recorded as SIMULATED: no provider in the prototype) | Flood sensors: "records the event from first alert to all clear…" |
+| 10 Post-event report | Timeline, who was warned, check-in rate and a false-alarm review, from the audit trail; names nobody | `banjir/events.ts` (`eventForAlert`, `closeEvent`, `eventReport`, `reviewEvent`) | Flood sensors: "records the event from first alert to all clear, with check-ins, help and the review" |
+| BR21 | Cancelling or editing the agent's draft needs a reason, kept in the timeline and audit trail | `banjir/agent.ts → decideDraft` | Third edition: "lets the officer confirm or cancel a draft…" |
+| Retention | Raw readings and signals 90 days, summarised by day first; SMS outbox 30 days | `retention.ts` in the `cleanup` job | Flood sensors: "summarises raw readings by day and deletes them after 90 days" |
+
 ## Home collections (automated)
 
 Booked home collections run without staff; staff see only the exceptions in BR67. The limits
@@ -119,6 +137,12 @@ These are choices made in code. Each should be confirmed, or changed, before a p
 | Household limit for offer-backed points | 800 a month (RM8), the proposal's worked example. Editable under Rules. | `program_settings.offer_points_monthly_home` |
 | What does rain or a resident's report count for in Banjir? | Each can support a Warning as a second signal; neither can declare Danger. Danger needs the drain sensor and the camera to agree. | `assessZone` |
 | What if a one-signal Warning draft is not answered? | It is not sent by itself; the township admins are told once. A one-signal Danger is sent after 3 minutes only if the water is still rising. A draft whose signal has gone stale is dropped. | `runAgentClock` |
+| What is X, the rate-of-rise line? | 15 cm in 10 minutes by default, editable per sensor. The annex leaves it to the site survey. | `flood_sensors.rise_cm_10min` |
+| When is a sensor "stuck"? | The exact same reading for 20 minutes (at least 10 readings). Real sensors wobble by millimetres; a dry drain that truly does not move would need a longer window, set after the survey. | `banjir/sensors.ts → checkReadingHealth` |
+| Does a faulty sensor's ticket close when it recovers? | No. It counts again at once, but the ticket stays open until someone logs maintenance, so every fault gets looked at. One open ticket per sensor. | `setHealth`, `logMaintenance` |
+| Does stepping down from Danger to Warning wait 30 minutes? | No. The 30-minute hold (rule 7) applies to the all clear only; a lower level still needs two signals to agree. | `evaluateZone` |
+| What is the warning lead time? | Minutes from the event's first alert to its first danger alert. An event that started at danger has a lead time of 0. | `banjir/events.ts` |
+| How are the simulated sensors driven? | The console slider sets their level; the agent clock makes them report every 60 seconds (15 above the warning line), signed with their own keys, through the same `storeReadings` as a real device. | `banjir/sensors.ts → simulatedHeartbeat` |
 | Does an officer setting a level by hand need a second signal? | No. A person deciding is the human check the rule asks for; it is sent at once and logged as the officer's decision. | `banjir/service.ts → recordLevel` |
 | Who can operate the gate? | Guards, and township staff and admins covering a shift. | `tamu/routes.ts` |
 | Pass lengths | One visit 2 days, delivery 1 day, event 2 days, contractor 30 days, regular helper and carer 90 days. | `PASS_TYPE_INFO` |

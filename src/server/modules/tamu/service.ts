@@ -4,6 +4,7 @@ import { requireVerifiedResident, townshipOf, type Actor } from '../../auth/acto
 import { hashToken, newToken } from '../../auth/session';
 import { conflict, notFound, ruleViolation } from '../../errors';
 import { audit } from '../audit';
+import { myHelpTasks } from '../banjir/events';
 import { randomCode } from '../identity/service';
 import { onCollectionGateEntry } from '../kitar/collection-gate';
 import { notify } from '../notifications';
@@ -372,6 +373,8 @@ export async function guardOverview(db: Db, actor: Actor, now: Date) {
     ),
     one<{ name: string; gate_name: string | null }>(db, 'SELECT name, gate_name FROM townships WHERE id = $1', [townshipId]),
   ]);
+  // Residents duty staff asked this guard to reach during a flood (Appendix E.3, priority help).
+  const helpTasks = await myHelpTasks(db, actor);
   return {
     township: township!.name,
     gate: township!.gate_name,
@@ -382,6 +385,7 @@ export async function guardOverview(db: Db, actor: Actor, now: Date) {
     sos: sos.map((s) => ({ id: s.id, status: s.status, created_at: s.created_at, full_name: s.full_name, phone: s.phone, address: formatAddress(s) })),
     patrol,
     floodTasks: floods.flatMap((z) => floodTasks(z)),
+    helpTasks,
   };
 }
 

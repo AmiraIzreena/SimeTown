@@ -227,6 +227,9 @@ describe('Banjir agent (BR28)', () => {
 
   it('only drafts on one signal, and sends at once when a second signal agrees', async () => {
     await simulateSignal(db, w.staff, zoneId, { source: 'SENSOR', levelPct: 80 }, T0);
+    // A level must hold for two readings in a row before it counts (Appendix E.2, rule 7).
+    expect(await one(db, `SELECT 1 FROM flood_messages WHERE zone_id = $1 AND status = 'DRAFT'`, [zoneId])).toBeUndefined();
+    await simulateSignal(db, w.staff, zoneId, { source: 'SENSOR', levelPct: 81 }, new Date(T0.getTime() + 15_000));
     expect(await status()).toBe('NORMAL');
     const draft = await one<{ level: string; status: string }>(db, `SELECT level, status FROM flood_messages WHERE zone_id = $1 AND status = 'DRAFT'`, [zoneId]);
     expect(draft).toMatchObject({ level: 'WARNING' });
@@ -257,7 +260,9 @@ describe('Banjir agent (BR28)', () => {
     expect(await status()).toBe('NORMAL');
     await simulateSignal(db, w.staff, zoneId, { source: 'RAIN', rainMmHr: 45 }, at(0.02));
     const draft = await one<{ id: string }>(db, `SELECT id FROM flood_messages WHERE zone_id = $1 AND status = 'DRAFT'`, [zoneId]);
-    await decideDraft(db, w.staff, draft!.id, { action: 'SEND', todo: 'Heavy rain: please stay away from the lake road for now.' }, at(0.021));
+    // Changing the agent's words is an override: it needs a reason (BR21).
+    await expect(decideDraft(db, w.staff, draft!.id, { action: 'SEND', todo: 'Heavy rain: please stay away from the lake road for now.' }, at(0.021))).rejects.toMatchObject({ code: 'REASON_NEEDED' });
+    await decideDraft(db, w.staff, draft!.id, { action: 'SEND', todo: 'Heavy rain: please stay away from the lake road for now.', reason: 'The lake road floods first.' }, at(0.021));
     expect(await status()).toBe('WARNING');
     await simulateSignal(db, w.staff, zoneId, { source: 'SENSOR', levelPct: 15 }, at(0.03));
     await simulateSignal(db, w.staff, zoneId, { source: 'CAMERA', pictureId: 'day-12' }, at(0.031));
@@ -269,6 +274,7 @@ describe('Banjir agent (BR28)', () => {
     const zone = z!.id;
     const t = at(1);
     await simulateSignal(db, w.staff, zone, { source: 'SENSOR', levelPct: 93 }, t); // danger, one signal
+    await simulateSignal(db, w.staff, zone, { source: 'SENSOR', levelPct: 94 }, new Date(t.getTime() + 15_000)); // and it holds
     await simulateSignal(db, w.staff, zone, { source: 'RAIN', rainMmHr: 45 }, new Date(t.getTime() + 30_000)); // supports a warning
     expect((await one<{ status: string }>(db, 'SELECT status FROM flood_zones WHERE id = $1', [zone]))!.status).toBe('WARNING');
     const draft = await one<{ id: string; level: string }>(db, `SELECT id, level FROM flood_messages WHERE zone_id = $1 AND status = 'DRAFT'`, [zone]);

@@ -14,6 +14,8 @@ import { deleteOldParcels } from './parcels/service';
  *   Assistant  conversations: 90 days after the last message
  *   Parcels collected or returned parcels, with their photos: 90 days
  *   Lockers finished locker parcels with their history: 90 days; wrong-code counts: 1 day; device messages: 30 days
+ *   Banjir  raw sensor readings and signals: 90 days, summarised by day first (Appendix E.3);
+ *           SMS outbox (phone numbers): 30 days
  */
 export async function retentionCleanup(db: Db, now: Date): Promise<Record<string, number>> {
   const visitors = await deleteOldVisitorRecords(db, now);
@@ -47,7 +49,26 @@ export async function retentionCleanup(db: Db, now: Date): Promise<Record<string
   await db.query(`DELETE FROM courier_referrals WHERE created_at < $1::timestamptz - interval '365 days'`, [now]);
   await db.query(`DELETE FROM sim_idp_codes WHERE expires_at < $1::timestamptz - interval '1 day'`, [now]);
   await db.query(`DELETE FROM locker_device_events WHERE received_at < $1::timestamptz - interval '30 days'`, [now]);
+  const flood = await db.tx(async (tx) => {
+    // Keep a summary of each sensor's (or zone's) day before the raw readings go.
+    await tx.query(
+      `INSERT INTO flood_readings_daily (zone_id, sensor_id, day, readings, min_pct, max_pct, avg_pct)
+       SELECT zone_id, sensor_id, (created_at AT TIME ZONE 'Asia/Kuala_Lumpur')::date, count(*), min(level_pct), max(level_pct), round(avg(level_pct), 1)
+         FROM flood_readings WHERE created_at < $1::timestamptz - interval '90 days'
+        GROUP BY 1, 2, 3
+       ON CONFLICT (zone_id, sensor_id, day) DO UPDATE SET readings = flood_readings_daily.readings + EXCLUDED.readings,
+              min_pct = least(flood_readings_daily.min_pct, EXCLUDED.min_pct), max_pct = greatest(flood_readings_daily.max_pct, EXCLUDED.max_pct)`,
+      [now],
+    );
+    const readings = await tx.query(`DELETE FROM flood_readings WHERE created_at < $1::timestamptz - interval '90 days' RETURNING id`, [now]);
+    const signals = await tx.query(`DELETE FROM flood_signals WHERE created_at < $1::timestamptz - interval '90 days' RETURNING id`, [now]);
+    const sms = await tx.query(`DELETE FROM sms_outbox WHERE created_at < $1::timestamptz - interval '30 days' RETURNING id`, [now]);
+    return { readings: readings.length, signals: signals.length, sms: sms.length };
+  });
   return {
+    floodReadingsDeleted: flood.readings,
+    floodSignalsDeleted: flood.signals,
+    smsDeleted: flood.sms,
     visitorEntriesDeleted: visitors.entries,
     visitorPassesDeleted: visitors.passes,
     routesDeleted: routes.length,

@@ -1,10 +1,13 @@
-import { CAMERA_MIN_CONFIDENCE, FLOOD_TEST_PICTURES, type FloodSource, type FloodStatus, type FloodTestPictureId } from '@/shared/domain';
+import { CAMERA_MIN_CONFIDENCE, FLOOD_TEST_PICTURES, type FloodSource, type FloodStatus, type FloodTestPictureId, type WarningSource } from '@/shared/domain';
 import { one, type Db, type Queryable } from '../../db/client';
 import { assertTownshipAccess, type Actor } from '../../auth/actor';
-import { conflict, notFound } from '../../errors';
+import { conflict, notFound, ruleViolation } from '../../errors';
 import { audit } from '../audit';
 import { notify } from '../notifications';
 import { getSettings, type Settings } from '../settings';
+import { queueSms } from '../sms';
+import { closeEvent, eventForAlert, notePeak, notePeopleWarned } from './events';
+import { checkSilentSensors, simulatedHeartbeat, simulateZoneLevel } from './sensors';
 
 /**
  * The Banjir agent (proposal 6.5, BR28). Fixed rules on numbers decide the
@@ -21,14 +24,26 @@ import { getSettings, type Settings } from '../settings';
  * Every message follows the Calm Alert Flow: what is happening, where, what to
  * do now, and when the next update comes. An update goes out every 15 minutes
  * while an alert is open, even when nothing has changed.
+ *
+ * Real sensors (Appendix E.2) add four rules to how a zone's sensors are read:
+ *   5 Rate of rise    a climb of more than X cm in 10 minutes is a warning signal, even below 75%
+ *   6 Sensor health   a faulty sensor (silent, stuck, low battery) cannot count as a signal
+ *   7 Debounce        a level must hold for 2 readings in a row to trigger, and the zone is
+ *                     clear only once every sensor has stayed below 60% for 30 minutes
+ *   8 Independence    all the sensors in a zone are one signal: a second signal must be of
+ *                     another type (camera, rain gauge or residents' reports)
  */
 
-const SIGNAL_FRESH_MS = 10 * 60_000;
+export const SIGNAL_FRESH_MS = 10 * 60_000;
 const REPORT_FRESH_MS = 30 * 60_000;
 const HEAVY_RAIN_MM_HR = 30;
 const UPDATE_EVERY_MS = 15 * 60_000;
 const WARNING_CONFIRM_MS = 5 * 60_000;
 const DANGER_CONFIRM_MS = 3 * 60_000;
+const RISE_WINDOW_MS = 10 * 60_000;
+export const CLEAR_PCT = 60;
+const CLEAR_HOLD_MS = 30 * 60_000;
+const SILENT_MS = 5 * 60_000;
 
 const RANK: Record<FloodStatus, number> = { NORMAL: 0, WARNING: 1, DANGER: 2 };
 const higher = (a: FloodStatus, b: FloodStatus) => (RANK[a] >= RANK[b] ? a : b);
@@ -46,6 +61,21 @@ export interface SourceReading {
   note: string;
 }
 
+/** One sensor as the agent read it this time. */
+export interface SensorView {
+  id: string | null;
+  code: string | null;
+  levelPct: number;
+  level: FloodStatus;
+  faulty: boolean;
+  /** Only one fresh reading above normal: it must hold for a second before it counts (rule 7). */
+  pending: boolean;
+  /** The climb over the last 10 minutes, in cm, when the sensor reports in cm. */
+  riseCm: number | null;
+  risingFast: boolean;
+  at: Date;
+}
+
 export interface Assessment {
   readings: SourceReading[];
   /** The highest level at least two independent sources support. */
@@ -56,22 +86,107 @@ export interface Assessment {
   safeAgreed: boolean;
   rising: boolean;
   levelPct: number | null;
+  /** Some healthy sensor is climbing faster than its rate-of-rise threshold (rule 5). */
+  risingFast: boolean;
+  sensors: SensorView[];
+  /** The newest reading from a healthy sensor: the "last verified" time residents see. */
+  lastVerifiedAt: Date | null;
+}
+
+/**
+ * The zone's sensors, read as one signal (rules 5 to 8). Readings from a faulty or
+ * silent sensor are left out; what is left is debounced, checked for a fast rise
+ * and tested for the 30-minute all-clear hold.
+ */
+async function sensorSignal(q: Queryable, zoneId: string, now: Date, s: Settings) {
+  const [rows, registered] = await Promise.all([
+    q.query<{ sensor_id: string | null; level_pct: number; level_cm: number | null; created_at: Date }>(
+      `SELECT sensor_id, level_pct, level_cm, created_at FROM flood_signals
+        WHERE zone_id = $1 AND source = 'SENSOR' AND created_at <= $2 AND created_at > $2::timestamptz - make_interval(secs => $3::double precision)
+        ORDER BY created_at DESC, id DESC`,
+      [zoneId, now, CLEAR_HOLD_MS / 1000],
+    ),
+    q.query<{ id: string; code: string; health: string; last_seen_at: Date | null; rise_cm_10min: number; status: string }>(
+      'SELECT id, code, health, last_seen_at, rise_cm_10min, status FROM flood_sensors WHERE zone_id = $1',
+      [zoneId],
+    ),
+  ]);
+  const groups = new Map<string, typeof rows>();
+  for (const r of rows) groups.set(r.sensor_id ?? 'unregistered', [...(groups.get(r.sensor_id ?? 'unregistered') ?? []), r]);
+
+  const views: (SensorView & { clear: boolean; rising: boolean })[] = [];
+  for (const [key, series] of groups) {
+    const meta = registered.find((m) => m.id === key);
+    if (key !== 'unregistered' && (!meta || meta.status !== 'ACTIVE')) continue;
+    const fresh = series.filter((r) => now.getTime() - r.created_at.getTime() <= SIGNAL_FRESH_MS);
+    if (fresh.length === 0) continue;
+    const faulty = Boolean(meta && (meta.health === 'FAULTY' || !meta.last_seen_at || now.getTime() - meta.last_seen_at.getTime() > SILENT_MS));
+    const latest = fresh[0]!;
+    // Rule 7: the level that held for the last two readings.
+    const held = fresh.length >= 2 ? levelOf(Math.min(latest.level_pct, fresh[1]!.level_pct), s) : 'NORMAL';
+    const pending = fresh.length === 1 && levelOf(latest.level_pct, s) !== 'NORMAL';
+    // Rule 5: the climb over the last 10 minutes.
+    const recent = fresh.filter((r) => r.level_cm !== null && now.getTime() - r.created_at.getTime() <= RISE_WINDOW_MS);
+    const riseCm = meta && recent.length >= 2 && latest.level_cm !== null ? Math.round((latest.level_cm - Math.min(...recent.map((r) => r.level_cm!))) * 10) / 10 : null;
+    const risingFast = Boolean(meta && riseCm !== null && riseCm > meta.rise_cm_10min);
+    views.push({
+      id: meta?.id ?? null,
+      code: meta?.code ?? null,
+      levelPct: latest.level_pct,
+      level: risingFast ? higher(held, 'WARNING') : held,
+      faulty,
+      pending,
+      riseCm,
+      risingFast,
+      at: latest.created_at,
+      // Rule 7: clear only when nothing in the last 30 minutes reached 60%.
+      clear: series.every((r) => r.level_pct < CLEAR_PCT),
+      rising: fresh.length >= 2 ? latest.level_pct >= fresh[1]!.level_pct : true,
+    });
+  }
+  if (views.length === 0) return null;
+  const healthy = views.filter((v) => !v.faulty);
+  const sensors: SensorView[] = views.map((v) => ({ id: v.id, code: v.code, levelPct: v.levelPct, level: v.level, faulty: v.faulty, pending: v.pending, riseCm: v.riseCm, risingFast: v.risingFast, at: v.at }));
+  if (healthy.length === 0) {
+    const latest = views.reduce((a, b) => (a.at > b.at ? a : b));
+    const reading: SourceReading = {
+      source: 'SENSOR', level: 'NORMAL', levelPct: latest.levelPct, rainMmHr: null, confidence: null, trusted: false, at: latest.at,
+      note: views.length === 1 ? 'Sensor faulty: not counted' : 'Every sensor is faulty: not counted',
+    };
+    return { reading, clear: false, rising: false, risingFast: false, sensors, lastVerifiedAt: null };
+  }
+  // Rule 8: however many sensors there are, the zone's sensors are one signal, led by the highest.
+  const top = healthy.reduce((a, b) => (RANK[b.level] > RANK[a.level] || (RANK[b.level] === RANK[a.level] && b.levelPct > a.levelPct) ? b : a));
+  const notes = [`${top.levelPct}% in the drain`];
+  if (top.pending) notes.push('Waiting for a second reading');
+  if (top.risingFast) notes.push(`Rising ${top.riseCm} cm in 10 minutes`);
+  if (healthy.length > 1) notes.push(`${healthy.length} sensors, counted as one signal`);
+  if (healthy.length < views.length) notes.push(`${views.length - healthy.length} faulty, not counted`);
+  const reading: SourceReading = { source: 'SENSOR', level: top.level, levelPct: top.levelPct, rainMmHr: null, confidence: null, trusted: true, at: top.at, note: notes.join(' · ') };
+  return {
+    reading,
+    clear: healthy.every((v) => v.clear),
+    rising: top.rising,
+    risingFast: healthy.some((v) => v.risingFast),
+    sensors,
+    lastVerifiedAt: healthy.reduce((a, b) => (a.at > b.at ? a : b)).at,
+  };
 }
 
 /** What each source says right now. Only fresh, trusted readings count. */
 export async function assessZone(q: Queryable, zoneId: string, now: Date, s: Settings): Promise<Assessment> {
-  const rows = await q.query<{ source: FloodSource; level_pct: number | null; rain_mm_hr: number | null; confidence: number | null; created_at: Date; reports: number }>(
+  const rows = await q.query<{ source: Exclude<FloodSource, 'SENSOR'>; level_pct: number | null; rain_mm_hr: number | null; confidence: number | null; created_at: Date; reports: number }>(
     `SELECT DISTINCT ON (source) source, level_pct, rain_mm_hr, confidence, created_at,
-            (SELECT count(*)::int FROM flood_signals r WHERE r.zone_id = $1 AND r.source = 'REPORT' AND r.created_at > $2::timestamptz - make_interval(secs => $4::double precision)) AS reports
+            (SELECT count(*)::int FROM flood_signals r WHERE r.zone_id = $1 AND r.source = 'REPORT' AND r.created_at <= $2 AND r.created_at > $2::timestamptz - make_interval(secs => $4::double precision)) AS reports
        FROM flood_signals
-      WHERE zone_id = $1 AND created_at > $2::timestamptz - make_interval(secs => CASE WHEN source = 'REPORT' THEN $4::double precision ELSE $3::double precision END)
+      WHERE zone_id = $1 AND source <> 'SENSOR' AND created_at <= $2
+        AND created_at > $2::timestamptz - make_interval(secs => CASE WHEN source = 'REPORT' THEN $4::double precision ELSE $3::double precision END)
       ORDER BY source, created_at DESC`,
     [zoneId, now, SIGNAL_FRESH_MS / 1000, REPORT_FRESH_MS / 1000],
   );
+  const sensor = await sensorSignal(q, zoneId, now, s);
   const readings: SourceReading[] = rows.map((r) => {
     switch (r.source) {
-      case 'SENSOR':
-        return { source: r.source, level: levelOf(r.level_pct!, s), levelPct: r.level_pct, rainMmHr: null, confidence: null, trusted: true, at: r.created_at, note: `${r.level_pct}% in the drain` };
       case 'CAMERA': {
         const trusted = (r.confidence ?? 0) >= CAMERA_MIN_CONFIDENCE;
         return {
@@ -88,20 +203,18 @@ export async function assessZone(q: Queryable, zoneId: string, now: Date, s: Set
         return { source: r.source, level: 'WARNING', levelPct: null, rainMmHr: null, confidence: null, trusted: true, at: r.created_at, note: `${r.reports} resident report${r.reports === 1 ? '' : 's'} of water` };
     }
   });
+  if (sensor) readings.unshift(sensor.reading);
+  // One reading per source type, so two signals that agree are always of two different types (rule 8).
   const trusted = readings.filter((r) => r.trusted);
   const support = (level: FloodStatus) => trusted.filter((r) => RANK[r.level] >= RANK[level]).length;
   const agreed: FloodStatus = support('DANGER') >= 2 ? 'DANGER' : support('WARNING') >= 2 ? 'WARNING' : 'NORMAL';
   const single = trusted.reduce<FloodStatus>((max, r) => higher(max, r.level), 'NORMAL');
-  // "Safe" needs the two water-level sources, both below the warning line.
-  const levels = trusted.filter((r) => r.source === 'SENSOR' || r.source === 'CAMERA');
-  const safeAgreed = levels.length >= 2 && levels.every((r) => r.level === 'NORMAL');
-  const sensor = await q.query<{ level_pct: number }>(
-    `SELECT level_pct FROM flood_signals WHERE zone_id = $1 AND source = 'SENSOR' AND created_at > $2::timestamptz - interval '30 minutes' ORDER BY created_at DESC LIMIT 2`,
-    [zoneId, now],
-  );
-  const rising = sensor.length === 2 ? sensor[0]!.level_pct >= sensor[1]!.level_pct : sensor.length === 1;
-  const levelPct = readings.find((r) => r.source === 'SENSOR')?.levelPct ?? readings.find((r) => r.source === 'CAMERA' && r.trusted)?.levelPct ?? null;
-  return { readings, agreed, single, safeAgreed, rising, levelPct };
+  // "Safe" needs the two water-level sources: the sensors held below 60% for 30 minutes (rule 7), and the camera agreeing.
+  const camera = trusted.find((r) => r.source === 'CAMERA');
+  const safeAgreed = Boolean(sensor?.reading.trusted && sensor.clear && camera && camera.levelPct !== null && camera.levelPct < CLEAR_PCT);
+  const rising = sensor?.rising ?? false;
+  const levelPct = sensor?.reading.trusted ? sensor.reading.levelPct : (camera?.levelPct ?? sensor?.reading.levelPct ?? null);
+  return { readings, agreed, single, safeAgreed, rising, levelPct, risingFast: sensor?.risingFast ?? false, sensors: sensor?.sensors ?? [], lastVerifiedAt: sensor?.lastVerifiedAt ?? null };
 }
 
 async function log(q: Queryable, zoneId: string, now: Date, step: string, detail: Record<string, unknown> = {}, actorId: string | null = null) {
@@ -158,8 +271,13 @@ export async function sendLevel(
   const todo = input.edits?.todo ?? text.todo;
 
   await tx.query('UPDATE flood_alerts SET ended_at = $2 WHERE zone_id = $1 AND ended_at IS NULL', [zone.id, now]);
+  // Every alert belongs to the zone's flood event, which the all clear closes (Appendix E.2, rule 10).
+  let eventId: string | null = null;
   if (input.level !== 'NORMAL') {
-    await tx.query('INSERT INTO flood_alerts (zone_id, level, started_at, next_update_at) VALUES ($1, $2, $3, $4)', [zone.id, input.level, now, next]);
+    eventId = await eventForAlert(tx, zone.id, input.level, input.levelPct, now);
+    await tx.query('INSERT INTO flood_alerts (zone_id, level, started_at, next_update_at, event_id) VALUES ($1, $2, $3, $4, $5)', [zone.id, input.level, now, next, eventId]);
+  } else {
+    await closeEvent(tx, zone.id, now);
   }
   await tx.query('UPDATE flood_zones SET status = $2, level_pct = coalesce($3, level_pct), updated_at = $4 WHERE id = $1', [zone.id, input.level, input.levelPct, now]);
 
@@ -192,9 +310,13 @@ export async function sendLevel(
     [zone.id],
   );
   const everyone = [...new Set([...residents, ...responders, ...carers].map((u) => u.id))];
+  if (eventId) await notePeopleWarned(tx, eventId, everyone.length);
   const body = [what, todo, text.nextUpdate].filter(Boolean).join(' ');
   if (input.level === 'DANGER') {
     await notify(tx, everyone, { priority: 'URGENT', title: `Flood danger in ${zone.name}`, body, link: '/app/banjir' });
+    // BR19: danger also goes by SMS, so people without the app open are reached.
+    const texted = await queueSms(tx, everyone, { body: `${what} ${todo}`, reason: 'FLOOD_DANGER', zoneId: zone.id }, now);
+    await log(tx, zone.id, now, 'SMS_QUEUED', { people: texted, simulated: true });
     const neighbours = await tx.query<{ id: string }>(
       `SELECT u.id FROM users u JOIN homes h ON h.id = u.home_id JOIN flood_zones z ON z.id = h.zone_id
         WHERE z.township_id = $1 AND z.id <> $2 AND u.status = 'ACTIVE'`,
@@ -250,7 +372,10 @@ export async function evaluateZone(tx: Queryable, zoneId: string, now: Date): Pr
     await sendLevel(tx, zone, { level: a.agreed, levelPct: a.levelPct, decision: 'TWO_SIGNALS', signals, actorId: null }, now);
     return a;
   }
-  if (a.levelPct !== null) await tx.query('UPDATE flood_zones SET level_pct = $2, updated_at = $3 WHERE id = $1', [zoneId, a.levelPct, now]);
+  if (a.levelPct !== null) {
+    await tx.query('UPDATE flood_zones SET level_pct = $2, updated_at = $3 WHERE id = $1', [zoneId, a.levelPct, now]);
+    await notePeak(tx, zoneId, a.levelPct);
+  }
 
   if (RANK[a.single] > RANK[zone.status]) {
     if (draft && RANK[draft.level] >= RANK[a.single]) return a; // already waiting for the officer
@@ -321,12 +446,23 @@ export async function simulateSignal(
       return addSignal(tx, { zoneId, source: 'CAMERA', levelPct: picture.readPct, confidence: picture.confidence, detail: { pictureId: picture.id, truePct: picture.truePct } }, now);
     }
     if (input.source === 'RAIN') return addSignal(tx, { zoneId, source: 'RAIN', rainMmHr: input.rainMmHr }, now);
+    // The zone's simulated sensors move to this level and send signed readings through the real ingestion path.
+    if (await simulateZoneLevel(tx, zoneId, input.levelPct, now)) return assessZone(tx, zoneId, now, await getSettings(tx));
+    // A zone with no registered sensor: an unsigned test signal, as before sensors were registered.
     return addSignal(tx, { zoneId, source: 'SENSOR', levelPct: input.levelPct }, now);
   });
 }
 
-/** The duty officer sends (optionally edited) or cancels a draft. One tap. */
-export async function decideDraft(db: Db, actor: Actor, messageId: string, input: { action: 'SEND' | 'CANCEL'; what?: string; todo?: string }, now: Date) {
+/**
+ * The duty officer sends (optionally edited) or cancels a draft. One tap. Cancelling
+ * or editing the agent's draft is an override, so it needs a reason, and the reason
+ * is kept in the timeline (BR21).
+ */
+export async function decideDraft(db: Db, actor: Actor, messageId: string, input: { action: 'SEND' | 'CANCEL'; what?: string; todo?: string; reason?: string }, now: Date) {
+  const edited = Boolean(input.what || input.todo);
+  if ((input.action === 'CANCEL' || edited) && !input.reason?.trim()) {
+    throw ruleViolation('REASON_NEEDED', 'Say why you are cancelling or changing the agent’s draft.', { fields: { reason: 'Give a reason.' } });
+  }
   return db.tx(async (tx) => {
     const draft = await one<{ id: string; zone_id: string; level: FloodStatus; status: string; signals: unknown }>(
       tx,
@@ -339,12 +475,13 @@ export async function decideDraft(db: Db, actor: Actor, messageId: string, input
     if (draft.status !== 'DRAFT') throw conflict('ALREADY_DECIDED', 'This draft has already been sent or cancelled.');
     if (input.action === 'CANCEL') {
       await tx.query(`UPDATE flood_messages SET status = 'CANCELLED', decided_by = $2 WHERE id = $1`, [draft.id, actor.id]);
-      await log(tx, zone.id, now, 'OFFICER_CANCELLED', { level: draft.level }, actor.id);
+      await log(tx, zone.id, now, 'OFFICER_CANCELLED', { level: draft.level, reason: input.reason }, actor.id);
+      await audit(tx, actor.id, 'FLOOD_DRAFT_CANCELLED', 'flood_zone', zone.id, { level: draft.level, reason: input.reason });
       return { status: 'CANCELLED' };
     }
     const a = await assessZone(tx, zone.id, now, await getSettings(tx));
-    await log(tx, zone.id, now, 'OFFICER_CONFIRMED', { level: draft.level, edited: Boolean(input.what || input.todo) }, actor.id);
-    await sendLevel(tx, zone, { level: draft.level, levelPct: a.levelPct, decision: 'ONE_SIGNAL', signals: draft.signals, actorId: actor.id, draftId: draft.id, edits: input }, now);
+    await log(tx, zone.id, now, 'OFFICER_CONFIRMED', { level: draft.level, edited, reason: input.reason ?? null }, actor.id);
+    await sendLevel(tx, zone, { level: draft.level, levelPct: a.levelPct, decision: 'ONE_SIGNAL', signals: draft.signals, actorId: actor.id, draftId: draft.id, edits: { what: input.what, todo: input.todo } }, now);
     return { status: 'SENT' };
   });
 }
@@ -360,6 +497,9 @@ export async function runAgentClock(db: Db, now: Date, townshipId: string | null
   const s = await getSettings(db);
   let escalated = 0;
   let updates = 0;
+  // Simulated sensors report on their rhythm first, then any sensor silent for 5 minutes is marked faulty (rule 6).
+  const heartbeats = await simulatedHeartbeat(db, now, townshipId);
+  const silent = await checkSilentSensors(db, now, townshipId);
   const overdue = await db.query<{ id: string; zone_id: string; level: FloodStatus }>(
     `SELECT m.id, m.zone_id, m.level FROM flood_messages m JOIN flood_zones z ON z.id = m.zone_id
       WHERE m.status = 'DRAFT' AND m.deadline_at <= $1 AND ($2::uuid IS NULL OR z.township_id = $2)`,
@@ -422,7 +562,7 @@ export async function runAgentClock(db: Db, now: Date, townshipId: string | null
       return 1;
     });
   }
-  return { escalated, updates };
+  return { escalated, updates, heartbeats, silentSensors: silent };
 }
 
 /** The duty officer's screen: every zone's signals, the agent's reading, waiting drafts and the decision timeline. */
@@ -435,14 +575,24 @@ export async function agentOverview(db: Db, actor: Actor, now: Date) {
   );
   const result = [];
   for (const zone of zones) {
-    const [assessment, draft, timeline, messages, checkins] = await Promise.all([
+    const [assessment, draft, timeline, messages, checkins, sensors, event] = await Promise.all([
       assessZone(db, zone.id, now, s),
       one(db, `SELECT id, level, what, where_text, todo, deadline_at, created_at, signals FROM flood_messages WHERE zone_id = $1 AND status = 'DRAFT'`, [zone.id]),
       db.query(`SELECT id, at, step, detail FROM flood_agent_log WHERE zone_id = $1 ORDER BY id DESC LIMIT 12`, [zone.id]),
       db.query(`SELECT id, level, kind, what, todo, decision, sent_at, next_update_at FROM flood_messages WHERE zone_id = $1 AND status = 'SENT' ORDER BY sent_at DESC LIMIT 5`, [zone.id]),
       checkinSummary(db, zone.id, zone.status !== 'NORMAL'),
+      db.query(
+        `SELECT id, code, site, health, health_reason, last_seen_at, last_level_pct, last_battery, simulated, sim_paused FROM flood_sensors WHERE zone_id = $1 AND status = 'ACTIVE' ORDER BY code`,
+        [zone.id],
+      ),
+      one(
+        db,
+        `SELECT e.id, e.started_at, e.peak_status, (SELECT count(*)::int FROM sms_outbox o WHERE o.zone_id = e.zone_id AND o.created_at >= e.started_at) AS sms
+           FROM flood_events e WHERE e.zone_id = $1 AND e.ended_at IS NULL`,
+        [zone.id],
+      ),
     ]);
-    result.push({ ...zone, assessment, draft: draft ?? null, timeline, messages, checkins });
+    result.push({ ...zone, assessment, draft: draft ?? null, timeline, messages, checkins, sensors, event: event ?? null });
   }
   return { zones: result, warningPct: s.flood_warning_pct, dangerPct: s.flood_danger_pct };
 }
@@ -509,6 +659,44 @@ export async function reportSignal(tx: Queryable, zoneId: string, reportId: stri
 }
 
 /**
+ * "Last verified" for a zone (Appendix E.1): the newest reading from a sensor that is
+ * not faulty (or a level the duty officer set), and what it came from. Used by the
+ * resident app, the danger takeover and the public status page. Needs `z` as the zone.
+ */
+export const VERIFIED_COLUMNS = 'v.verified_at, v.verified_by, v.sensors_ok';
+export const VERIFIED_JOIN = `LEFT JOIN LATERAL (
+    SELECT r.created_at AS verified_at, r.source AS verified_by,
+           (SELECT count(*)::int FROM flood_sensors fs2 WHERE fs2.zone_id = z.id AND fs2.status = 'ACTIVE' AND fs2.health = 'OK') AS sensors_ok
+      FROM flood_readings r LEFT JOIN flood_sensors fs ON fs.id = r.sensor_id
+     WHERE r.zone_id = z.id AND (r.sensor_id IS NULL OR fs.health <> 'FAULTY')
+     ORDER BY r.created_at DESC LIMIT 1) v ON true`;
+
+const SOURCE_ORDER: WarningSource[] = ['MANUAL', 'SENSOR', 'CAMERA', 'RAIN', 'REPORT'];
+
+/**
+ * The source shown on every warning (Appendix E.1): the signals that backed the
+ * latest message sent, read from what that message recorded. A signal counts if it
+ * was trusted and reached the message's level (for an all clear, read normal).
+ * If none did, as on a scheduled update after the water dropped, every trusted
+ * signal is listed, so the message is never shown without a source.
+ */
+export function messageSources(level: FloodStatus | null, signals: unknown): WarningSource[] {
+  if (!level || !Array.isArray(signals)) return [];
+  const recorded = signals.filter((x): x is { source: WarningSource; level?: FloodStatus; trusted?: boolean } => typeof x?.source === 'string' && SOURCE_ORDER.includes(x.source));
+  if (recorded.some((x) => x.source === 'MANUAL')) return ['MANUAL'];
+  const trusted = recorded.filter((x) => x.trusted !== false);
+  const backed = trusted.filter((x) => !x.level || (level === 'NORMAL' ? x.level === 'NORMAL' : RANK[x.level] >= RANK[level]));
+  const chosen = new Set((backed.length ? backed : trusted).map((x) => x.source));
+  return SOURCE_ORDER.filter((x) => chosen.has(x));
+}
+
+/** Swaps a row's raw `message_level` and `signals` for its `sources`; a zone back to normal shows none. */
+export function withSources<T extends { message_level?: FloodStatus | null; signals?: unknown; status?: FloodStatus }>(row: T) {
+  const { message_level, signals, ...rest } = row;
+  return { ...rest, sources: row.status === 'NORMAL' ? null : messageSources(message_level ?? null, signals) };
+}
+
+/**
  * The one official status page (proposal 6.5): zone levels and the latest
  * official message. No sign-in, and nothing about any person.
  */
@@ -516,12 +704,13 @@ export async function publicFloodStatus(db: Db) {
   const townships = await db.query<{ id: string; name: string }>('SELECT id, name FROM townships ORDER BY name');
   const zones = await db.query<{ township_id: string } & Record<string, unknown>>(
     `SELECT z.township_id, z.id, z.name, z.status, z.level_pct, z.safe_route, z.assembly_point, z.updated_at,
-            m.kind AS message_kind, m.what, m.where_text, m.todo, m.next_update_at, m.sent_at
+            m.kind AS message_kind, m.what, m.where_text, m.todo, m.next_update_at, m.sent_at, m.level AS message_level, m.signals, ${VERIFIED_COLUMNS}
        FROM flood_zones z
-       LEFT JOIN LATERAL (SELECT kind, what, where_text, todo, next_update_at, sent_at FROM flood_messages
+       LEFT JOIN LATERAL (SELECT kind, what, where_text, todo, next_update_at, sent_at, level, signals FROM flood_messages
                            WHERE zone_id = z.id AND status = 'SENT' ORDER BY sent_at DESC LIMIT 1) m ON true
+       ${VERIFIED_JOIN}
       ORDER BY z.name`,
   );
   const s = await getSettings(db);
-  return townships.map((t) => ({ ...t, warningPct: s.flood_warning_pct, dangerPct: s.flood_danger_pct, zones: zones.filter((z) => z.township_id === t.id).map((z) => ({ ...z, township_id: undefined })) }));
+  return townships.map((t) => ({ ...t, warningPct: s.flood_warning_pct, dangerPct: s.flood_danger_pct, zones: zones.filter((z) => z.township_id === t.id).map((z) => ({ ...withSources(z as typeof z & { status: FloodStatus }), township_id: undefined })) }));
 }

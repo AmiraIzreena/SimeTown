@@ -1365,6 +1365,10 @@ dialog.flash-alert[open] {
   body {
     background: white;
   }
+  /* A printed post-event report shows the report only, without the console around it. */
+  body:has(.print-report) :is(aside, header, nav, [role='status']) {
+    display: none !important;
+  }
 }
 
 /* Kitar map (Leaflet). Pins are divIcons drawn with utility classes; these rules remove

@@ -21,7 +21,7 @@ export function buildOpenApi(routes: RouteDef[], prefix: string): Record<string,
       }
     }
     const who =
-      r.auth === 'public' ? 'Anyone.' : r.auth === 'session' ? `Signed-in ${r.roles ? r.roles.join(', ') : 'user (any role)'}.` : r.auth === 'machine' ? 'A kiosk bin; every record carries an HMAC-SHA256 signature made with that bin’s own key.' : 'Machine caller with a bearer token.';
+      r.auth === 'public' ? 'Anyone.' : r.auth === 'session' ? `Signed-in ${r.roles ? r.roles.join(', ') : 'user (any role)'}.` : r.auth === 'machine' ? 'A device (a kiosk bin or a flood sensor); every record carries an HMAC-SHA256 signature made with that device’s own key.' : 'Machine caller with a bearer token.';
     (paths[path] ??= {})[r.method.toLowerCase()] = {
       tags: [r.tag],
       summary: r.summary,
