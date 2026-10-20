@@ -1,8 +1,9 @@
 'use client';
 
 import { Text } from '@/components/ui/localized-text';
+import { CopyButton } from '@/components/ui/copy-button';
 
-import { Copy, Plus, UserCheck } from 'lucide-react';
+import { Plus, UserCheck } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, PageHeader } from '@/components/ui/card';
@@ -261,13 +262,7 @@ function Accounts({ hq, meId }: { hq: boolean; meId?: string }) {
       <Modal open={link !== null} onClose={() => setLink(null)} title="Set-password link" description="Send this to the person yourself. It works once and expires in 7 days. It will not be shown again.">
         <div className="space-y-4">
           <p className="break-all rounded-md border border-ink-200 bg-ink-25 p-3 font-mono text-sm text-ink-800"><Text>{link}</Text></p>
-          <Button
-            onClick={async () => {
-              await navigator.clipboard.writeText(link!);
-              toast.show('Link copied.');
-            }}
-          >
-            <Copy className="size-4" aria-hidden /><Text>Copy link</Text></Button>
+          <CopyButton text={link!} onCopied={() => toast.show('Link copied.')} />
         </div>
       </Modal>
     </div>

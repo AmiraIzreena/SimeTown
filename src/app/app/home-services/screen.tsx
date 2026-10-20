@@ -1,9 +1,10 @@
 'use client';
 
 import { Text } from '@/components/ui/localized-text';
+import { CopyButton } from '@/components/ui/copy-button';
 import { LocalizedInput } from '@/components/ui/localized-elements';
 
-import { BellRing, Building, Camera, ChevronRight, ClipboardList, Copy, DoorOpen, House, KeyRound, MessageCircle, Phone, ShieldCheck, UserRound, Wrench } from 'lucide-react';
+import { BellRing, Building, Camera, ChevronRight, ClipboardList, DoorOpen, House, KeyRound, MessageCircle, Phone, ShieldCheck, UserRound, Wrench } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { BookingPhoto, BookingStatusBadge, BookingTimeline, PriceLine, Rating, REPORT_STATUS_LABELS, REPORT_STATUS_TONES, SERVICE_ICONS, SLOT_SHORT, Stars, type BookingEvent } from '@/components/features/home-services';
 import { PreviewBadge, SimulatedNote } from '@/components/features/preview';
@@ -615,19 +616,12 @@ function BookingDetailModal({ id, onClose, onChanged }: { id: string | null; onC
             <p className="text-sm text-ink-600"><Text>Valid until </Text><Text>{formatDateTime(issued.validUntil)}</Text><Text>. The company can also see the code in its bookings.</Text></p>
             <div className="grid w-full gap-2 sm:grid-cols-2">
               <Button href={`https://wa.me/?text=${encodeURIComponent(message)}`}><MessageCircle className="size-4" aria-hidden />{t('Send by WhatsApp')}</Button>
-              <Button
+              <CopyButton
                 variant="secondary"
-                onClick={async () => {
-                  try {
-                    await navigator.clipboard.writeText(link);
-                    toast.show('Link copied.', 'success');
-                  } catch {
-                    toast.show('Could not copy. Press and hold the link to copy it.', 'error');
-                  }
-                }}
-              >
-                <Copy className="size-4" aria-hidden />{t('Copy link')}
-              </Button>
+                text={link}
+                onCopied={() => toast.show('Link copied.', 'success')}
+                onError={() => toast.show('Could not copy. Press and hold the link to copy it.', 'error')}
+              />
             </div>
             <p className="w-full break-all rounded-md bg-ink-50 px-3 py-2 text-xs text-ink-600"><Text>{link}</Text></p>
             <p className="text-xs text-ink-500"><Text>If the company changes the worker, this pass stops working and you can send a new one.</Text></p>

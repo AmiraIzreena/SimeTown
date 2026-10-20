@@ -10,7 +10,7 @@ import { AffectedBadge, FixedPhoto, LateBadge, ReportPhoto, ReportProgress, Stat
 import { Button } from '@/components/ui/button';
 import { Badge, PageHeader } from '@/components/ui/card';
 import { Modal } from '@/components/ui/dialog';
-import { EmptyState, ErrorState, SkeletonList } from '@/components/ui/feedback';
+import { EmptyState, ErrorState, SkeletonTimeline } from '@/components/ui/feedback';
 import { Input, Select, Textarea } from '@/components/ui/field';
 import { api } from '@/lib/api';
 import { timeAgo } from '@/lib/format';
@@ -55,7 +55,7 @@ export default function LaporPage() {
       {reports.error ? (
         <ErrorState error={reports.error} onRetry={() => void reports.reload()} />
       ) : reports.isLoading ? (
-        <SkeletonList rows={3} />
+        <SkeletonTimeline rows={3} />
       ) : reports.items.length === 0 ? (
         <EmptyState title="You have not reported anything" action={<Button size={akses.guided ? 'lg' : 'md'} onClick={() => setOpen(true)}><Text>New report</Text></Button>}><Text>Seen a pothole, a broken light, a blocked drain or a blocked ramp? Tell the township team.</Text></EmptyState>
       ) : (

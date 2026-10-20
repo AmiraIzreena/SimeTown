@@ -15,7 +15,7 @@ export function Skeleton({ className, style }: { className?: string; style?: CSS
 }
 
 /** The frame of a loading card: the same glass surface as <Card>, fading in with its skeleton. */
-function SkeletonCard({ className, children }: { className?: string; children: ReactNode }) {
+export function SkeletonCard({ className, children }: { className?: string; children: ReactNode }) {
   return <div aria-hidden className={cn('skeleton-shell glass-surface rounded-xl border shadow-sm', className)}>{children}</div>;
 }
 
@@ -133,6 +133,65 @@ export function SkeletonRanks({ rows = 5 }: { rows?: number }) {
         </div>
       ))}
     </LocalizedDiv>
+  );
+}
+
+/** The shape of a timeline of cards: status badges and a time, two lines of text, then a place. */
+export function SkeletonTimeline({ rows = 3 }: { rows?: number }) {
+  return (
+    <LocalizedDiv className="space-y-3" role="status" aria-label="Loading" aria-busy="true">
+      {Array.from({ length: rows }, (_, i) => (
+        <SkeletonCard key={i} className="p-5">
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-5 w-20 rounded-full" />
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="ml-auto h-3 w-14" />
+          </div>
+          <Skeleton className="mt-3 h-3.5 w-11/12" />
+          <Skeleton className="mt-2 h-3.5 w-3/5" />
+          <Skeleton className="mt-3 h-3 w-40" />
+        </SkeletonCard>
+      ))}
+    </LocalizedDiv>
+  );
+}
+
+/** The shape of rows inside a card (divided list): a name and a detail line, then a status and an action. */
+export function SkeletonRows({ rows = 3 }: { rows?: number }) {
+  return (
+    <LocalizedDiv className="divide-y divide-ink-100" role="status" aria-label="Loading" aria-busy="true">
+      {Array.from({ length: rows }, (_, i) => (
+        <div key={i} aria-hidden className="flex items-center justify-between gap-3 px-5 py-3.5">
+          <div className="min-w-0 flex-1">
+            <Skeleton className="h-4 w-2/5" />
+            <Skeleton className="mt-2 h-3 w-3/4" />
+          </div>
+          <Skeleton className="h-5 w-16 shrink-0 rounded-full" />
+          <Skeleton className="hidden h-9 w-16 shrink-0 sm:block" />
+        </div>
+      ))}
+    </LocalizedDiv>
+  );
+}
+
+/**
+ * A whole screen while its route loads: the page heading, a row of figures
+ * and a list. Used by the loading.tsx of each signed-in area.
+ */
+export function SkeletonPage() {
+  return (
+    <div>
+      <div aria-hidden className="skeleton-shell page-heading mb-8 sm:mb-9">
+        <div className="min-w-0">
+          <Skeleton className="h-8 w-56 sm:h-9" />
+          <Skeleton className="mt-3 h-4 w-full max-w-xl" />
+        </div>
+      </div>
+      <div className="space-y-6">
+        <SkeletonStats />
+        <SkeletonList rows={3} />
+      </div>
+    </div>
   );
 }
 
