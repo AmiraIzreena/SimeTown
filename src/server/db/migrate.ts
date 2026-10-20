@@ -9,10 +9,19 @@ export async function listMigrations(): Promise<string[]> {
   return (await readdir(MIGRATIONS_DIR)).filter((f) => f.endsWith('.sql')).sort();
 }
 
+/** Migrations that were renumbered after release: old file name → new file name. */
+const RENAMED: Record<string, string> = {
+  '028_kitar_collection_automation.sql': '029_kitar_collection_automation.sql',
+};
+
 export async function migrate(db: Db): Promise<string[]> {
   await db.exec(
     'CREATE TABLE IF NOT EXISTS schema_migrations (id text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())',
   );
+  // A database that ran a migration under its old name keeps it as applied.
+  for (const [from, to] of Object.entries(RENAMED)) {
+    await db.query('UPDATE schema_migrations SET id = $2 WHERE id = $1', [from, to]);
+  }
   const done = new Set((await db.query<{ id: string }>('SELECT id FROM schema_migrations')).map((r) => r.id));
   const applied: string[] = [];
   for (const file of await listMigrations()) {

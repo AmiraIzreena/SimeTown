@@ -4,7 +4,7 @@ import { Text } from '@/components/ui/localized-text';
 import { CopyButton } from '@/components/ui/copy-button';
 import { LocalizedInput } from '@/components/ui/localized-elements';
 
-import { BellRing, Building, Camera, ChevronRight, ClipboardList, DoorOpen, House, KeyRound, MessageCircle, Phone, ShieldCheck, UserRound, Wrench } from 'lucide-react';
+import { BellRing, Building, Camera, ChevronRight, ClipboardList, DoorOpen, House, KeyRound, MessageCircle, Phone, ShieldCheck, Star, UserRound, Wrench } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { BookingPhoto, BookingStatusBadge, BookingTimeline, PriceLine, Rating, REPORT_STATUS_LABELS, REPORT_STATUS_TONES, SERVICE_ICONS, SLOT_SHORT, Stars, type BookingEvent } from '@/components/features/home-services';
 import { PreviewBadge, SimulatedNote } from '@/components/features/preview';
@@ -497,9 +497,12 @@ function BookingDetailModal({ id, onClose, onChanged }: { id: string | null; onC
                     <Button href={`tel:${b.companyPhone}`} variant="secondary" size="sm" className="mt-3"><Phone className="size-4" aria-hidden /><Text>Call the company</Text> {formatPhone(b.companyPhone)}</Button>
                   )}
                   {b.pass ? (
-                    <p className="mt-3 flex items-center gap-2 text-sm text-ink-700"><DoorOpen className="size-4" aria-hidden /><Text>Gate pass </Text><strong>{b.pass.code}</strong><Text> until </Text><Text>{formatDateTime(b.pass.validUntil)}</Text></p>
+                    <div className="mt-3 text-sm text-ink-700">
+                      <p className="flex items-center gap-2"><DoorOpen className="size-4" aria-hidden /><Text>Gate pass </Text><strong>{b.pass.code}</strong><Text> until </Text><Text>{formatDateTime(b.pass.validUntil)}</Text></p>
+                      <p className="mt-0.5 text-ink-500"><Text>Made automatically. The company has the code, and the worker shows it at the main gate. Nothing for you to do.</Text></p>
+                    </div>
                   ) : b.can.sendPass ? (
-                    <Button size="sm" className="mt-3" onClick={() => void pass.run()} pending={pass.pending}><DoorOpen className="size-4" aria-hidden /><Text>Send a gate pass through Tamu</Text></Button>
+                    <Button size="sm" className="mt-3" onClick={() => void pass.run()} pending={pass.pending}><DoorOpen className="size-4" aria-hidden /><Text>Make a new gate pass</Text></Button>
                   ) : null}
                 </div>
               )}
@@ -523,13 +526,13 @@ function BookingDetailModal({ id, onClose, onChanged }: { id: string | null; onC
                 <div className="mt-2"><PriceLine pricing={b.pricing} calloutFeeSen={b.calloutFeeSen} priceNote={b.priceNote} /></div>
               </div>
 
+              {b.status === 'WORK_DONE' && <p className="rounded-lg bg-brand-50 px-3 py-2 text-[15px] text-brand-900"><Text>The company says the work is finished. Confirm only if you are satisfied; otherwise report the problem below.</Text></p>}
               {(b.can.confirm || b.can.cancel) && (
                 <div className="flex flex-wrap gap-2">
                   {b.can.confirm && <Button variant="success" onClick={() => void confirm.run()} pending={confirm.pending}><Text>The job is done</Text></Button>}
                   {b.can.cancel && <Button variant="secondary" onClick={() => setAskCancel(true)}><Text>Cancel booking</Text></Button>}
                 </div>
               )}
-              {b.status === 'WORK_DONE' && <p className="text-sm text-ink-600"><Text>The company says the work is finished. Confirm only if you are satisfied; otherwise report the problem below.</Text></p>}
 
               {b.can.review && (
                 <form
@@ -541,9 +544,24 @@ function BookingDetailModal({ id, onClose, onChanged }: { id: string | null; onC
                   }}
                 >
                   <p className="font-semibold text-ink-900"><Text>How did it go?</Text></p>
-                  <Select label="Rating" value={String(rating)} onChange={(event) => setRating(Number(event.target.value))}>
-                    {[5, 4, 3, 2, 1].map((n) => <option key={n} value={n}><Text>{`${n} out of 5`}</Text></option>)}
-                  </Select>
+                  <fieldset>
+                    <legend className="mb-1 text-sm font-semibold text-ink-900"><Text>Rating</Text></legend>
+                    <div className="flex gap-1" role="radiogroup">
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <button
+                          key={n}
+                          type="button"
+                          role="radio"
+                          aria-checked={rating === n}
+                          aria-label={t(`${n} out of 5`)}
+                          onClick={() => setRating(n)}
+                          className="grid size-11 place-items-center rounded-md transition-colors hover:bg-gold-50"
+                        >
+                          <Star className={cn('size-7', n <= rating ? 'fill-gold-400 text-gold-500' : 'text-ink-300')} aria-hidden />
+                        </button>
+                      ))}
+                    </div>
+                  </fieldset>
                   <Textarea label="Comment (optional)" name="comment" maxLength={500} placeholder="Other residents will see this, with your first name." error={review.fields.comment} />
                   <Button type="submit" size="sm" pending={review.pending}><Text>Post review</Text></Button>
                 </form>

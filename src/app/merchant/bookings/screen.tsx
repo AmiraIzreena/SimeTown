@@ -52,6 +52,15 @@ function suggestedVisit(date: string, slot: ServiceSlot): string {
 /** The field's value is Malaysia time (UTC+8, no daylight saving). */
 const fromLocal = (value: string) => new Date(`${value}:00+08:00`).toISOString();
 
+/** One plain line telling the company what to do next, so nobody has to work out the steps. */
+const NEXT_STEP: Partial<Record<BookingStatus, string>> = {
+  REQUESTED: 'Next: accept with a visit time, or decline.',
+  ACCEPTED: 'Next: choose the worker who will visit. The resident sees their name, and their gate pass is made automatically.',
+  SCHEDULED: 'Next: when the job is finished, tap Work is finished.',
+  IN_PROGRESS: 'Next: when the job is finished, tap Work is finished.',
+  WORK_DONE: 'Waiting for the resident to confirm the job is complete.',
+};
+
 export function BookingsScreen({ initialBooking }: { initialBooking: string | null }) {
   const [filter, setFilter] = useState<'OPEN' | 'CLOSED'>('OPEN');
   const list = useApi<Booking[]>(`/merchant/bookings?filter=${filter}`, { refreshInterval: 30_000 });
@@ -162,6 +171,7 @@ function BookingModal({ id, onClose, onChanged }: { id: string | null; onClose: 
       <Async state={detail}>
         {(b) => (
           <div className="space-y-5">
+            {NEXT_STEP[b.status] && <p className="rounded-lg bg-brand-50 px-3 py-2 text-[15px] font-medium text-brand-900"><Text>{NEXT_STEP[b.status]!}</Text></p>}
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-ink-500"><Text>The problem</Text></p>
               <p className="mt-1 whitespace-pre-line text-[15px] text-ink-700">{b.problem}</p>
@@ -180,9 +190,10 @@ function BookingModal({ id, onClose, onChanged }: { id: string | null; onClose: 
             ) : null}
 
             {b.passCode && (
-              <p className="flex items-center gap-2 rounded-lg border border-success-600/30 bg-success-50 p-3 text-[15px] text-success-700">
+              <p className="flex flex-wrap items-center gap-2 rounded-lg border border-success-600/30 bg-success-50 p-3 text-[15px] text-success-700">
                 <DoorOpen className="size-4" aria-hidden /><Text>Gate pass for the worker: </Text><strong>{b.passCode}</strong>
                 {b.passValidUntil && <span className="text-sm"><Text> (until </Text><Text>{formatDateTime(b.passValidUntil)}</Text>)</span>}
+                <span className="basis-full text-sm"><Text>Give this code to the worker to show at the main gate.</Text></span>
               </p>
             )}
 
@@ -208,7 +219,7 @@ function BookingModal({ id, onClose, onChanged }: { id: string | null; onClose: 
             {mode === 'accept' && (
               <form method="post" onSubmit={submitAccept} className="space-y-3 rounded-lg border border-ink-200 p-4">
                 <Input label="Visit time" name="scheduledAt" type="datetime-local" defaultValue={suggestedVisit(b.preferredDate, b.preferredSlot)} required hint="Change it to suggest a different time. The resident can cancel if it does not suit them." error={accept.fields.scheduledAt} />
-                <Select label="Worker" name="workerId" defaultValue="" hint="You can also assign a worker later, before the visit.">
+                <Select label="Worker" name="workerId" defaultValue={workers.length === 1 ? workers[0]!.id : ''} hint="You can also assign a worker later, before the visit.">
                   <option value=""><Text>Assign later</Text></option>
                   {workers.map((w) => <option key={w.id} value={w.id}>{w.full_name}</option>)}
                 </Select>
@@ -228,7 +239,7 @@ function BookingModal({ id, onClose, onChanged }: { id: string | null; onClose: 
                   value={b.worker?.id ?? ''}
                   onChange={(event) => event.target.value && void assign.run(event.target.value)}
                   disabled={assign.pending}
-                  hint={b.worker ? 'The resident is told, and any gate pass for the previous worker stops working.' : 'The resident sees the worker’s name before the visit.'}
+                  hint={b.worker ? 'The resident is told. A new gate pass is made for the new worker, and the old one stops working.' : 'The resident sees the worker’s name, and a gate pass is made for them automatically.'}
                 >
                   <option value="" disabled><Text>Choose a worker</Text></option>
                   {workers.map((w) => <option key={w.id} value={w.id}>{w.full_name}</option>)}
@@ -239,8 +250,8 @@ function BookingModal({ id, onClose, onChanged }: { id: string | null; onClose: 
 
             {mode === null && (
               <div className="flex flex-wrap gap-2">
-                {b.status === 'SCHEDULED' && <Button onClick={() => void start.run()} pending={start.pending}><Text>Worker has arrived</Text></Button>}
-                {b.status === 'IN_PROGRESS' && <Button variant="success" onClick={() => setMode('done')}><Text>Work is finished</Text></Button>}
+                {(b.status === 'SCHEDULED' || b.status === 'IN_PROGRESS') && <Button variant="success" onClick={() => setMode('done')}><Text>Work is finished</Text></Button>}
+                {b.status === 'SCHEDULED' && <Button variant="secondary" onClick={() => void start.run()} pending={start.pending}><Text>Worker has arrived</Text></Button>}
                 {['ACCEPTED', 'SCHEDULED', 'IN_PROGRESS'].includes(b.status) && <Button variant="ghost" onClick={() => setMode('cancel')}><Text>Cancel booking</Text></Button>}
               </div>
             )}

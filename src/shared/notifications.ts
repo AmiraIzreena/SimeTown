@@ -4,6 +4,11 @@ export const NOTIFICATION_LABELS: Record<NotificationCategory, string> = {
   PARCELS: 'Parcels', SERVICES: 'Home services', COMMUNITY: 'Community', REWARDS: 'Points & XP',
   REPORTS: 'Reports & requests', RECYCLING: 'Recycling', ALERTS: 'Township alerts', ACCOUNT: 'Account',
 };
+/** The filter only offers categories the account can actually receive. */
+export function notificationCategoriesFor(role: string, offers?: { retail: boolean; services: boolean }): readonly NotificationCategory[] {
+  if (role === 'MERCHANT') return NOTIFICATION_CATEGORIES.filter((c) => c === 'ACCOUNT' || (c === 'SERVICES' && offers?.services !== false) || (c === 'REWARDS' && offers?.retail !== false));
+  return NOTIFICATION_CATEGORIES;
+}
 export interface NotificationItem {
   id: string; priority: 'NORMAL' | 'URGENT'; title: string; body: string; link: string | null;
   category: NotificationCategory; read_at: string | null; created_at: string;
