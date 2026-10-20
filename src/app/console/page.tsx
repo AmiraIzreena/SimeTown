@@ -6,7 +6,7 @@ import { Accessibility, Bike, CheckCircle2, ClipboardList, Cpu, DoorOpen, Drople
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, PageHeader, Stat } from '@/components/ui/card';
 import { BarChart, RankBars } from '@/components/ui/charts';
-import { Async, SkeletonList, SkeletonStats } from '@/components/ui/feedback';
+import { Async, SkeletonPanel, SkeletonStats } from '@/components/ui/feedback';
 import { formatDay, formatKg, formatKm } from '@/lib/format';
 import { useApi } from '@/lib/hooks';
 import { REPORT_CATEGORY_LABELS, formatPoints, formatRM, type ReportCategory } from '@/shared/domain';
@@ -71,7 +71,11 @@ export default function InsightsPage() {
         skeleton={
           <div className="space-y-6">
             <SkeletonStats count={8} />
-            <SkeletonList rows={2} />
+            <SkeletonPanel body="cells" cells={5} />
+            <div className="grid gap-4 lg:grid-cols-3">
+              <SkeletonPanel body="bars" className="lg:col-span-2" />
+              <SkeletonPanel body="cells" cells={4} cols={2} />
+            </div>
           </div>
         }
       >

@@ -244,16 +244,45 @@
     min-height: 44px;
   }
 
-  /* Cards that can be clicked lift slightly; the rest stay still. */
+  /*
+   * Cards that can be clicked lift slightly; the rest stay still. Tailwind's
+   * translate and scale are their own CSS properties, so those are what move.
+   */
   .lift {
-    @apply transition-[transform,box-shadow,border-color] duration-(--duration-fast) ease-(--ease-soft)
-      hover:-translate-y-0.5 hover:border-ink-300 hover:shadow-md;
+    @apply transition-[translate,scale,box-shadow,border-color] duration-220 ease-(--ease-soft)
+      active:scale-[0.99] active:duration-100 motion-reduce:transition-none;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .lift:hover {
+      @apply -translate-y-0.5 border-ink-300 shadow-md;
+    }
+    .lift:active {
+      @apply translate-y-0;
+    }
   }
 
+  /*
+   * Loading placeholders. A skeleton stays invisible for its first 150 ms, so a
+   * quick answer never flashes one, then fades in (useMinLoading keeps it at
+   * least 600 ms once shown). The sweep is slow and low in contrast.
+   */
   .skeleton {
-    @apply animate-shimmer rounded-md;
-    background: linear-gradient(90deg, var(--color-ink-100) 25%, var(--color-ink-50) 50%, var(--color-ink-100) 75%);
+    @apply rounded-md;
+    background: linear-gradient(90deg, var(--color-ink-100) 30%, var(--color-ink-50) 50%, var(--color-ink-100) 70%);
     background-size: 200% 100%;
+    animation:
+      skeleton-in 220ms var(--ease-soft) 150ms both,
+      shimmer 1.8s ease-in-out 150ms infinite;
+  }
+  .skeleton-shell {
+    animation: skeleton-in 220ms var(--ease-soft) 150ms both;
+  }
+  @keyframes skeleton-in {
+    from { opacity: 0; }
+  }
+  /* Content arriving in place of its skeleton: a short crossfade, no movement. */
+  .content-in {
+    animation: fade-in 200ms var(--ease-soft) both;
   }
 
   @keyframes section-from-left {
@@ -592,6 +621,11 @@
   background-image:
     radial-gradient(ellipse at 100% 0%, rgb(232 111 32 / 0.2), transparent 21rem),
     linear-gradient(160deg, rgb(79 28 8 / 0.96), rgb(45 20 7 / 0.97));
+}
+
+/* On the dark sidebar the focus ring is gold, so keyboard users can still see it. */
+.app-sidebar :focus-visible {
+  outline-color: var(--color-gold-300);
 }
 
 .app-topbar {

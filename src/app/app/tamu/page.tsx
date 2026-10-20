@@ -1,15 +1,16 @@
 'use client';
 
 import { Text } from '@/components/ui/localized-text';
+import { CopyButton } from '@/components/ui/copy-button';
 
-import { Copy, DoorOpen, Flag, LifeBuoy, MessageCircle, Send, ShieldCheck, UserRound } from 'lucide-react';
+import { DoorOpen, Flag, LifeBuoy, MessageCircle, Send, ShieldCheck, UserRound } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { AksesPage, AksesReadAloud, useAksesMode } from '@/components/features/akses-mode';
 import { ReportProblemDialog } from '@/components/features/report-problem';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, PageHeader } from '@/components/ui/card';
 import { ConfirmDialog, Modal } from '@/components/ui/dialog';
-import { Async, EmptyState, SkeletonList } from '@/components/ui/feedback';
+import { Async, EmptyState, SkeletonRows } from '@/components/ui/feedback';
 import { Input, Select } from '@/components/ui/field';
 import { QrCode } from '@/components/ui/qr';
 import { useToast } from '@/components/ui/toast';
@@ -219,7 +220,7 @@ export default function TamuPage() {
 
           <Card>
             <CardHeader title={t('Your passes')} description="Passes for your home from the last week and the days ahead." />
-            <Async state={overview} skeleton={<SkeletonList rows={3} className="p-5" />}>
+            <Async state={overview} skeleton={<SkeletonRows rows={3} />}>
               {(o) =>
                 o.passes.length === 0 ? (
                   <div className="p-5">
@@ -312,20 +313,12 @@ export default function TamuPage() {
                 <Send className="size-4" aria-hidden />
                 {t('Send by SMS')}
               </Button>
-              <Button
+              <CopyButton
                 variant="secondary"
-                onClick={async () => {
-                  try {
-                    await navigator.clipboard.writeText(link);
-                    toast.show('Link copied.', 'success');
-                  } catch {
-                    toast.show('Could not copy. Press and hold the link to copy it.', 'error');
-                  }
-                }}
-              >
-                <Copy className="size-4" aria-hidden />
-                {t('Copy link')}
-              </Button>
+                text={link}
+                onCopied={() => toast.show('Link copied.', 'success')}
+                onError={() => toast.show('Could not copy. Press and hold the link to copy it.', 'error')}
+              />
             </div>
             <p className="w-full break-all rounded-md bg-ink-50 px-3 py-2 text-xs text-ink-600"><Text>{link}</Text></p>
             <p className="text-xs text-ink-500"><Text>Sharing again later makes a new link and the old one stops working.</Text></p>

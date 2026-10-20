@@ -13,16 +13,17 @@ type Size = 'sm' | 'md' | 'lg';
 
 const base =
   'inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-md font-semibold ' +
-  'transition-[background-color,border-color,color,box-shadow,transform] duration-200 ease-soft ' +
-  'active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50';
+  'transition-[background-color,border-color,color,box-shadow,translate,scale] duration-(--duration-fast) ease-soft ' +
+  'active:scale-[0.98] active:duration-100 motion-reduce:transition-none disabled:pointer-events-none disabled:opacity-50';
 
+// Raised buttons rise a pixel under a mouse (pointer-fine, and Tailwind's hover only fires on devices that hover) and settle when pressed.
 const variants: Record<Variant, string> = {
-  primary: 'bg-brand-700 text-white shadow-xs hover:bg-brand-800 hover:shadow-sm',
-  secondary: 'border border-ink-200 bg-white text-ink-800 shadow-xs hover:border-ink-300 hover:bg-ink-25',
-  ghost: 'text-ink-700 hover:bg-ink-100',
-  danger: 'bg-accent-600 text-white shadow-xs hover:bg-accent-700',
-  light: 'bg-white text-brand-800 shadow-sm hover:bg-brand-50',
-  success: 'bg-success-700 text-white shadow-xs hover:bg-success-600',
+  primary: 'bg-brand-700 text-white shadow-xs hover:bg-brand-800 hover:shadow-md pointer-fine:hover:-translate-y-px active:translate-y-0',
+  secondary: 'border border-ink-200 bg-white text-ink-800 shadow-xs hover:border-ink-300 hover:bg-ink-25 hover:shadow-sm pointer-fine:hover:-translate-y-px active:translate-y-0',
+  ghost: 'text-ink-700 hover:bg-ink-100 hover:text-ink-900',
+  danger: 'bg-accent-600 text-white shadow-xs hover:bg-accent-700 hover:shadow-md pointer-fine:hover:-translate-y-px active:translate-y-0',
+  light: 'bg-white text-brand-800 shadow-sm hover:bg-brand-50 hover:shadow-md pointer-fine:hover:-translate-y-px active:translate-y-0',
+  success: 'bg-success-700 text-white shadow-xs hover:bg-success-600 hover:shadow-md pointer-fine:hover:-translate-y-px active:translate-y-0',
 };
 
 const sizes: Record<Size, string> = {

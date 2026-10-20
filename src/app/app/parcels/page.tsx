@@ -1,7 +1,7 @@
 'use client';
 
 import { Text } from '@/components/ui/localized-text';
-import { LocalizedImg } from '@/components/ui/localized-elements';
+import { LocalizedDiv, LocalizedImg } from '@/components/ui/localized-elements';
 
 import { CheckCircle2, Flag, Package, PackageOpen, Share2, Undo2 } from 'lucide-react';
 import { Suspense, useEffect, useRef, useState } from 'react';
@@ -10,7 +10,7 @@ import { LockerParcels } from '@/components/features/locker-parcels';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, PageHeader } from '@/components/ui/card';
 import { ReportProblemDialog } from '@/components/features/report-problem';
-import { Async, EmptyState, SkeletonList } from '@/components/ui/feedback';
+import { Async, EmptyState, Skeleton, SkeletonCard, SkeletonList } from '@/components/ui/feedback';
 import { QrCode } from '@/components/ui/qr';
 import { TabPanel, Tabs } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/toast';
@@ -34,6 +34,36 @@ interface Parcel {
 }
 
 type Tab = 'lockers' | 'guardhouse';
+
+/** A parcel card in the shape it loads into: who it is from and the shelf, then the QR code and the collection code. */
+function GuardhouseSkeleton() {
+  return (
+    <LocalizedDiv role="status" aria-label="Loading" aria-busy="true" className="space-y-6">
+      <Skeleton className="h-4 w-3/5" />
+      <div className="grid gap-4 md:grid-cols-2">
+        {[0, 1].map((i) => (
+          <SkeletonCard key={i} className="overflow-hidden">
+            <div className="flex items-start justify-between gap-3 border-b border-ink-100 p-5">
+              <div className="flex-1">
+                <Skeleton className="h-5 w-40" />
+                <Skeleton className="mt-2 h-3 w-28" />
+              </div>
+              <Skeleton className="h-5 w-16 rounded-full" />
+            </div>
+            <div className="flex items-center gap-5 p-5">
+              <Skeleton className="size-[132px] shrink-0" />
+              <div className="flex-1 space-y-3">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-8 w-32" />
+                <div className="flex gap-2"><Skeleton className="h-9 w-32" /><Skeleton className="h-9 w-28" /></div>
+              </div>
+            </div>
+          </SkeletonCard>
+        ))}
+      </div>
+    </LocalizedDiv>
+  );
+}
 
 export default function ParcelsPage() {
   return <Suspense fallback={<SkeletonList rows={2} />}><ParcelsScreen /></Suspense>;
@@ -99,7 +129,7 @@ function ParcelsScreen() {
       />
       <TabPanel>
       {tab === 'lockers' && <LockerParcels />}
-      {tab === 'guardhouse' && <Async state={parcels} skeleton={<SkeletonList rows={2} />}>
+      {tab === 'guardhouse' && <Async state={parcels} skeleton={<GuardhouseSkeleton />}>
         {(data) => {
           const waiting = data.parcels.filter((p) => p.status === 'WAITING');
           const past = data.parcels.filter((p) => p.status !== 'WAITING');

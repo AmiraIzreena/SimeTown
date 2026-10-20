@@ -1,9 +1,10 @@
 'use client';
 
 import { Text } from '@/components/ui/localized-text';
+import { CopyButton } from '@/components/ui/copy-button';
 import { LocalizedButton, LocalizedInput } from '@/components/ui/localized-elements';
 
-import { Bot, Building2, Copy, ExternalLink, History, Plus, Send, ShieldAlert, Trash2, UserRound, Volume2 } from 'lucide-react';
+import { Bot, Building2, ExternalLink, History, Plus, Send, ShieldAlert, Trash2, UserRound, Volume2 } from 'lucide-react';
 import { LocalizedLink as Link } from '@/components/ui/localized-elements';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { AssistantActionCard, type AssistantAction } from '@/components/features/assistant-action';
@@ -235,8 +236,7 @@ export default function AssistantPage() {
                 {m.shareUrl && (
                   <div className="mt-2 flex flex-wrap items-center gap-2 rounded-md bg-white px-3 py-2 text-sm">
                     <span className="min-w-0 flex-1 truncate font-mono text-xs text-ink-700">{m.shareUrl}</span>
-                    <Button size="sm" variant="secondary" onClick={() => void navigator.clipboard?.writeText(m.shareUrl!)}>
-                      <Copy className="size-3.5" aria-hidden /><Text>Copy link</Text></Button>
+                    <CopyButton size="sm" variant="secondary" text={m.shareUrl!} />
                   </div>
                 )}
                 {m.action && <AssistantActionCard key={m.action.id} action={m.action} onDecide={(yes) => void decide(m.action!, yes)} onChanged={replaceAction} />}

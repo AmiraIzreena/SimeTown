@@ -114,13 +114,13 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
         aria-current={active ? 'page' : undefined}
         title={compact ? item.label : undefined}
         className={cn(
-          'group relative flex min-h-11 items-center gap-3 rounded-lg px-3 text-[15px] font-medium transition-colors duration-200',
+          'group relative flex min-h-11 items-center gap-3 rounded-lg px-3 text-[15px] font-medium transition-[background-color,color,box-shadow,scale] duration-200 ease-soft active:scale-[0.98] active:duration-100 motion-reduce:transition-none',
           active ? 'bg-brand-400/20 text-white shadow-[inset_0_1px_0_rgb(255_255_255_/_0.12)] ring-1 ring-inset ring-brand-300/20' : 'text-brand-100/80 hover:bg-white/8 hover:text-white',
           compact && 'justify-center px-0 lg:justify-start lg:px-3',
         )}
       >
-        <span aria-hidden className={cn('absolute left-0 h-5 w-[3px] rounded-r-full bg-gold-300 transition-opacity duration-200', active ? 'opacity-100' : 'opacity-0')} />
-        <item.icon className="size-5 shrink-0" aria-hidden />
+        <span aria-hidden className={cn('absolute left-0 h-5 w-[3px] rounded-r-full bg-gold-300 transition-[opacity,scale] duration-(--duration-base) ease-soft', active ? 'scale-y-100 opacity-100' : 'scale-y-0 opacity-0')} />
+        <item.icon className={cn('size-5 shrink-0 transition-[translate,color] duration-200 ease-soft', active ? 'text-gold-300' : 'pointer-fine:group-hover:translate-x-0.5')} aria-hidden />
         <span className={cn(compact && 'sr-only lg:not-sr-only')}>
           {t(item.label)}
           {item.gloss && <span className="ml-1.5 text-xs font-normal text-brand-200/70">{t(item.gloss)}</span>}
@@ -153,7 +153,7 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
               <p className="truncate text-sm font-semibold text-white">{user.fullName}</p>
               <p className="truncate text-xs text-brand-200/70"><Text>{ROLE_LABELS[user.role]}</Text></p>
             </div>
-            <LocalizedButton type="button" onClick={signOut} aria-label="Sign out" title="Sign out" className="grid size-9 shrink-0 place-items-center rounded-md text-brand-100/80 transition-colors duration-200 hover:bg-white/10 hover:text-white">
+            <LocalizedButton type="button" onClick={signOut} aria-label="Sign out" title="Sign out" className="grid size-9 shrink-0 place-items-center rounded-md text-brand-100/80 transition-[background-color,color,scale] duration-200 hover:bg-white/10 hover:text-white active:scale-95">
               <LogOut className="size-[18px]" aria-hidden />
             </LocalizedButton>
           </div>
@@ -173,7 +173,7 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
             onClick={() => setAccessibleOverride(!accessible)}
             aria-pressed={accessible}
             className={cn(
-              'inline-flex min-h-11 items-center gap-1.5 rounded-md px-3 text-sm font-semibold transition-colors duration-200',
+              'inline-flex min-h-11 items-center gap-1.5 rounded-md px-3 text-sm font-semibold transition-[background-color,color,scale] duration-200 active:scale-[0.97]',
               accessible ? 'bg-brand-700 text-white hover:bg-brand-800' : 'text-ink-700 hover:bg-ink-100',
             )}
           >
@@ -185,7 +185,7 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
           type="button"
           onClick={switchLang}
           aria-label={lang === 'ms' ? 'Switch to English' : 'Tukar ke Bahasa Malaysia'}
-          className="inline-flex min-h-11 items-center gap-1.5 rounded-md px-2.5 text-sm font-semibold text-ink-600 transition-colors duration-200 hover:bg-ink-100 hover:text-ink-900"
+          className="inline-flex min-h-11 items-center gap-1.5 rounded-md px-2.5 text-sm font-semibold text-ink-600 transition-[background-color,color,scale] duration-200 hover:bg-ink-100 hover:text-ink-900 active:scale-95"
         >
           <Languages className="size-[18px]" aria-hidden />
           <span aria-hidden><Text>{lang === 'ms' ? 'BM' : 'EN'}</Text></span>
@@ -196,7 +196,7 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
           aria-expanded={inboxOpen}
           aria-controls="notification-preview"
           aria-label={inbox.data?.unread ? `Notifications, ${inbox.data.unread} unread` : 'Notifications'}
-          className="relative grid size-11 place-items-center rounded-md text-ink-600 transition-colors duration-200 hover:bg-ink-100 hover:text-ink-900"
+          className="relative grid size-11 place-items-center rounded-md text-ink-600 transition-[background-color,color,scale] duration-200 hover:bg-ink-100 hover:text-ink-900 active:scale-95"
         >
           <Bell className="size-5" aria-hidden />
           {Boolean(inbox.data?.unread) && <span aria-hidden className="absolute right-0 top-0 min-w-5 rounded-full border-2 border-white bg-accent-600 px-1 text-center text-[10px] font-bold text-white">{inbox.data!.unread > 99 ? '99+' : inbox.data!.unread}</span>}
@@ -220,14 +220,18 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
         {primary.map((item) => {
           const active = isActive(pathname, item, root);
           return (
-            <Link key={item.href} href={item.href} aria-current={active ? 'page' : undefined} className={cn('flex min-h-14 flex-col items-center justify-center gap-0.5 text-[11px] font-semibold transition-colors duration-200', active ? 'text-brand-700' : 'text-ink-500')}>
-              <item.icon className={cn('size-[22px] transition-transform duration-200 ease-soft', active && '-translate-y-0.5')} aria-hidden />
+            <Link key={item.href} href={item.href} aria-current={active ? 'page' : undefined} className={cn('group flex min-h-14 flex-col items-center justify-center gap-0.5 text-[11px] font-semibold transition-colors duration-200', active ? 'text-brand-700' : 'text-ink-500')}>
+              <span aria-hidden className={cn('grid h-7 w-12 place-items-center rounded-full transition-[background-color,scale] duration-(--duration-base) ease-soft group-active:scale-90', active ? 'bg-brand-100/80' : 'bg-transparent')}>
+                <item.icon className="size-[22px]" aria-hidden />
+              </span>
               {t(item.label)}
             </Link>
           );
         })}
-        <button type="button" onClick={() => setMenuOpen(true)} className="flex min-h-14 flex-col items-center justify-center gap-0.5 text-[11px] font-semibold text-ink-500">
-          <Menu className="size-[22px]" aria-hidden />
+        <button type="button" onClick={() => setMenuOpen(true)} className="group flex min-h-14 flex-col items-center justify-center gap-0.5 text-[11px] font-semibold text-ink-500">
+          <span aria-hidden className="grid h-7 w-12 place-items-center rounded-full transition-[scale] duration-(--duration-base) ease-soft group-active:scale-90">
+            <Menu className="size-[22px]" aria-hidden />
+          </span>
           {t(needsMore ? 'More' : 'Menu')}
         </button>
       </LocalizedNav>
@@ -237,7 +241,7 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
           {items.map((item) => {
             const active = isActive(pathname, item, root);
             return (
-              <Link key={item.href} href={item.href} aria-current={active ? 'page' : undefined} className={cn('flex min-h-12 items-center gap-3 rounded-md px-3 text-[15px] font-medium', active ? 'bg-brand-50 text-brand-800' : 'text-ink-700 hover:bg-ink-50')}>
+              <Link key={item.href} href={item.href} aria-current={active ? 'page' : undefined} className={cn('flex min-h-12 items-center gap-3 rounded-md px-3 text-[15px] font-medium transition-colors duration-200', active ? 'bg-brand-50 text-brand-800' : 'text-ink-700 hover:bg-ink-50 active:bg-ink-100')}>
                 <item.icon className="size-5" aria-hidden />
                 {t(item.label)}
                 {item.gloss && <span className="text-xs font-normal text-ink-500">{t(item.gloss)}</span>}
