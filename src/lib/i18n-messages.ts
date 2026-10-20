@@ -117,6 +117,8 @@ export const malay: Record<string, string> = {
   "Send by WhatsApp": "Hantar melalui WhatsApp",
   "Send by SMS": "Hantar melalui SMS",
   "Copy link": "Salin pautan",
+  "Copied": "Disalin",
+  "Caps Lock is on": "Caps Lock dihidupkan",
   "Your passes": "Pas anda",
   "Visit history": "Sejarah lawatan",
   "Someone is at the main gate": "Seseorang di pintu utama",

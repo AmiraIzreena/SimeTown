@@ -47,7 +47,7 @@ export function Tabs<K extends string>({ items, value, onChange, label }: { item
             aria-selected={selected}
             tabIndex={selected ? 0 : -1}
             onClick={() => onChange(item.key)}
-            className={cn('flex min-h-11 shrink-0 items-center gap-2 px-3.5 text-[15px] font-semibold transition-colors duration-200', selected ? 'text-brand-700' : 'text-ink-500 hover:text-ink-800')}
+            className={cn('flex min-h-11 shrink-0 items-center gap-2 rounded-t-md px-3.5 text-[15px] font-semibold transition-colors duration-200 focus-visible:outline-offset-[-2px]', selected ? 'text-brand-700' : 'text-ink-500 hover:bg-ink-100/60 hover:text-ink-800')}
           >
             <Text>{item.label}</Text>
             {item.count !== undefined && item.count > 0 && <span className="rounded-full bg-ink-100 px-1.5 text-xs text-ink-600 tabular-nums"><Text>{item.count}</Text></span>}
@@ -61,7 +61,7 @@ export function Tabs<K extends string>({ items, value, onChange, label }: { item
 
 export function TabPanel({ children }: { children: ReactNode }) {
   return (
-    <div role="tabpanel" className="animate-fade-in">
+    <div role="tabpanel" className="content-in">
       <Text>{children}</Text>
     </div>
   );

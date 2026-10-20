@@ -6,7 +6,7 @@ import { Accessibility, Bike, ClipboardList, Cpu, DoorOpen, Droplets, Printer, R
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, PageHeader, Stat } from '@/components/ui/card';
 import { BarChart, RankBars } from '@/components/ui/charts';
-import { Async, SkeletonList, SkeletonStats } from '@/components/ui/feedback';
+import { Async, SkeletonPanel, SkeletonStats } from '@/components/ui/feedback';
 import { formatDay, formatKg, formatKm } from '@/lib/format';
 import { InsightsHero } from './insights-hero';
 import { useApi } from '@/lib/hooks';
@@ -71,10 +71,14 @@ export default function InsightsPage() {
         state={insights}
         skeleton={
           <div className="space-y-6">
-            {/* Shaped like the hero band, then the tile row. */}
+            {/* Shaped like the page: hero band, tile row, float card, then the chart beside the community figures. */}
             <div className="h-76 animate-pulse rounded-2xl bg-brand-900/15 motion-reduce:animate-none" aria-hidden />
             <SkeletonStats count={4} />
-            <SkeletonList rows={2} />
+            <SkeletonPanel body="cells" cells={5} />
+            <div className="grid gap-4 lg:grid-cols-3">
+              <SkeletonPanel body="bars" className="lg:col-span-2" />
+              <SkeletonPanel body="cells" cells={4} cols={2} />
+            </div>
           </div>
         }
       >

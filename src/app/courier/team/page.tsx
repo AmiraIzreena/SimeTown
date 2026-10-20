@@ -1,8 +1,9 @@
 'use client';
 
 import { Text } from '@/components/ui/localized-text';
+import { CopyButton } from '@/components/ui/copy-button';
 
-import { BadgeCheck, Copy, PauseCircle, PlayCircle, Plus, UserX, Users } from 'lucide-react';
+import { BadgeCheck, PauseCircle, PlayCircle, Plus, UserX, Users } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, PageHeader } from '@/components/ui/card';
@@ -114,7 +115,7 @@ export default function TeamPage() {
       <Modal open={link !== null} onClose={() => setLink(null)} title="Send this link to the courier" description="It works once, for 7 days. The courier sets their own password with it.">
         <div className="space-y-3">
           <p className="break-all rounded-md bg-ink-50 p-3 font-mono text-sm text-ink-900">{link}</p>
-          <Button size="sm" variant="secondary" onClick={() => void navigator.clipboard?.writeText(link ?? '')}><Copy className="size-4" aria-hidden /><Text>Copy</Text></Button>
+          <CopyButton size="sm" variant="secondary" text={link ?? ''} label="Copy" />
         </div>
       </Modal>
       <ConfirmDialog open={removing !== null} onClose={() => setRemoving(null)} onConfirm={() => removing && void status.run(removing.user_id, 'REVOKED')} title="Remove this courier?" confirmLabel="Remove" destructive pending={status.pending}>

@@ -1,6 +1,7 @@
 'use client';
 
 import { Text } from '@/components/ui/localized-text';
+import { LocalizedDiv } from '@/components/ui/localized-elements';
 
 import { Award, Clock, PiggyBank, QrCode as QrIcon, Store, Tag } from 'lucide-react';
 import { AksesPage, AksesReadAloud, useAksesMode } from '@/components/features/akses-mode';
@@ -11,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, PageHeader, Progress } from '@/components/ui/card';
 import { CountUp } from '@/components/ui/count-up';
 import { Modal } from '@/components/ui/dialog';
-import { Async, EmptyState, ErrorState, Skeleton, SkeletonList } from '@/components/ui/feedback';
+import { Async, EmptyState, ErrorState, Skeleton, SkeletonCard, SkeletonList } from '@/components/ui/feedback';
 import { QrCode } from '@/components/ui/qr';
 import { TabPanel, Tabs } from '@/components/ui/tabs';
 import { cn } from '@/lib/cn';
@@ -73,6 +74,37 @@ interface OffersData {
 
 type Tab = 'history' | 'offers' | 'badges' | 'rules';
 
+/** The balance card and the Impact XP card, in the shape they load into. */
+function WalletSkeleton() {
+  return (
+    <LocalizedDiv role="status" aria-label="Loading" aria-busy="true" className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
+      <SkeletonCard className="p-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <Skeleton className="h-3.5 w-32" />
+            <Skeleton className="mt-3 h-12 w-40" />
+            <Skeleton className="mt-3 h-3.5 w-56" />
+          </div>
+          <Skeleton className="h-11 w-36" />
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <Skeleton className="h-16" />
+          <Skeleton className="h-16" />
+        </div>
+      </SkeletonCard>
+      <SkeletonCard className="p-6">
+        <div className="flex items-center justify-between gap-3">
+          <Skeleton className="h-3.5 w-20" />
+          <Skeleton className="h-5 w-24 rounded-full" />
+        </div>
+        <Skeleton className="mt-3 h-9 w-28" />
+        <Skeleton className="mt-5 h-2 w-full rounded-full" />
+        <Skeleton className="mt-2 h-3 w-2/5" />
+      </SkeletonCard>
+    </LocalizedDiv>
+  );
+}
+
 export default function WalletPage() {
   const t = useT();
   const akses = useAksesMode();
@@ -85,7 +117,7 @@ export default function WalletPage() {
   return (
     <AksesPage profile={akses.profile} simple={akses.simple} largeText={akses.largeText} largeTargets={akses.largeTargets}>
       <PageHeader title="Points & XP" description="Points are worth money at township shops. Impact XP has no money value: it is your record of good actions." />
-      <Async state={wallet} skeleton={<Skeleton className="h-44 rounded-xl" />}>
+      <Async state={wallet} skeleton={<WalletSkeleton />}>
         {(w) => (
           <div className="space-y-5">
             {w.pending.map((sale) => (

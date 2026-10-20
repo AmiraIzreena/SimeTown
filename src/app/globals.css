@@ -244,17 +244,45 @@
     min-height: 44px;
   }
 
-  /* Cards that can be clicked lift slightly; the rest stay still. */
-  /* Clickable cards in the signed-in areas: a small lift on a real mouse (Tailwind's hover), none under reduced motion. */
+  /*
+   * Cards that can be clicked lift slightly; the rest stay still. Tailwind's
+   * translate and scale are their own CSS properties, so those are what move.
+   */
   .lift {
-    @apply transition-[transform,box-shadow,border-color] duration-(--duration-fast) ease-(--ease-soft)
-      hover:-translate-y-0.5 hover:border-ink-300 hover:shadow-md motion-reduce:hover:translate-y-0 active:scale-[0.99] motion-reduce:active:scale-100;
+    @apply transition-[translate,scale,box-shadow,border-color] duration-220 ease-(--ease-soft)
+      active:scale-[0.99] active:duration-100 motion-reduce:transition-none;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .lift:hover {
+      @apply -translate-y-0.5 border-ink-300 shadow-md;
+    }
+    .lift:active {
+      @apply translate-y-0;
+    }
   }
 
+  /*
+   * Loading placeholders. A skeleton stays invisible for its first 150 ms, so a
+   * quick answer never flashes one, then fades in (useMinLoading keeps it at
+   * least 600 ms once shown). The sweep is slow and low in contrast.
+   */
   .skeleton {
-    @apply animate-shimmer rounded-md;
-    background: linear-gradient(90deg, var(--color-ink-100) 25%, var(--color-ink-50) 50%, var(--color-ink-100) 75%);
+    @apply rounded-md;
+    background: linear-gradient(90deg, var(--color-ink-100) 30%, var(--color-ink-50) 50%, var(--color-ink-100) 70%);
     background-size: 200% 100%;
+    animation:
+      skeleton-in 220ms var(--ease-soft) 150ms both,
+      shimmer 1.8s ease-in-out 150ms infinite;
+  }
+  .skeleton-shell {
+    animation: skeleton-in 220ms var(--ease-soft) 150ms both;
+  }
+  @keyframes skeleton-in {
+    from { opacity: 0; }
+  }
+  /* Content arriving in place of its skeleton: a short crossfade, no movement. */
+  .content-in {
+    animation: fade-in 200ms var(--ease-soft) both;
   }
 
   @keyframes section-pop {
@@ -563,6 +591,11 @@
     linear-gradient(160deg, rgb(79 28 8 / 0.96), rgb(45 20 7 / 0.97));
 }
 
+/* On the dark sidebar the focus ring is gold, so keyboard users can still see it. */
+.app-sidebar :focus-visible {
+  outline-color: var(--color-gold-300);
+}
+
 .app-topbar {
   background-image: linear-gradient(100deg, rgb(255 255 255 / 0.86), rgb(255 247 240 / 0.68));
   box-shadow: 0 1px 0 rgb(45 20 7 / 0.02);
@@ -614,14 +647,13 @@
 
 html[data-signed-in] .btn-primary { background-image: linear-gradient(180deg, rgb(255 255 255 / 0.09), transparent 60%); }
 @media (hover: hover) and (pointer: fine) {
-  /* Buttons lift 1px with a soft shadow; ghost buttons only tint. */
-  html[data-signed-in] .btn:is(.btn-primary, .btn-secondary, .btn-danger, .btn-success, .btn-light):not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgb(79 28 8 / 0.12); }
+  /* Raised buttons get a warm brand shadow; the 1px lift and press come from button.tsx. */
+  html[data-signed-in] .btn:is(.btn-primary, .btn-secondary, .btn-danger, .btn-success, .btn-light):not(:disabled):hover { box-shadow: 0 6px 16px rgb(79 28 8 / 0.12); }
   /* Table rows: the hovered row gets a brand accent bar on its left edge, like the console's queue rows. */
   html[data-signed-in] .rtable tbody tr:hover > :first-child { box-shadow: inset 3px 0 0 var(--color-brand-400); }
   /* Float check and similar value lists. */
   html[data-signed-in] .value-line:hover { background: rgb(255 247 240 / 0.7); }
 }
-html[data-signed-in] .btn:not(:disabled):active { transform: translateY(0) scale(0.98); }
 html[data-signed-in] .rtable tbody tr > :first-child { transition: box-shadow 200ms var(--ease-soft); }
 html[data-signed-in] .value-line { transition: background-color 200ms var(--ease-soft); }
 /* A form field's label turns brand while the field is in use. */
@@ -640,7 +672,7 @@ html[data-signed-in] .field:focus-within > label { color: var(--color-brand-700)
   html[data-signed-in] .status-settle { animation: checkpoint-done 420ms var(--ease-soft) 200ms both; }
 }
 @media (prefers-reduced-motion: reduce) {
-  html[data-signed-in] .btn:hover, html[data-signed-in] .btn:active, .kpi-tile.is-interactive:hover, .kpi-tile.is-interactive:active { transform: none; }
+  .kpi-tile.is-interactive:hover, .kpi-tile.is-interactive:active { transform: none; }
 }
 
 /* --- Flood alert band (components/shell/alert-takeover.tsx) --------------------------------------

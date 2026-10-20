@@ -1,9 +1,10 @@
 'use client';
 
 import { Text } from '@/components/ui/localized-text';
+import { CopyButton } from '@/components/ui/copy-button';
 import { LocalizedButton } from '@/components/ui/localized-elements';
 
-import { Building2, CheckCircle2, ChevronDown, Copy, Plug, Plus, ShieldOff, UserPlus, Warehouse, XCircle } from 'lucide-react';
+import { Building2, CheckCircle2, ChevronDown, Plug, Plus, ShieldOff, UserPlus, Warehouse, XCircle } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge, Card } from '@/components/ui/card';
@@ -267,7 +268,7 @@ export function CompaniesTab() {
       <Modal open={link !== null} onClose={() => setLink(null)} title="Send this link to the representative" description="It works once, for 7 days. Send it only to the person the company named, through a channel you trust.">
         <div className="space-y-3">
           <p className="break-all rounded-md bg-ink-50 p-3 font-mono text-sm text-ink-900">{link}</p>
-          <Button size="sm" variant="secondary" onClick={() => void navigator.clipboard?.writeText(link ?? '')}><Copy className="size-4" aria-hidden /><Text>Copy</Text></Button>
+          <CopyButton size="sm" variant="secondary" text={link ?? ''} label="Copy" />
         </div>
       </Modal>
     </div>

@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardHeader, Progress } from '@/components/ui/card';
 import { RankBars } from '@/components/ui/charts';
 import { CountUp } from '@/components/ui/count-up';
-import { Async, EmptyState, Skeleton, SkeletonList } from '@/components/ui/feedback';
+import { Async, EmptyState, Skeleton, SkeletonList, SkeletonMetrics, SkeletonRanks } from '@/components/ui/feedback';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { useAction, useApi } from '@/lib/hooks';
@@ -206,13 +206,7 @@ export default function ResidentHome() {
 
       <Async
         state={wallet}
-        skeleton={
-          <div className="resident-metrics grid gap-4 md:grid-cols-3">
-            <Skeleton className="h-40 rounded-xl" />
-            <Skeleton className="h-40 rounded-xl" />
-            <Skeleton className="h-40 rounded-xl" />
-          </div>
-        }
+        skeleton={<SkeletonMetrics />}
       >
         {(w) => (
           <div className="grid gap-4 md:grid-cols-3">
@@ -300,7 +294,7 @@ export default function ResidentHome() {
       <Card>
         <CardHeader title={t('Street league')} description="This month’s Impact XP by street. Streets, not people." />
         <div className="p-5">
-          <Async state={league} skeleton={<Skeleton className="h-32" />}>
+          <Async state={league} skeleton={<SkeletonRanks />}>
             {(l) => <RankBars rows={l.streets.map((s) => ({ label: s.mine ? `${s.street} (yours)` : s.street, value: s.xp, highlight: s.mine }))} format={(n) => `${n.toLocaleString('en-MY')} XP`} />}
           </Async>
         </div>
