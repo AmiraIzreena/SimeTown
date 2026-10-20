@@ -2,6 +2,7 @@
 
 import { Bell, Package, Wrench, Users, Wallet, Flag, Recycle, ShieldAlert, UserRound } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import type { CSSProperties } from 'react';
 import { useSWRConfig } from 'swr';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/card';
@@ -23,9 +24,9 @@ export function useNotificationActions() {
 const ICONS = { PARCELS: Package, SERVICES: Wrench, COMMUNITY: Users, REWARDS: Wallet, REPORTS: Flag, RECYCLING: Recycle, ALERTS: ShieldAlert, ACCOUNT: UserRound };
 export function NotificationRows({ items, compact = false, onNavigate }: { items: NotificationItem[]; compact?: boolean; onNavigate?: () => void }) {
   if (!items.length) return <EmptyState icon={Bell} title="No notifications"><Text>Updates will appear here when there is something new.</Text></EmptyState>;
-  return <ul className="divide-y divide-ink-100">{items.map((item) => <NotificationRow key={item.id} item={item} compact={compact} onNavigate={onNavigate} />)}</ul>;
+  return <ul className="divide-y divide-ink-100">{items.map((item, index) => <NotificationRow key={item.id} item={item} index={index} compact={compact} onNavigate={onNavigate} />)}</ul>;
 }
-function NotificationRow({ item, compact, onNavigate }: { item: NotificationItem; compact: boolean; onNavigate?: () => void }) {
+function NotificationRow({ item, index, compact, onNavigate }: { item: NotificationItem; index: number; compact: boolean; onNavigate?: () => void }) {
   const action = useNotificationActions();
   const router = useRouter();
   const Icon = ICONS[item.category];
@@ -33,7 +34,9 @@ function NotificationRow({ item, compact, onNavigate }: { item: NotificationItem
     if (!item.read_at && !await action.run(item.id, 'read')) return;
     if (item.link) { onNavigate?.(); router.push(item.link); }
   };
-  return <li className={`p-4 sm:p-5 ${!item.read_at ? 'bg-brand-50/50' : ''}`}>
+  // Rows settle in one after another and warm on hover; an unread row carries a brand bar on its left edge.
+  return <li style={{ '--i': Math.min(index, 12) } as CSSProperties} className={`value-line relative p-4 sm:p-5 ${!item.read_at ? 'bg-brand-50/50' : ''}`}>
+    {!item.read_at && <span aria-hidden className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-brand-500" />}
     <div className="flex items-start gap-3">
       <span className="grid size-9 shrink-0 place-items-center rounded-full bg-brand-50 text-brand-700"><Icon className="size-4" aria-hidden /></span>
       <div className="min-w-0 flex-1">

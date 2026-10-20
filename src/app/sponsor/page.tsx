@@ -2,11 +2,11 @@
 
 import { Text } from '@/components/ui/localized-text';
 
-import { Award, BarChart3, Check, ExternalLink, Megaphone } from 'lucide-react';
+import { Award, BarChart3, Check, ExternalLink, Gift, Megaphone, Radio, Wallet, Banknote } from 'lucide-react';
 import { useState } from 'react';
-import { CampaignReport, CampaignSplit, CampaignStatus } from '@/components/features/campaign-admin';
+import { CampaignReport, CampaignSplit, CampaignStatus, givenOf } from '@/components/features/campaign-admin';
 import { Button } from '@/components/ui/button';
-import { Badge, Card, CardHeader, PageHeader, Progress } from '@/components/ui/card';
+import { Badge, Card, CardHeader, PageHeader, Progress, Stat } from '@/components/ui/card';
 import { Async, EmptyState } from '@/components/ui/feedback';
 import { formatDate } from '@/lib/format';
 import { useApi } from '@/lib/hooks';
@@ -79,6 +79,20 @@ function TierCard() {
   );
 }
 
+/** The sponsor's campaigns at a glance, from the same campaign data as the cards below. */
+function CampaignTotals({ list }: { list: Campaign[] }) {
+  const funded = list.filter((c) => c.funded !== false);
+  const sum = (rows: Campaign[], pick: (c: Campaign) => number) => rows.reduce((total, c) => total + pick(c), 0);
+  return (
+    <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <Stat label="Live now" value={list.filter((c) => c.live).length} icon={Radio} tone={list.some((c) => c.live) ? 'success' : 'brand'} hint={`${list.length} campaigns in all`} />
+      <Stat label="Budget committed" value={sum(funded, (c) => c.budget_sen)} format={formatRM} icon={Wallet} hint="Paid up front for funded campaigns" />
+      <Stat label="Given as rewards" value={sum(funded, (c) => givenOf(c).given)} format={formatRM} icon={Gift} tone="gold" hint="From your reward pools to residents" />
+      <Stat label="Left in reward pools" value={sum(list.filter((c) => c.status === 'FUNDED'), (c) => c.pool_left_sen)} format={formatRM} icon={Banknote} hint="Refunded to you when a campaign closes" />
+    </div>
+  );
+}
+
 export default function SponsorPage() {
   const campaigns = useApi<Campaign[]>('/campaigns');
   const [report, setReport] = useState<Campaign | null>(null);
@@ -91,7 +105,9 @@ export default function SponsorPage() {
           list.length === 0 ? (
             <EmptyState icon={Megaphone} title="No campaigns yet"><Text>The township team sets up campaigns with you. Once one is funded it appears here with its results.</Text></EmptyState>
           ) : (
-            <div className="grid gap-4 lg:grid-cols-2">
+            <>
+            <CampaignTotals list={list} />
+            <div className="stagger-in grid gap-4 lg:grid-cols-2">
               {list.map((c) => (
                 <Card key={c.id} className="flex flex-col p-5">
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -114,6 +130,7 @@ export default function SponsorPage() {
                 </Card>
               ))}
             </div>
+            </>
           )
         }
       </Async>

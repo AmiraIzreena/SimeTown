@@ -228,22 +228,27 @@ export function Tracker({ onFinished }: { onFinished: () => void }) {
             const route = activity ? trail : finished ? (latest?.route ?? []) : (m.active?.route ?? m.recent[0]?.route ?? []);
             return (
               <>
-                <TownshipMap loops={m.loops} checkpoints={m.checkpoints} gate={m.gate} route={route} here={activity ? here : null} hits={activity ? hits : (m.active?.hits ?? [])} />
-                <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-ink-500">
-                  {m.loops.some((loop) => loop.mode === 'WALK') && (
-                    <span className="flex items-center gap-1.5">
-                      <span aria-hidden className="h-1 w-5 rounded bg-[#23817d]" /><Text> Walking loop</Text>
+                {/* The map with its key attached underneath, then a divider before the trip controls. */}
+                <figure className="border-b border-ink-100/80 pb-5">
+                  <TownshipMap loops={m.loops} checkpoints={m.checkpoints} gate={m.gate} route={route} here={activity ? here : null} hits={activity ? hits : (m.active?.hits ?? [])} />
+                  <figcaption className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-ink-100/80 bg-ink-25/70 px-3 py-2.5">
+                    <span className="mr-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-500"><Text>Map key</Text></span>
+                    {m.loops.some((loop) => loop.mode === 'WALK') && (
+                      <span className="map-key-chip">
+                        <span aria-hidden className="h-1 w-6 rounded-full bg-[#23817d]" /><Text>Walking loop</Text>
+                      </span>
+                    )}
+                    {m.loops.some((loop) => loop.mode === 'CYCLE') && (
+                      <span className="map-key-chip">
+                        <span aria-hidden className="w-6 border-t-2 border-dashed border-gold-500" /><Text>Cycling loop</Text>
+                      </span>
+                    )}
+                    <span className="map-key-chip">
+                      <span aria-hidden className="h-1 w-6 rounded-full bg-accent-600" />
+                      {activity ? <Text>This trip</Text> : <><Text>Your last trip</Text><span className="text-ink-400"><Text>(trimmed near home)</Text></span></>}
                     </span>
-                  )}
-                  {m.loops.some((loop) => loop.mode === 'CYCLE') && (
-                    <span className="flex items-center gap-1.5">
-                      <span aria-hidden className="h-1 w-5 rounded border-t-2 border-dashed border-gold-500" /><Text> Cycling loop</Text>
-                    </span>
-                  )}
-                  <span className="flex items-center gap-1.5">
-                    <span aria-hidden className="h-1 w-5 rounded bg-accent-600" /> <Text>{activity ? 'This trip' : 'Your last trip (trimmed near home)'}</Text>
-                  </span>
-                </div>
+                  </figcaption>
+                </figure>
 
                 {running ? (
                   <div className="space-y-3">

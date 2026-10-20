@@ -337,9 +337,9 @@ function TodayTab({ state, places, onOpen, onInspect, onIssues, onPlaces }: {
                     <span className="text-[13px] font-medium text-ink-500"><Text>{t.label}</Text></span>
                     <span className="ops-kpi-icon grid size-8 shrink-0 place-items-center rounded-lg"><t.icon className="size-4" aria-hidden /></span>
                   </span>
-                  <span className="mt-2 block font-display text-[28px] font-bold leading-none tracking-tight text-ink-900 tabular-nums"><CountUp value={t.value} /></span>
+                  <span className="mt-2 block font-display text-[28px] font-bold leading-none tracking-tight text-ink-900 tabular-nums"><CountUp value={t.value} delay={n * 60} /></span>
                   <span className="ops-kpi-hint mt-2 flex items-center justify-between gap-2 text-xs">
-                    <span className="truncate"><Text>{t.hint}</Text></span>
+                    <span className="line-clamp-2 min-w-0"><Text>{t.hint}</Text></span>
                     <ArrowRight className="ops-kpi-arrow size-3.5 shrink-0" aria-hidden />
                   </span>
                 </button>

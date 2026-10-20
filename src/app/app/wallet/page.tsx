@@ -178,7 +178,7 @@ export default function WalletPage() {
               </span>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-gold-700"><Text>You saved, all together</Text></p>
-                <p className="font-display text-3xl font-bold tabular-nums text-ink-900"><Text>{formatRM(w.saved.totalSen)}</Text></p>
+                <p className="font-display text-3xl font-bold tabular-nums text-ink-900"><CountUp value={w.saved.totalSen} format={formatRM} /></p>
               </div>
               <dl className="grid grid-cols-2 gap-4 text-sm">
                 <div>

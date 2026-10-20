@@ -2,19 +2,21 @@
 
 import { Text } from '@/components/ui/localized-text';
 
-import { Cpu, MonitorSmartphone, Plus, Printer, QrCode as QrIcon, Route } from 'lucide-react';
-import { useState, type FormEvent } from 'react';
+import { Cpu, Footprints, MonitorSmartphone, Plus, Printer, QrCode as QrIcon, Recycle, Route } from 'lucide-react';
+import { useState, type CSSProperties, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
-import { Badge, Card, CardHeader, PageHeader } from '@/components/ui/card';
+import { Badge, Card, CardHeader, PageHeader, Stat } from '@/components/ui/card';
 import { Modal } from '@/components/ui/dialog';
-import { Async, EmptyState } from '@/components/ui/feedback';
+import { Async, EmptyState, SkeletonStats } from '@/components/ui/feedback';
 import { Input, Select, Textarea } from '@/components/ui/field';
 import { QrCode } from '@/components/ui/qr';
 import { TabPanel, Tabs } from '@/components/ui/tabs';
 import { api } from '@/lib/api';
+import { cn } from '@/lib/cn';
 import { formatKg, formatKm, timeAgo } from '@/lib/format';
 import { useAction, useApi } from '@/lib/hooks';
 import type { Me } from '@/lib/types';
+import { useMinLoading } from '@/lib/use-min-loading';
 import { ADMINS } from '@/shared/domain';
 
 type Tab = 'machines' | 'kiosks' | 'loops' | 'patrol';
@@ -62,15 +64,16 @@ export default function PlacesPage() {
   const [poster, setPoster] = useState<Poster | null>(null);
   return (
     <>
-      <PageHeader title="Kiosks, bins & trails" description="Kiosk bins, kiosks, trail checkpoints and patrol points. Each printed code proves someone was there." />
+      <PageHeader title="Kiosks, trails & patrol points" description="Kiosk bins and recycling kiosks, walking and cycling loops, and guard patrol points. Each printed code proves someone was there." />
+      <PlacesSummary onPick={setTab} />
       <Tabs<Tab>
         label="Places"
         value={tab}
         onChange={setTab}
         items={[
           { key: 'machines', label: 'Kiosk bins' },
-          { key: 'kiosks', label: 'Kitar kiosks' },
-          { key: 'loops', label: 'Gerak loops' },
+          { key: 'kiosks', label: 'Recycling kiosks' },
+          { key: 'loops', label: 'Walking & cycling loops' },
           { key: 'patrol', label: 'Patrol points' },
         ]}
       />
@@ -98,6 +101,32 @@ export default function PlacesPage() {
         )}
       </Modal>
     </>
+  );
+}
+
+/**
+ * One tile per tab, each opening it: kiosk bins online (amber when any is full or offline), recycling
+ * kiosks with what they collected, loops with their checkpoints, and patrol points. Same data as the tabs.
+ */
+function PlacesSummary({ onPick }: { onPick: (tab: Tab) => void }) {
+  const machines = useApi<Machine[]>('/admin/kitar/machines', { refreshInterval: 10_000 });
+  const kiosks = useApi<Kiosk[]>('/admin/kitar/kiosks');
+  const loops = useApi<Loop[]>('/admin/gerak/loops');
+  const points = useApi<PatrolPoint[]>('/admin/patrol-points');
+  const loading = useMinLoading('places-summary', !machines.data || !kiosks.data || !loops.data || !points.data);
+  if (loading) return <div className="mb-6"><SkeletonStats count={4} /></div>;
+  const m = machines.data!;
+  const online = m.filter((x) => x.status === 'ONLINE').length;
+  const full = m.filter((x) => x.status === 'FULL').length;
+  const offline = m.length - online - full;
+  const checkpoints = loops.data!.reduce((sum, l) => sum + l.checkpoints.length, 0);
+  return (
+    <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <Stat label="Kiosk bins online" value={online} icon={Cpu} tone={full || offline ? 'warning' : 'success'} hint={`of ${m.length} · ${full} full · ${offline} offline`} onClick={() => onPick('machines')} />
+      <Stat label="Recycling kiosks" value={kiosks.data!.length} icon={Recycle} hint={`${formatKg(kiosks.data!.reduce((sum, k) => sum + k.total_g, 0))} collected`} onClick={() => onPick('kiosks')} />
+      <Stat label="Walking & cycling loops" value={loops.data!.length} icon={Footprints} hint={`${checkpoints} checkpoints`} onClick={() => onPick('loops')} />
+      <Stat label="Patrol points" value={points.data!.length} icon={Route} hint="Scanned by guards on their rounds" onClick={() => onPick('patrol')} />
+    </div>
   );
 }
 
@@ -140,7 +169,7 @@ function Kiosks({ onPoster }: { onPoster: (poster: Poster) => void }) {
           list.length === 0 ? (
             <EmptyState title="No kiosks yet">{canSetUp && <Text>Add the first recycling kiosk above.</Text>}</EmptyState>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="stagger-in grid gap-4 md:grid-cols-2">
               {list.map((k) => (
                 <Card key={k.id} className="flex items-center justify-between gap-4 p-5">
                   <div className="min-w-0">
@@ -148,7 +177,7 @@ function Kiosks({ onPoster }: { onPoster: (poster: Poster) => void }) {
                     <p className="text-sm text-ink-600"><Text>{k.location}</Text>{hq && ` · ${k.township}`}</p>
                     <p className="mt-1 text-sm text-ink-500"><Text>{formatKg(k.total_g)}</Text><Text> collected</Text></p>
                   </div>
-                  <Button variant="secondary" size="sm" onClick={() => onPoster({ title: k.name, subtitle: `Kitar recycling kiosk · ${k.location}`, code: k.code, path: '/app/kitar?kiosk=' })}>
+                  <Button variant="secondary" size="sm" onClick={() => onPoster({ title: k.name, subtitle: `Recycling kiosk · ${k.location}`, code: k.code, path: '/app/kitar?kiosk=' })}>
                     <QrIcon className="size-4" aria-hidden /><Text>Poster</Text></Button>
                 </Card>
               ))}
@@ -193,7 +222,7 @@ function Loops({ onPoster }: { onPoster: (poster: Poster) => void }) {
           list.length === 0 ? (
             <EmptyState title="No loops yet" action={<Button onClick={() => setCreating(true)}><Text>New loop</Text></Button>}><Text>Create a walking or cycling loop with two or more checkpoints.</Text></EmptyState>
           ) : (
-            <div className="grid gap-4 lg:grid-cols-2">
+            <div className="stagger-in grid gap-4 lg:grid-cols-2">
               {list.map((loop) => (
                 <Card key={loop.id} className="p-5">
                   <div className="flex flex-wrap items-center gap-2">
@@ -204,7 +233,7 @@ function Loops({ onPoster }: { onPoster: (poster: Poster) => void }) {
                   <p className="mt-1 text-[15px] text-ink-600">{loop.description}</p>
                   <ol className="mt-4 divide-y divide-ink-100 border-t border-ink-100">
                     {loop.checkpoints.map((cp) => (
-                      <li key={cp.id} className="flex items-center justify-between gap-3 py-2.5 text-[15px]">
+                      <li key={cp.id} style={{ '--i': cp.seq } as CSSProperties} className="value-line -mx-2 flex items-center justify-between gap-3 rounded-md px-2 py-2.5 text-[15px]">
                         <span className="min-w-0 truncate">
                           <span className="mr-2 text-ink-500 tabular-nums"><Text>{cp.seq}</Text>.</span>
                           {cp.name}
@@ -259,21 +288,21 @@ function Machines() {
         list.length === 0 ? (
           <EmptyState icon={Cpu} title="No kiosk bins yet"><Text>An admin puts a bin at a kiosk. Its signing key is made on the server and never shown here.</Text></EmptyState>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="stagger-in grid gap-4 md:grid-cols-2">
             {list.map((m) => (
               <Card key={m.id} className="p-5">
                 <div className="flex items-start justify-between gap-3">
                   <span className="grid size-10 place-items-center rounded-md bg-brand-50 text-brand-700">
                     <Cpu className="size-5" aria-hidden />
                   </span>
-                  <Badge tone={MACHINE_TONE[m.status]}><Text>{m.status === 'ONLINE' ? 'Online' : m.status === 'FULL' ? 'Bin full' : 'Offline'}</Text></Badge>
+                  <Badge tone={MACHINE_TONE[m.status]}><span aria-hidden className={cn('status-dot', m.status === 'ONLINE' ? 'is-ok' : m.status === 'FULL' ? 'is-warning is-pulsing' : 'is-idle')} /><Text>{m.status === 'ONLINE' ? 'Online' : m.status === 'FULL' ? 'Bin full' : 'Offline'}</Text></Badge>
                 </div>
                 <p className="mt-3 text-[17px] font-semibold text-ink-900">{m.name}</p>
                 <p className="text-sm text-ink-600"><Text>At </Text><Text>{m.kiosk}</Text><Text>{m.last_seen_at ? ` · last record ${timeAgo(m.last_seen_at)}` : ''}</Text></p>
                 <p className="mt-2 text-sm text-ink-500"><Text>Last 24 hours: </Text><Text>{m.sessions_today}</Text><Text> session</Text><Text>{m.sessions_today === 1 ? '' : 's'}</Text> · <Text>{formatKg(m.grams_today)}</Text>
                 </p>
                 <Button href={`/console/machine/${m.id}`} variant="secondary" size="sm" className="mt-4">
-                  <MonitorSmartphone className="size-4" aria-hidden /><Text>Open the bin screen</Text></Button>
+                  <MonitorSmartphone className="size-4" aria-hidden /><Text>Open kiosk bin screen</Text></Button>
               </Card>
             ))}
           </div>
@@ -294,7 +323,7 @@ function Patrol({ onPoster }: { onPoster: (poster: Poster) => void }) {
           <Card>
             <ol className="divide-y divide-ink-100">
               {list.map((pt) => (
-                <li key={pt.id} className="flex items-center justify-between gap-3 px-5 py-3 text-[15px]">
+                <li key={pt.id} style={{ '--i': pt.seq } as CSSProperties} className="value-line flex items-center justify-between gap-3 px-5 py-3 text-[15px]">
                   <span>
                     <span className="mr-2 text-ink-500 tabular-nums"><Text>{pt.seq}</Text>.</span>
                     {pt.name}

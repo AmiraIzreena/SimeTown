@@ -9,6 +9,7 @@ import { SiteFooter } from '@/components/shell/site-footer';
 import { LandingFaq, ModuleStrip } from '@/components/features/landing-extras';
 import { HowItWorks } from '@/components/features/how-it-works';
 import { Reveal } from '@/components/ui/reveal';
+import { BlurReveal } from '@/components/ui/blur-reveal';
 import { currentActor } from '@/server/auth/guard';
 import { ROLE_HOME } from '@/shared/domain';
 
@@ -27,11 +28,11 @@ export default async function LandingPage() {
       <SiteHeader home={home} overlay />
 
       <main>
-        {/* Hero: a Sime Darby Property home on the right, fading to near-black on the left. */}
+        {/* Hero: a Sime Darby Property township with its park, courts and playground on the right, fading to near-black on the left. */}
         <section className="hero-photo relative isolate flex min-h-[640px] items-end overflow-hidden text-white lg:min-h-[88vh] lg:items-center">
           <div className="hero-photo-frame absolute inset-y-0 right-0 -z-20 w-full overflow-hidden lg:w-[64%]">
             <Image
-              src="/images/sdp-home.jpg"
+              src="/images/sdp-township-park.jpg"
               alt=""
               fill
               priority
@@ -44,7 +45,19 @@ export default async function LandingPage() {
 
           <div className="hero-stagger mx-auto w-full max-w-6xl px-5 pb-16 pt-36 sm:px-8 lg:pb-24 lg:pt-32">
             <p style={{ '--i': 0 } as CSSProperties} className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-brand-100 backdrop-blur-md"><span aria-hidden className="size-1.5 rounded-full bg-gold-300" /><Text>Everyday impact, made local</Text></p>
-            <h1 style={{ '--i': 1 } as CSSProperties} className="mt-7 max-w-xl text-4xl font-extrabold leading-[1.06] tracking-tight text-white sm:text-5xl lg:text-[60px]"><Text>Good things happen when a township </Text><span className="text-gold-300"><Text>moves together</Text></span>.</h1>
+            {/* The heading's own blur reveal replaces the hero-rise stagger for this line. */}
+            <BlurReveal
+              as="h1"
+              style={{ animation: 'none' }}
+              className="mt-7 max-w-xl text-4xl font-extrabold leading-[1.06] tracking-tight text-white sm:text-5xl lg:text-[60px]"
+              delay={0.25}
+              speedReveal={1.5}
+              segments={[
+                { text: 'Good things happen when a township' },
+                { text: 'moves together', className: 'text-gold-300' },
+                { text: '.', attach: true },
+              ]}
+            />
             <p style={{ '--i': 2 } as CSSProperties} className="mt-6 max-w-lg text-[17px] leading-8 text-white/80 sm:text-lg"><Text>SimeTown brings neighbours, local businesses and everyday services together—and rewards good actions with points that are paid for before they are given.</Text></p>
             <div style={{ '--i': 3 } as CSSProperties} className="mt-9 flex flex-wrap gap-3">
               <Link href={home ?? '/register'} className="site-cta px-6 py-3 text-base">

@@ -6,6 +6,7 @@ import { History } from 'lucide-react';
 import { Badge, Card, PageHeader } from '@/components/ui/card';
 import { Async, EmptyState, SkeletonList } from '@/components/ui/feedback';
 import { formatDateTime } from '@/lib/format';
+import type { CSSProperties } from 'react';
 import { useApi } from '@/lib/hooks';
 import { PARCEL_STATE_LABELS, type ParcelState } from '@/shared/lockers';
 
@@ -36,8 +37,8 @@ export default function CourierHistoryPage() {
           ) : (
             <Card>
               <ul className="divide-y divide-ink-100">
-                {rows.map((d) => (
-                  <li key={d.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
+                {rows.map((d, i) => (
+                  <li key={d.id} style={{ '--i': Math.min(i, 12) } as CSSProperties} className="value-line flex flex-wrap items-center justify-between gap-3 px-5 py-3">
                     <div className="min-w-0">
                       <p className="text-[15px] font-semibold text-ink-900">{d.tracking_no} <span className="font-normal text-ink-500">· {d.station}{d.compartment && ` · ${d.compartment}`}</span></p>
                       <p className="text-sm text-ink-500"><Text>{formatDateTime(d.registered_at)}</Text>{d.failure_reason && <> · <Text>{d.failure_reason}</Text></>}</p>

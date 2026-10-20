@@ -3,10 +3,11 @@
 import { Text } from '@/components/ui/localized-text';
 
 import { CheckCircle2, ShieldAlert, ShieldCheck, XCircle } from 'lucide-react';
-import { useState, type FormEvent } from 'react';
+import { useState, type CSSProperties, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, PageHeader } from '@/components/ui/card';
 import { ConfirmDialog } from '@/components/ui/dialog';
+import { CountUp } from '@/components/ui/count-up';
 import { Async, EmptyState } from '@/components/ui/feedback';
 import { Input, Textarea } from '@/components/ui/field';
 import { DataTable } from '@/components/ui/table';
@@ -86,7 +87,7 @@ function FloatTab({ isAdmin }: { isAdmin: boolean }) {
               <CardHeader
                 title="Where the float stands now"
                 action={
-                  <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold ${matched ? 'bg-success-50 text-success-700' : 'bg-accent-50 text-accent-700'}`}>
+                  <span className={`status-settle inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold ${matched ? 'bg-success-50 text-success-700' : 'bg-accent-50 text-accent-700'}`}>
                     <ShieldCheck className="size-4" aria-hidden />
                     <Text>{matched ? 'Matched to the sen' : 'Does not match'}</Text>
                   </span>
@@ -98,19 +99,19 @@ function FloatTab({ isAdmin }: { isAdmin: boolean }) {
                   ['Owed to shops (paid at the next settlement)', p.payablesSen],
                   ['Paid in by shops and campaigns, not yet given as points', p.poolsSen],
                   ['Community pool', p.communitySen],
-                ].map(([label, value]) => (
-                  <div key={label as string} className="flex items-center justify-between gap-4 px-5 py-3">
+                ].map(([label, value], i) => (
+                  <div key={label as string} style={{ '--i': i } as CSSProperties} className="value-line flex items-center justify-between gap-4 px-5 py-3">
                     <dt className="text-ink-600"><Text>{label}</Text></dt>
                     <dd className="font-semibold tabular-nums text-ink-900"><Text>{formatRM(value as number)}</Text></dd>
                   </div>
                 ))}
-                <div className="flex items-center justify-between gap-4 bg-ink-25 px-5 py-3">
+                <div style={{ '--i': 4 } as CSSProperties} className="value-line flex items-center justify-between gap-4 bg-ink-25 px-5 py-3">
                   <dt className="font-semibold text-ink-900"><Text>The float owes</Text></dt>
-                  <dd className="font-display text-lg font-bold tabular-nums text-ink-900"><Text>{formatRM(owed)}</Text></dd>
+                  <dd className="font-display text-lg font-bold tabular-nums text-ink-900"><CountUp value={owed} format={formatRM} /></dd>
                 </div>
-                <div className="flex items-center justify-between gap-4 bg-ink-25 px-5 py-3">
+                <div style={{ '--i': 5 } as CSSProperties} className="value-line flex items-center justify-between gap-4 bg-ink-25 px-5 py-3">
                   <dt className="font-semibold text-ink-900"><Text>The float holds</Text></dt>
-                  <dd className="font-display text-lg font-bold tabular-nums text-ink-900"><Text>{formatRM(p.trustSen)}</Text></dd>
+                  <dd className="font-display text-lg font-bold tabular-nums text-ink-900"><CountUp value={p.trustSen} format={formatRM} /></dd>
                 </div>
               </dl>
             </Card>

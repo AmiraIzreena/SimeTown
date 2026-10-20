@@ -1,7 +1,8 @@
 
 import { Text } from '@/components/ui/localized-text';
 import { LocalizedDiv } from '@/components/ui/localized-elements';
-import type { LucideIcon } from 'lucide-react';
+import { ArrowRight, type LucideIcon } from 'lucide-react';
+import Link from 'next/link';
 import type { HTMLAttributes, ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 import { CountUp } from './count-up';
@@ -50,30 +51,49 @@ export function Badge({ tone = 'neutral', children, className }: { tone?: Tone; 
 }
 
 /** A headline number. Whole numbers count up once when first shown. */
-export function Stat({ label, value, format, hint, icon: Icon, tone = 'brand' }: {
+export function Stat({ label, value, format, hint, icon: Icon, tone = 'brand', href, onClick }: {
   label: string;
   value: number | string;
   format?: (n: number) => string;
   hint?: ReactNode;
   icon?: LucideIcon;
   tone?: Tone;
+  /** Opens the page or section this number describes; the tile then lifts on hover and shows an arrow. */
+  href?: string;
+  onClick?: () => void;
 }) {
-  return (
-    <Card className="p-5">
+  // The same tile as the console's clickable KPI tiles (tone bar, icon tile, count-up). Only a tile
+  // that leads somewhere is interactive, so staff can tell clickable from read-only at a glance.
+  const interactive = Boolean(href || onClick);
+  const className = cn(
+    'kpi-tile glass-surface relative block overflow-hidden rounded-xl border p-4 text-left shadow-sm',
+    `is-${tone}`,
+    interactive && 'is-interactive w-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600',
+  );
+  const body = (
+    <>
       <div className="flex items-start justify-between gap-3">
-        <p className="text-sm font-medium text-ink-500"><Text>{label}</Text></p>
+        <p className="text-[13px] font-medium text-ink-500"><Text>{label}</Text></p>
         {Icon && (
-          <span className={cn('grid size-9 shrink-0 place-items-center rounded-md', tones[tone])}>
-            <Icon className="size-[18px]" aria-hidden />
+          <span className="kpi-tile-icon grid size-8 shrink-0 place-items-center rounded-lg">
+            <Icon className="size-4" aria-hidden />
           </span>
         )}
       </div>
       <p className="mt-2 font-display text-[28px] font-bold leading-none tracking-tight text-ink-900 tabular-nums">
         {typeof value === 'number' ? <CountUp value={value} format={format} /> : value}
       </p>
-      {hint && <p className="mt-2 text-sm text-ink-500"><Text>{hint}</Text></p>}
-    </Card>
+      {(hint || interactive) && (
+        <p className="kpi-tile-hint mt-2 flex items-center justify-between gap-2 text-xs">
+          <span className="line-clamp-2 min-w-0"><Text>{hint}</Text></span>
+          {interactive && <ArrowRight className="kpi-tile-arrow size-3.5 shrink-0" aria-hidden />}
+        </p>
+      )}
+    </>
   );
+  if (href) return <Link href={href} className={className}>{body}</Link>;
+  if (onClick) return <button type="button" onClick={onClick} className={className}>{body}</button>;
+  return <div className={className}>{body}</div>;
 }
 
 export function Progress({ value, max, tone = 'brand', label }: { value: number; max: number; tone?: 'brand' | 'gold' | 'danger' | 'warning'; label: string }) {

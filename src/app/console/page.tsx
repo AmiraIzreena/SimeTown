@@ -2,12 +2,13 @@
 
 import { Text } from '@/components/ui/localized-text';
 
-import { Accessibility, Bike, CheckCircle2, ClipboardList, Cpu, DoorOpen, Droplets, Home, Printer, Recycle, ShieldCheck, Store, Tag } from 'lucide-react';
+import { Accessibility, Bike, ClipboardList, Cpu, DoorOpen, Droplets, Printer, Recycle, ShieldCheck, Store, Tag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, PageHeader, Stat } from '@/components/ui/card';
 import { BarChart, RankBars } from '@/components/ui/charts';
 import { Async, SkeletonList, SkeletonStats } from '@/components/ui/feedback';
 import { formatDay, formatKg, formatKm } from '@/lib/format';
+import { InsightsHero } from './insights-hero';
 import { useApi } from '@/lib/hooks';
 import { REPORT_CATEGORY_LABELS, formatPoints, formatRM, type ReportCategory } from '@/shared/domain';
 
@@ -70,7 +71,9 @@ export default function InsightsPage() {
         state={insights}
         skeleton={
           <div className="space-y-6">
-            <SkeletonStats count={8} />
+            {/* Shaped like the hero band, then the tile row. */}
+            <div className="h-76 animate-pulse rounded-2xl bg-brand-900/15 motion-reduce:animate-none" aria-hidden />
+            <SkeletonStats count={4} />
             <SkeletonList rows={2} />
           </div>
         }
@@ -80,15 +83,13 @@ export default function InsightsPage() {
           const matched = d.float.trustSen === owed;
           return (
             <div className="space-y-6">
+              {/* Hero: active homes, recycling, shop sales and points given. The tiles below hold the rest, so nothing shows twice. */}
+              <InsightsHero d={d} />
               <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-                <Stat label="Active homes" value={d.people.active_homes} icon={Home} hint={`of ${d.people.homes} homes · ${d.people.residents} verified residents`} />
-                <Stat label="Recycled" value={d.planet.recycled_g} format={formatKg} icon={Recycle} tone="success" hint={`${d.planet.drop_offs} drop-offs at kiosks and machines`} />
-                <Stat label="Township loops walked or cycled" value={d.planet.moved_m} format={formatKm} icon={Bike} hint={`${d.planet.loops} loops completed`} />
-                <Stat label="Open Lapor reports" value={d.reports.open} icon={ClipboardList} tone={d.reports.urgent_new ? 'danger' : 'warning'} hint={d.reports.urgent_new ? `${d.reports.urgent_new} urgent and unread` : `${d.reports.resolved} resolved · median ${d.reports.median_hours ?? '–'} h`} />
-                <Stat label="Shop sales through SimeTown" value={d.shops.bill_sen} format={formatRM} icon={Store} hint={`${d.shops.sales} sales at ${d.shops.active_shops} shops`} />
-                <Stat label="Points given" value={d.points.from_shops + d.points.from_campaigns} icon={CheckCircle2} tone="gold" hint={`${formatPoints(d.points.from_shops)} by shops · ${formatPoints(d.points.from_campaigns)} by campaigns`} />
-                <Stat label="Points spent locally" value={d.shops.points_accepted} format={formatRM} icon={Store} tone="success" hint="Accepted by township shops" />
-                <Stat label="Accessible places blocked" value={d.smart.access_blocked} icon={Accessibility} tone={d.smart.access_blocked ? 'danger' : 'success'} hint={`${d.smart.access_open} open access issues`} />
+                <Stat href="/console/reports" label="Open Lapor reports" value={d.reports.open} icon={ClipboardList} tone={d.reports.urgent_new ? 'danger' : 'warning'} hint={d.reports.urgent_new ? `${d.reports.urgent_new} urgent and unread` : `${d.reports.resolved} resolved · median ${d.reports.median_hours ?? '–'} h`} />
+                <Stat href="/console/places" label="Township loops walked or cycled" value={d.planet.moved_m} format={formatKm} icon={Bike} hint={`${d.planet.loops} loops completed`} />
+                <Stat href="/console/finance" label="Points spent locally" value={d.shops.points_accepted} format={formatRM} icon={Store} tone="success" hint="Accepted by township shops" />
+                <Stat href="/console/access" label="Accessible places blocked" value={d.smart.access_blocked} icon={Accessibility} tone={d.smart.access_blocked ? 'danger' : 'success'} hint={`${d.smart.access_open} open access issues`} />
               </div>
 
               <Card className={matched ? 'border-success-600/30' : 'border-accent-200'}>
@@ -180,8 +181,8 @@ export default function InsightsPage() {
                 <CardHeader title="Smart township, last 30 days" description="Recycling machines, GPS-tracked trips, visitors, flood alerts, accessibility and Shop Offers." />
                 <dl className="grid grid-cols-2 gap-px bg-ink-100 lg:grid-cols-5">
                   {[
-                    [Cpu, 'Machine uptime', `${d.smart.machines_online} of ${d.smart.machines} online`],
-                    [Recycle, 'Recycled at machines', formatKg(d.smart.machine_g)],
+                    [Cpu, 'Kiosk bin uptime', `${d.smart.machines_online} of ${d.smart.machines} online`],
+                    [Recycle, 'Recycled at kiosk bins', formatKg(d.smart.machine_g)],
                     [Recycle, 'Guest recycling sessions', String(d.smart.guest_sessions)],
                     [Bike, 'GPS-tracked walks and rides', formatKm(d.smart.tracked_m)],
                     [DoorOpen, 'Visitors at the gate', String(d.smart.visits)],

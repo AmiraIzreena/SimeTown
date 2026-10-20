@@ -1,6 +1,7 @@
 'use client';
 
 import { Text } from '@/components/ui/localized-text';
+import { CountUp } from '@/components/ui/count-up';
 import { LocalizedButton, LocalizedInput } from '@/components/ui/localized-elements';
 
 import { Bot, CloudRain, Gauge, HeartPulse, MessageSquareText, PhoneCall, Send, ShieldCheck, Timer, TrendingUp, X } from 'lucide-react';
@@ -87,7 +88,7 @@ export function ZoneAgent({ zone, agent, onChange }: { zone: AgentZone; agent: A
         description={`Updated ${timeAgo(zone.updated_at)}`}
         action={
           <span className="flex items-center gap-2">
-            <span className="font-display text-2xl font-bold tabular-nums"><Text>{zone.level_pct}</Text>%</span>
+            <span className="font-display text-2xl font-bold tabular-nums"><CountUp value={zone.level_pct} format={(n) => `${n}%`} /></span>
             <FloodBadge status={zone.status} />
           </span>
         }

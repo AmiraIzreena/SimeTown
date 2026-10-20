@@ -6,7 +6,7 @@ import { LocalizedButton, LocalizedNav } from '@/components/ui/localized-element
 import { Accessibility, Bell, Languages, LogOut, Menu } from 'lucide-react';
 import { LocalizedLink as Link } from '@/components/ui/localized-elements';
 import { usePathname } from 'next/navigation';
-import { useCallback, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Drawer } from '@/components/ui/dialog';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
@@ -22,6 +22,7 @@ import { ProfileCompletion } from './profile-completion';
 import { reloadTo } from '@/lib/navigate';
 import { AccountLanguage, persistLanguage } from '@/components/ui/language';
 import { AksesViewContext } from '@/components/features/akses-mode';
+import { SignedInMotion } from '@/lib/use-min-loading';
 
 export interface ShellUser {
   fullName: string;
@@ -85,6 +86,19 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
   const inbox = useApi<NotificationList>('/notifications', { refreshInterval: 30_000 });
   const access = useApi<AccessProfile>(area === 'resident' ? '/me/access' : null);
   const [accessibleOverride, setAccessibleOverride] = useState<boolean | null>(null);
+  // The top bar gains a light shadow once the page scrolls under it.
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 4);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    // Lets CSS keep signed-in motion (toast countdown, live-figure tint) off the public pages.
+    document.documentElement.dataset.signedIn = '';
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      delete document.documentElement.dataset.signedIn;
+    };
+  }, []);
   const t = useT();
   const lang = useLang();
   const switchLang = () => {
@@ -130,6 +144,7 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
   };
 
   return (
+    <SignedInMotion.Provider value>
     <AksesViewContext.Provider value={area === 'resident' ? accessibleOverride : null}>
     <div className={cn('min-h-dvh md:pl-20 lg:pl-64', accessible && 'akses-shell')}>
       <AccountLanguage />
@@ -161,7 +176,7 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
       </aside>
 
       {/* Top bar */}
-      <header className="app-topbar no-print sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-white/70 bg-white/65 px-4 shadow-[0_4px_20px_rgb(45_20_7_/_0.035)] backdrop-blur-2xl sm:px-6 lg:px-10">
+      <header data-scrolled={scrolled || undefined} className="app-topbar no-print sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-white/70 bg-white/65 px-4 backdrop-blur-2xl sm:px-6 lg:px-10">
         <Link href={root} aria-label="SimeTown home" className="rounded-md md:hidden">
           <Logo />
         </Link>
@@ -253,5 +268,6 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
 
     </div>
     </AksesViewContext.Provider>
+    </SignedInMotion.Provider>
   );
 }

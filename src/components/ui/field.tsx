@@ -16,8 +16,8 @@ interface FieldProps {
 /** Label, control, hint and error wired together for screen readers. */
 function Shell({ label, hint, error, className, labelClassName, id, children }: FieldProps & { id: string; children: ReactNode }) {
   return (
-    <div className={cn('space-y-1.5', className)}>
-      <label htmlFor={id} className={cn('block text-sm font-medium text-ink-700', labelClassName)}>
+    <div className={cn('field space-y-1.5', className)}>
+      <label htmlFor={id} className={cn('block text-sm font-medium text-ink-700 transition-colors duration-200', labelClassName)}>
         <Text>{label}</Text>
       </label>
       <Text>{children}</Text>

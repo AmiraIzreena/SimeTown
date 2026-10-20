@@ -10,18 +10,18 @@ their patterns.
 
 ## 1. Reference files (the source of truth)
 
-| What | File |
-|---|---|
-| Public guest page (motion and feel to match) | `src/app/guest/view.tsx` |
-| Design tokens, keyframes, shared classes | `src/app/globals.css` (`@theme` block at top; console filter classes at the end) |
-| Shared filter toolkit | `src/components/ui/filter-bar.tsx` |
-| Command-centre dashboard (KPI tiles, queue, health rail) | `src/app/console/lockers/today.tsx` |
-| Console-only motion | `src/app/console/operations/parcel-workspace.css` |
-| A list with grouped chips + table rows | `src/app/console/lockers/parcels.tsx` |
-| A queue with chips, sub-chips and filter pills | `src/components/features/incident-board.tsx` |
-| Cards, badges, headers, stats | `src/components/ui/card.tsx` |
-| Buttons | `src/components/ui/button.tsx` |
-| Tabs with sliding indicator | `src/components/ui/tabs.tsx` |
+| What                                                     | File                                                                             |
+| -------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Public guest page (motion and feel to match)             | `src/app/guest/view.tsx`                                                         |
+| Design tokens, keyframes, shared classes                 | `src/app/globals.css` (`@theme` block at top; console filter classes at the end) |
+| Shared filter toolkit                                    | `src/components/ui/filter-bar.tsx`                                               |
+| Command-centre dashboard (KPI tiles, queue, health rail) | `src/app/console/lockers/today.tsx`                                              |
+| Console-only motion                                      | `src/app/console/operations/parcel-workspace.css`                                |
+| A list with grouped chips + table rows                   | `src/app/console/lockers/parcels.tsx`                                            |
+| A queue with chips, sub-chips and filter pills           | `src/components/features/incident-board.tsx`                                     |
+| Cards, badges, headers, stats                            | `src/components/ui/card.tsx`                                                     |
+| Buttons                                                  | `src/components/ui/button.tsx`                                                   |
+| Tabs with sliding indicator                              | `src/components/ui/tabs.tsx`                                                     |
 
 ---
 
@@ -56,6 +56,7 @@ Radii: `rounded-md` (10px) inputs/buttons, `rounded-lg` (14px) inner panels, `ro
 Shadows: `shadow-xs` controls, `shadow-sm` cards, `shadow-md` hover, `shadow-lg` menus/dialogs. Hover glow on interactive cards: `box-shadow: 0 18px 40px rgb(79 28 8 / 0.12)`.
 
 Type:
+
 - Page title: `PageHeader` (it has the orange gradient bar on the left).
 - Section title: `font-display text-xl font-bold text-ink-900` + `mt-1 text-sm text-ink-500` description.
 - Card title: `CardHeader` (17px semibold).
@@ -75,16 +76,37 @@ All keyframes already exist in `globals.css`: `fade-in`, `rise`, `pop`, `dashboa
 
 ```css
 @media (prefers-reduced-motion: no-preference) {
-  .ops-kpi { animation: dashboard-card 520ms var(--ease-soft) both; animation-delay: calc(var(--i, 0) * 60ms); }
-  .ops-panel { animation: section-pop 520ms var(--ease-soft) both; animation-delay: 180ms; }
-  .ops-queue > .ops-row { animation: checkpoint-in 420ms var(--ease-soft) both; animation-delay: calc(220ms + var(--i, 0) * 45ms); }
-  .ops-bar { animation: segment-grow 800ms var(--ease-soft) both; }
+  .ops-kpi {
+    animation: dashboard-card 520ms var(--ease-soft) both;
+    animation-delay: calc(var(--i, 0) * 60ms);
+  }
+  .ops-panel {
+    animation: section-pop 520ms var(--ease-soft) both;
+    animation-delay: 180ms;
+  }
+  .ops-queue > .ops-row {
+    animation: checkpoint-in 420ms var(--ease-soft) both;
+    animation-delay: calc(220ms + var(--i, 0) * 45ms);
+  }
+  .ops-bar {
+    animation: segment-grow 800ms var(--ease-soft) both;
+  }
 }
 ```
 
 Cap `--i` at about 12 for long lists (`Math.min(i, 12)`) so the last rows don't wait.
 
-**Interactive card hover** (same as the guest page's `.offer-card` and `.journey-card`): lift `translateY(-3px)`, border to `brand-200`, glow shadow, a radial orange glow fading in from the bottom-right (`::after`), the icon tile fills with its tone colour and tilts `rotate(-6deg) scale(1.08)`, and a hidden arrow slides in. Press: `translateY(-1px) scale(0.99)`. See `.ops-kpi` in `parcel-workspace.css`.
+**Interactive card hover** (console, calm and corporate per `docs/SimeTown-UI-UX-GUIDELINES.md` §4): lift `translateY(-2px)`, border to `brand-200`, a light shadow `0 8px 22px rgb(79 28 8 / 0.08)`, the icon tile fills with its tone colour (no tilt, no scale, no glow), and a hidden arrow slides in. Press: `translateY(-1px) scale(0.99)`. Hover only under `@media (hover: hover) and (pointer: fine)`, so taps on tablets do not leave a tile lifted; no movement under reduced motion. 220ms. See `.ops-kpi` in `parcel-workspace.css`. (The public guest page may keep its livelier offer-card hover.)
+
+**Feedback motion** (shared, all inside `prefers-reduced-motion: no-preference`):
+
+- `.content-in`: results fade in (220ms) after a skeleton, or after a chip or menu changes what is listed (give the container a `key` of the filter so it replays).
+- `.value-changed`: `CountUp` tints a live figure for about a second when a refresh changes it; the count-up itself plays only the first time.
+- `.ops-row.is-leaving` + `afterLeave()` (`src/lib/motion.ts`): a row whose work is done slides out (200ms) before the list refreshes.
+- The top bar gains a light shadow once the page scrolls (`.app-topbar[data-scrolled]`), and toasts show a thin countdown bar (`.toast-life`).
+- Avoid: confetti, bouncing, tilting or spinning icons, glows, parallax, pulsing anything that is not urgent.
+
+**All signed-in areas** (resident, shop, sponsor, guard, courier, console) share one standard: every page heading enters with the same short fade and 8px rise (`rise`), done ticks settle without overshoot (`checkpoint-done`), no 3D flips, and `.lift` cards do not move under reduced motion. `Async` holds a skeleton at least 600ms once shown, and the toast countdown and live-figure tint only appear on signed-in screens: the Shell provides `SignedInMotion` and sets `html[data-signed-in]`. **Public pages before login keep their own livelier style; do not apply these rules there.**
 
 **Selected pill** (same as the guest page's `.offer-tab[aria-current]`): `linear-gradient(135deg, brand-500, brand-700)`, white text, `box-shadow: 0 4px 14px rgb(232 111 32 / 0.28)`.
 
@@ -124,7 +146,7 @@ Rules:
 2. **The main dimension as chips** (status, queue, location): `FilterChips` with **counts** when you have accurate ones. Use `alert: true` on counts that mean trouble (unassigned, failed, late), which turns them red. The first chip is always "All …".
 3. **Too many values (more than about 7)?** Group them into chips, then show a second `size="sm"` chip row for the members of the selected group (see `parcels.tsx` `STATE_GROUPS`). Never put more than about 7 options in one row, and never a 16-option dropdown.
 4. **Secondary dimensions as `FilterMenu` pills** (priority, owner, area, company, station, sort). The first option is the "no filter" value. Mark people's or places' names `raw: true` so they aren't translated. One "Sort" pill per list.
-5. **No native `<select>` in filter bars.** Native selects remain only for *form fields* inside dialogs.
+5. **No native `<select>` in filter bars.** Native selects remain only for _form fields_ inside dialogs.
 6. **`FilterSummary` always shows**: shown count, total when it differs, a plural noun, `live` if the list auto-refreshes, and `onClear` only when something is filtered (resetting search, chips, menus and sort).
 7. **Don't duplicate:** if chips show a count, don't also show the same number in stat cards above (we removed those on the case board).
 8. Keep data on screen while refetching: `useApi(url, { keepPreviousData: true })`.
@@ -140,7 +162,7 @@ See `today.tsx`. Industrial control-tower layout:
 
 1. **KPI strip:** 4–5 tiles in `grid gap-3 sm:grid-cols-2 lg:grid-cols-5`. Each tile is a `<button>` that jumps to the matching filtered list, with a 3px tone bar on top (`is-danger | is-warning | is-ok | is-neutral`), a label, a `CountUp` value and a one-line hint (coloured and bold when it's a problem), plus an arrow that appears on hover.
 2. **Main column: one priority queue**, worst first (critical, then late, then high, then unassigned, oldest breaking ties). It has queue chips with counts, column headers, a severity rail per row, and a small `Take` (secondary) or `Open` (ghost) button. Show about 8, then a footer with links to the full lists.
-3. **Side rail: system health**, covering *everything* and not only problems: each station with a status light, fill bar and %, red/amber flags; each storage location with held/capacity. Footer link to the details.
+3. **Side rail: system health**, covering _everything_ and not only problems: each station with a status light, fill bar and %, red/amber flags; each storage location with held/capacity. Footer link to the details.
 4. A `Live` indicator in the queue header.
 
 ---
@@ -197,3 +219,13 @@ See `today.tsx`. Industrial control-tower layout:
 4. Parcels chips have no counts: the list API is capped at 200 rows, so accurate counts need a server endpoint that counts by state.
 5. API note: `GET /admin/lockers/parcels?state=A,B,C` accepts a comma-separated list (`server/modules/lockers/routes.ts`, `admin.ts`).
 6. None of this is committed. The branch `updates` had many unrelated uncommitted changes before this work; don't revert them.
+
+## 12. Console-wide standards added 2026-10-20
+
+- **One KPI look.** `Stat` (in `card.tsx`) now renders the same tile as the clickable `ops-kpi` tiles: `.kpi-tile` with a 3px tone bar, tone icon tile, 28px count-up, two-line hint (styles in `globals.css`). Use `Stat` for read-only figures and `ops-kpi` buttons for tiles that open a filtered list; never a third style.
+- **Insights hero** (`src/app/console/insights-hero.tsx`): the sidebar's brand gradient with a faint architectural grid; exactly one hero figure (active homes, 56px, with a same-colour meter), three headline figures and a 14-day sparkline that draws once and has a per-day hover readout. It prints in ink for the monthly report. Numbers shown in the hero are not repeated in the tiles below.
+- **Tables.** `DataTable` uses the console header style (11px uppercase, `bg-ink-25/70`) and the warm row hover, matching hand-built rows.
+- **Filters.** List filters and township pickers are `FilterMenu` pills, never native `<select>` (Komuniti and Recycling converted). Native selects stay only for form fields in dialogs.
+- **Scrolling** (signed-in only): smooth in-page jumps that stop below the top bar (`scroll-padding-top`; page changes stay instant via `data-scroll-behavior="smooth"` on `<html>`), thin brand-tinted scrollbars, and section cards that rise in as they enter the viewport (CSS scroll-driven `animation-timeline: view()`, no library, no scroll hijacking; browsers without support simply show the cards).
+- **Shared micro-interactions** (signed-in only, mouse hover only, off under reduced motion), so no page is static: buttons lift 1px with a soft shadow and press to 0.98 (`.btn`); a field's label turns brand while in use (`.field`); `DataTable` rows settle in one after another and the hovered row gets a 3px brand bar; value lists use `.value-line` (settle in, warm hover); empty-state icons settle in; status badges can use `.status-settle`. `Stat` takes `href` or `onClick` for tiles that open the list they count, and only those tiles lift and show an arrow; read-only tiles stay still.
+- **Counting numbers.** Every headline figure goes through `CountUp` (directly, or via `Stat`, the KPI tiles and the Insights hero). On signed-in screens it uses Animate UI's `CountingNumber` (`@animate-ui/react@2.0.0` with `motion@14.2.0`, pinned exact; the package is new on npm, so review before upgrading): a 1s count on the `--ease-soft` curve when the card comes into view (1.4s for the one hero figure; tile rows add 60ms per tile via `delay`), later values settle from the current number in 0.6s, prefix/suffix (RM, kg, km, %) stay put and decimals match the formatted value. Public pages keep the simpler count. Use `CountUp` for any new number card; do not use it for codes (pass codes, member codes) or for figures that change while someone types (the shop counter).

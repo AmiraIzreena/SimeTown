@@ -1,6 +1,7 @@
 'use client';
 
 import { Text } from '@/components/ui/localized-text';
+import { CountUp } from '@/components/ui/count-up';
 import { LocalizedButton } from '@/components/ui/localized-elements';
 
 import { Clock, Radio, TrendingUp } from 'lucide-react';
@@ -64,7 +65,7 @@ function ZoneTile({ zone, selected, onSelect }: { zone: AgentZone; selected: boo
         <span className="text-sm font-semibold leading-snug text-ink-900">{zone.name}</span>
         <FloodBadge status={zone.status} />
       </span>
-      <span className="relative mt-1 block font-display text-2xl font-bold tabular-nums text-ink-900"><Text>{zone.level_pct}</Text>%</span>
+      <span className="relative mt-1 block font-display text-2xl font-bold tabular-nums text-ink-900"><CountUp value={zone.level_pct} format={(n) => `${n}%`} /></span>
       {zone.assessment.risingFast && (
         <span className="relative mt-1 inline-flex items-center gap-1 rounded-full bg-accent-600 px-2 py-0.5 text-[11px] font-semibold text-white">
           <TrendingUp className="size-3" aria-hidden /><Text>Rising fast</Text>

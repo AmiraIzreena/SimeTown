@@ -84,6 +84,8 @@ export interface Campaign {
   funder: string;
   live: boolean;
   pool_left_sen: number;
+  /** False for a campaign cancelled before its payment was recorded (closed, nothing ever given). */
+  funded?: boolean;
   /** Staff views only. */
   rewards_given?: number;
   /** Staff views only: the sponsor's tier today, and whether this campaign is beyond what it includes this year. */

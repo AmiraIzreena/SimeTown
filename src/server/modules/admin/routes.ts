@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { AUDIT_ACTORS, AUDIT_AREAS, AUDIT_PERIODS } from '@/shared/audit';
 import { ADMINS, STAFF } from '@/shared/domain';
 import { one } from '../../db/client';
 import { AppError, notFound } from '../../errors';
@@ -80,8 +81,14 @@ export const adminRoutes = [
   }),
   route({
     method: 'GET', path: '/admin/audit', tag: 'Admin', summary: 'Audit trail', auth: 'session', roles: ADMINS,
-    query: pageQuery,
-    handler: (c) => listAudit(c.db, c.actor, c.query),
+    query: pageQuery.extend({
+      q: z.string().trim().max(60).optional(),
+      area: z.enum(AUDIT_AREAS).optional(),
+      actor: z.enum(AUDIT_ACTORS).optional(),
+      period: z.enum(AUDIT_PERIODS).optional(),
+      sort: z.enum(['NEWEST', 'OLDEST']).optional(),
+    }),
+    handler: (c) => listAudit(c.db, c.actor, c.query, c.now),
   }),
   route({
     method: 'GET', path: '/admin/settings', tag: 'Admin', summary: 'Programme rules', auth: 'session', roles: STAFF,

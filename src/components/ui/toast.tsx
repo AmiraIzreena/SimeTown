@@ -12,6 +12,8 @@ interface Toast {
   id: number;
   message: string;
   kind: Kind;
+  /** How long it stays, for the countdown bar. */
+  ms: number;
 }
 
 const ToastContext = createContext<{ show: (message: string, kind?: Kind) => void } | null>(null);
@@ -30,9 +32,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const show = useCallback(
     (message: string, kind: Kind = 'success') => {
       const id = nextId++;
-      setToasts((list) => [...list.slice(-2), { id, message, kind }]);
       // Errors stay longer: they usually need reading twice.
-      window.setTimeout(() => dismiss(id), kind === 'error' ? 7000 : 4500);
+      const ms = kind === 'error' ? 7000 : 4500;
+      setToasts((list) => [...list.slice(-2), { id, message, kind, ms }]);
+      window.setTimeout(() => dismiss(id), ms);
     },
     [dismiss],
   );
@@ -56,7 +59,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             key={toast.id}
             role={toast.kind === 'error' ? 'alert' : 'status'}
             className={cn(
-              'pointer-events-auto flex w-full max-w-sm animate-rise items-start gap-3 rounded-lg border bg-white px-4 py-3 shadow-lg',
+              'pointer-events-auto relative flex w-full max-w-sm animate-rise items-start gap-3 overflow-hidden rounded-lg border bg-white px-4 py-3 shadow-lg',
               toast.kind === 'error' ? 'border-accent-200' : 'border-ink-200',
             )}
           >
@@ -65,6 +68,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             <LocalizedButton type="button" onClick={() => dismiss(toast.id)} aria-label="Dismiss" className="grid size-6 shrink-0 place-items-center rounded text-ink-500 hover:text-ink-700">
               <X className="size-4" aria-hidden />
             </LocalizedButton>
+            <span aria-hidden style={{ animationDuration: `${toast.ms}ms` }} className={cn('toast-life absolute inset-x-0 bottom-0 h-0.5', toast.kind === 'error' ? 'bg-accent-500/60' : 'bg-success-600/50')} />
           </div>
         ))}
       </div>

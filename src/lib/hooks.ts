@@ -17,8 +17,9 @@ interface Page<T> {
 }
 
 /** A list that loads more on request, using the API's cursor. */
-export function usePaged<T>(path: string | null) {
-  const swr = useSWRInfinite<Page<T>, ApiError>(
+/** `Extra` types anything the API adds to the first page, such as filter counts. */
+export function usePaged<T, Extra extends object = object>(path: string | null) {
+  const swr = useSWRInfinite<Page<T> & Partial<Extra>, ApiError>(
     (index, previous) => {
       if (!path || (previous && !previous.nextCursor)) return null;
       const joiner = path.includes('?') ? '&' : '?';
@@ -30,6 +31,7 @@ export function usePaged<T>(path: string | null) {
   const pages = swr.data ?? [];
   return {
     items: pages.flatMap((p) => p.items),
+    first: pages[0],
     error: swr.error,
     isLoading: swr.isLoading,
     hasMore: Boolean(pages[pages.length - 1]?.nextCursor),

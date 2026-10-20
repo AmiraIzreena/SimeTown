@@ -2,6 +2,7 @@
 
 import { Text } from '@/components/ui/localized-text';
 
+import { CountUp } from '@/components/ui/count-up';
 import { BadgeCheck, Clock, ExternalLink, HeartPulse, MapPin, Megaphone, Navigation, ShieldCheck, TrendingUp } from 'lucide-react';
 import { AksesPage, AksesReadAloud, useAksesMode } from '@/components/features/akses-mode';
 import { FloodBadge, LevelGauge, LevelHistory, useVerifiedText } from '@/components/features/flood';
@@ -85,7 +86,7 @@ export default function BanjirPage() {
                         <FloodBadge status={zone.status} />
                       </div>
                       <p className="text-xl font-semibold text-ink-900"><Text>{isMine ? statusText : zone.status === 'DANGER' ? 'Flood danger' : zone.status === 'WARNING' ? 'Flood warning' : 'Normal'}</Text></p>
-                      <p className="font-display text-4xl font-bold tabular-nums text-ink-900"><Text>{zone.level_pct}</Text>%</p>
+                      <p className="font-display text-4xl font-bold tabular-nums text-ink-900"><CountUp value={zone.level_pct} format={(n) => `${n}%`} /></p>
                       {zone.rising_fast && <p className="text-xl font-semibold text-accent-700"><Text>The water is rising fast. Get ready to move.</Text></p>}
                       {isMine && <p className="text-base text-ink-600">{verified(zone)}</p>}
                       <p><strong><Text>Safe route</Text>:</strong> <Text>{zone.safe_route}</Text></p>
@@ -124,7 +125,7 @@ export default function BanjirPage() {
                           <FloodBadge status={zone.status} />
                         </span>
                       </div>
-                      <p className="mt-3 font-display text-4xl font-bold tabular-nums text-ink-900"><Text>{zone.level_pct}</Text>%</p>
+                      <p className="mt-3 font-display text-4xl font-bold tabular-nums text-ink-900"><CountUp value={zone.level_pct} format={(n) => `${n}%`} /></p>
                       <div className="mt-3">
                         <LevelGauge level={zone.level_pct} status={zone.status} warningPct={o.warningPct} dangerPct={o.dangerPct} />
                       </div>

@@ -10,6 +10,25 @@ import { campaignsTemplates } from './i18n-campaigns';
 export const messageTemplates: readonly (readonly [string, string])[] = [
   // Old Taman notifications are still stored in residents' inboxes; keep translating them.
   ["You won plot {0} at {1}", "Anda memenangi plot {0} di {1}"],
+  // A resident's home rejected by staff, with the reason they gave.
+  ["Reason: {0}. Please contact the township office.", "Sebab: {0}. Sila hubungi pejabat perbandaran."],
+  // People → Confirm homes: empty lists name the place and search.
+  ["Nobody is waiting in {0}", "Tiada sesiapa yang menunggu di {0}"],
+  ["No confirmed residents in {0}", "Tiada penduduk yang disahkan di {0}"],
+  ["No rejected residents in {0}", "Tiada penduduk yang ditolak di {0}"],
+  ["Nobody in {0} matches “{1}”. Try another name, unit or property record.", "Tiada sesiapa di {0} yang sepadan dengan “{1}”. Cuba nama, unit atau rekod hartanah yang lain."],
+  ["Nobody matches “{0}”. Try another name, unit or property record.", "Tiada sesiapa yang sepadan dengan “{0}”. Cuba nama, unit atau rekod hartanah yang lain."],
+  ["by {0}", "oleh {0}"],
+  // Insights hero
+  ["{0} in total", "{0} kesemuanya"],
+  ["{0} checkpoints", "{0} titik semak"],
+  ["Water level is at {0}%.", "Paras air pada {0}%."],
+  ["{0} campaigns in all", "{0} kempen kesemuanya"],
+  ["See all {0} reviews", "Lihat semua {0} ulasan"],
+  ["Recycling kiosk · {0}", "Kiosk kitar semula · {0}"],
+  ["of {0} · {1} full · {2} offline", "daripada {0} · {1} penuh · {2} luar talian"],
+  ["Verified actions per day, last 14 days: {0}", "Aktiviti disahkan setiap hari, 14 hari lalu: {0}"],
+  ["of {0} homes · {1} verified residents", "daripada {0} rumah · {1} penduduk disahkan"],
   ["Your {0} sighting is confirmed", "Pemerhatian {0} anda disahkan"],
   ["Photo: {0}", "Foto: {0}"],
   ["{0} challenges a year", "{0} cabaran setahun"],
@@ -165,7 +184,7 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
   ],
   [
     "Recycling at {0}",
-    "SimeTown Recycle semula di {0}"
+    "Kitar semula di {0}"
   ],
   [
     "Recorded at {0}",
@@ -273,7 +292,7 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
   ],
   [
     "Claimed {0}. {1} Guest recycling earns XP only.",
-    "Dituntut {0}. {1} SimeTown Recycle semula tetamu hanya memperoleh XP."
+    "Dituntut {0}. {1} kitar semula tetamu hanya memperoleh XP."
   ],
   [
     "{0}, this month",
@@ -433,7 +452,7 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
   ],
   [
     "SimeTown Recycle recycling kiosk · {0}",
-    "Kiosk SimeTown Recycle semula SimeTown Recycle · {0}"
+    "Kiosk kitar semula SimeTown Recycle · {0}"
   ],
   [
     "{0} · checkpoint {1} of {2}",
@@ -626,11 +645,11 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
   ],
   [
     "Recycling recorded at {0}",
-    "SimeTown Recycle semula direkodkan di {0}"
+    "Kitar semula direkodkan di {0}"
   ],
   [
     "{0} kg recorded. You have reached today’s recycling limit for rewards.",
-    "{0} kg direkodkan. Anda mencapai had ganjaran SimeTown Recycle semula hari ini."
+    "{0} kg direkodkan. Anda mencapai had ganjaran kitar semula hari ini."
   ],
   [
     "{0} kg recorded: +{1} XP{2}{3}.",
@@ -642,7 +661,7 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
   ],
   [
     "Guest recycling can be claimed for {0} days only.",
-    "SimeTown Recycle semula tetamu hanya boleh dituntut selama {0} hari."
+    "Kitar semula tetamu hanya boleh dituntut selama {0} hari."
   ],
   [
     "{0} is {1}",

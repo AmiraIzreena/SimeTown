@@ -122,7 +122,7 @@ npm run bootstrap -- my-township.json      # or: docker run --env-file .env -v "
 ```
 
 It creates the township, zones and homes, and prints a one-time link for the first SDP HQ admin to
-set a password. That admin then invites township admins and staff from *People → Accounts*.
+set a password. That admin then invites township admins and staff from *People → Staff & partner access*.
 Running it again only adds new zones and homes.
 
 ## 4. Scheduled jobs

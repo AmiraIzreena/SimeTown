@@ -8,7 +8,7 @@ import { KINDS } from '@/components/features/komuniti/model';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, PageHeader, Stat } from '@/components/ui/card';
 import { Async, EmptyState, ErrorState, SkeletonList } from '@/components/ui/feedback';
-import { Input, Select } from '@/components/ui/field';
+import { FilterBar, FilterMenu, FilterSummary, SearchField } from '@/components/ui/filter-bar';
 import { DataTable } from '@/components/ui/table';
 import { TabPanel, Tabs } from '@/components/ui/tabs';
 import { api } from '@/lib/api';
@@ -106,17 +106,15 @@ export default function KomunitiConsolePage() {
         title="Komuniti"
         description="Reports from residents, every post in the township, and residents suspended from Komuniti. The person who posted is never told who reported them."
         action={hq && townships.data && (
-          <Select label="Township" value={townshipId} onChange={(event) => setTownshipId(event.target.value)}>
-            <option value=""><Text>All townships</Text></option>
-            {townships.data.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-          </Select>
+          <FilterMenu<string> label="Township" value={townshipId} onChange={setTownshipId} options={[{ value: '', label: 'All townships' }, ...townships.data.map((t) => ({ value: t.id, label: t.name, raw: true }))]} />
         )}
       />
 
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label="Reports waiting" value={o?.reported ?? 0} icon={Flag} tone={o?.reported ? 'danger' : 'brand'} />
-        <Stat label="Hidden for review" value={o?.hidden ?? 0} icon={EyeOff} tone={o?.hidden ? 'warning' : 'brand'} />
-        <Stat label="Open posts" value={o?.open_posts ?? 0} icon={Users} hint={<Text>{`${o?.new_30d ?? 0} new in 30 days`}</Text>} />
+        {/* Tiles open the list they count: the Reports tab, or All posts filtered to that status. */}
+        <Stat label="Reports waiting" value={o?.reported ?? 0} icon={Flag} tone={o?.reported ? 'danger' : 'brand'} onClick={() => setTab('reports')} />
+        <Stat label="Hidden for review" value={o?.hidden ?? 0} icon={EyeOff} tone={o?.hidden ? 'warning' : 'brand'} onClick={() => { setFilters({ status: 'HIDDEN', type: '', search: '' }); setTab('posts'); }} />
+        <Stat label="Open posts" value={o?.open_posts ?? 0} icon={Users} hint={<Text>{`${o?.new_30d ?? 0} new in 30 days`}</Text>} onClick={() => { setFilters({ status: 'OPEN', type: '', search: '' }); setTab('posts'); }} />
         <Stat label="Overdue loans" value={o?.overdue_loans ?? 0} icon={Repeat2} tone={o?.overdue_loans ? 'warning' : 'brand'} hint={<Text>{`${o?.removed_30d ?? 0} removed · ${o?.suspended ?? 0} suspended`}</Text>} />
       </div>
 
@@ -209,17 +207,23 @@ function AllPosts({ posts, filters, onFilter, hq, onOpen }: {
 }) {
   return (
     <>
-      <div className="mb-4 grid gap-3 sm:grid-cols-3">
-        <Input label="Search" type="search" placeholder="Title, details or author" value={filters.search} onChange={(event) => onFilter({ ...filters, search: event.target.value })} maxLength={80} />
-        <Select label="Status" value={filters.status} onChange={(event) => onFilter({ ...filters, status: event.target.value as PostStatus | '' })}>
-          <option value=""><Text>Any status</Text></option>
-          {POST_STATUSES.map((s) => <option key={s} value={s}><Text>{STATUS_LABELS[s]}</Text></option>)}
-        </Select>
-        <Select label="Kind" value={filters.type} onChange={(event) => onFilter({ ...filters, type: event.target.value as PostType | '' })}>
-          <option value=""><Text>Any kind</Text></option>
-          {POST_TYPES.map((t) => <option key={t} value={t}><Text>{KINDS[t].label}</Text></option>)}
-        </Select>
-      </div>
+      <FilterBar
+        className="mb-4"
+        search={<SearchField value={filters.search} onChange={(search) => onFilter({ ...filters, search })} label="Search posts" placeholder="Title, details or author" maxLength={80} />}
+        controls={
+          <>
+            <FilterMenu<PostStatus | ''> label="Status" value={filters.status} onChange={(status) => onFilter({ ...filters, status })} options={[{ value: '', label: 'Any' }, ...POST_STATUSES.map((value) => ({ value, label: STATUS_LABELS[value] }))]} />
+            <FilterMenu<PostType | ''> label="Kind" value={filters.type} onChange={(type) => onFilter({ ...filters, type })} options={[{ value: '', label: 'Any' }, ...POST_TYPES.map((value) => ({ value, label: KINDS[value].label }))]} />
+          </>
+        }
+        summary={posts.isLoading || posts.error ? undefined : (
+          <FilterSummary
+            shown={posts.items.length}
+            noun={posts.hasMore ? 'posts shown, more below' : 'posts'}
+            onClear={filters.search || filters.status || filters.type ? () => onFilter({ ...filters, search: '', status: '', type: '' }) : undefined}
+          />
+        )}
+      />
       {posts.error ? (
         <ErrorState error={posts.error} onRetry={() => void posts.reload()} />
       ) : posts.isLoading ? (

@@ -64,7 +64,7 @@ export default async function SponsorshipPage() {
         <section className="landing-community relative isolate overflow-hidden text-white">
           <div aria-hidden className="hero-glow absolute inset-0 -z-10" />
           <div className="hero-stagger mx-auto grid max-w-6xl gap-10 px-5 pb-16 pt-36 sm:px-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-end lg:pb-20 lg:pt-40">
-            <div>
+            <div className="hero-stagger-group">
               <p style={{ '--i': 0 } as CSSProperties} className="text-xs font-bold uppercase tracking-[0.2em] text-gold-300"><Text>{'Sponsors & Partners'}</Text></p>
               <h1 style={{ '--i': 1 } as CSSProperties} className="mt-4 max-w-2xl text-4xl font-extrabold leading-[1.08] tracking-tight text-white sm:text-5xl"><Text>The organisations behind a greener township</Text></h1>
               <p style={{ '--i': 2 } as CSSProperties} className="mt-5 max-w-xl text-[17px] leading-8 text-white/80"><Text>Sponsors buy a yearly tier to promote their brand in the app, and can fund challenges residents complete in the real world. Tier and campaign fees are not refunded; unused reward money comes back. Partners bring a service, equipment or expertise that helps run the township.</Text></p>

@@ -45,7 +45,8 @@ export function Button({ variant = 'primary', size = 'md', pending, href, classN
   // A submit button stays off until the page is interactive. Otherwise a fast tap could make the
   // browser submit the form itself, putting its fields (a password, say) in the address bar.
   const notReady = !useHydrated() && rest.type === 'submit';
-  const classes = cn(base, variants[variant], sizes[size], className);
+  // btn / btn-<variant> let signed-in screens add the hover lift and press feel (globals.css).
+  const classes = cn('btn', `btn-${variant}`, base, variants[variant], sizes[size], className);
   if (href) {
     return (
       <Link href={href} className={classes}>

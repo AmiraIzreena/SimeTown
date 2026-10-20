@@ -31,7 +31,8 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | GET | `/household/requests` | RESIDENT | Tenants waiting for this owner to confirm them |
 | POST | `/household/requests/:userId` | RESIDENT | Owner confirms or declines a tenant |
 | GET | `/admin/residents` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Residents by verification status |
-| POST | `/admin/residents/:userId/verify` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Confirm or reject a resident against the property record |
+| GET | `/admin/residents/places` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Every place (precinct) with residents waiting, confirmed and rejected |
+| POST | `/admin/residents/:userId/verify` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Confirm or reject a resident against the property record (a rejection may give a reason) |
 | GET | `/admin/accounts` | TOWNSHIP_ADMIN, HQ_ADMIN | Shop, sponsor and staff accounts |
 | POST | `/admin/accounts` | TOWNSHIP_ADMIN, HQ_ADMIN | Create a shop, sponsor or staff account and get its invitation link |
 | POST | `/admin/accounts/:userId/invite` | TOWNSHIP_ADMIN, HQ_ADMIN | Issue a set-password link (a second admin approves it if the account is in use) |

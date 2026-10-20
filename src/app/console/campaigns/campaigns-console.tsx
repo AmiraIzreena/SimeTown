@@ -2,19 +2,27 @@
 
 import { Text } from '@/components/ui/localized-text';
 
-import { AlertCircle, Award, BarChart3, CheckCircle2, Plus } from 'lucide-react';
-import { useRef, useState, type FormEvent } from 'react';
+import '../operations/parcel-workspace.css';
+import { ArrowRight, Award, BarChart3, CheckCircle2, Clock3, Gift, Hourglass, Plus, Search, Undo2, Wallet, type LucideIcon } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useRef, useState, type CSSProperties, type FormEvent } from 'react';
 import { BudgetSplit, CampaignReport, CampaignSplit, CampaignStatus, givenOf, splitOf } from '@/components/features/campaign-admin';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, PageHeader, Progress } from '@/components/ui/card';
 import { ConfirmDialog, Modal } from '@/components/ui/dialog';
-import { Async, EmptyState } from '@/components/ui/feedback';
+import { CountUp } from '@/components/ui/count-up';
+import { Async, EmptyState, SkeletonStats } from '@/components/ui/feedback';
 import { Input, Select, Textarea } from '@/components/ui/field';
+import { FilterBar, FilterChips, FilterSummary, SearchField } from '@/components/ui/filter-bar';
+import { SubNav } from '@/components/ui/sub-nav';
 import { Tabs } from '@/components/ui/tabs';
 import { api } from '@/lib/api';
+import { cn } from '@/lib/cn';
 import { formatDate, parseRM } from '@/lib/format';
 import { useAction, useApi } from '@/lib/hooks';
+import { useT } from '@/lib/i18n';
 import type { Campaign, Me } from '@/lib/types';
+import { useMinLoading } from '@/lib/use-min-loading';
 import { ADMINS, campaignSplit, formatPoints, formatRM, SPONSOR_TIERS, SPONSOR_TIER_INFO, type SponsorTier } from '@/shared/domain';
 
 /** What a campaign can reward, in words staff recognise. `unit` is set where a milestone total makes sense. */
@@ -155,11 +163,47 @@ function CampaignCard({ campaign: c, isAdmin, now, onFund, onClose, onReport }: 
   );
 }
 
-function Group({ title, hint, campaigns, actions }: { title: string; hint: string; campaigns: Campaign[]; actions: CardActions }) {
+/**
+ * The money behind the campaigns, as KPI tiles above the section pills. Each tile opens the
+ * section it describes. Figures add up from the same cards the sections show.
+ */
+function CampaignKpis({ split, onPick }: { split: ReturnType<typeof sections>; onPick: (view: (typeof SECTIONS)[number]) => void }) {
+  const sum = (list: Campaign[], pick: (c: Campaign) => number) => list.reduce((total, c) => total + pick(c), 0);
+  const all = [...split.action, ...split.running, ...split.closed];
+  const awaiting = sum(split.action, (c) => (c.status === 'DRAFT' ? c.budget_sen : 0));
+  const toRefund = sum(split.action, (c) => (c.status === 'FUNDED' ? c.pool_left_sen : 0));
+  const rewards = sum(all, (c) => c.rewards_given ?? 0);
+  const tiles: { label: string; value: number; hint: string; icon: LucideIcon; tone: 'warning' | 'ok' | 'neutral'; pick: (typeof SECTIONS)[number] }[] = [
+    { label: 'Awaiting payment', value: awaiting, hint: awaiting ? 'Record the payment to start' : 'Nothing waiting', icon: Hourglass, tone: awaiting ? 'warning' : 'ok', pick: 'action' },
+    { label: 'To refund on closing', value: toRefund, hint: toRefund ? 'Close finished campaigns to refund' : 'Nothing to refund', icon: Undo2, tone: toRefund ? 'warning' : 'ok', pick: 'action' },
+    { label: 'Left in reward pools', value: sum(split.running, (c) => c.pool_left_sen), hint: 'Still to be given as rewards', icon: Wallet, tone: 'neutral', pick: 'running' },
+    { label: 'Paid out as rewards', value: sum(all, (c) => givenOf(c).given), hint: rewards === 1 ? '1 reward given' : `${formatPoints(rewards)} rewards given`, icon: Gift, tone: 'neutral', pick: 'running' },
+  ];
+  return (
+    <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {tiles.map((t, i) => (
+        <button key={t.label} type="button" onClick={() => onPick(t.pick)} style={{ '--i': i } as CSSProperties} className={cn('ops-kpi glass-surface group relative overflow-hidden rounded-xl border p-4 text-left shadow-sm', `is-${t.tone}`)}>
+          <span className="flex items-start justify-between gap-3">
+            <span className="text-[13px] font-medium text-ink-500"><Text>{t.label}</Text></span>
+            <span className="ops-kpi-icon grid size-8 shrink-0 place-items-center rounded-lg"><t.icon className="size-4" aria-hidden /></span>
+          </span>
+          <span className="mt-2 block font-display text-[28px] font-bold leading-none tracking-tight text-ink-900 tabular-nums">
+            <CountUp value={t.value} format={formatRM} delay={i * 60} />
+          </span>
+          <span className="ops-kpi-hint mt-2 flex items-center justify-between gap-2 text-xs">
+            <span className="line-clamp-2 min-w-0"><Text>{t.hint}</Text></span>
+            <ArrowRight className="ops-kpi-arrow size-3.5 shrink-0" aria-hidden />
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function Group({ hint, campaigns, actions }: { hint: string; campaigns: Campaign[]; actions: CardActions }) {
   if (campaigns.length === 0) return null;
   return (
-    <section className="mb-8">
-      <h2 className="text-base font-semibold text-ink-900"><Text>{title}</Text> <span className="text-ink-400 tabular-nums"><Text>{campaigns.length}</Text></span></h2>
+    <section className="content-in mb-8">
       <p className="mb-3 text-sm text-ink-500"><Text>{hint}</Text></p>
       <div className="grid gap-4 lg:grid-cols-2">
         {campaigns.map((c) => <CampaignCard key={c.id} campaign={c} {...actions} />)}
@@ -189,12 +233,35 @@ function UpgradeHint({ campaign: c }: { campaign: Campaign }) {
 }
 const isFull = (sp: SponsorRow | null) => sp !== null && sp.allowance !== null && sp.challenges_this_year >= sp.allowance;
 
+/** Sponsor, included challenges, and (HQ only) the action; the header row uses the same columns. */
+const SPONSOR_COLS = 'sm:grid-cols-[minmax(0,1fr)_16rem]';
+const SPONSOR_COLS_HQ = 'sm:grid-cols-[minmax(0,1fr)_16rem_11rem] sm:[&>button]:justify-self-end';
+
+/** A tier ending within this many days is flagged, so HQ can ask for the renewal before included challenges stop. */
+const EXPIRING_DAYS = 30;
+type SponsorChip = 'ALL' | 'OVER' | 'EXPIRING' | 'NONE';
+function inChip(sp: SponsorRow, chip: SponsorChip, now: number): boolean {
+  if (chip === 'OVER') return sp.allowance !== null && sp.challenges_this_year > sp.allowance;
+  if (chip === 'EXPIRING') return sp.active_tier !== 'NONE' && sp.tier_until !== null && daysUntil(sp.tier_until, now) <= EXPIRING_DAYS;
+  if (chip === 'NONE') return sp.active_tier === 'NONE';
+  return true;
+}
+
 const TIER_RULE = 'A tier is optional and paid yearly. Rakan Komuniti includes 1 challenge a year and Rakan Township 4; more can always run as extra one-offs. Peneraju has no set number.';
 const TIER_RULE_STAFF = 'A tier is optional and paid yearly. Rakan Komuniti includes 1 challenge a year and Rakan Township 4; more can always run as extra one-offs. Peneraju has no set number. Only SDP HQ records tier payments.';
 
 /** Sponsors and their tiers. Only SDP HQ records a tier payment; the fee is income and never touches the float. */
-function SponsorTiers({ isHq }: { isHq: boolean }) {
+function SponsorTiers({ isHq, isAdmin }: { isHq: boolean; isAdmin: boolean }) {
   const sponsors = useApi<SponsorRow[]>('/sponsors');
+  // Adding the organisation lives here, beside its tier; its sign-in is made under People → Staff & partner access.
+  const [adding, setAdding] = useState(false);
+  const addSponsor = useAction((name: string) => api.post('/sponsors', { name }), {
+    success: 'Sponsor added.',
+    onSuccess: () => {
+      setAdding(false);
+      void sponsors.mutate();
+    },
+  });
   const [editing, setEditing] = useState<SponsorRow | null>(null);
   const [tier, setTier] = useState<SponsorTier>('COMMUNITY_FRIEND');
   const save = useAction((body: Record<string, string>) => api.post<{ feeSen: number }>(`/admin/sponsors/${editing!.id}/tier`, body), {
@@ -204,41 +271,109 @@ function SponsorTiers({ isHq }: { isHq: boolean }) {
     },
     success: (r) => `Tier recorded: ${formatRM(r.feeSen)} for the year.`,
   });
+  const t = useT();
+  const [q, setQ] = useState('');
+  const [chip, setChip] = useState<SponsorChip>('ALL');
+  // Read once when the tab opens; good enough for "days left" on a tier.
+  const [now] = useState(() => Date.now());
+  const year = new Date(now).getFullYear();
+  const rows = sponsors.data ?? [];
+  const term = q.trim().toLowerCase();
+  const matches = (sp: SponsorRow) => !term || sp.name.toLowerCase().includes(term) || (sp.category ?? '').toLowerCase().includes(term);
+  const count = (c: SponsorChip) => (sponsors.data ? rows.filter((sp) => matches(sp) && inChip(sp, c, now)).length : undefined);
+  const shown = rows.filter((sp) => matches(sp) && inChip(sp, chip, now));
+  const filtered = chip !== 'ALL' || Boolean(term);
   return (
+    <div className="space-y-4">
+      <FilterBar
+        search={<SearchField value={q} onChange={setQ} label="Search sponsors" placeholder="Sponsor name or category, e.g. Kopi Hijau or Recycling" />}
+        chips={
+          <FilterChips<SponsorChip>
+            label="Sponsors"
+            value={chip}
+            onChange={setChip}
+            options={[
+              { key: 'ALL', label: 'All sponsors', count: count('ALL') },
+              { key: 'OVER', label: 'Over allowance', count: count('OVER'), alert: true },
+              { key: 'EXPIRING', label: 'Expiring soon', count: count('EXPIRING'), alert: true },
+              { key: 'NONE', label: 'No tier', count: count('NONE') },
+            ]}
+          />
+        }
+        summary={sponsors.data ? <FilterSummary shown={shown.length} total={rows.length} noun="sponsors" onClear={filtered ? () => { setChip('ALL'); setQ(''); } : undefined} /> : undefined}
+      />
     <Card>
       <CardHeader
         title="Sponsors and tiers"
-        description={isHq ? TIER_RULE : TIER_RULE_STAFF}
+        description="Optional yearly tiers. Included challenges reset every calendar year."
+        action={isAdmin && <Button size="sm" variant="secondary" onClick={() => setAdding(true)}><Plus className="size-4" aria-hidden /><Text>Add sponsor</Text></Button>}
       />
+      <details className="mx-5 -mt-1 mb-4 text-sm text-ink-600 sm:mx-6">
+        <summary className="cursor-pointer font-medium text-brand-700 hover:text-brand-800"><Text>How tiers work</Text></summary>
+        <p className="mt-2 max-w-3xl"><Text>{isHq ? TIER_RULE : TIER_RULE_STAFF}</Text></p>
+      </details>
       <Async state={sponsors}>
         {(list) =>
           list.length === 0 ? (
-            <p className="px-5 py-6 text-[15px] text-ink-600"><Text>No sponsors yet. Add one under People.</Text></p>
+            <p className="px-5 py-6 text-[15px] text-ink-600"><Text>{isAdmin ? 'No sponsors yet. Add the first one with Add sponsor.' : 'No sponsors yet. A township admin can add one.'}</Text></p>
+          ) : shown.length === 0 ? (
+            <div className="border-t border-ink-100/80"><EmptyState icon={Search} title="No sponsors match"><Text>Try another name, category or filter.</Text></EmptyState></div>
           ) : (
-            <ul className="divide-y divide-ink-100">
-              {list.map((sp) => {
+            <>
+            <div aria-hidden className={cn('hidden gap-3 border-t border-ink-100/80 bg-ink-25/70 px-5 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-500 sm:grid', isHq ? SPONSOR_COLS_HQ : SPONSOR_COLS)}>
+              <span><Text>Sponsor</Text></span>
+              <span><Text>{`Included challenges ${year}`}</Text></span>
+              {isHq && <span />}
+            </div>
+            <ul key={chip} className="content-in divide-y divide-ink-100 border-t border-ink-100/80">
+              {shown.map((sp) => {
                 const hint = isFull(sp) && sp.active_tier !== 'NONE' ? UPGRADE_HINT[sp.active_tier] : undefined;
+                const days = sp.active_tier !== 'NONE' && sp.tier_until ? daysUntil(sp.tier_until, now) : null;
+                const expiring = days !== null && days <= EXPIRING_DAYS;
+                const lapsed = sp.tier !== 'NONE' && sp.active_tier === 'NONE';
+                const used = sp.challenges_this_year;
                 return (
-                  <li key={sp.id} className="grid gap-3 px-5 py-4 sm:grid-cols-[1fr_14rem_auto] sm:items-center">
+                  <li key={sp.id} className={cn('grid gap-3 px-5 py-4 sm:items-center', isHq ? SPONSOR_COLS_HQ : SPONSOR_COLS)}>
                     <span className="min-w-0">
                       <span className="block text-[15px] font-semibold text-ink-900">{sp.name}</span>
-                      <span className="mt-1 flex flex-wrap items-center gap-2 text-sm text-ink-500">
+                      <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-ink-500">
                         {sp.active_tier !== 'NONE' ? (
                           <Badge tone="gold">
                             <Award className="size-3.5" aria-hidden />
                             <Text>{SPONSOR_TIER_INFO[sp.active_tier].label}</Text>
                           </Badge>
+                        ) : lapsed ? (
+                          <Badge tone="warning"><Text>Tier lapsed</Text></Badge>
                         ) : (
                           <Badge><Text>No tier</Text></Badge>
                         )}
-                        {sp.active_tier !== 'NONE' && sp.tier_until && <span><Text>{`until ${formatDate(sp.tier_until)}`}</Text></span>}
+                        {days !== null && sp.tier_until && (
+                          <span className={cn('inline-flex items-center gap-1', expiring && 'font-semibold text-warning-700')}>
+                            {expiring && <Clock3 className="size-3.5" aria-hidden />}
+                            <Text>{expiring ? (days <= 0 ? `Ends today, ${formatDate(sp.tier_until)}` : `Ends in ${days} days, ${formatDate(sp.tier_until)}`) : `until ${formatDate(sp.tier_until)}`}</Text>
+                          </span>
+                        )}
                         {sp.category && <span><Text>{`· ${sp.category}`}</Text></span>}
                       </span>
                     </span>
+                    {/* Same three lines in every row: (label on a phone), bar, then figure and what is left. */}
                     <span className="text-sm">
-                      {sp.allowance !== null && <Progress value={sp.challenges_this_year} max={sp.allowance} tone="gold" label="Included challenges used this year" />}
-                      <span className="mt-1.5 block text-ink-600"><Text>{allowanceText(sp)}</Text></span>
-                      {hint && <span className="mt-1 block text-brand-700"><Text>{hint}</Text></span>}
+                      <span className="mb-1.5 block text-xs font-medium text-ink-500 sm:hidden"><Text>{`Included challenges ${year}`}</Text></span>
+                      {sp.allowance !== null ? (
+                        <Progress value={used} max={sp.allowance} tone="gold" label="Included challenges used this year" />
+                      ) : (
+                        // No set number (Peneraju) or no tier: a soft full track keeps the rows lined up.
+                        <span aria-hidden className={cn('block h-1.5 rounded-full', sp.active_tier === 'NONE' ? 'bg-ink-100' : 'bg-gold-100')} />
+                      )}
+                      <span className="mt-2 flex items-center justify-between gap-2">
+                        <span className="flex items-baseline gap-1.5 whitespace-nowrap">
+                          <strong className="font-semibold tabular-nums text-ink-900">{sp.allowance !== null ? `${used} / ${sp.allowance}` : used}</strong>
+                          <span className="text-ink-500">
+                            <Text>{sp.allowance === null ? (sp.active_tier === 'NONE' ? 'one-offs' : 'no set number') : used > sp.allowance ? `${used - sp.allowance} extra` : `${sp.allowance - used} left`}</Text>
+                          </span>
+                        </span>
+                        {hint && <span title={t(hint)} className="shrink-0 whitespace-nowrap"><Badge tone="brand">Suggest upgrade</Badge></span>}
+                      </span>
                     </span>
                     {isHq && (
                       <Button
@@ -254,6 +389,7 @@ function SponsorTiers({ isHq }: { isHq: boolean }) {
                 );
               })}
             </ul>
+            </>
           )
         }
       </Async>
@@ -293,15 +429,60 @@ function SponsorTiers({ isHq }: { isHq: boolean }) {
         </form>
       </Modal>
     </Card>
+      <Modal
+        open={adding}
+        onClose={() => setAdding(false)}
+        title="Add a sponsor"
+        description="The organisation that funds challenges. Record its tier afterwards, and make its sign-in under People → Staff & partner access."
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setAdding(false)}><Text>Cancel</Text></Button>
+            <Button type="submit" form="add-sponsor" pending={addSponsor.pending}><Text>Add sponsor</Text></Button>
+          </>
+        }
+      >
+        <form id="add-sponsor" method="post" onSubmit={(event) => { event.preventDefault(); void addSponsor.run(String(new FormData(event.currentTarget).get('name') ?? '')); }}>
+          <Input label="Organisation name" name="name" required minLength={2} maxLength={120} error={addSponsor.fields.name} />
+        </form>
+      </Modal>
+    </div>
   );
 }
 
-type Tab = 'campaigns' | 'sponsors';
+/**
+ * Each section has its own page: the Campaigns tab splits into Needs action, Running and Closed
+ * (a pill bar, as on Parcels → Manage), and Sponsors & tiers is the second tab.
+ */
+export type CampaignsView = 'action' | 'running' | 'closed' | 'sponsors';
 
-export default function CampaignsPage() {
+const HREF: Record<CampaignsView, string> = {
+  action: '/console/campaigns',
+  running: '/console/campaigns/running',
+  closed: '/console/campaigns/closed',
+  sponsors: '/console/campaigns/sponsors',
+};
+const SECTIONS = ['action', 'running', 'closed'] as const;
+
+/** Splits the list the same way for the pills' counts and the cards shown. */
+function sections(list: Campaign[], now: number): Record<(typeof SECTIONS)[number], Campaign[]> {
+  const byEnd = (a: Campaign, b: Campaign) => a.ends_at.localeCompare(b.ends_at);
+  return {
+    action: list.filter((c) => attentionOf(c, now) !== null).sort(byEnd),
+    running: list.filter((c) => c.status === 'FUNDED' && attentionOf(c, now) === null).sort(byEnd),
+    closed: list.filter((c) => c.status === 'CLOSED'),
+  };
+}
+
+const VIEWS: Record<Exclude<CampaignsView, 'sponsors'>, { title: string; hint: string; empty: string }> = {
+  action: { title: 'Needs action', hint: 'Record a payment to start a campaign, or close one that has finished to refund what is left.', empty: 'Nothing needs your action right now.' },
+  running: { title: 'Running', hint: 'Funded and giving rewards. Nothing to do until they end.', empty: 'No campaigns are running right now.' },
+  closed: { title: 'Closed', hint: 'Finished. Unused reward money has gone back to the funder.', empty: 'No campaigns have closed yet.' },
+};
+
+export function CampaignsConsole({ view }: { view: CampaignsView }) {
+  const router = useRouter();
   const me = useApi<Me>('/me');
   const campaigns = useApi<Campaign[]>('/campaigns');
-  const [tab, setTab] = useState<Tab>('campaigns');
   const [creating, setCreating] = useState(false);
   const [funding, setFunding] = useState<Campaign | null>(null);
   const [closing, setClosing] = useState<Campaign | null>(null);
@@ -310,7 +491,9 @@ export default function CampaignsPage() {
   const reload = () => void campaigns.mutate();
   // Read once when the page opens; good enough for "days left".
   const [now] = useState(() => Date.now());
-  const needsAction = (campaigns.data ?? []).filter((c) => attentionOf(c, now) !== null);
+  const split = campaigns.data ? sections(campaigns.data, now) : null;
+  // Tiles show a skeleton for at least 600ms on first load, so they never flash.
+  const kpisLoading = useMinLoading('campaign-kpis', !campaigns.data);
 
   const fund = useAction((id: string, bankRef: string) => api.post<{ poolSen: number }>(`/campaigns/${id}/fund`, { bankRef }), {
     success: (r) => `Funded. ${formatRM(r.poolSen)} is now in the reward pool.`,
@@ -338,45 +521,53 @@ export default function CampaignsPage() {
             <Plus className="size-4" aria-hidden /><Text>New campaign</Text></Button>
         }
       />
-      <Tabs<Tab>
+      <Tabs<'campaigns' | 'sponsors'>
         label="Campaigns and sponsors"
-        value={tab}
-        onChange={setTab}
+        value={view === 'sponsors' ? 'sponsors' : 'campaigns'}
+        onChange={(next) => router.push(next === 'sponsors' ? HREF.sponsors : HREF.action, { scroll: false })}
         items={[
-          { key: 'campaigns', label: 'Campaigns', count: needsAction.length },
+          { key: 'campaigns', label: 'Campaigns', count: split?.action.length },
           { key: 'sponsors', label: 'Sponsors & tiers' },
         ]}
       />
 
-      {tab === 'campaigns' ? (
+      {view === 'sponsors' ? (
+        <SponsorTiers isHq={me.data?.role === 'HQ_ADMIN'} isAdmin={isAdmin} />
+      ) : (
+        <>
+        {kpisLoading || !split ? (
+          !campaigns.error && <div className="mb-6"><SkeletonStats count={4} /></div>
+        ) : (
+          <CampaignKpis split={split} onPick={(next) => router.push(HREF[next], { scroll: false })} />
+        )}
+        <SubNav
+          label="Campaigns"
+          value={view}
+          items={SECTIONS.map((key) => ({ key, label: VIEWS[key].title, count: split?.[key].length, alert: key === 'action' }))}
+          hrefOf={(key) => HREF[key]}
+          className="mb-6"
+        />
         <Async state={campaigns}>
           {(list) => {
             if (list.length === 0) {
               return <EmptyState title="No campaigns yet" action={<Button onClick={() => setCreating(true)}><Text>New campaign</Text></Button>}><Text>Set up a challenge for a sponsor, or a community programme funded by Sime Darby Property.</Text></EmptyState>;
             }
-            const action = list.filter((c) => attentionOf(c, now) !== null).sort((a, b) => a.ends_at.localeCompare(b.ends_at));
-            const running = list.filter((c) => c.status === 'FUNDED' && attentionOf(c, now) === null).sort((a, b) => a.ends_at.localeCompare(b.ends_at));
-            const closed = list.filter((c) => c.status === 'CLOSED');
-            return (
+            const shown = sections(list, now)[view];
+            const v = VIEWS[view];
+            // The pill already names the section and its count, so only the hint is repeated here.
+            return shown.length === 0 ? (
               <>
-                {action.length === 0 ? (
-                  <p className="mb-6 flex items-center gap-2 rounded-lg bg-success-50 px-4 py-3 text-[15px] text-success-700">
-                    <CheckCircle2 className="size-4 shrink-0" aria-hidden /><Text>Nothing needs your action right now.</Text>
-                  </p>
-                ) : (
-                  <p className="mb-4 flex items-center gap-2 text-[15px] text-ink-700">
-                    <AlertCircle className="size-4 shrink-0 text-warning-600" aria-hidden /><Text>{action.length === 1 ? '1 campaign needs your action.' : `${action.length} campaigns need your action.`}</Text>
-                  </p>
-                )}
-                <Group title="Needs action" hint="Record a payment to start a campaign, or close one that has finished to refund what is left." campaigns={action} actions={actions} />
-                <Group title="Running" hint="Funded and giving rewards. Nothing to do until they end." campaigns={running} actions={actions} />
-                <Group title="Closed" hint="Finished. Unused reward money has gone back to the funder." campaigns={closed} actions={actions} />
+                <p className="mb-3 text-sm text-ink-500"><Text>{v.hint}</Text></p>
+                <p className={cn('flex items-center gap-2 rounded-lg px-4 py-3 text-[15px]', view === 'action' ? 'bg-success-50 text-success-700' : 'bg-ink-50 text-ink-600')}>
+                  {view === 'action' && <CheckCircle2 className="size-4 shrink-0" aria-hidden />}<Text>{v.empty}</Text>
+                </p>
               </>
+            ) : (
+              <Group hint={v.hint} campaigns={shown} actions={actions} />
             );
           }}
         </Async>
-      ) : (
-        <SponsorTiers isHq={me.data?.role === 'HQ_ADMIN'} />
+        </>
       )}
 
       <CreateCampaign open={creating} onClose={() => setCreating(false)} onCreated={reload} />
@@ -529,7 +720,7 @@ function CreateCampaign({ open, onClose, onCreated }: { open: boolean; onClose: 
       </ol>
       <form method="post" id="create-campaign" ref={formRef} onSubmit={submit} noValidate>
         <div data-step="0" hidden={step !== 0} className="space-y-4">
-          <Select label="Who pays for it?" value={sponsorId} onChange={(event) => setSponsorId(event.target.value)} error={f.sponsorId} hint="Not listed? Add the sponsor under People first.">
+          <Select label="Who pays for it?" value={sponsorId} onChange={(event) => setSponsorId(event.target.value)} error={f.sponsorId} hint="Not listed? Add the sponsor under Sponsors & tiers first.">
             <option value=""><Text>Sime Darby Property (community programme)</Text></option>
             {sponsors.data?.map((s) => (
               <option key={s.id} value={s.id}>

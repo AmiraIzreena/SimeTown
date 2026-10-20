@@ -1,10 +1,10 @@
 'use client';
 
 import { Suspense } from 'react';
-import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { PageHeader } from '@/components/ui/card';
 import { Text } from '@/components/ui/localized-text';
+import { SubNav } from '@/components/ui/sub-nav';
 import { Tabs, TabPanel } from '@/components/ui/tabs';
 import Loading from './loading';
 import './parcel-workspace.css';
@@ -85,7 +85,7 @@ function Operations() {
         onStations={() => navigate('manage', 'stations')}
       />}
       {tab === 'guardhouse' && <>
-        <Tabs label="Guardhouse parcels" value={guardhouse} onChange={(view) => navigate('guardhouse', view)} items={[...GUARDHOUSE]} />
+        <SubNav label="Guardhouse parcels" value={guardhouse} items={GUARDHOUSE} hrefOf={(view) => `/console/operations?tab=guardhouse&view=${view}`} className="mb-6" />
         {guardhouse === 'overview' && <GuardhouseSummary />}
         {guardhouse === 'cases' && <section className="space-y-5">
           <div><h2 className="font-display text-xl font-bold text-ink-900"><Text>Guardhouse parcel cases</Text></h2>
@@ -101,7 +101,7 @@ function Operations() {
         <OverviewTab showAlerts={false} />
       </section>}
       {tab === 'lockers' && <>
-        <Tabs label="Smart lockers" value={locker} onChange={(view) => navigate('lockers', view)} items={[...LOCKERS]} />
+        <SubNav label="Smart lockers" value={locker} items={LOCKERS} hrefOf={(view) => `/console/operations?tab=lockers&view=${view}`} className="mb-6" />
         {locker === 'parcels' && <ParcelsTab />}
         {locker === 'storage' && <section>
           <Tabs label="Parcel storage" value={storageMode} onChange={(mode) => navigate('lockers', 'storage', undefined, mode)} items={[...STORAGE_MODES]} />
@@ -121,14 +121,7 @@ function Operations() {
         </section>}
       </>}
       {tab === 'manage' && <div className="min-w-0 space-y-6">
-        <div className="sticky top-16 z-20 rounded-xl border border-ink-200 bg-white/95 p-2 shadow-sm backdrop-blur-md">
-          <nav className="flex gap-1 overflow-x-auto">
-            {MANAGE.map((item) => <Link key={item.key} href={`/console/operations?tab=manage&view=${item.key}`} scroll={false} aria-current={manage === item.key ? 'page' : undefined}
-              className={`block shrink-0 whitespace-nowrap rounded-lg px-4 py-3 text-sm font-semibold transition-colors focus-visible:-outline-offset-2 focus-visible:outline-2 focus-visible:outline-brand-600 ${manage === item.key ? 'bg-brand-50 text-brand-700' : 'text-ink-600 hover:bg-ink-50 hover:text-ink-900'}`}>
-              <Text>{item.label}</Text>
-            </Link>)}
-          </nav>
-        </div>
+        <SubNav label="Manage" sticky value={manage} items={MANAGE} hrefOf={(view) => `/console/operations?tab=manage&view=${view}`} />
         <div className="min-w-0">
         {manage === 'stations' && <StationsTab />}
         {manage === 'storage' && <StorageLocationsTab />}

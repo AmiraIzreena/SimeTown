@@ -25,7 +25,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   // Reading the per-request nonce keeps every page dynamically rendered, which the strict CSP needs (see src/proxy.ts).
   await headers();
   return (
-    <html lang="en">
+    <html lang="en" data-scroll-behavior="smooth">
       <body>
         <LanguageProvider><ToastProvider><Text>{children}</Text><DemoMarker /></ToastProvider></LanguageProvider>
       </body>

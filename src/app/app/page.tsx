@@ -3,7 +3,7 @@
 import { Text } from '@/components/ui/localized-text';
 
 import {
-  Accessibility, Bike, Bot, CalendarClock, DoorOpen, Droplets, HandHeart, Inbox, Package, PiggyBank, Recycle, Sparkles, Tag, TriangleAlert, Wallet, type LucideIcon,
+  Accessibility, ArrowRight, Bike, Bot, CalendarClock, DoorOpen, Droplets, HandHeart, Inbox, Package, PiggyBank, Recycle, Sparkles, Tag, TriangleAlert, Wallet, type LucideIcon,
 } from 'lucide-react';
 import { LocalizedLink as Link } from '@/components/ui/localized-elements';
 import { useState } from 'react';
@@ -216,8 +216,9 @@ export default function ResidentHome() {
       >
         {(w) => (
           <div className="grid gap-4 md:grid-cols-3">
-            <Link href="/app/wallet" className="lift block rounded-xl bg-gradient-to-br from-brand-700 to-brand-900 p-6 text-white shadow-sm">
-              <p className="text-sm font-medium text-brand-100">{t('SimeTown Points')}</p>
+            {/* Points: the SimeTown brand hero surface (the same as the console's Insights hero). XP and savings: the standard tile. */}
+            <Link href="/app/wallet" className="brand-hero hero-link relative block overflow-hidden rounded-xl p-6 text-white shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">
+              <p className="flex items-center justify-between gap-2 text-sm font-medium text-brand-100">{t('SimeTown Points')}<ArrowRight className="hero-link-arrow size-4" aria-hidden /></p>
               <p className="mt-2 font-display text-[44px] font-bold leading-none tracking-tight tabular-nums">
                 <CountUp value={w.totalPoints} />
               </p>
@@ -227,7 +228,7 @@ export default function ResidentHome() {
                   <Text>{formatPoints(w.points)}</Text><Text> cash-backed · </Text><Text>{formatPoints(w.offerPoints)}</Text><Text> offer-backed</Text></p>
               )}
             </Link>
-            <Link href="/app/wallet" className="lift block rounded-xl border border-ink-200 bg-white p-6 shadow-xs">
+            <Link href="/app/wallet" className="kpi-tile is-brand is-interactive glass-surface relative block overflow-hidden rounded-xl border p-6 shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-medium text-ink-500">{t('Impact XP')}</p>
                 <span className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-semibold text-brand-700">
@@ -239,19 +240,18 @@ export default function ResidentHome() {
               </p>
               <div className="mt-4">
                 <Progress value={w.xp - w.level.floor} max={w.level.next - w.level.floor} label="Progress to the next level" />
-                <p className="mt-1.5 text-sm text-ink-500"><Text>{w.level.next - w.xp}</Text><Text> XP to level </Text><Text>{w.level.level + 1}</Text></p>
+                <p className="kpi-tile-hint mt-1.5 flex items-center justify-between gap-2 text-sm"><span><Text>{w.level.next - w.xp}</Text><Text> XP to level </Text><Text>{w.level.level + 1}</Text></span><ArrowRight className="kpi-tile-arrow size-3.5 shrink-0" aria-hidden /></p>
               </div>
             </Link>
-            <Link href="/app/wallet" className="lift block rounded-xl border border-gold-300/60 bg-gold-50 p-6 shadow-xs">
+            <Link href="/app/wallet" className="kpi-tile is-gold is-interactive glass-surface relative block overflow-hidden rounded-xl border p-6 shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-medium text-gold-700">{t('You saved')}</p>
-                <PiggyBank className="size-5 text-gold-700" aria-hidden />
+                <p className="text-sm font-medium text-ink-500">{t('You saved')}</p>
+                <span className="kpi-tile-icon grid size-8 place-items-center rounded-lg"><PiggyBank className="size-4" aria-hidden /></span>
               </div>
               <p className="mt-2 font-display text-[44px] font-bold leading-none tracking-tight text-ink-900 tabular-nums">
                 <CountUp value={w.saved.totalSen} format={formatRM} />
               </p>
-              <p className="mt-3 text-sm text-ink-600"><Text>Points </Text><Text>{formatRM(w.saved.pointsSen)}</Text><Text> · Offers </Text><Text>{formatRM(w.saved.offersSen)}</Text>
-              </p>
+              <p className="kpi-tile-hint mt-3 flex items-center justify-between gap-2 text-sm"><span><Text>Points </Text><Text>{formatRM(w.saved.pointsSen)}</Text><Text> · Offers </Text><Text>{formatRM(w.saved.offersSen)}</Text></span><ArrowRight className="kpi-tile-arrow size-3.5 shrink-0" aria-hidden /></p>
             </Link>
           </div>
         )}

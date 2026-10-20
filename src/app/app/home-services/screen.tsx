@@ -3,8 +3,11 @@
 import { Text } from '@/components/ui/localized-text';
 import { LocalizedInput } from '@/components/ui/localized-elements';
 
-import { BellRing, Building, Camera, ChevronRight, ClipboardList, Copy, DoorOpen, House, KeyRound, MessageCircle, Phone, ShieldCheck, Star, UserRound, Wrench } from 'lucide-react';
+import { ArrowRight, BellRing, Building, Camera, ChevronRight, ClipboardList, Copy, DoorOpen, House, KeyRound, MessageCircle, Phone, ShieldCheck, Star, UserRound } from 'lucide-react';
+import Image from 'next/image';
+import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
+import { SERVICE_CATEGORY_PAGE, serviceCategoryHref } from '@/components/features/home-service-categories';
 import { BookingPhoto, BookingStatusBadge, BookingTimeline, PriceLine, Rating, REPORT_STATUS_LABELS, REPORT_STATUS_TONES, SERVICE_ICONS, SLOT_SHORT, Stars, type BookingEvent } from '@/components/features/home-services';
 import { PreviewBadge, SimulatedNote } from '@/components/features/preview';
 import { Button } from '@/components/ui/button';
@@ -25,7 +28,7 @@ import {
   type BookingStatus, type ServiceCategory, type ServicePricing, type ServiceReportStatus, type ServiceSlot,
 } from '@/shared/domain';
 
-interface Provider {
+export interface Provider {
   merchant_id: string;
   name: string;
   about: string | null;
@@ -47,7 +50,7 @@ interface Listing {
   callout_fee_sen: number | null;
   price_note: string;
 }
-interface Profile {
+export interface Profile {
   id: string;
   name: string;
   about: string | null;
@@ -94,7 +97,7 @@ interface IssuedPass {
 const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kuala_Lumpur' }).format(new Date());
 
 /** What the booking form needs to know about a company's listing. */
-type Bookable = Pick<Provider, 'listing_id' | 'name' | 'category' | 'pricing' | 'callout_fee_sen' | 'price_note'>;
+export type Bookable = Pick<Provider, 'listing_id' | 'name' | 'category' | 'pricing' | 'callout_fee_sen' | 'price_note'>;
 interface Rebook {
   listingId: string;
   merchantName: string;
@@ -112,9 +115,6 @@ interface Logbook {
 export function HomeServicesScreen({ initialBooking }: { initialBooking: string | null }) {
   const categories = useApi<{ category: ServiceCategory; providers: number }[]>('/home-services/categories');
   const bookings = useApi<Booking[]>('/home-services/bookings');
-  const [category, setCategory] = useState<ServiceCategory | null>(null);
-  const providers = useApi<Provider[]>(category ? `/home-services/providers?category=${category}` : null);
-  const [profileId, setProfileId] = useState<string | null>(null);
   const [booking, setBooking] = useState<Bookable | null>(null);
   const logbook = useApi<Logbook>('/home-services/logbook');
   const [openId, setOpenId] = useState<string | null>(initialBooking);
@@ -163,59 +163,29 @@ export function HomeServicesScreen({ initialBooking }: { initialBooking: string 
 
         <Card>
           <CardHeader title="Book a home service" description="Choose what you need, compare the companies serving the township, and send your request." />
-          <div className="grid grid-cols-2 gap-3 p-5 sm:grid-cols-3">
+          {/* Each category opens its own page with every company serving the township and their reviews. */}
+          <div className="stagger-in grid grid-cols-2 gap-3 p-5 sm:grid-cols-3">
             {categories.isLoading && <SkeletonList rows={2} className="col-span-full" />}
             {categories.data?.map((c) => {
               const Icon = SERVICE_ICONS[c.category];
-              const active = category === c.category;
               return (
-                <button
-                  key={c.category}
-                  type="button"
-                  onClick={() => setCategory(active ? null : c.category)}
-                  aria-pressed={active}
-                  className={cn('lift rounded-lg border p-4 text-left transition-colors', active ? 'border-brand-500 bg-brand-50' : 'border-ink-200 bg-white hover:border-ink-300')}
-                >
-                  <Icon className="size-5 text-brand-700" aria-hidden />
-                  <span className="mt-2 block text-[15px] font-semibold text-ink-900"><Text>{SERVICE_CATEGORY_LABELS[c.category]}</Text></span>
-                  <span className="block text-sm text-ink-500"><Text>{c.providers === 0 ? 'No companies yet' : c.providers === 1 ? '1 company' : `${c.providers} companies`}</Text></span>
-                </button>
+                <Link key={c.category} href={serviceCategoryHref(c.category)} className="category-tile group relative overflow-hidden rounded-xl border border-ink-200 bg-white text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">
+                  <span className="relative block h-20 overflow-hidden">
+                    <Image src={SERVICE_CATEGORY_PAGE[c.category].card} alt="" fill sizes="(min-width: 640px) 33vw, 50vw" className="category-tile-img object-cover" />
+                    <span aria-hidden className="absolute inset-0 bg-gradient-to-t from-brand-950/55 to-transparent" />
+                    <span className="absolute bottom-2 left-3 grid size-8 place-items-center rounded-lg bg-white/95 text-brand-700 shadow-sm"><Icon className="size-4" aria-hidden /></span>
+                  </span>
+                  <span className="flex items-center justify-between gap-2 p-3.5">
+                    <span className="min-w-0">
+                      <span className="block truncate text-[15px] font-semibold text-ink-900"><Text>{SERVICE_CATEGORY_LABELS[c.category]}</Text></span>
+                      <span className="block text-sm text-ink-500"><Text>{c.providers === 0 ? 'No companies yet' : c.providers === 1 ? '1 company' : `${c.providers} companies`}</Text></span>
+                    </span>
+                    <ArrowRight className="category-tile-arrow size-4 shrink-0 text-ink-400" aria-hidden />
+                  </span>
+                </Link>
               );
             })}
           </div>
-          {category && (
-            <div className="border-t border-ink-100 p-5">
-              <h3 className="mb-3 text-base font-semibold text-ink-900"><Text>{SERVICE_CATEGORY_LABELS[category]}</Text>: <Text>companies serving the township</Text></h3>
-              <Async state={providers}>
-                {(list) =>
-                  list.length === 0 ? (
-                    <EmptyState icon={Wrench} title="No companies offer this yet"><Text>The township office is inviting more companies. Try another service for now.</Text></EmptyState>
-                  ) : (
-                    <ul className="space-y-3">
-                      {list.map((p) => (
-                        <li key={p.listing_id} className="rounded-lg border border-ink-200 p-4">
-                          <div className="flex flex-wrap items-start justify-between gap-2">
-                            <div className="min-w-0">
-                              <p className="text-[16px] font-semibold text-ink-900">{p.name}</p>
-                              <Rating rating={p.rating} reviews={p.reviews} />
-                              {p.completed_jobs > 0 && <span className="ml-2 text-sm text-ink-500"><Text>{p.completed_jobs === 1 ? '1 job done in SimeTown' : `${p.completed_jobs} jobs done in SimeTown`}</Text></span>}
-                            </div>
-                            <Badge tone="success"><ShieldCheck className="size-3.5" aria-hidden /><Text>Approved by the township office</Text></Badge>
-                          </div>
-                          <p className="mt-2 text-[15px] text-ink-700">{p.description}</p>
-                          <div className="mt-2"><PriceLine pricing={p.pricing} calloutFeeSen={p.callout_fee_sen} priceNote={p.price_note} /></div>
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            <Button size="sm" onClick={() => setBooking(p)}><Text>Book</Text></Button>
-                            <Button size="sm" variant="secondary" onClick={() => setProfileId(p.merchant_id)}><Text>Profile and reviews</Text></Button>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  )
-                }
-              </Async>
-            </div>
-          )}
           <div className="border-t border-ink-100 px-5 py-3">
             <Button href="/app/tamu" variant="ghost" size="sm"><DoorOpen className="size-4" aria-hidden /><Text>Send a contractor pass now in Tamu</Text></Button>
           </div>
@@ -251,7 +221,6 @@ export function HomeServicesScreen({ initialBooking }: { initialBooking: string 
         </div>
       </div>
 
-      <ProviderProfile merchantId={profileId} onClose={() => setProfileId(null)} />
       <BookForm
         provider={booking}
         onClose={() => setBooking(null)}
@@ -337,7 +306,7 @@ function HomeLogbook({ data, onBook }: { data: Logbook; onBook: (r: Rebook) => v
   );
 }
 
-function ProviderProfile({ merchantId, onClose }: { merchantId: string | null; onClose: () => void }) {
+export function ProviderProfile({ merchantId, onClose }: { merchantId: string | null; onClose: () => void }) {
   const profile = useApi<Profile>(merchantId ? `/home-services/providers/${merchantId}` : null);
   const p = profile.data;
   return (
@@ -387,7 +356,7 @@ function ProviderProfile({ merchantId, onClose }: { merchantId: string | null; o
   );
 }
 
-function BookForm({ provider, onClose, onBooked }: { provider: Bookable | null; onClose: () => void; onBooked: (id: string) => void }) {
+export function BookForm({ provider, onClose, onBooked }: { provider: Bookable | null; onClose: () => void; onBooked: (id: string) => void }) {
   const [photoName, setPhotoName] = useState<string | null>(null);
   const create = useAction(
     async (data: FormData) => {

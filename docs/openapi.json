@@ -1070,6 +1070,25 @@
                 "REJECTED"
               ]
             }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 60
+            }
+          },
+          {
+            "name": "precinct",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            }
           }
         ],
         "security": [
@@ -1103,12 +1122,49 @@
         }
       }
     },
+    "/api/v1/admin/residents/places": {
+      "get": {
+        "tags": [
+          "SimeTown ID"
+        ],
+        "summary": "Every place (precinct) with residents waiting, confirmed and rejected",
+        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "getAdminResidentsPlaces",
+        "parameters": [],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
     "/api/v1/admin/residents/{userId}/verify": {
       "post": {
         "tags": [
           "SimeTown ID"
         ],
-        "summary": "Confirm or reject a resident against the property record",
+        "summary": "Confirm or reject a resident against the property record (a rejection may give a reason)",
         "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
         "operationId": "postAdminResidentsUserIdVerify",
         "parameters": [
@@ -1132,6 +1188,11 @@
                 "properties": {
                   "approve": {
                     "type": "boolean"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 300
                   }
                 },
                 "required": [
@@ -27009,6 +27070,75 @@
               "type": "integer",
               "minimum": 1,
               "maximum": 100
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 60
+            }
+          },
+          {
+            "name": "area",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "MONEY",
+                "PEOPLE",
+                "PARCELS",
+                "REPORTS",
+                "PLACES",
+                "RULES"
+              ]
+            }
+          },
+          {
+            "name": "actor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "HQ_ADMIN",
+                "TOWNSHIP_ADMIN",
+                "TOWNSHIP_STAFF",
+                "GUARD",
+                "MERCHANT",
+                "COURIER",
+                "RESIDENT",
+                "SYSTEM"
+              ]
+            }
+          },
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "24h",
+                "7d",
+                "30d",
+                "90d"
+              ]
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "NEWEST",
+                "OLDEST"
+              ]
             }
           }
         ],

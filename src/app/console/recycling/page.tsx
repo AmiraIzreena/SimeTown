@@ -15,7 +15,7 @@ import { CountUp } from '@/components/ui/count-up';
 import { ConfirmDialog, Modal } from '@/components/ui/dialog';
 import { Async, EmptyState, SkeletonList, SkeletonStats } from '@/components/ui/feedback';
 import { Input, Select } from '@/components/ui/field';
-import { FilterChips } from '@/components/ui/filter-bar';
+import { FilterChips, FilterMenu } from '@/components/ui/filter-bar';
 import { Tabs } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/toast';
 import { api } from '@/lib/api';
@@ -149,10 +149,7 @@ export default function RecyclingConsolePage() {
         title="Recycling collections"
         description="Bookings, gate passes, weights and missed collections are handled automatically. You only see what the system cannot settle on its own."
         action={hq && townships.data && (
-          <Select label="Township" value={townshipId} onChange={(event) => setTownshipId(event.target.value)}>
-            <option value=""><Text>All townships</Text></option>
-            {townships.data.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-          </Select>
+          <FilterMenu<string> label="Township" value={townshipId} onChange={setTownshipId} options={[{ value: '', label: 'All townships' }, ...townships.data.map((t) => ({ value: t.id, label: t.name, raw: true }))]} />
         )}
       />
       <div className="mb-5">
@@ -226,8 +223,8 @@ function Attention({ state, scope, hq }: { state: ReturnType<typeof useApi<Excep
                     <span className="text-[13px] font-medium text-ink-500"><Text>{t.label}</Text></span>
                     <span className="ops-kpi-icon grid size-8 shrink-0 place-items-center rounded-lg"><t.icon className="size-4" aria-hidden /></span>
                   </span>
-                  <span className="mt-2 block font-display text-[28px] font-bold leading-none tracking-tight text-ink-900 tabular-nums"><CountUp value={t.value} /></span>
-                  <span className="ops-kpi-hint mt-2 block truncate text-xs"><Text>{t.hint}</Text></span>
+                  <span className="mt-2 block font-display text-[28px] font-bold leading-none tracking-tight text-ink-900 tabular-nums"><CountUp value={t.value} delay={n * 60} /></span>
+                  <span className="ops-kpi-hint mt-2 block line-clamp-2 text-xs"><Text>{t.hint}</Text></span>
                 </div>
               ))}
             </div>

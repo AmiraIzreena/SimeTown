@@ -2,14 +2,20 @@
 
 import { Text } from '@/components/ui/localized-text';
 
+import { Search } from 'lucide-react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/card';
 import { EmptyState, ErrorState, SkeletonList } from '@/components/ui/feedback';
+import { FilterBar, FilterChips, FilterMenu, FilterSummary, SearchField } from '@/components/ui/filter-bar';
 import { DataTable } from '@/components/ui/table';
 import { STATUS_LABELS, URGENCY_LABELS } from '@/components/features/report-bits';
 import { formatDateTime } from '@/lib/format';
 import { usePaged } from '@/lib/hooks';
 import { useT } from '@/lib/i18n';
+import { useDebouncedValue } from '@/lib/use-debounced-value';
+import { useMinLoading } from '@/lib/use-min-loading';
+import { AUDIT_ACTORS, AUDIT_AREA_LABELS, AUDIT_AREAS, AUDIT_PERIOD_LABELS, AUDIT_PERIODS, type AuditActor, type AuditArea, type AuditPeriod } from '@/shared/audit';
 import { formatPoints, formatRM, REPORT_CATEGORY_LABELS, ROLE_LABELS, type ReportCategory, type ReportStatus, type Role, type Urgency } from '@/shared/domain';
 
 interface Entry {
@@ -95,27 +101,85 @@ function describe(e: Entry, t: Translator): string {
   return parts.length ? parts.join(' · ') : '–';
 }
 
+type Area = AuditArea | 'ALL';
+type Who = AuditActor | '';
+type Period = AuditPeriod | '';
+type Sort = 'NEWEST' | 'OLDEST';
+type Counts = Record<AuditArea | 'all', number>;
+
 export default function AuditPage() {
   const t = useT();
-  const log = usePaged<Entry>('/admin/audit?limit=30');
+  const [area, setArea] = useState<Area>('ALL');
+  const [who, setWho] = useState<Who>('');
+  const [period, setPeriod] = useState<Period>('');
+  const [sort, setSort] = useState<Sort>('NEWEST');
+  const [q, setQ] = useState('');
+  const search = useDebouncedValue(q.trim());
+
+  const params = new URLSearchParams({ limit: '30', ...(search ? { q: search } : {}), ...(area !== 'ALL' ? { area } : {}), ...(who ? { actor: who } : {}), ...(period ? { period } : {}), ...(sort !== 'NEWEST' ? { sort } : {}) }).toString();
+  const path = `/admin/audit?${params}`;
+  const log = usePaged<Entry, { counts: Counts }>(path);
+  const typing = q.trim() !== search;
+  // Only the results show a skeleton, for at least 600ms per new search or filter, so nothing flashes.
+  const loading = useMinLoading(`${path}${typing ? '~' : ''}`, log.isLoading || typing);
+  const counts = loading ? undefined : log.first?.counts;
+  const filtered = area !== 'ALL' || Boolean(who || period || q) || sort !== 'NEWEST';
+  const clear = () => { setArea('ALL'); setWho(''); setPeriod(''); setSort('NEWEST'); setQ(''); };
+
   return (
-    <>
-      <PageHeader title="Audit trail" description="Who did what: approvals, money recorded, corrections to AI suggestions, settings changes. Entries cannot be edited." />
+    <div className='space-y-4'>
+      <PageHeader title='Audit trail' description='Who did what: approvals, money recorded, corrections to AI suggestions, settings changes. Entries cannot be edited.' />
+      <FilterBar
+        search={<SearchField value={q} onChange={setQ} label='Search the audit trail' placeholder='Person, item, action or reference, e.g. Nurul, Kopi Hijau or TEST-KOPI-002' />}
+        chips={
+          <FilterChips<Area>
+            label='Area'
+            value={area}
+            onChange={setArea}
+            options={[
+              { key: 'ALL', label: 'All activity', count: counts?.all },
+              ...AUDIT_AREAS.map((key) => ({ key, label: AUDIT_AREA_LABELS[key], count: counts?.[key] })),
+            ]}
+          />
+        }
+        controls={
+          <>
+            <FilterMenu<Who> label='Who' value={who} onChange={setWho} options={[
+              { value: '', label: 'Anyone' },
+              ...AUDIT_ACTORS.map((value) => ({ value, label: value === 'SYSTEM' ? 'System (automatic)' : ROLE_LABELS[value] })),
+            ]} />
+            <FilterMenu<Period> label='When' value={period} onChange={setPeriod} options={[
+              { value: '', label: 'Any time' },
+              ...AUDIT_PERIODS.map((value) => ({ value, label: AUDIT_PERIOD_LABELS[value] })),
+            ]} />
+            <FilterMenu<Sort> label='Sort' value={sort} onChange={setSort} options={[
+              { value: 'NEWEST', label: 'Newest first' },
+              { value: 'OLDEST', label: 'Oldest first' },
+            ]} />
+          </>
+        }
+        summary={counts ? <FilterSummary shown={area === 'ALL' ? counts.all : counts[area]} total={counts.all} noun='entries' onClear={filtered ? clear : undefined} /> : undefined}
+      />
       {log.error ? (
         <ErrorState error={log.error} onRetry={() => void log.reload()} />
-      ) : log.isLoading ? (
+      ) : loading ? (
         <SkeletonList rows={5} />
       ) : log.items.length === 0 ? (
-        <EmptyState title="Nothing recorded yet" />
+        filtered ? (
+          <EmptyState icon={Search} title='No entries match'><Text>Try another name, area or time period.</Text></EmptyState>
+        ) : (
+          <EmptyState title='Nothing recorded yet' />
+        )
       ) : (
+        <div className='content-in'>
         <DataTable
-          caption="Audit trail"
+          caption='Audit trail'
           rows={log.items}
           keyOf={(e) => e.id}
           columns={[
             { header: 'When', cell: (e) => formatDateTime(e.created_at) },
             { header: 'Who', cell: (e) => (e.actor_name ? `${e.actor_name}${e.actor_role ? ` (${t(ROLE_LABELS[e.actor_role])})` : ''}` : t('System')) },
-            { header: 'What', cell: (e) => <span className="font-medium text-ink-900"><Text>{ACTION_LABELS[e.action] ?? words(e.action)}</Text></span> },
+            { header: 'What', cell: (e) => <span className='font-medium text-ink-900'><Text>{ACTION_LABELS[e.action] ?? words(e.action)}</Text></span> },
             {
               header: 'On',
               desktopOnly: true,
@@ -123,23 +187,24 @@ export default function AuditPage() {
                 const kind = ENTITY_LABELS[e.entity_type] ?? words(e.entity_type);
                 return e.subject ? (
                   <>
-                    <span className="block text-ink-900">{e.subject}</span>
-                    <span className="block text-xs text-ink-500"><Text>{kind}</Text></span>
+                    <span className='block text-ink-900'>{e.subject}</span>
+                    <span className='block text-xs text-ink-500'><Text>{kind}</Text></span>
                   </>
                 ) : (
                   kind
                 );
               },
             },
-            { header: 'Details', desktopOnly: true, cell: (e) => <span className="wrap-break-word text-sm text-ink-600">{describe(e, t)}</span> },
+            { header: 'Details', desktopOnly: true, cell: (e) => <span className='wrap-break-word text-sm text-ink-600'>{describe(e, t)}</span> },
           ]}
         />
-      )}
-      {log.hasMore && (
-        <div className="mt-5 text-center">
-          <Button variant="secondary" onClick={() => void log.loadMore()} pending={log.loadingMore}><Text>Show more</Text></Button>
         </div>
       )}
-    </>
+      {!loading && log.hasMore && (
+        <div className='mt-1 text-center'>
+          <Button variant='secondary' onClick={() => void log.loadMore()} pending={log.loadingMore}><Text>Show more</Text></Button>
+        </div>
+      )}
+    </div>
   );
 }

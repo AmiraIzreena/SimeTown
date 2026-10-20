@@ -245,9 +245,10 @@
   }
 
   /* Cards that can be clicked lift slightly; the rest stay still. */
+  /* Clickable cards in the signed-in areas: a small lift on a real mouse (Tailwind's hover), none under reduced motion. */
   .lift {
     @apply transition-[transform,box-shadow,border-color] duration-(--duration-fast) ease-(--ease-soft)
-      hover:-translate-y-0.5 hover:border-ink-300 hover:shadow-md;
+      hover:-translate-y-0.5 hover:border-ink-300 hover:shadow-md motion-reduce:hover:translate-y-0 active:scale-[0.99] motion-reduce:active:scale-100;
   }
 
   .skeleton {
@@ -256,12 +257,6 @@
     background-size: 200% 100%;
   }
 
-  @keyframes section-from-left {
-    from { opacity: 0; transform: translateX(-10px); }
-  }
-  @keyframes section-from-right {
-    from { opacity: 0; transform: translateX(10px); }
-  }
   @keyframes section-pop {
     from { opacity: 0; transform: translateY(8px) scale(0.985); }
   }
@@ -271,16 +266,10 @@
   @keyframes checkpoint-in {
     from { opacity: 0; transform: translateX(-6px); }
   }
+  /* A done tick settles in; no overshoot, so it never reads as a bounce. */
   @keyframes checkpoint-done {
-    0% { transform: scale(0.75); }
-    70% { transform: scale(1.12); }
-    100% { transform: scale(1); }
-  }
-  @keyframes pass-reveal {
-    from { opacity: 0; transform: perspective(700px) rotateX(-8deg) translateY(8px); }
-  }
-  @keyframes door-open {
-    from { opacity: 0; transform: perspective(900px) rotateY(-4deg); }
+    from { opacity: 0; transform: scale(0.85); }
+    to { opacity: 1; transform: scale(1); }
   }
   @keyframes scan-sweep {
     from { transform: translateY(0); opacity: 0; }
@@ -297,36 +286,16 @@
     30% { transform: translateY(-3px); opacity: 1; }
   }
 
+  /*
+   * Every signed-in page heading enters the same way: a short fade and 8px rise. One consistent
+   * entrance reads as deliberate; headings sliding from different sides on each page did not.
+   */
   .motion-home > div > header,
-  .motion-gerak > header,
-  .motion-tamu > header,
-  .motion-komuniti > header,
-  .motion-gate > header,
-  .motion-campaigns > header {
-    animation: section-from-left var(--duration-base) var(--ease-soft) both;
-  }
-  .motion-wallet > header,
-  .motion-kitar > header,
-  .motion-lapor > header,
-  .motion-jimat > header,
-  .motion-home-services > header,
-  .motion-sponsor > header,
-  .motion-console > header,
-  .motion-finance > header {
-    animation: section-from-right var(--duration-base) var(--ease-soft) both;
-  }
-  .motion-merchant > header,
-  .motion-offers > header,
-  .motion-sales > header,
-  .motion-statements > header,
-  .motion-reports > header,
-  .motion-banjir > header,
-  .motion-flood-console > header {
-    animation: section-pop var(--duration-base) var(--ease-soft) both;
-  }
-  .motion-access > header,
-  .motion-utility > header {
-    animation: fade-in var(--duration-base) var(--ease-soft) both;
+  :is(.motion-gerak, .motion-tamu, .motion-komuniti, .motion-gate, .motion-campaigns, .motion-wallet, .motion-kitar,
+    .motion-lapor, .motion-jimat, .motion-home-services, .motion-sponsor, .motion-console, .motion-finance,
+    .motion-merchant, .motion-offers, .motion-sales, .motion-statements, .motion-reports, .motion-banjir,
+    .motion-flood-console, .motion-access, .motion-utility) > header {
+    animation: rise var(--duration-base) var(--ease-soft) both;
   }
 
   .motion-home .resident-metrics > *,
@@ -368,11 +337,11 @@
     animation: checkpoint-done 360ms var(--ease-soft) both;
   }
   .motion-lapor .report-timeline-item {
-    animation: section-from-left var(--duration-base) var(--ease-soft) both;
+    animation: checkpoint-in var(--duration-base) var(--ease-soft) both;
   }
+  /* The new pass code settles in plainly (it used to flip in with a 3D tilt). */
   .motion-tamu .visitor-pass-reveal {
-    animation: pass-reveal 420ms var(--ease-soft) both;
-    transform-origin: top center;
+    animation: rise 360ms var(--ease-soft) both;
   }
   .motion-komuniti .post-card-enter {
     animation: dashboard-card var(--duration-base) var(--ease-soft) both;
@@ -386,9 +355,9 @@
     transform-origin: left center;
     animation: segment-grow 420ms var(--ease-soft) both;
   }
+  /* The two service panels rise in like other dashboards (they used to swing open like doors). */
   .motion-home-services .home-service-grid > * {
-    animation: door-open 430ms var(--ease-soft) both;
-    transform-origin: left center;
+    animation: dashboard-card var(--duration-base) var(--ease-soft) both;
   }
   .motion-home-services .home-service-grid > :nth-child(2) { animation-delay: 80ms; }
   .motion-offers .campaign-budget-segment,
@@ -402,7 +371,7 @@
     animation: checkpoint-done 360ms var(--ease-soft) both;
   }
   .motion-sales .rtable tbody tr {
-    animation: section-from-right var(--duration-base) var(--ease-soft) both;
+    animation: fade-in var(--duration-base) var(--ease-soft) both;
   }
   .motion-console .rank-bar-fill,
   .motion-reports .rank-bar-fill,
@@ -596,6 +565,290 @@
 
 .app-topbar {
   background-image: linear-gradient(100deg, rgb(255 255 255 / 0.86), rgb(255 247 240 / 0.68));
+  box-shadow: 0 1px 0 rgb(45 20 7 / 0.02);
+  transition: box-shadow 200ms var(--ease-soft);
+}
+/* Once the page scrolls, a light shadow shows the content is passing underneath the bar. */
+.app-topbar[data-scrolled] { box-shadow: 0 6px 20px rgb(45 20 7 / 0.08); }
+
+/*
+ * --- KPI tile: one look for every headline number (Stat and the console's ops-kpi tiles) ---
+ * A 3px tone bar says at a glance whether the number is a problem; the icon tile carries the tone.
+ */
+.kpi-tile { --kpi: var(--color-ink-400); --kpi-soft: var(--color-ink-100); --kpi-ink: var(--color-ink-700); }
+.kpi-tile.is-brand { --kpi: var(--color-ink-400); --kpi-soft: var(--color-brand-50); --kpi-ink: var(--color-brand-700); }
+.kpi-tile.is-success { --kpi: var(--color-success-600); --kpi-soft: var(--color-success-50); --kpi-ink: var(--color-success-700); }
+.kpi-tile.is-warning { --kpi: var(--color-warning-600); --kpi-soft: var(--color-warning-50); --kpi-ink: var(--color-warning-700); }
+.kpi-tile.is-danger { --kpi: var(--color-accent-600); --kpi-soft: var(--color-accent-50); --kpi-ink: var(--color-accent-700); }
+.kpi-tile.is-gold { --kpi: var(--color-gold-500); --kpi-soft: var(--color-gold-50); --kpi-ink: var(--color-gold-700); }
+.kpi-tile::before { position: absolute; inset: 0 0 auto; height: 3px; background: var(--kpi); opacity: 0.85; content: ''; }
+.kpi-tile-icon { background: var(--kpi-soft); color: var(--kpi-ink); }
+.kpi-tile-hint { color: var(--color-ink-500); }
+.kpi-tile.is-danger .kpi-tile-hint, .kpi-tile.is-warning .kpi-tile-hint { color: var(--kpi-ink); font-weight: 600; }
+@media (prefers-reduced-motion: no-preference) {
+  /* Tiles in a row settle in one after another. */
+  .kpi-tile { animation: dashboard-card 520ms var(--ease-soft) both; }
+  .kpi-tile:nth-child(2) { animation-delay: 60ms; }
+  .kpi-tile:nth-child(3) { animation-delay: 120ms; }
+  .kpi-tile:nth-child(4) { animation-delay: 180ms; }
+  .kpi-tile:nth-child(5) { animation-delay: 240ms; }
+  .kpi-tile:nth-child(n + 6) { animation-delay: 300ms; }
+}
+
+/*
+ * --- Shared micro-interactions, signed-in screens only (public pages keep their own) -----------
+ * Every admin and HQ page gets these through the shared components, so no page is left static.
+ * Hover only on a real mouse; nothing moves under reduced motion (UI guidelines §4).
+ */
+/* Clickable KPI tiles (Stat with href or onClick): the same feel as the console's ops-kpi tiles. */
+.kpi-tile.is-interactive { transition: transform 220ms var(--ease-soft), box-shadow 220ms var(--ease-soft), border-color 220ms var(--ease-soft); cursor: pointer; }
+.kpi-tile-icon { transition: background-color 200ms var(--ease-soft), color 200ms var(--ease-soft); }
+.kpi-tile-arrow { opacity: 0; transform: translateX(-4px); transition: opacity 200ms var(--ease-soft), transform 260ms var(--ease-soft); }
+.kpi-tile.is-interactive:focus-visible .kpi-tile-arrow { opacity: 1; transform: none; }
+@media (hover: hover) and (pointer: fine) {
+  .kpi-tile.is-interactive:hover { border-color: var(--color-brand-200); box-shadow: 0 8px 22px rgb(79 28 8 / 0.08); transform: translateY(-2px); }
+  .kpi-tile.is-interactive:hover .kpi-tile-icon { background: var(--kpi-ink); color: #fff; }
+  .kpi-tile.is-interactive:hover .kpi-tile-arrow { opacity: 1; transform: none; }
+}
+.kpi-tile.is-interactive:active { transform: translateY(-1px) scale(0.99); }
+
+html[data-signed-in] .btn-primary { background-image: linear-gradient(180deg, rgb(255 255 255 / 0.09), transparent 60%); }
+@media (hover: hover) and (pointer: fine) {
+  /* Buttons lift 1px with a soft shadow; ghost buttons only tint. */
+  html[data-signed-in] .btn:is(.btn-primary, .btn-secondary, .btn-danger, .btn-success, .btn-light):not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgb(79 28 8 / 0.12); }
+  /* Table rows: the hovered row gets a brand accent bar on its left edge, like the console's queue rows. */
+  html[data-signed-in] .rtable tbody tr:hover > :first-child { box-shadow: inset 3px 0 0 var(--color-brand-400); }
+  /* Float check and similar value lists. */
+  html[data-signed-in] .value-line:hover { background: rgb(255 247 240 / 0.7); }
+}
+html[data-signed-in] .btn:not(:disabled):active { transform: translateY(0) scale(0.98); }
+html[data-signed-in] .rtable tbody tr > :first-child { transition: box-shadow 200ms var(--ease-soft); }
+html[data-signed-in] .value-line { transition: background-color 200ms var(--ease-soft); }
+/* A form field's label turns brand while the field is in use. */
+html[data-signed-in] .field:focus-within > label { color: var(--color-brand-700); }
+@media (prefers-reduced-motion: no-preference) {
+  /* Table rows and value lines settle in one after another; empty-state icons settle in once. */
+  html[data-signed-in] .rtable tbody tr.data-row { animation: checkpoint-in 380ms var(--ease-soft) both; animation-delay: calc(var(--i, 0) * 40ms); }
+  html[data-signed-in] .value-line { animation: checkpoint-in 380ms var(--ease-soft) both; animation-delay: calc(var(--i, 0) * 45ms); }
+  html[data-signed-in] .empty-state-icon { animation: checkpoint-done 420ms var(--ease-soft) both; }
+  /* Card grids (kiosks, bins, loops): cards settle in one after another. */
+  html[data-signed-in] .stagger-in > * { animation: dashboard-card 460ms var(--ease-soft) both; }
+  html[data-signed-in] .stagger-in > :nth-child(2) { animation-delay: 60ms; }
+  html[data-signed-in] .stagger-in > :nth-child(3) { animation-delay: 120ms; }
+  html[data-signed-in] .stagger-in > :nth-child(4) { animation-delay: 180ms; }
+  html[data-signed-in] .stagger-in > :nth-child(n + 5) { animation-delay: 240ms; }
+  html[data-signed-in] .status-settle { animation: checkpoint-done 420ms var(--ease-soft) 200ms both; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-signed-in] .btn:hover, html[data-signed-in] .btn:active, .kpi-tile.is-interactive:hover, .kpi-tile.is-interactive:active { transform: none; }
+}
+
+/* --- Flood alert band (components/shell/alert-takeover.tsx) --------------------------------------
+ * SimeTown's own reds, deep but still clearly red, not maroon (white text, at least 6.5:1 contrast). Warning:
+ * deep red to SimeTown red. Danger: a step deeper and a faster pulse, so the two levels
+ * still read as a ladder. The icon sends out a soft ring, the band breathes, and a live dot pulses:
+ * steady, slow pulses (well under three a second, so never a flash), switched off for reduced motion.
+ */
+.flood-banner { --pulse: 1.8s; --ring: rgb(255 255 255 / 0.55); }
+.flood-banner.is-warning { background-color: var(--color-accent-600); background-image: linear-gradient(100deg, var(--color-accent-700) 0%, var(--color-accent-600) 100%); }
+.flood-banner.is-danger { --pulse: 1.1s; background-color: var(--color-accent-700); background-image: linear-gradient(100deg, #800d1c 0%, var(--color-accent-700) 100%); }
+/* The band's glow: a soft light that swells and fades across the red, like an alarm lamp. */
+.flood-banner::after {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 40% 140% at 6% 50%, rgb(255 120 120 / 0.38), transparent 70%);
+  opacity: 0;
+  content: '';
+  pointer-events: none;
+}
+.flood-icon::before, .flood-icon::after {
+  position: absolute;
+  inset: 0;
+  border: 2px solid var(--ring);
+  border-radius: 9999px;
+  opacity: 0;
+  content: '';
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .flood-banner::after { animation: flood-breathe calc(var(--pulse) * 1.4) ease-in-out infinite; }
+  .flood-icon { animation: flood-icon-beat var(--pulse) ease-in-out infinite; }
+  .flood-icon::before { animation: flood-ring var(--pulse) var(--ease-soft) infinite; }
+  .flood-icon::after { animation: flood-ring var(--pulse) var(--ease-soft) calc(var(--pulse) / 2) infinite; }
+}
+@keyframes flood-ring {
+  0% { opacity: 0.85; transform: scale(1); }
+  100% { opacity: 0; transform: scale(2.1); }
+}
+@keyframes flood-icon-beat {
+  0%, 100% { transform: scale(1); background-color: rgb(255 255 255 / 0.18); }
+  45% { transform: scale(1.08); background-color: rgb(255 255 255 / 0.3); }
+}
+@keyframes flood-breathe {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 1; }
+}
+.flood-banner::before {
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(135deg, rgb(255 255 255 / 0.05) 0 12px, transparent 12px 24px);
+  content: '';
+  pointer-events: none;
+}
+.flood-banner > * { position: relative; z-index: 1; }
+.flood-live-dot { position: relative; display: inline-block; width: 0.5rem; height: 0.5rem; border-radius: 9999px; background: #fff; }
+@media (prefers-reduced-motion: no-preference) {
+  .flood-banner { animation: flood-in 320ms var(--ease-soft) both; }
+  .flood-live-dot::after { position: absolute; inset: 0; border-radius: inherit; background: #fff; animation: dot-ping 2s var(--ease-soft) infinite; content: ''; }
+}
+@keyframes flood-in {
+  from { opacity: 0; transform: translateY(-6px); }
+}
+@media print { .flood-banner { display: none; } }
+
+/* --- Home service category page: photo hero, company cards, back link ------------------------- */
+.service-hero-img, .company-card-img { transition: transform 900ms var(--ease-soft); }
+.company-card { transition: transform 240ms var(--ease-soft), box-shadow 240ms var(--ease-soft), border-color 240ms var(--ease-soft); }
+.back-link-arrow { transition: transform 220ms var(--ease-soft); }
+@media (hover: hover) and (pointer: fine) {
+  .company-card:hover { transform: translateY(-3px); border-color: var(--color-brand-200); box-shadow: 0 16px 34px rgb(79 28 8 / 0.1); }
+  .company-card:hover .company-card-img { transform: scale(1.05); }
+  .back-link:hover .back-link-arrow { transform: translateX(-3px); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  /* The hero photo settles from a slight zoom, and its text rises in after it. */
+  .service-hero-img { animation: hero-settle 1400ms var(--ease-soft) both; }
+  .service-hero > div:last-child > * { animation: rise 520ms var(--ease-soft) both; }
+  .service-hero > div:last-child > :nth-child(2) { animation-delay: 80ms; }
+  .service-hero > div:last-child > :nth-child(3) { animation-delay: 160ms; }
+  .service-hero > div:last-child > :nth-child(4) { animation-delay: 240ms; }
+}
+@keyframes hero-settle {
+  from { transform: scale(1.08); }
+  to { transform: scale(1); }
+}
+.category-tile { transition: transform 220ms var(--ease-soft), box-shadow 220ms var(--ease-soft), border-color 220ms var(--ease-soft); }
+.category-tile-img { transition: transform 700ms var(--ease-soft); }
+.category-tile-arrow { transition: transform 220ms var(--ease-soft), color 200ms var(--ease-soft); }
+@media (hover: hover) and (pointer: fine) {
+  .category-tile:hover { transform: translateY(-2px); border-color: var(--color-brand-200); box-shadow: 0 10px 24px rgb(79 28 8 / 0.09); }
+  .category-tile:hover .category-tile-img { transform: scale(1.06); }
+  .category-tile:hover .category-tile-arrow { transform: translateX(3px); color: var(--color-brand-700); }
+}
+.category-tile:active { transform: translateY(-1px) scale(0.99); }
+@media (prefers-reduced-motion: reduce) { .company-card:hover, .category-tile:hover, .category-tile:active { transform: none; } }
+
+/* --- Map key chips (Gerak tracker map): each line style as a small labelled pill ----------------- */
+.map-key-chip { display: inline-flex; align-items: center; gap: 0.5rem; border-radius: 9999px; background: #fff; padding: 0.25rem 0.75rem; font-size: 0.75rem; font-weight: 500; color: var(--color-ink-700); box-shadow: 0 1px 2px rgb(45 20 7 / 0.05), inset 0 0 0 1px var(--color-ink-100); }
+
+/* --- Material ring (Kitar "Recycled this month"): slices sweep in, then react to hover/focus ---- */
+.material-slice { transition: stroke-width 220ms var(--ease-soft), opacity 220ms var(--ease-soft); }
+.material-slice.is-dim { opacity: 0.3; }
+@media (prefers-reduced-motion: no-preference) {
+  .material-slice { animation: ring-sweep 700ms var(--ease-soft) both; animation-delay: calc(150ms + var(--i, 0) * 120ms); }
+  .material-ring-centre { display: block; animation: fade-in 200ms var(--ease-soft) both; }
+}
+/* Each slice grows from its start to its full length, so the ring fills like a dial. */
+@keyframes ring-sweep {
+  from { stroke-dasharray: 0 1000; }
+}
+
+/* --- Line chart (components/ui/line-chart.tsx): draws once, then the cursor glides ------------ */
+@media (prefers-reduced-motion: no-preference) {
+  .line-chart-line { animation: line-draw 1400ms var(--ease-soft) 200ms both; }
+  .line-chart-area { animation: fade-in 700ms var(--ease-soft) 900ms both; }
+  .line-chart-cursor, .line-chart-dot, .line-chart-tip { transition: transform 260ms var(--ease-soft); }
+  .line-chart-tip { animation: fade-in 300ms var(--ease-soft) 1200ms both; }
+}
+@keyframes line-draw {
+  from { stroke-dashoffset: var(--len, 0); }
+  to { stroke-dashoffset: 0; }
+}
+
+/* --- Insights hero: the sidebar's brand gradient, so the console reads as one SimeTown surface --- */
+.insights-hero, .brand-hero {
+  background-image:
+    radial-gradient(ellipse at 100% 0%, rgb(232 111 32 / 0.28), transparent 26rem),
+    radial-gradient(ellipse at 0% 100%, rgb(255 176 106 / 0.1), transparent 22rem),
+    linear-gradient(140deg, rgb(79 28 8 / 0.97), rgb(45 20 7 / 0.98));
+}
+/* A fine architectural grid, very faint, gives the surface depth without decoration. */
+.insights-hero::before, .brand-hero::before {
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(rgb(255 255 255 / 0.035) 1px, transparent 1px), linear-gradient(90deg, rgb(255 255 255 / 0.035) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: linear-gradient(115deg, transparent 20%, black 75%);
+  content: '';
+  pointer-events: none;
+}
+.hero-figure { transition: background-color 200ms var(--ease-soft); }
+@media (hover: hover) and (pointer: fine) {
+  .hero-figure:hover { background-color: rgb(45 20 7 / 0.55); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .insights-hero { animation: rise 420ms var(--ease-soft) both; }
+  .hero-meter { transform-origin: left; animation: segment-grow 1100ms var(--ease-soft) 200ms both; }
+}
+/* The monthly impact report prints in ink, not on a dark band. */
+/* The resident Home points card uses the same surface; it lifts on hover like the other tiles. */
+.brand-hero > * { position: relative; }
+.hero-link { transition: transform 220ms var(--ease-soft), box-shadow 220ms var(--ease-soft); }
+.hero-link-arrow { opacity: 0.6; transition: opacity 200ms var(--ease-soft), transform 260ms var(--ease-soft); }
+@media (hover: hover) and (pointer: fine) {
+  .hero-link:hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgb(79 28 8 / 0.22); }
+  .hero-link:hover .hero-link-arrow { opacity: 1; transform: translateX(3px); }
+}
+.hero-link:active { transform: translateY(-1px) scale(0.99); }
+@media (prefers-reduced-motion: reduce) { .hero-link:hover, .hero-link:active { transform: none; } }
+@media print {
+  .insights-hero { background: none !important; color: var(--color-ink-900) !important; box-shadow: none !important; border: 1px solid var(--color-ink-200); }
+  .insights-hero::before { display: none; }
+  .insights-hero * { color: var(--color-ink-900) !important; }
+}
+
+/*
+ * --- Premium scrolling, signed-in screens only (public pages keep their own) ------------------
+ * Smooth in-page jumps that stop below the sticky top bar (page changes stay instant: the root
+ * <html> carries data-scroll-behavior="smooth" for Next.js), thin brand-tinted scrollbars, and
+ * sections that rise in as they scroll into view. No scroll hijacking: the wheel and trackpad
+ * scroll natively; only the reveal is tied to scroll position.
+ */
+html[data-signed-in] { scroll-behavior: smooth; scroll-padding-top: 5.5rem; scrollbar-width: thin; scrollbar-color: rgb(79 28 8 / 0.28) transparent; }
+.app-sidebar nav { scrollbar-width: thin; scrollbar-color: rgb(255 255 255 / 0.2) transparent; overscroll-behavior: contain; }
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    /* Section cards below the fold rise in over the first third of their entry; ones already on screen are untouched. */
+    html[data-signed-in] #main .glass-surface:not(.kpi-tile, .ops-kpi, .ops-panel, .filter-bar, .content-in, .insights-hero, .wallet-balance-card, .post-card-enter, .sticky, .stagger-in > *, [class*='animate-'], [popover], dialog *) {
+      animation: scroll-reveal linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 40%;
+    }
+  }
+}
+@keyframes scroll-reveal {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* --- Calm, purposeful motion for console data (UI guidelines §4, §8) ------------------- */
+/* Signed-in screens only (the Shell sets html[data-signed-in]); public pages before login are unchanged. */
+.toast-life { display: none; }
+@media (prefers-reduced-motion: no-preference) {
+  /* Results settle in after a skeleton, or after a filter or chip changes what is listed. */
+  .content-in { animation: fade-in 220ms var(--ease-soft) both; }
+  /* A live figure that changed since the last refresh tints briefly, then fades back. */
+  html[data-signed-in] .value-changed { animation: value-changed 1400ms var(--ease-soft) both; }
+  /* How long a toast will stay. */
+  html[data-signed-in] .toast-life { display: block; animation: toast-life linear both; transform-origin: left; }
+}
+@keyframes value-changed {
+  0%, 35% { background-color: rgb(232 111 32 / 0.16); color: var(--color-brand-800); }
+  100% { background-color: transparent; }
+}
+@keyframes toast-life {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
 }
 
 .landing-header {
@@ -845,9 +1098,14 @@
 .hero-glow {
   background: radial-gradient(ellipse at 10% 75%, rgb(232 111 32 / 0.22), transparent 34rem);
 }
-.hero-stagger > * {
+.hero-stagger > *,
+.hero-stagger > .hero-stagger-group > * {
   animation: hero-rise 800ms var(--ease-soft) both;
   animation-delay: calc(150ms + var(--i, 0) * 110ms);
+}
+/* A layout column inside the hero (two-column heroes): its children stagger, not the column. */
+.hero-stagger > .hero-stagger-group {
+  animation: none;
 }
 .scroll-cue {
   animation: scroll-cue 1.8s ease-in-out infinite;

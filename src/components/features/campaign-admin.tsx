@@ -24,7 +24,8 @@ export function splitOf(budgetSen: number, poolBps: number, feeBps: number) {
 /** Money given out so far: the reward pool less what is left in it (or what was refunded). */
 export function givenOf(c: Campaign) {
   const { pool } = splitOf(c.budget_sen, c.pool_bps, c.fee_bps);
-  if (c.status === 'DRAFT') return { pool, given: 0 };
+  // A draft, or a campaign cancelled before it was funded, never had a pool to give from.
+  if (c.status === 'DRAFT' || c.funded === false) return { pool, given: 0 };
   return { pool, given: pool - (c.status === 'CLOSED' ? (c.refunded_sen ?? 0) : c.pool_left_sen) };
 }
 

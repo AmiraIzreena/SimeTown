@@ -13,10 +13,17 @@ export function persistLanguage(language: 'en' | 'ms') {
   return pendingSave;
 }
 
-export function LanguageSwitch({ signedIn = false }: { signedIn?: boolean }) {
+/**
+ * The EN / BM switch. `solid` is the white button used on its own (bottom corner of a page);
+ * `header` is a quiet outline pill that sits with the dark public header's links.
+ */
+export function LanguageSwitch({ signedIn = false, variant = 'solid' }: { signedIn?: boolean; variant?: 'solid' | 'header' }) {
   const lang = useLang();
+  const look = variant === 'header'
+    ? 'min-h-10 rounded-full border border-white/20 px-3.5 text-white/90 transition-colors duration-200 hover:border-white/35 hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white'
+    : 'min-h-11 rounded-md bg-white px-3 text-brand-800 shadow-xs';
   return (
-    <button type="button" className="inline-flex min-h-11 items-center gap-1.5 rounded-md bg-white px-3 text-sm font-semibold text-brand-800 shadow-xs" aria-label={lang === 'ms' ? 'Switch to English' : 'Tukar ke Bahasa Malaysia'} onClick={() => {
+    <button type="button" className={`inline-flex items-center gap-1.5 text-sm font-semibold ${look}`} aria-label={lang === 'ms' ? 'Switch to English' : 'Tukar ke Bahasa Malaysia'} onClick={() => {
       const next = lang === 'ms' ? 'en' : 'ms';
       setLang(next);
       if (signedIn) void persistLanguage(next).catch(() => undefined);

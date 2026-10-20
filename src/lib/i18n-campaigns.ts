@@ -28,7 +28,7 @@ export const campaignsMalay: Record<string, string> = {
   'The challenge': 'Cabaran',
   'Budget and dates': 'Bajet dan tarikh',
   'Who pays for it?': 'Siapa yang membayarnya?',
-  'Not listed? Add the sponsor under People first.': 'Tiada dalam senarai? Tambah penaja di bawah Orang dahulu.',
+  'Not listed? Add the sponsor under Sponsors & tiers first.': 'Tiada dalam senarai? Tambah penaja di bawah Penaja & peringkat dahulu.',
   'A community programme: the whole budget goes into rewards, with no campaign fee.': 'Program komuniti: seluruh bajet masuk ke ganjaran, tanpa fi kempen.',
   'No tier: a one-off challenge.': 'Tiada peringkat: cabaran sekali sahaja.',
   '60% of the budget goes into rewards; the 25% campaign fee and 15% running costs come out of it.': '60% bajet masuk ke ganjaran; fi kempen 25% dan kos operasi 15% diambil daripadanya.',
@@ -42,6 +42,20 @@ export const campaignsMalay: Record<string, string> = {
   'A yearly tier gives your brand a place on this page and a set number of challenges. Without one, you can still run a one-off challenge.':
     'Peringkat tahunan memberi jenama anda tempat di halaman ini dan beberapa cabaran yang ditetapkan. Tanpa peringkat, anda masih boleh menjalankan cabaran sekali sahaja.',
   'Running costs: verification, prizes and publicity': 'Kos operasi: pengesahan, hadiah dan publisiti',
+  // Sponsors & tiers list
+  'Search sponsors': 'Cari penaja',
+  'Sponsor name or category, e.g. Kopi Hijau or Recycling': 'Nama penaja atau kategori, cth. Kopi Hijau atau Kitar semula',
+  'Over allowance': 'Melebihi had',
+  'Expiring soon': 'Hampir tamat',
+  'Optional yearly tiers. Included challenges reset every calendar year.': 'Peringkat tahunan pilihan. Cabaran yang termasuk ditetapkan semula setiap tahun kalendar.',
+  'How tiers work': 'Cara peringkat berfungsi',
+  'No sponsors match': 'Tiada penaja yang sepadan',
+  'Try another name, category or filter.': 'Cuba nama, kategori atau penapis yang lain.',
+  'Tier lapsed': 'Peringkat tamat',
+  'Suggest upgrade': 'Cadang naik taraf',
+  'one-offs': 'sekali sahaja',
+  'no set number': 'tiada had ditetapkan',
+  'sponsors': 'penaja',
 };
 
 /** Campaign messages with names, amounts or counts in them. */
@@ -52,6 +66,12 @@ export const campaignsTemplates: readonly (readonly [string, string])[] = [
   ['{0} points ({1}) per reward, up to {2} per person', '{0} mata ({1}) setiap ganjaran, maksimum {2} bagi setiap orang'],
   ['Waiting for {0} to pay {1}. Nothing is given until the payment is recorded.', 'Menunggu {0} membayar {1}. Tiada ganjaran diberi sehingga bayaran direkodkan.'],
   ['given of {0}', 'diberi daripada {0}'],
+  ['{0} rewards given', '{0} ganjaran diberi'],
+  ['Ends today, {0}', 'Tamat hari ini, {0}'],
+  ['Ends in {0} days, {1}', 'Tamat dalam {0} hari, {1}'],
+  ['Included challenges {0}', 'Cabaran termasuk {0}'],
+  ['Challenges {0}', 'Cabaran {0}'],
+  ['{0} extra', '{0} tambahan'],
   ['· {0} rewards', '· {0} ganjaran'],
   ['{0} refunded', '{0} dipulangkan'],
   ['{0} left', '{0} berbaki'],

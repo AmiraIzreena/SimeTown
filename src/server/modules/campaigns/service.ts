@@ -152,7 +152,7 @@ const CAMPAIGN_LIST = `
          c.budget_sen, c.pool_bps, c.fee_bps, c.costs_bps, c.starts_at, c.ends_at, c.status, c.refunded_sen,
          c.sponsor_id, coalesce(s.name, 'Sime Darby Property') AS funder, r.quantity_unit,
          CASE WHEN c.status = 'FUNDED' AND c.starts_at <= $1 AND c.ends_at > $1 THEN true ELSE false END AS live,
-         coalesce(a.balance, 0) AS pool_left_sen
+         coalesce(a.balance, 0) AS pool_left_sen, c.funded_at IS NOT NULL AS funded
     FROM campaigns c
     JOIN activity_rules r ON r.activity = c.activity
     LEFT JOIN sponsors s ON s.id = c.sponsor_id

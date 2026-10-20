@@ -151,7 +151,7 @@ export function StatusView() {
         <section className={cn('status-hero relative isolate overflow-hidden pt-[72px] text-white', `is-${worst.toLowerCase()}`)}>
           <div aria-hidden className="status-rain absolute inset-0 -z-10" />
           <div className="hero-stagger mx-auto grid max-w-6xl gap-10 px-5 pb-14 pt-14 sm:px-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-end lg:pb-16 lg:pt-16">
-            <div>
+            <div className="hero-stagger-group">
               <p style={{ '--i': 0 } as CSSProperties} className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-semibold backdrop-blur-md">
                 <span className="live-dot" aria-hidden /><Text>Live</Text>
                 <span className="text-white/60">·</span>

@@ -449,23 +449,61 @@ export async function listAccounts(db: Db, actor: Actor) {
 
 // --- Confirming homes (BR1) -------------------------------------------------
 
-export async function listResidents(db: Db, actor: Actor, filter: { status: string } & PageQuery) {
+const likeTerm = (q: string) => `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+
+/**
+ * Residents by verification status, for staff. The waiting queue runs oldest first, so
+ * nobody waits longest; confirmed and rejected lists show the latest decisions first.
+ * Optional search (name, email, property record or address) and place (precinct).
+ */
+export async function listResidents(db: Db, actor: Actor, filter: { status: string; q?: string; precinct?: string } & PageQuery) {
   const [after, afterId] = decodeCursor(filter.cursor, 'time');
+  const waiting = filter.status === 'PENDING';
+  // Waiting: when they registered. Decided: when staff decided (older rows may lack it).
+  const key = waiting ? 'u.created_at' : 'coalesce(u.verified_at, u.created_at)';
+  const q = filter.q?.trim() || null;
   // Staff check the address and the property-record reference (unit_code) against SDP's records.
-  const rows = await db.query<HomeAddress & { id: string; created_at: Date; unit_code: string }>(
-    `SELECT u.id, u.full_name, u.email, u.phone, u.occupancy, u.residency_status, u.member_code, u.created_at, h.unit_code, ${HOME_ADDRESS_COLUMNS}
-       FROM users u JOIN homes h ON h.id = u.home_id
+  const rows = await db.query<HomeAddress & { id: string; created_at: Date; unit_code: string; sort_at: Date }>(
+    `SELECT u.id, u.full_name, u.email, u.phone, u.occupancy, u.residency_status, u.member_code, u.created_at, h.unit_code, ${HOME_ADDRESS_COLUMNS},
+            ${key} AS sort_at, u.verified_at AS decided_at, d.full_name AS decided_by,
+            CASE WHEN u.residency_status = 'REJECTED' THEN
+              (SELECT a.detail->>'reason' FROM audit_log a WHERE a.entity_type = 'user' AND a.entity_id = u.id::text AND a.action = 'RESIDENT_REJECTED' ORDER BY a.id DESC LIMIT 1)
+            END AS reason
+       FROM users u JOIN homes h ON h.id = u.home_id LEFT JOIN users d ON d.id = u.verified_by
       WHERE u.role = 'RESIDENT' AND u.status = 'ACTIVE' AND u.residency_status = $1
         AND ($2::uuid IS NULL OR u.township_id = $2)
-        AND ($3::timestamptz IS NULL OR (u.created_at, u.id) < ($3::timestamptz, $4::uuid))
-      ORDER BY u.created_at DESC, u.id DESC LIMIT $5`,
-    [filter.status, actor.townshipId, after, afterId, filter.limit + 1],
+        AND ($3::timestamptz IS NULL OR (${key}, u.id) ${waiting ? '>' : '<'} ($3::timestamptz, $4::uuid))
+        AND ($6::text IS NULL OR u.full_name ILIKE $6 ESCAPE '\\' OR u.email ILIKE $6 ESCAPE '\\' OR h.unit_code ILIKE $6 ESCAPE '\\'
+             OR concat_ws(' ', h.house_no, h.building, h.street, h.precinct, h.postcode, h.city) ILIKE $6 ESCAPE '\\')
+        AND ($7::text IS NULL OR h.precinct = $7)
+      ORDER BY ${key} ${waiting ? 'ASC' : 'DESC'}, u.id ${waiting ? 'ASC' : 'DESC'} LIMIT $5`,
+    [filter.status, actor.townshipId, after, afterId, filter.limit + 1, q ? likeTerm(q) : null, filter.precinct ?? null],
   );
-  const page = toPage(rows, filter.limit, (r) => [r.created_at, r.id]);
-  return { ...page, items: page.items.map((r) => ({ ...r, address: formatAddress(r) })) };
+  const page = toPage(rows, filter.limit, (r) => [r.sort_at, r.id]);
+  // sort_at only orders the pages; it is not part of the answer.
+  return { ...page, items: page.items.map((r) => { const item: Partial<typeof r> & { address: string } = { ...r, address: formatAddress(r) }; delete item.sort_at; return item; }) };
 }
 
-async function decideResidency(tx: Queryable, deciderId: string, userId: string, approve: boolean, now: Date): Promise<void> {
+/**
+ * Every place (precinct) in the property record, with how many residents are waiting,
+ * confirmed and rejected in each. Places with nobody are listed too, so the filter is complete.
+ */
+export async function residentPlaces(db: Db, actor: Actor) {
+  const places = await db.query<{ name: string; pending: number; verified: number; rejected: number }>(
+    `SELECT h.precinct AS name,
+            count(u.id) FILTER (WHERE u.residency_status = 'PENDING')::int AS pending,
+            count(u.id) FILTER (WHERE u.residency_status = 'VERIFIED')::int AS verified,
+            count(u.id) FILTER (WHERE u.residency_status = 'REJECTED')::int AS rejected
+       FROM homes h
+       LEFT JOIN users u ON u.home_id = h.id AND u.role = 'RESIDENT' AND u.status = 'ACTIVE'
+      WHERE h.precinct IS NOT NULL AND ($1::uuid IS NULL OR h.township_id = $1)
+      GROUP BY h.precinct ORDER BY h.precinct`,
+    [actor.townshipId],
+  );
+  return { places };
+}
+
+async function decideResidency(tx: Queryable, deciderId: string, userId: string, approve: boolean, now: Date, reason?: string): Promise<void> {
   await tx.query('UPDATE users SET residency_status = $2, verified_by = $3, verified_at = $4, updated_at = $4 WHERE id = $1', [
     userId,
     approve ? 'VERIFIED' : 'REJECTED',
@@ -473,16 +511,17 @@ async function decideResidency(tx: Queryable, deciderId: string, userId: string,
     now,
   ]);
   await sessionsChanged(tx);
-  await audit(tx, deciderId, approve ? 'RESIDENT_VERIFIED' : 'RESIDENT_REJECTED', 'user', userId);
+  // A rejection reason is kept with the audit entry and shown to staff in the Rejected list.
+  await audit(tx, deciderId, approve ? 'RESIDENT_VERIFIED' : 'RESIDENT_REJECTED', 'user', userId, !approve && reason ? { reason } : {});
   await notify(tx, [userId], {
     title: approve ? 'Your home is confirmed' : 'We could not confirm your home',
-    body: approve ? 'You can now earn Impact XP and SimeTown Points.' : 'Please contact the township office.',
+    body: approve ? 'You can now earn Impact XP and SimeTown Points.' : reason ? `Reason: ${reason.replace(/[.!?]*$/, '')}. Please contact the township office.` : 'Please contact the township office.',
     link: '/app',
   });
 }
 
-/** Township staff confirm a resident against the property record. */
-export async function verifyResident(db: Db, actor: Actor, userId: string, approve: boolean, now: Date) {
+/** Township staff confirm a resident against the property record. A rejection may say why. */
+export async function verifyResident(db: Db, actor: Actor, userId: string, approve: boolean, now: Date, reason?: string) {
   return db.tx(async (tx) => {
     const user = await one<{ township_id: string; residency_status: string }>(
       tx,
@@ -492,7 +531,7 @@ export async function verifyResident(db: Db, actor: Actor, userId: string, appro
     if (!user) throw notFound('Resident');
     assertTownshipAccess(actor, user.township_id);
     if (user.residency_status !== 'PENDING') throw conflict('ALREADY_DECIDED', 'This resident has already been reviewed.');
-    await decideResidency(tx, actor.id, userId, approve, now);
+    await decideResidency(tx, actor.id, userId, approve, now, reason);
     return { ok: true };
   });
 }

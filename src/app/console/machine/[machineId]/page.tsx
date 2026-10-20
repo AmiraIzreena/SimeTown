@@ -2,6 +2,7 @@
 
 import { Text } from '@/components/ui/localized-text';
 
+import { CountUp } from '@/components/ui/count-up';
 import { CheckCircle2, Cpu, Power, QrCode as QrIcon, Recycle, UserRound, XCircle } from 'lucide-react';
 import { use, useState } from 'react';
 import { SimulatedNote } from '@/components/features/preview';
@@ -102,14 +103,14 @@ export default function MachineScreenPage({ params }: { params: Promise<{ machin
                       <p className="mt-1 text-3xl font-bold"><Text>{s.session.greeting ? `Hello, ${s.session.greeting}!` : 'Hello, guest!'}</Text></p>
                       <p className="mt-2 text-brand-100"><Text>Drop your items in one by one.</Text></p>
                       <div className="mt-6 grid w-full max-w-sm grid-cols-3 gap-3">
-                        {[
-                          ['Accepted', String(s.session.acceptedCount)],
-                          ['Returned', String(s.session.rejectedCount)],
-                          ['Weight', formatKg(s.session.acceptedG)],
-                        ].map(([label, value]) => (
+                        {([
+                          ['Accepted', s.session.acceptedCount, undefined],
+                          ['Returned', s.session.rejectedCount, undefined],
+                          ['Weight', s.session.acceptedG, formatKg],
+                        ] as const).map(([label, value, format]) => (
                           <div key={label} className="rounded-lg bg-white/10 p-3">
                             <p className="text-xs text-brand-200"><Text>{label}</Text></p>
-                            <p className="font-display text-2xl font-bold tabular-nums"><Text>{value}</Text></p>
+                            <p className="font-display text-2xl font-bold tabular-nums"><CountUp value={value} format={format} /></p>
                           </div>
                         ))}
                       </div>

@@ -1,3 +1,4 @@
+import { AREA_ENTITIES, AUDIT_AREAS, AUDIT_PERIOD_HOURS, MONEY_ACTIONS, RULE_ACTIONS, RULE_ENTITIES, type AuditArea, type AuditFilter } from '@/shared/audit';
 import type { Db } from '../../db/client';
 import type { Actor } from '../../auth/actor';
 import { badRequest, ruleViolation } from '../../errors';
@@ -20,12 +21,24 @@ import { getSettings, SETTINGS_COLUMNS, type Settings } from '../settings';
 
 /** Audit trail, programme settings and scheduled jobs. */
 
-export async function listAudit(db: Db, actor: Actor, page: PageQuery) {
+const likeTerm = (q: string) => `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+
+/**
+ * The audit trail, newest first by default, filtered by a search, an area, who made the
+ * change and how recent it is. The first page also carries how many entries match in
+ * each area (with every filter but the area applied), for the filter chips.
+ */
+export async function listAudit(db: Db, actor: Actor, page: PageQuery & AuditFilter, now: Date) {
   const [, afterId] = decodeCursor(page.cursor, 'id');
+  const oldest = page.sort === 'OLDEST';
+  const q = page.q?.trim() || null;
+  const since = page.period ? new Date(now.getTime() - AUDIT_PERIOD_HOURS[page.period] * 3_600_000) : null;
   // Township admins see what people of their township did; HQ sees everything.
   // `subject` names the thing that changed (a shop, a kiosk, a report's place), so the page can say which one.
-  const rows = await db.query<{ id: number }>(
-    `SELECT a.id, a.action, a.entity_type, a.entity_id, a.detail, a.created_at, u.full_name AS actor_name, u.role AS actor_role,
+  // `area` puts each entry in exactly one filter group (see src/shared/audit.ts).
+  const matched = `
+    WITH entries AS (
+      SELECT a.id, a.action, a.entity_type, a.entity_id, a.detail, a.created_at, u.full_name AS actor_name, u.role AS actor_role,
             CASE a.entity_type
               WHEN 'report' THEN (SELECT r.location_text FROM reports r WHERE r.id::text = a.entity_id)
               WHEN 'merchant' THEN (SELECT m.name FROM merchants m WHERE m.id::text = a.entity_id)
@@ -40,13 +53,45 @@ export async function listAudit(db: Db, actor: Actor, page: PageQuery) {
               WHEN 'flood_sensor' THEN (SELECT s.code FROM flood_sensors s WHERE s.id::text = a.entity_id)
               WHEN 'account_request' THEN (SELECT coalesce(t.full_name, r.full_name) FROM account_requests r LEFT JOIN users t ON t.id = r.user_id
                                             WHERE r.id::text = a.entity_id)
-            END AS subject
+            END AS subject,
+            CASE
+              WHEN a.action = ANY($5::text[]) OR a.entity_type = ANY($6::text[]) THEN 'RULES'
+              WHEN a.action = ANY($7::text[]) OR a.entity_type = ANY($8::text[]) THEN 'MONEY'
+              WHEN a.entity_type = ANY($9::text[]) THEN 'PEOPLE'
+              WHEN a.entity_type = ANY($10::text[]) THEN 'PARCELS'
+              WHEN a.entity_type = ANY($11::text[]) THEN 'REPORTS'
+              WHEN a.entity_type = ANY($12::text[]) THEN 'PLACES'
+            END AS area
        FROM audit_log a LEFT JOIN users u ON u.id = a.actor_user_id
-      WHERE ($1::uuid IS NULL OR u.township_id = $1) AND ($2::bigint IS NULL OR a.id < $2::bigint)
-      ORDER BY a.id DESC LIMIT $3`,
-    [actor.townshipId, afterId, page.limit + 1],
+      WHERE ($1::uuid IS NULL OR u.township_id = $1)
+        AND ($2::timestamptz IS NULL OR a.created_at >= $2)
+        AND ($3::text IS NULL OR ($3 = 'SYSTEM' AND a.actor_user_id IS NULL) OR u.role = $3)
+    ), matched AS (
+      SELECT * FROM entries
+       WHERE $4::text IS NULL OR actor_name ILIKE $4 ESCAPE '\\' OR subject ILIKE $4 ESCAPE '\\'
+          OR replace(action, '_', ' ') ILIKE $4 ESCAPE '\\' OR replace(entity_type, '_', ' ') ILIKE $4 ESCAPE '\\' OR detail::text ILIKE $4 ESCAPE '\\'
+    )`;
+  const params = [
+    actor.townshipId, since, page.actor ?? null, q ? likeTerm(q) : null,
+    RULE_ACTIONS, RULE_ENTITIES, MONEY_ACTIONS, AREA_ENTITIES.MONEY, AREA_ENTITIES.PEOPLE, AREA_ENTITIES.PARCELS, AREA_ENTITIES.REPORTS, AREA_ENTITIES.PLACES,
+  ];
+  const rows = await db.query<{ id: number }>(
+    `${matched}
+     SELECT id, action, entity_type, entity_id, detail, created_at, actor_name, actor_role, subject, area FROM matched
+      WHERE ($13::text IS NULL OR area = $13) AND ($14::bigint IS NULL OR ${oldest ? 'id > $14::bigint' : 'id < $14::bigint'})
+      ORDER BY id ${oldest ? 'ASC' : 'DESC'} LIMIT $15`,
+    [...params, page.area ?? null, afterId, page.limit + 1],
   );
-  return toPage(rows, page.limit, (r) => ['', r.id]);
+  const result = toPage(rows, page.limit, (r) => ['', r.id]);
+  if (page.cursor) return result;
+  const counts = await db.query<{ area: AuditArea | null; n: number }>(`${matched} SELECT area, count(*)::int AS n FROM matched GROUP BY area`, params);
+  return {
+    ...result,
+    counts: {
+      all: counts.reduce((sum, c) => sum + c.n, 0),
+      ...Object.fromEntries(AUDIT_AREAS.map((area) => [area, counts.find((c) => c.area === area)?.n ?? 0])),
+    } as Record<AuditArea | 'all', number>,
+  };
 }
 
 export async function updateSettings(db: Db, actor: Actor, changes: Partial<Settings>, now: Date) {

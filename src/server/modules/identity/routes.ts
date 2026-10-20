@@ -123,13 +123,21 @@ export const identityRoutes = [
   }),
   route({
     method: 'GET', path: '/admin/residents', tag: 'SimeTown ID', summary: 'Residents by verification status', auth: 'session', roles: STAFF,
-    query: pageQuery.extend({ status: z.enum(['PENDING', 'VERIFIED', 'REJECTED']).default('PENDING') }),
+    query: pageQuery.extend({
+      status: z.enum(['PENDING', 'VERIFIED', 'REJECTED']).default('PENDING'),
+      q: z.string().trim().max(60).optional(),
+      precinct: z.string().trim().min(1).max(120).optional(),
+    }),
     handler: (c) => identity.listResidents(c.db, c.actor, c.query),
   }),
   route({
-    method: 'POST', path: '/admin/residents/:userId/verify', tag: 'SimeTown ID', summary: 'Confirm or reject a resident against the property record', auth: 'session', roles: STAFF,
-    body: z.object({ approve: z.boolean() }),
-    handler: (c) => identity.verifyResident(c.db, c.actor, c.params.userId!, c.body.approve, c.now),
+    method: 'GET', path: '/admin/residents/places', tag: 'SimeTown ID', summary: 'Every place (precinct) with residents waiting, confirmed and rejected', auth: 'session', roles: STAFF,
+    handler: (c) => identity.residentPlaces(c.db, c.actor),
+  }),
+  route({
+    method: 'POST', path: '/admin/residents/:userId/verify', tag: 'SimeTown ID', summary: 'Confirm or reject a resident against the property record (a rejection may give a reason)', auth: 'session', roles: STAFF,
+    body: z.object({ approve: z.boolean(), reason: zText(300).optional() }),
+    handler: (c) => identity.verifyResident(c.db, c.actor, c.params.userId!, c.body.approve, c.now, c.body.approve ? undefined : c.body.reason),
   }),
   route({
     method: 'GET', path: '/admin/accounts', tag: 'SimeTown ID', summary: 'Shop, sponsor and staff accounts', auth: 'session', roles: ADMINS,

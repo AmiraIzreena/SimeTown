@@ -90,7 +90,7 @@ export const NAV: Record<Area, { title: string; items: NavItem[] }> = {
       { href: '/console/people', label: 'People', icon: Users },
       { href: '/console/shops', label: 'Shops', icon: Building2, roles: ADMINS },
       { href: '/console/finance', label: 'Float & payments', icon: Landmark },
-      { href: '/console/places', label: 'Kiosks, machines & trails', icon: MapPin },
+      { href: '/console/places', label: 'Kiosks, trails & patrol points', icon: MapPin },
       { href: '/console/recycling', label: 'Recycling collections', icon: Recycle },
       { href: '/console/access', label: 'Access places', icon: Accessibility },
       { href: '/console/komuniti', label: 'Komuniti', gloss: 'Reports & posts', icon: ShieldAlert },

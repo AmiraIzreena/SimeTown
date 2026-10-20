@@ -1,7 +1,7 @@
 
 import { Text } from '@/components/ui/localized-text';
 import { LocalizedTd } from '@/components/ui/localized-elements';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 import { Card } from './card';
 
@@ -21,19 +21,19 @@ export function DataTable<T>({ columns, rows, keyOf, caption }: { columns: Colum
         <table className="rtable w-full text-left text-sm">
           <caption className="sr-only"><Text>{caption}</Text></caption>
           <thead>
-            <tr className="border-b border-ink-200 bg-ink-25 text-xs font-semibold uppercase tracking-wide text-ink-500">
+            <tr className="border-b border-ink-100/80 bg-ink-25/70 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-500">
               {columns.map((column) => (
-                <th key={column.header} scope="col" className={cn('px-4 py-3', column.align === 'right' && 'text-right')}>
+                <th key={column.header} scope="col" className={cn('px-5 py-2.5', column.align === 'right' && 'text-right')}>
                   <Text>{column.header}</Text>
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
-              <tr key={keyOf(row)} className="border-b border-ink-100 transition-colors duration-200 last:border-0 hover:bg-ink-25">
+            {rows.map((row, index) => (
+              <tr key={keyOf(row)} style={{ '--i': Math.min(index, 12) } as CSSProperties} className="data-row border-b border-ink-100/80 transition-colors duration-200 last:border-0 hover:bg-[rgb(255_247_240/0.7)]">
                 {columns.map((column) => (
-                  <LocalizedTd key={column.header} data-label={column.header} className={cn('px-4 py-3 align-middle text-ink-800', column.align === 'right' && 'text-right tabular-nums', column.desktopOnly && 'max-md:hidden')}>
+                  <LocalizedTd key={column.header} data-label={column.header} className={cn('px-5 py-3.5 align-middle text-ink-800', column.align === 'right' && 'text-right tabular-nums', column.desktopOnly && 'max-md:hidden')}>
                     <Text>{column.cell(row)}</Text>
                   </LocalizedTd>
                 ))}

@@ -117,8 +117,10 @@ export function SiteHeader({ home = null, overlay = false }: { home?: string | n
           ))}
         </LocalizedNav>
 
+        {/* Language, a thin divider, then the account actions: EN | Sign in | Get started. */}
         <div className="ml-auto hidden items-center gap-2 xl:flex">
-          <LanguageSwitch signedIn={Boolean(home)} />
+          <LanguageSwitch signedIn={Boolean(home)} variant="header" />
+          <span aria-hidden className="mx-1 h-6 w-px bg-white/20" />
           {home ? (
             <Link href={home} className="site-cta"><Text>Open SimeTown</Text><ArrowRight className="size-4" aria-hidden /></Link>
           ) : (
@@ -161,7 +163,7 @@ export function SiteHeader({ home = null, overlay = false }: { home?: string | n
                 <Link href="/login" className="rounded-full border border-white/25 px-5 py-2.5 text-sm font-semibold text-white hover:bg-white/10"><Text>Sign in</Text></Link>
               </>
             )}
-            <LanguageSwitch signedIn={Boolean(home)} />
+            <LanguageSwitch signedIn={Boolean(home)} variant="header" />
           </div>
         </LocalizedNav>
       </LocalizedDiv>
