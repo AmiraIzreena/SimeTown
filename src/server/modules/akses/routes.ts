@@ -2,7 +2,8 @@ import { z } from 'zod';
 import { ACCESS_NEEDS, ADMINS, PLACE_KINDS, STAFF } from '@/shared/domain';
 import { ACCESS_CATEGORIES, ACCESS_INCIDENT_STATUSES, PARTY_KINDS } from '@/shared/akses';
 import { PRIORITIES } from '@/shared/incidents';
-import { requireVerifiedResident, townshipOf } from '../../auth/actor';
+import { requireVerifiedResident } from '../../auth/actor';
+import { resolveTownship } from '../townships';
 import { badRequest } from '../../errors';
 import { emptyBody, route, zId, zText } from '../../http/router';
 import { readForm, readPhoto } from '../../http/uploads';
@@ -182,7 +183,7 @@ export const aksesRoutes = [
   route({
     method: 'POST', path: '/admin/access/run-checks', tag: 'Akses+', summary: 'Run the Akses+ reminders, escalations and deliveries now for my township (the scheduler also runs them)', auth: 'session', roles: ADMINS, body: emptyBody,
     rateLimit: { limit: 20, windowSec: 600, by: 'user' },
-    handler: (c) => runAccessChecks(c.db, c.now, townshipOf(c.actor)),
+    handler: async (c) => runAccessChecks(c.db, c.now, await resolveTownship(c.db, c.actor)),
   }),
   route({
     method: 'POST', path: '/admin/access-places', tag: 'Akses+', summary: 'Add a place staff have checked (verified, with its first inspection)', auth: 'session', roles: STAFF,
@@ -213,11 +214,14 @@ export const aksesRoutes = [
   }),
   route({
     method: 'GET', path: '/admin/access/parties', tag: 'Akses+', summary: 'Organisations responsible for facilities, and who acts for them', auth: 'session', roles: STAFF,
-    handler: async (c) => ({
-      parties: await config.listParties(c.db, townshipOf(c.actor)),
-      changes: await config.configChanges(c.db, townshipOf(c.actor)),
-      people: await c.db.query(`SELECT id, full_name, role FROM users WHERE township_id = $1 AND role IN ('TOWNSHIP_STAFF', 'TOWNSHIP_ADMIN', 'GUARD') AND status = 'ACTIVE' ORDER BY full_name`, [townshipOf(c.actor)]),
-    }),
+    handler: async (c) => {
+      const townshipId = await resolveTownship(c.db, c.actor);
+      return {
+        parties: await config.listParties(c.db, townshipId),
+        changes: await config.configChanges(c.db, townshipId),
+        people: await c.db.query(`SELECT id, full_name, role FROM users WHERE township_id = $1 AND role IN ('TOWNSHIP_STAFF', 'TOWNSHIP_ADMIN', 'GUARD') AND status = 'ACTIVE' ORDER BY full_name`, [townshipId]),
+      };
+    },
   }),
   route({
     method: 'POST', path: '/admin/access/parties', tag: 'Akses+', summary: 'Add an organisation', auth: 'session', roles: ADMINS,
@@ -244,7 +248,7 @@ export const aksesRoutes = [
   }),
   route({
     method: 'GET', path: '/admin/access/policy', tag: 'Akses+', summary: 'Response targets and verification rules (proposed values)', auth: 'session', roles: STAFF,
-    handler: (c) => config.getAccessPolicy(c.db, townshipOf(c.actor)),
+    handler: async (c) => config.getAccessPolicy(c.db, await resolveTownship(c.db, c.actor)),
   }),
   route({
     method: 'POST', path: '/admin/access/policy', tag: 'Akses+', summary: 'Change response targets and verification rules', auth: 'session', roles: ADMINS,

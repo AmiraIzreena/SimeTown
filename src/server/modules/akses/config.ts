@@ -2,7 +2,8 @@ import { ADMINS, PLACE_KINDS, type PlaceKind } from '@/shared/domain';
 import { ACCESS_CATEGORIES, DEFAULT_ACCESS_POLICY, DEFAULT_ROUTING, type AccessCategory, type AccessPolicy, type PartyKind, type PartyRef, type RoutingRule } from '@/shared/akses';
 import type { Priority } from '@/shared/incidents';
 import { one, type Queryable } from '../../db/client';
-import { townshipOf, type Actor } from '../../auth/actor';
+import { canAccessTownship, type Actor } from '../../auth/actor';
+import { resolveTownship } from '../townships';
 import { conflict, forbidden, notFound, ruleViolation } from '../../errors';
 import { audit } from '../audit';
 
@@ -58,7 +59,7 @@ export async function partyRefs(q: Queryable, townshipId: string): Promise<Party
 
 export async function createParty(q: Queryable, actor: Actor, input: { name: string; kind: PartyKind; integration: 'IN_APP' | 'SIMULATED'; contact?: string }) {
   requireAdmin(actor);
-  const townshipId = townshipOf(actor);
+  const townshipId = await resolveTownship(q, actor);
   if (await one(q, 'SELECT 1 FROM access_parties WHERE township_id = $1 AND lower(name) = lower($2)', [townshipId, input.name])) {
     throw conflict('PARTY_EXISTS', 'An organisation with this name is already set up.');
   }
@@ -73,7 +74,7 @@ export async function createParty(q: Queryable, actor: Actor, input: { name: str
 export async function updateParty(q: Queryable, actor: Actor, partyId: string, input: { active?: boolean; simulateFailures?: number; addMember?: string; removeMember?: string }) {
   requireAdmin(actor);
   const party = await one<{ township_id: string; integration: string }>(q, 'SELECT township_id, integration FROM access_parties WHERE id = $1', [partyId]);
-  if (!party || party.township_id !== townshipOf(actor)) throw notFound('Organisation');
+  if (!party || !canAccessTownship(actor, party.township_id)) throw notFound('Organisation');
   if (input.active !== undefined) await q.query('UPDATE access_parties SET active = $2 WHERE id = $1', [partyId, input.active]);
   if (input.simulateFailures !== undefined) {
     if (party.integration !== 'SIMULATED') throw ruleViolation('NOT_SIMULATED', 'Only a simulated integration can be told to fail.');
@@ -104,7 +105,7 @@ export async function townshipRules(q: Queryable, townshipId: string): Promise<R
 
 /** Every rule that applies, the township's own first, for the console to show what decides. */
 export async function effectiveRules(q: Queryable, actor: Actor) {
-  const townshipId = townshipOf(actor);
+  const townshipId = await resolveTownship(q, actor);
   const own = await townshipRules(q, townshipId);
   const shadowed = (r: RoutingRule) => own.some((o) => o.category === r.category && o.placeKind === r.placeKind);
   return [...own, ...DEFAULT_ROUTING.filter((r) => !shadowed(r))];
@@ -116,7 +117,7 @@ export async function saveRule(
   now: Date,
 ) {
   requireAdmin(actor);
-  const townshipId = townshipOf(actor);
+  const townshipId = await resolveTownship(q, actor);
   if (!ACCESS_CATEGORIES.includes(input.category) || (input.placeKind && !PLACE_KINDS.includes(input.placeKind))) throw notFound('Category');
   const partyId = input.target === 'PARTY' ? input.partyId ?? null : null;
   if (input.target === 'PARTY' && !(partyId && (await one(q, 'SELECT 1 FROM access_parties WHERE id = $1 AND township_id = $2', [partyId, townshipId])))) {
@@ -135,7 +136,7 @@ export async function saveRule(
 
 export async function deleteRule(q: Queryable, actor: Actor, ruleId: string) {
   requireAdmin(actor);
-  const rows = await q.query('DELETE FROM access_routing_rules WHERE id = $1 AND township_id = $2 RETURNING id', [ruleId, townshipOf(actor)]);
+  const rows = await q.query('DELETE FROM access_routing_rules WHERE id = $1 AND township_id = $2 RETURNING id', [ruleId, await resolveTownship(q, actor)]);
   if (!rows.length) throw notFound('Rule');
   await audit(q, actor.id, 'ACCESS_RULE_DELETED', 'access_routing_rule', ruleId);
   return effectiveRules(q, actor);
@@ -158,7 +159,7 @@ export async function getAccessPolicy(q: Queryable, townshipId: string): Promise
 
 export async function saveAccessPolicy(q: Queryable, actor: Actor, changes: Partial<AccessPolicy>, now: Date) {
   requireAdmin(actor);
-  const townshipId = townshipOf(actor);
+  const townshipId = await resolveTownship(q, actor);
   const before = await getAccessPolicy(q, townshipId);
   const next: AccessPolicy = {
     ...before, ...changes,

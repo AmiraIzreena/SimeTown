@@ -37,5 +37,10 @@ export function townshipOf(actor: Actor): string {
  * Use on every staff action that names a record by id (stops IDOR across townships).
  */
 export function assertTownshipAccess(actor: Actor, townshipId: string): void {
-  if (actor.role !== 'HQ_ADMIN' && actor.townshipId !== townshipId) throw forbidden();
+  if (!canAccessTownship(actor, townshipId)) throw forbidden();
+}
+
+/** The same rule as a yes/no, for callers that answer "not found" rather than "forbidden". */
+export function canAccessTownship(actor: Actor, townshipId: string): boolean {
+  return actor.role === 'HQ_ADMIN' || actor.townshipId === townshipId;
 }

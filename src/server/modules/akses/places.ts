@@ -2,7 +2,8 @@ import { ADMINS, STAFF, type PlaceKind } from '@/shared/domain';
 import { isLikelyDuplicate, type Verification } from '@/shared/akses';
 import type { Photo } from '../../ai/classifier';
 import { one, type Db, type Queryable } from '../../db/client';
-import { requireVerifiedResident, townshipOf, type Actor } from '../../auth/actor';
+import { canAccessTownship, requireVerifiedResident, type Actor } from '../../auth/actor';
+import { resolveTownship } from '../townships';
 import { conflict, forbidden, notFound, ruleViolation } from '../../errors';
 import { audit } from '../audit';
 import { recordAction, rewardUserById } from '../rewards';
@@ -29,7 +30,7 @@ const isStaff = (actor: Actor) => STAFF.includes(actor.role);
  * a claimed fix is waiting for their answer.
  */
 export async function listPlaces(db: Db, actor: Actor, options: { archived?: boolean } = {}) {
-  const townshipId = townshipOf(actor);
+  const townshipId = await resolveTownship(db, actor);
   const staff = isStaff(actor);
   return db.query(
     `SELECT p.id, p.name, p.kind, p.location, p.note, p.verification, p.availability, p.availability_changed_at, p.verified_at AS last_verified_at,
@@ -81,7 +82,7 @@ export async function suggestPlace(db: Db, actor: Actor, input: PlaceInput, now:
 /** Staff add a place they have checked themselves: verified at once, with that check as its first inspection. */
 export async function createPlace(db: Db, actor: Actor, input: PlaceInput & { partyId?: string | null }, now: Date) {
   if (!isStaff(actor)) throw forbidden();
-  const townshipId = townshipOf(actor);
+  const townshipId = await resolveTownship(db, actor);
   return db.tx(async (tx) => {
     if (await one(tx, 'SELECT 1 FROM access_places WHERE township_id = $1 AND archived_at IS NULL AND lower(name) = lower($2) AND kind = $3', [townshipId, input.name, input.kind])) {
       throw conflict('PLACE_EXISTS', 'This place is already listed.');
@@ -111,7 +112,7 @@ export async function inspectPlace(db: Db, actor: Actor, placeId: string, input:
     const place = await one<{ township_id: string; kind: PlaceKind; verification: Verification; availability: string; reported_by: string | null; archived_at: Date | null }>(
       tx, 'SELECT township_id, kind, verification, availability, reported_by, archived_at FROM access_places WHERE id = $1 FOR UPDATE', [placeId],
     );
-    if (!place || place.township_id !== townshipOf(actor)) throw notFound('Place');
+    if (!place || !canAccessTownship(actor, place.township_id)) throw notFound('Place');
     if (place.archived_at) throw conflict('ARCHIVED', 'This place is archived.');
     const policy = await getAccessPolicy(tx, place.township_id);
     const photoId = input.photo
@@ -149,7 +150,7 @@ export async function inspectPlace(db: Db, actor: Actor, placeId: string, input:
 
 export async function setPlaceParty(db: Db, actor: Actor, placeId: string, partyId: string | null) {
   if (!ADMINS.includes(actor.role)) throw forbidden('Only an admin can change who runs a place.');
-  const townshipId = townshipOf(actor);
+  const townshipId = await resolveTownship(db, actor);
   if (partyId && !(await one(db, 'SELECT 1 FROM access_parties WHERE id = $1 AND township_id = $2', [partyId, townshipId]))) throw notFound('Organisation');
   const rows = await db.query('UPDATE access_places SET party_id = $3 WHERE id = $1 AND township_id = $2 RETURNING id', [placeId, townshipId, partyId]);
   if (!rows.length) throw notFound('Place');
@@ -162,7 +163,7 @@ export async function archivePlace(db: Db, actor: Actor, placeId: string, reason
   if (!ADMINS.includes(actor.role)) throw forbidden('Only an admin can archive a place.');
   return db.tx(async (tx) => {
     const place = await one<{ township_id: string; archived_at: Date | null }>(tx, 'SELECT township_id, archived_at FROM access_places WHERE id = $1 FOR UPDATE', [placeId]);
-    if (!place || place.township_id !== townshipOf(actor)) throw notFound('Place');
+    if (!place || !canAccessTownship(actor, place.township_id)) throw notFound('Place');
     if (place.archived_at) throw conflict('ARCHIVED', 'This place is already archived.');
     if (await one(tx, `SELECT 1 FROM access_incidents WHERE place_id = $1 AND status <> 'RESOLVED'`, [placeId])) {
       throw ruleViolation('OPEN_INCIDENTS', 'This place has open incidents. Resolve them first.');
@@ -175,7 +176,7 @@ export async function archivePlace(db: Db, actor: Actor, placeId: string, reason
 
 export async function restorePlace(db: Db, actor: Actor, placeId: string, now: Date) {
   if (!ADMINS.includes(actor.role)) throw forbidden('Only an admin can restore a place.');
-  const rows = await db.query('UPDATE access_places SET archived_at = NULL, archived_by = NULL, archive_reason = NULL, updated_at = $3 WHERE id = $1 AND township_id = $2 AND archived_at IS NOT NULL RETURNING id', [placeId, townshipOf(actor), now]);
+  const rows = await db.query('UPDATE access_places SET archived_at = NULL, archived_by = NULL, archive_reason = NULL, updated_at = $3 WHERE id = $1 AND township_id = $2 AND archived_at IS NOT NULL RETURNING id', [placeId, await resolveTownship(db, actor), now]);
   if (!rows.length) throw notFound('Place');
   await audit(db, actor.id, 'ACCESS_PLACE_RESTORED', 'access_place', placeId);
   return { ok: true };

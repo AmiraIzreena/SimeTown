@@ -1,7 +1,8 @@
 import { STAFF } from '@/shared/domain';
 import { ACCESS_INCIDENT_STATUSES, type AccessIncidentStatus } from '@/shared/akses';
 import { one, type Db } from '../../db/client';
-import { townshipOf, type Actor } from '../../auth/actor';
+import { type Actor } from '../../auth/actor';
+import { resolveTownship } from '../townships';
 import { forbidden, notFound } from '../../errors';
 import { accessHistoryIntact } from './incidents';
 
@@ -25,7 +26,7 @@ const INCIDENT_COLUMNS = `
 
 export async function accessOverview(db: Db, actor: Actor, now: Date) {
   requireStaff(actor);
-  const townshipId = townshipOf(actor);
+  const townshipId = await resolveTownship(db, actor);
   const metrics = (await one<Record<string, number>>(
     db,
     `SELECT
@@ -84,7 +85,7 @@ export interface IncidentFilter { status?: AccessIncidentStatus | 'ACTIVE' | 'AL
 
 export async function listAccessIncidents(db: Db, actor: Actor, f: IncidentFilter) {
   requireStaff(actor);
-  const townshipId = townshipOf(actor);
+  const townshipId = await resolveTownship(db, actor);
   const status = f.status ?? 'ACTIVE';
   const statuses = status === 'ALL' ? [...ACCESS_INCIDENT_STATUSES] : status === 'ACTIVE' ? ACCESS_INCIDENT_STATUSES.filter((s) => s !== 'RESOLVED') : [status];
   return db.query(

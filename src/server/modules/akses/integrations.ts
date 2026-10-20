@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { one, type Db } from '../../db/client';
-import { townshipOf, type Actor } from '../../auth/actor';
+import { canAccessTownship, type Actor } from '../../auth/actor';
 import { AppError, notFound, ruleViolation } from '../../errors';
 import { audit } from '../audit';
 import { requireAdmin } from './config';
@@ -116,7 +116,7 @@ export async function handlePartyEvent(db: Db, partyId: string, e: PartyEvent, n
 export async function simulateProvider(db: Db, actor: Actor, incidentId: string, input: { type: 'ACKNOWLEDGED' | 'RESOLVED'; telemetry?: boolean; actionTaken?: string; eventId?: string }, now: Date) {
   requireAdmin(actor);
   const i = await one<{ reference: string; party_id: string | null; township_id: string }>(db, 'SELECT reference, party_id, township_id FROM access_incidents WHERE id = $1', [incidentId]);
-  if (!i || i.township_id !== townshipOf(actor)) throw notFound('Incident');
+  if (!i || !canAccessTownship(actor, i.township_id)) throw notFound('Incident');
   const party = i.party_id ? await one<{ integration: string }>(db, 'SELECT integration FROM access_parties WHERE id = $1', [i.party_id]) : undefined;
   if (party?.integration !== 'SIMULATED') throw ruleViolation('NOT_SIMULATED', 'This incident is not with an organisation reached through a simulated integration.');
   const result = await handlePartyEvent(db, i.party_id!, { eventId: input.eventId ?? randomUUID(), reference: i.reference, type: input.type, telemetry: input.telemetry, actionTaken: input.actionTaken }, now);

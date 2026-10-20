@@ -343,6 +343,14 @@ describe('the workflow', () => {
     expect(once).toBeTruthy();
   });
 
+  it('lets an HQ admin act on any township, and asks which township when there are several', async () => {
+    const ramp = await newPlace('RAMP');
+    await expect(inspectPlace(db, w.hq, ramp, { outcome: 'VERIFIED', note: 'Checked by HQ' }, T0)).resolves.toBeTruthy();
+    await expect(archivePlace(db, w.hq, ramp, 'Closed for good', T0)).resolves.toBeTruthy();
+    await expect(archivePlace(db, other.admin, ramp, 'Not mine', T0)).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    await expect(accessOverview(db, w.hq, T0)).rejects.toMatchObject({ message: 'Choose a township.' });
+  });
+
   it('keeps reporters anonymous to residents and to the team', async () => {
     const ramp = await newPlace('RAMP');
     await reportIssue(db, aisyah, ramp, { category: 'OBSTRUCTION', description: 'Planks on the ramp', idempotencyKey: key() }, T0);
