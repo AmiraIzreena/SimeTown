@@ -1,4 +1,5 @@
 import { sniffImage, type Photo } from '../ai/classifier';
+import { one, type Queryable } from '../db/client';
 import { AppError, badRequest } from '../errors';
 import { readBody } from './body';
 
@@ -17,6 +18,14 @@ export async function readPhoto(form: FormData, field = 'photo'): Promise<Photo 
   const mime = sniffImage(bytes);
   if (!mime) throw badRequest('The photo must be a JPEG, PNG or WebP image.');
   return { mime, bytes };
+}
+
+/** Stores a checked photo for its owner and returns the upload's id. */
+export async function storeUpload(q: Queryable, ownerId: string, photo: Photo): Promise<string> {
+  const upload = await one<{ id: string }>(q, 'INSERT INTO uploads (owner_id, mime, size_bytes, bytes) VALUES ($1, $2, $3, $4) RETURNING id', [
+    ownerId, photo.mime, photo.bytes.length, Buffer.from(photo.bytes),
+  ]);
+  return upload!.id;
 }
 
 export async function readForm(req: Request): Promise<FormData> {

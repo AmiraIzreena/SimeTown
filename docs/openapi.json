@@ -1821,9 +1821,19 @@
                 "REWARDS",
                 "REPORTS",
                 "RECYCLING",
+                "GERAK",
                 "ALERTS",
                 "ACCOUNT"
               ]
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 60
             }
           }
         ],
@@ -5438,7 +5448,7 @@
         "tags": [
           "Lapor"
         ],
-        "summary": "Report a hazard or access barrier (multipart form; optional photo)",
+        "summary": "Report a hazard or access barrier (multipart form; optional photo). Without \"issue\", a likely matching issue is returned first ({ needsChoice, issue, alreadyYours }) and nothing is saved",
         "description": "Signed-in RESIDENT.",
         "operationId": "postReports",
         "parameters": [],
@@ -5516,6 +5526,56 @@
                 "REJECTED"
               ]
             }
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ongoing",
+                "finished"
+              ]
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "POTHOLE",
+                "LIGHTING",
+                "DRAINAGE",
+                "WASTE",
+                "ACCESS_BARRIER",
+                "SAFETY",
+                "OTHER"
+              ]
+            }
+          },
+          {
+            "name": "who",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "mine",
+                "following"
+              ]
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 60
+            }
           }
         ],
         "security": [
@@ -5544,6 +5604,433 @@
             "$ref": "#/components/responses/Error"
           },
           "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/report-issues": {
+      "get": {
+        "tags": [
+          "Lapor"
+        ],
+        "summary": "Public issues in my township (enough residents affected): written title, type, area, status and dates only, with the township's figures",
+        "description": "Signed-in RESIDENT.",
+        "operationId": "getReportIssues",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": "open",
+              "type": "string",
+              "enum": [
+                "open",
+                "closed"
+              ]
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "POTHOLE",
+                "LIGHTING",
+                "DRAINAGE",
+                "WASTE",
+                "ACCESS_BARRIER",
+                "SAFETY",
+                "OTHER"
+              ]
+            }
+          },
+          {
+            "name": "following",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 60
+            }
+          }
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/report-issues/similar": {
+      "get": {
+        "tags": [
+          "Lapor"
+        ],
+        "summary": "Public open issues that look like the report being written, to tap \"Me too\" instead",
+        "description": "Signed-in RESIDENT.",
+        "operationId": "getReportIssuesSimilar",
+        "parameters": [
+          {
+            "name": "text",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": "",
+              "type": "string",
+              "maxLength": 1200
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "POTHOLE",
+                "LIGHTING",
+                "DRAINAGE",
+                "WASTE",
+                "ACCESS_BARRIER",
+                "SAFETY",
+                "OTHER"
+              ]
+            }
+          },
+          {
+            "name": "zoneId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/report-issues/attention": {
+      "get": {
+        "tags": [
+          "Lapor"
+        ],
+        "summary": "Open issues that reached the public threshold or are urgent, with their reports (Needs attention)",
+        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "getReportIssuesAttention",
+        "parameters": [],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/report-issues/{issueId}/me-too": {
+      "post": {
+        "tags": [
+          "Lapor"
+        ],
+        "summary": "Say \"Me too\" on an issue (follow it and count as affected; no XP)",
+        "description": "Signed-in RESIDENT.",
+        "operationId": "postReportIssuesIssueIdMeToo",
+        "parameters": [
+          {
+            "name": "issueId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "on": {
+                    "default": true,
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/report-issues/{issueId}": {
+      "patch": {
+        "tags": [
+          "Lapor"
+        ],
+        "summary": "Staff update every open report in an issue at once, or correct its public title (logged)",
+        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "patchReportIssuesIssueId",
+        "parameters": [
+          {
+            "name": "issueId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "NEW",
+                      "IN_PROGRESS",
+                      "RESOLVED",
+                      "REJECTED"
+                    ]
+                  },
+                  "category": {
+                    "type": "string",
+                    "enum": [
+                      "POTHOLE",
+                      "LIGHTING",
+                      "DRAINAGE",
+                      "WASTE",
+                      "ACCESS_BARRIER",
+                      "SAFETY",
+                      "OTHER"
+                    ]
+                  },
+                  "urgency": {
+                    "type": "string",
+                    "enum": [
+                      "LOW",
+                      "MEDIUM",
+                      "HIGH",
+                      "URGENT"
+                    ]
+                  },
+                  "staffNote": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "assignedTo": {
+                    "type": "string",
+                    "maxLength": 80
+                  },
+                  "targetDate": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "title": {
+                    "type": "string",
+                    "maxLength": 80
+                  },
+                  "titleMs": {
+                    "type": "string",
+                    "maxLength": 80
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
             "$ref": "#/components/responses/Error"
           }
         }
@@ -16454,7 +16941,9 @@
                       "GUARD_DONE",
                       "NOT_ARRIVED",
                       "GATE",
-                      "COURIER_STATION"
+                      "COURIER_STATION",
+                      "KITAR",
+                      "GERAK"
                     ]
                   },
                   "reason": {
@@ -16538,14 +17027,14 @@
         }
       }
     },
-    "/api/v1/incidents/mine": {
-      "get": {
+    "/api/v1/incidents/report-with-photo": {
+      "post": {
         "tags": [
           "Incidents"
         ],
-        "summary": "My reports, with what the township office told me, and my courier referrals",
-        "description": "Signed-in RESIDENT, COURIER.",
-        "operationId": "getIncidentsMine",
+        "summary": "Report a Kitar or Gerak problem, with an optional screenshot or photo (multipart form)",
+        "description": "Signed-in RESIDENT.",
+        "operationId": "postIncidentsReportWithPhoto",
         "parameters": [],
         "security": [
           {
@@ -16565,6 +17054,184 @@
                 }
               }
             }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/incident-photos/{reference}": {
+      "get": {
+        "tags": [
+          "Incidents"
+        ],
+        "summary": "A report's screenshot or photo (the reporter and that township's staff only)",
+        "description": "Signed-in RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "getIncidentPhotosReference",
+        "parameters": [
+          {
+            "name": "reference",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/incidents/mine": {
+      "get": {
+        "tags": [
+          "Incidents"
+        ],
+        "summary": "My reports (ongoing or finished, a page at a time, searchable, by type or waiting for my answer), with what the township office told me, and my courier referrals",
+        "description": "Signed-in RESIDENT, COURIER.",
+        "operationId": "getIncidentsMine",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ongoing",
+                "finished",
+                "all"
+              ]
+            }
+          },
+          {
+            "name": "section",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "parcels",
+                "gate",
+                "kitar",
+                "gerak"
+              ]
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 60
+            }
+          },
+          {
+            "name": "place",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "LOCKER",
+                "GUARDHOUSE_PARCEL",
+                "GATE",
+                "DELIVERY",
+                "OTHER",
+                "KITAR",
+                "GERAK"
+              ]
+            }
+          },
+          {
+            "name": "awaiting",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          }
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
           },
           "401": {
             "$ref": "#/components/responses/Error"
@@ -16818,6 +17485,8 @@
                 "COURIERS",
                 "FACILITIES",
                 "COMMUNITY",
+                "KITAR",
+                "GERAK",
                 "LAPOR"
               ]
             }
@@ -27291,6 +27960,11 @@
                     "maximum": 100
                   },
                   "flag_hide_threshold": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100
+                  },
+                  "issue_public_threshold": {
                     "type": "integer",
                     "minimum": 1,
                     "maximum": 100

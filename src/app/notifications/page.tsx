@@ -8,7 +8,7 @@ const AREAS: Record<Role, Area> = { RESIDENT: 'resident', MERCHANT: 'merchant', 
 export default async function NotificationsPage() {
   const actor = await requireArea(ROLES);
   const offers = actor.role === 'MERCHANT' ? await merchantOffers(actor) : undefined;
-  return <Shell area={AREAS[actor.role]} user={{ fullName: actor.fullName, role: actor.role, offers }}>
+  return <Shell area={AREAS[actor.role]} user={{ id: actor.id, fullName: actor.fullName, role: actor.role, offers }}>
     <NotificationsCenter resident={actor.role === 'RESIDENT'} categories={notificationCategoriesFor(actor.role, offers)} />
   </Shell>;
 }

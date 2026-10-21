@@ -3,12 +3,13 @@
 import { Text } from '@/components/ui/localized-text';
 import { LocalizedDiv, LocalizedInput } from '@/components/ui/localized-elements';
 
-import { CheckCircle2, CircleSlash, Clock, Coins, HandCoins, PiggyBank, Receipt, Repeat, Tag, UserPlus } from 'lucide-react';
+import { CheckCircle2, CircleSlash, Clock, Coins, HandCoins, PiggyBank, Receipt, Repeat, Tag, UserPlus, Users } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState, type CSSProperties, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, PageHeader, Stat } from '@/components/ui/card';
-import { Async, SkeletonStats } from '@/components/ui/feedback';
+import { CountUp } from '@/components/ui/count-up';
+import { Async, Notice, SkeletonPanel, SkeletonStats } from '@/components/ui/feedback';
 import { Input } from '@/components/ui/field';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
@@ -88,32 +89,31 @@ export default function CounterPage() {
   return (
     <>
       <PageHeader title={summary.data?.merchant.name ?? 'Counter'} description="Enter a sale to give points. If the customer wants to use points, they confirm on their own phone." />
-      <div className="space-y-6">
-        <Async state={summary} skeleton={<SkeletonStats count={3} />}>
+      {/* Page order: the shop's status, this week's money and sales, then the sale form beside who has been buying. */}
+      <div className="space-y-8">
+        <Async state={summary} skeleton={<SkeletonStats count={4} />}>
           {(s) => (
-            <>
+            <div className="space-y-6">
               {s.merchant.status !== 'ACTIVE' && (
-                <Card className="border-warning-600/30 bg-warning-50 p-5 text-[15px] text-warning-700">
-                  <p className="font-semibold"><Text>{s.merchant.status === 'PENDING' ? 'Your shop is waiting for approval.' : 'Your shop is suspended.'}</Text></p>
-                  <p className="mt-1"><Text>{s.merchant.status === 'PENDING' ? 'The township office is checking your business registration. You can record sales once approved.' : 'Please contact the township office.'}</Text></p>
-                </Card>
+                <Notice icon={s.merchant.status === 'PENDING' ? Clock : CircleSlash} title={s.merchant.status === 'PENDING' ? 'Your shop is waiting for approval.' : 'Your shop is suspended.'}>
+                  <Text>{s.merchant.status === 'PENDING' ? 'The township office is checking your business registration. You can record sales once approved.' : 'Please contact the township office.'}</Text>
+                </Notice>
               )}
-              <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-                <Stat label="Reward pool" value={s.poolSen} format={formatRM} icon={PiggyBank} tone={s.poolSen < 1_000 ? 'warning' : 'brand'} hint={s.poolSen < 1_000 ? 'Low. No pool, no points: top up to keep giving points.' : 'Pays for the points you give'} />
-                <Stat label="Due to you this week" value={s.owedSen} format={formatRM} icon={HandCoins} tone="success" hint="100% of points you accepted" />
-                <Stat label="Sales, last 7 days" value={s.last7Days.sales} icon={Receipt} hint={formatRM(s.last7Days.billSen)} />
-                <Stat label="Points given, 7 days" value={s.last7Days.pointsGiven} icon={Coins} tone="gold" hint={`Service fee ${formatRM(s.last7Days.feesSen)}`} />
-              </div>
-              <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-                <Stat label="SimeTown customers, 30 days" value={s.last30Days.customers} icon={Receipt} />
-                <Stat label="New customers" value={s.last30Days.newCustomers} icon={UserPlus} tone="success" hint="First SimeTown sale here in 30 days" />
-                <Stat label="Returning customers" value={s.last30Days.returning} icon={Repeat} hint="Bought here before" />
-                <Stat label="Shop Offers used, 30 days" value={s.last30Days.offersUsed} icon={Tag} tone="gold" hint={s.successFeesDueSen ? `${formatRM(s.successFeesDueSen)} in success fees waiting` : undefined} />
-              </div>
-            </>
+              <section aria-labelledby="counter-week" className="space-y-3">
+                <h2 id="counter-week" className="text-[15px] font-semibold text-ink-900"><Text>This week</Text></h2>
+                <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                  <Stat label="Reward pool" value={s.poolSen} format={formatRM} icon={PiggyBank} tone={s.poolSen < 1_000 ? 'warning' : 'brand'} hint={s.poolSen < 1_000 ? 'Low. No pool, no points: top up to keep giving points.' : 'Pays for the points you give'} />
+                  <Stat label="Due to you this week" value={s.owedSen} format={formatRM} icon={HandCoins} tone="success" hint="100% of points you accepted" />
+                  <Stat label="Sales, last 7 days" value={s.last7Days.sales} icon={Receipt} hint={formatRM(s.last7Days.billSen)} />
+                  <Stat label="Points given, 7 days" value={s.last7Days.pointsGiven} icon={Coins} tone="gold" hint={`Service fee ${formatRM(s.last7Days.feesSen)}`} />
+                </div>
+              </section>
+            </div>
           )}
         </Async>
 
+        <div className="grid items-start gap-6 xl:grid-cols-3">
+        <div className="min-w-0 xl:col-span-2">
         {sale ? (
           <SaleResult sale={sale} onNext={next} />
         ) : (
@@ -142,7 +142,7 @@ export default function CounterPage() {
                     ) : (
                       <LocalizedDiv className="flex flex-wrap gap-2" role="group" aria-label="Points to use">
                         {[...new Set([...[1, 2, 3, 5, 10].map((m) => m * rules.redeemStep).filter((v) => v >= rules.minRedeem && v <= maxPoints), maxPoints])].map((value) => (
-                          <button key={value} type="button" aria-pressed={redeem === value} onClick={() => setPoints(value)} className={cn('min-h-11 rounded-md border px-4 text-sm font-semibold transition-colors duration-200', redeem === value ? 'border-brand-600 bg-brand-50 text-brand-800' : 'border-ink-200 text-ink-700 hover:border-ink-300')}>
+                          <button key={value} type="button" aria-pressed={redeem === value} onClick={() => setPoints(value)} className={cn('min-h-11 rounded-md border px-4 text-sm font-semibold transition-[background-color,border-color,color,scale] duration-200 ease-soft active:scale-[0.97] active:duration-100 motion-reduce:transition-none', redeem === value ? 'border-brand-600 bg-brand-50 text-brand-800' : 'border-ink-200 text-ink-700 hover:border-ink-300')}>
                             <Text>{formatPoints(value)}</Text><Text> pts </Text><span className="font-normal text-ink-500">(<Text>{formatRM(value)}</Text>)</span>
                           </button>
                         ))}
@@ -171,7 +171,7 @@ export default function CounterPage() {
               )}
 
               {billSen !== null && billSen > 0 && (
-                <dl className="grid grid-cols-2 gap-3 rounded-lg bg-ink-50 p-4 text-center sm:grid-cols-4">
+                <dl className="grid animate-fade-in grid-cols-2 gap-3 rounded-lg bg-ink-50 p-4 text-center sm:grid-cols-4">
                   <div>
                     <dt className="text-xs font-medium text-ink-500"><Text>Customer pays</Text></dt>
                     <dd className="font-display text-xl font-bold text-ink-900 tabular-nums"><Text>{formatRM(cashSen)}</Text></dd>
@@ -197,8 +197,41 @@ export default function CounterPage() {
             </form>
           </Card>
         )}
+        </div>
+
+        <Async state={summary} skeleton={<SkeletonPanel body="lines" />}>
+          {(s) => <CustomersCard s={s} />}
+        </Async>
+        </div>
       </div>
     </>
+  );
+}
+
+/** Who has been buying in the last 30 days, as one compact list beside the sale form. */
+function CustomersCard({ s }: { s: Summary }) {
+  const rows = [
+    { label: 'SimeTown customers', hint: 'Bought with SimeTown here', value: s.last30Days.customers, icon: Users, tone: 'bg-brand-50 text-brand-700' },
+    { label: 'New customers', hint: 'First SimeTown sale here in 30 days', value: s.last30Days.newCustomers, icon: UserPlus, tone: 'bg-success-50 text-success-700' },
+    { label: 'Returning customers', hint: 'Bought here before', value: s.last30Days.returning, icon: Repeat, tone: 'bg-ink-100 text-ink-700' },
+    { label: 'Shop Offers used', hint: s.successFeesDueSen ? `${formatRM(s.successFeesDueSen)} in success fees waiting` : 'Your own discount for points', value: s.last30Days.offersUsed, icon: Tag, tone: 'bg-gold-50 text-gold-700' },
+  ];
+  return (
+    <Card>
+      <CardHeader title="Customers, last 30 days" />
+      <ul className="divide-y divide-ink-100">
+        {rows.map((row, i) => (
+          <li key={row.label} style={{ '--i': i } as CSSProperties} className="value-line flex items-center gap-3 px-5 py-3.5">
+            <span className={cn('grid size-9 shrink-0 place-items-center rounded-lg', row.tone)}><row.icon className="size-4" aria-hidden /></span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-medium text-ink-800"><Text>{row.label}</Text></span>
+              <span className="block truncate text-xs text-ink-500"><Text>{row.hint}</Text></span>
+            </span>
+            <span className="font-display text-xl font-bold tabular-nums text-ink-900"><CountUp value={row.value} /></span>
+          </li>
+        ))}
+      </ul>
+    </Card>
   );
 }
 
@@ -212,7 +245,7 @@ function SaleResult({ sale, onNext }: { sale: SaleView; onNext: () => void }) {
   }[sale.status];
   return (
     <Card className="animate-rise p-6 text-center sm:p-8" aria-live="polite">
-      <span className={cn('mx-auto grid size-14 place-items-center rounded-full', view.tone)}>
+      <span key={sale.status} className={cn('status-settle mx-auto grid size-14 place-items-center rounded-full', view.tone)}>
         <view.icon className="size-7" aria-hidden />
       </span>
       <h2 className="mt-4 text-xl font-bold"><Text>{view.title}</Text></h2>

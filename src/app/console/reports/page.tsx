@@ -9,16 +9,18 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { IncidentBoard, COMMUNITY_MODULES } from '@/components/features/incident-board';
 import { AffectedBadge, FixedPhoto, LateBadge, ReportPhoto, ReportProgress, STATUS_LABELS, StatusBadge, URGENCY_LABELS, UrgencyBadge, categoryLabel, type Report } from '@/components/features/report-bits';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, PageHeader, Stat } from '@/components/ui/card';
+import { Badge, Card, CardHeader, PageHeader, Stat } from '@/components/ui/card';
 import { Modal } from '@/components/ui/dialog';
 import { EmptyState, ErrorState, SkeletonList } from '@/components/ui/feedback';
 import { Input, Select, Textarea } from '@/components/ui/field';
+import { SubNav } from '@/components/ui/sub-nav';
 import { TabPanel, Tabs } from '@/components/ui/tabs';
 import { api } from '@/lib/api';
 import { timeAgo } from '@/lib/format';
 import { useAction, useApi, usePaged } from '@/lib/hooks';
 import { shrinkPhoto } from '@/lib/image';
 import { REPORT_CATEGORIES, REPORT_CATEGORY_LABELS, REPORT_STATUSES, URGENCIES, type ReportCategory, type ReportStatus } from '@/shared/domain';
+import { NeedsAttention, type Attention } from './attention';
 
 interface ReportStats {
   open: number;
@@ -38,21 +40,30 @@ export default function ReportQueuePage() {
 function LaporWorkspace() {
   const search = useSearchParams();
   const router = useRouter();
-  const tab = search.get('tab') === 'cases' || search.has('ref') ? 'cases' : 'reports';
+  const tab = search.get('tab') === 'cases' || search.has('ref') ? 'cases' : search.get('tab') === 'attention' ? 'attention' : 'reports';
   const reference = search.get('ref');
+  // Loaded here so the tab shows how many problems need attention from any tab.
+  const attention = useApi<Attention>('/report-issues/attention');
   return <>
     <PageHeader title="Lapor" description="Manage community reports and non-parcel cases." />
     <Tabs label="Lapor" value={tab} onChange={(value) => router.push(`/console/reports?tab=${value}`, { scroll: false })} items={[
+      { key: 'attention', label: 'Needs attention', count: attention.data?.items.length },
       { key: 'reports', label: 'Community reports' }, { key: 'cases', label: 'Gate & community cases' },
     ]} />
     <TabPanel>
-      {tab === 'reports' ? <CommunityReports /> : <IncidentBoard key={search.toString()} modules={COMMUNITY_MODULES} openRef={reference && /^INC-\d+$/.test(reference) ? reference : null} />}
+      {tab === 'attention' ? <NeedsAttention data={attention.data} error={attention.error} isLoading={attention.isLoading} reload={() => void attention.mutate()} />
+        : tab === 'reports' ? <CommunityReports onChanged={() => void attention.mutate()} /> : <IncidentBoard key={search.toString()} modules={COMMUNITY_MODULES} openRef={reference && /^INC-\d+$/.test(reference) ? reference : null} />}
     </TabPanel>
   </>;
 }
 
-function CommunityReports() {
-  const [status, setStatus] = useState<ReportStatus>('NEW');
+const isStatus = (value: string | null): value is ReportStatus => (REPORT_STATUSES as readonly string[]).includes(value ?? '');
+
+function CommunityReports({ onChanged }: { onChanged: () => void }) {
+  // The status pill is part of the address, so a refresh or Back keeps the list you were on.
+  const params = useSearchParams();
+  const asked = params.get('status');
+  const status: ReportStatus = isStatus(asked) ? asked : 'NEW';
   const reports = usePaged<Report>(`/reports?status=${status}&limit=15`);
   const stats = useApi<ReportStats>('/reports/stats');
   const [open, setOpen] = useState<Report | null>(null);
@@ -61,6 +72,7 @@ function CommunityReports() {
     setOpen(null);
     void reports.reload();
     void stats.mutate();
+    onChanged();
   };
   const update = useAction((id: string, body: Record<string, unknown>) => api.patch(`/reports/${id}`, body), {
     success: 'Report updated. Everyone following it has been told.',
@@ -104,8 +116,8 @@ function CommunityReports() {
         />
       </div>
 
-      <Tabs<ReportStatus> label="Report status" value={status} onChange={setStatus} items={REPORT_STATUSES.map((st) => ({ key: st, label: STATUS_LABELS[st] }))} />
-      <TabPanel>
+      <SubNav label="Report status" value={status} items={REPORT_STATUSES.map((st) => ({ key: st, label: STATUS_LABELS[st] }))} hrefOf={(st) => (st === 'NEW' ? '/console/reports' : `/console/reports?status=${st}`)} className="mb-5" />
+      <div key={status} className="content-in">
         {reports.error ? (
           <ErrorState error={reports.error} onRetry={() => void reports.reload()} />
         ) : reports.isLoading ? (
@@ -113,17 +125,18 @@ function CommunityReports() {
         ) : reports.items.length === 0 ? (
           <EmptyState title="Nothing here"><Text>No reports with this status.</Text></EmptyState>
         ) : (
-          <ul className="space-y-3">
+          <ul className="stagger-in space-y-3">
             {[...reports.items]
               // Late first, then the ones that affect most people, then the most urgent.
               .sort((a, b) => Number(b.late) - Number(a.late) || b.affected - a.affected || URGENCIES.indexOf(b.urgency) - URGENCIES.indexOf(a.urgency))
               .map((report) => (
                 <li key={report.id}>
-                  <button type="button" onClick={() => setOpen(report)} className="lift block w-full rounded-lg border border-ink-200 bg-white p-5 text-left shadow-xs">
+                  <button type="button" onClick={() => setOpen(report)} className="lift glass-surface block w-full rounded-xl border p-5 text-left shadow-sm">
                     <div className="flex flex-wrap items-center gap-2">
                       <UrgencyBadge urgency={report.urgency} />
                       <LateBadge late={report.late} />
                       <AffectedBadge affected={report.affected} />
+                      {(report.issue_reports ?? 1) > 1 && <Badge tone="brand"><Text>{`Shared problem · ${report.issue_people} residents`}</Text></Badge>}
                       <span className="text-sm font-semibold text-ink-900"><Text>{categoryLabel(report.category)}</Text></span>
                       {report.zone_name && <span className="text-sm text-ink-500">· <Text>{report.zone_name}</Text></span>}
                       <span className="ml-auto text-xs text-ink-500"><Text>{timeAgo(report.created_at)}</Text></span>
@@ -150,7 +163,7 @@ function CommunityReports() {
             <Button variant="secondary" onClick={() => void reports.loadMore()} pending={reports.loadingMore}><Text>Show more</Text></Button>
           </div>
         )}
-      </TabPanel>
+      </div>
 
       {s && s.byCategory.length > 0 && (
         <Card className="mt-6">

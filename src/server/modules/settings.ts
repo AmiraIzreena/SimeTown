@@ -16,6 +16,7 @@ export interface Settings {
   flood_warning_pct: number;
   flood_danger_pct: number;
   flag_hide_threshold: number;
+  issue_public_threshold: number;
   min_group_size: number;
   timezone: string;
   issuance_paused: boolean;
@@ -38,6 +39,7 @@ export const SETTINGS_COLUMNS = [
   'flood_warning_pct',
   'flood_danger_pct',
   'flag_hide_threshold',
+  'issue_public_threshold',
   'min_group_size',
   'timezone',
   'issuance_paused',

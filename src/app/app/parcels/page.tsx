@@ -1,10 +1,10 @@
 'use client';
 
 import { Text } from '@/components/ui/localized-text';
-import { LocalizedDiv, LocalizedImg } from '@/components/ui/localized-elements';
+import { LocalizedAside, LocalizedDiv, LocalizedImg } from '@/components/ui/localized-elements';
 
-import { CheckCircle2, Flag, Package, PackageOpen, Share2, Undo2 } from 'lucide-react';
-import { Suspense, useEffect, useRef, useState } from 'react';
+import { CheckCircle2, Flag, Package, PackageOpen, RefreshCw, Share2, Undo2, type LucideIcon } from 'lucide-react';
+import { Suspense, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { LockerParcels } from '@/components/features/locker-parcels';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ import { QrCode } from '@/components/ui/qr';
 import { TabPanel, Tabs } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/toast';
 import { formatDateTime, timeAgo } from '@/lib/format';
+import { cn } from '@/lib/cn';
 import { useApi } from '@/lib/hooks';
 import { useT } from '@/lib/i18n';
 
@@ -65,6 +66,85 @@ function GuardhouseSkeleton() {
   );
 }
 
+/** Lapor → Parcel & gate reports, opened on this tab's own type: locker reports from the lockers tab, guardhouse reports from the guardhouse tab. */
+const reportsHref = (tab: Tab) => '/app/lapor?tab=cases&type=' + (tab === 'guardhouse' ? 'guardhouse' : 'locker');
+
+/** The collection steps for each tab: a short title to scan, and a detail line where it helps. */
+const GUIDE: Record<Tab, { steps: { title: string; detail?: string }[]; tip: { title: string; text: string } }> = {
+  lockers: {
+    steps: [
+      { title: 'Go to the locker station', detail: 'Its name and door number are on your parcel.' },
+      { title: 'Type the PIN or show the QR code', detail: 'At the locker, you can also open your door from this page with the station code.' },
+      { title: 'Take your parcel and shut the door' },
+    ],
+    tip: { title: 'Someone else may have seen your code?', text: 'Tap Get a new code on the parcel. The old PIN and QR code stop working straight away.' },
+  },
+  guardhouse: {
+    steps: [
+      { title: 'Go to the guardhouse' },
+      { title: 'Show your code to the guard', detail: 'The collection code or its QR code.' },
+      { title: 'Collect your parcel', detail: 'The guard checks the code and hands it over.' },
+    ],
+    tip: { title: 'Someone collecting for you?', text: 'Tap Share the code on the parcel and send it to them. The code works only for that parcel.' },
+  },
+};
+
+/** An icon tile with a title and one or two lines under it, the text kept in one aligned column. */
+function GuideNote({ icon: Icon, title, children, tone = 'brand' }: { icon: LucideIcon; title: string; children: ReactNode; tone?: 'brand' | 'ink' }) {
+  return (
+    <div className="flex items-start gap-3">
+      <span aria-hidden className={cn('grid size-8 shrink-0 place-items-center rounded-lg', tone === 'brand' ? 'bg-brand-100 text-brand-700' : 'bg-ink-100 text-ink-600')}>
+        <Icon className="size-4" />
+      </span>
+      <div className="min-w-0">
+        <p className="text-sm font-semibold leading-snug text-ink-900"><Text>{title}</Text></p>
+        <p className="mt-1 text-sm leading-relaxed text-ink-600"><Text>{children}</Text></p>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * How to collect, beside the parcels: the steps for this tab as a connected list, one tip, and
+ * where to go when a parcel is missing. Fills the space next to a single parcel with something useful.
+ */
+function CollectGuide({ tab, onMissing }: { tab: Tab; onMissing: () => void }) {
+  const guide = GUIDE[tab];
+  return (
+    <LocalizedAside aria-label="How to collect" className="stagger-in space-y-4 lg:sticky lg:top-24">
+      <Card>
+        <CardHeader title="How to collect" />
+        <ol key={tab} className="px-5 pt-5">
+          {guide.steps.map((step, i) => (
+            <li key={step.title} style={{ '--i': i } as CSSProperties} className="guide-step relative flex gap-3.5 pb-5">
+              {/* The line joining each step to the next. */}
+              {i < guide.steps.length - 1 && <span aria-hidden className="absolute bottom-0 left-[0.9375rem] top-9 w-px bg-brand-200" />}
+              <span aria-hidden className="guide-step-number relative grid size-8 shrink-0 place-items-center rounded-full border border-brand-200 bg-brand-50 text-sm font-bold text-brand-700">{i + 1}</span>
+              <div className="min-w-0 pt-1">
+                <p className="text-sm font-semibold leading-snug text-ink-900"><Text>{step.title}</Text></p>
+                {step.detail && <p className="mt-1 text-sm leading-relaxed text-ink-600"><Text>{step.detail}</Text></p>}
+              </div>
+            </li>
+          ))}
+        </ol>
+        <div className="border-t border-ink-100 p-4">
+          <div className="rounded-lg bg-brand-50/70 p-3.5">
+            <GuideNote icon={tab === 'guardhouse' ? Share2 : RefreshCw} title={guide.tip.title}>{guide.tip.text}</GuideNote>
+          </div>
+        </div>
+      </Card>
+      {/* On phones these two stay in the page header; on wider screens they live here, beside the parcels. */}
+      <Card className="hidden p-5 lg:block">
+        <GuideNote icon={PackageOpen} tone="ink" title="Parcel missing?"><Text>Tell us the tracking number. If it is already here, we will tell you where.</Text></GuideNote>
+        <div className="mt-4 flex flex-wrap gap-2 pl-11">
+          <Button size="sm" variant="secondary" onClick={onMissing}><PackageOpen className="size-4" aria-hidden /><Text>A parcel hasn’t arrived?</Text></Button>
+          <Button size="sm" variant="ghost" href={reportsHref(tab)}><Flag className="size-4" aria-hidden /><Text>My reports</Text></Button>
+        </div>
+      </Card>
+    </LocalizedAside>
+  );
+}
+
 export default function ParcelsPage() {
   return <Suspense fallback={<SkeletonList rows={2} />}><ParcelsScreen /></Suspense>;
 }
@@ -112,9 +192,9 @@ function ParcelsScreen() {
         title="Parcels"
         description="Parcels in the smart lockers and at the guardhouse for your home. Each has a one-time code that works only for that parcel. Someone collecting for you? Share the code with them."
         action={
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 lg:hidden">
             <Button size="sm" variant="secondary" onClick={() => setMissing(true)}><PackageOpen className="size-4" aria-hidden /><Text>A parcel hasn’t arrived?</Text></Button>
-            <Button size="sm" variant="ghost" href="/app/reports"><Flag className="size-4" aria-hidden /><Text>My reports</Text></Button>
+            <Button size="sm" variant="ghost" href={reportsHref(tab)}><Flag className="size-4" aria-hidden /><Text>My reports</Text></Button>
           </div>
         }
       />
@@ -127,6 +207,8 @@ function ParcelsScreen() {
           { key: 'guardhouse', label: 'Guardhouse', count: atGuardhouse || undefined },
         ]}
       />
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_19rem] xl:grid-cols-[minmax(0,1fr)_21rem]">
+      <div className="min-w-0">
       <TabPanel>
       {tab === 'lockers' && <LockerParcels />}
       {tab === 'guardhouse' && <Async state={parcels} skeleton={<GuardhouseSkeleton />}>
@@ -139,7 +221,7 @@ function ParcelsScreen() {
               {waiting.length === 0 ? (
                 <EmptyState icon={Package} title="Nothing at the guardhouse"><Text>When a courier leaves a parcel at the guardhouse, you are told at once and the code appears here.</Text></EmptyState>
               ) : (
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="stagger-in grid gap-4 2xl:grid-cols-2">
                   {waiting.map((p) => (
                     <Card key={p.id} id={`parcel-${p.id}`} className={`scroll-mt-20 overflow-hidden ${parcelId === p.id ? 'ring-2 ring-brand-400' : ''}`}>
                       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-ink-100 p-5">
@@ -208,6 +290,9 @@ function ParcelsScreen() {
         }}
       </Async>}
       </TabPanel>
+      </div>
+      <CollectGuide tab={tab} onMissing={() => setMissing(true)} />
+      </div>
 
       <ReportProblemDialog
         open={problem !== null}

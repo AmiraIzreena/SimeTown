@@ -17,6 +17,10 @@ export interface NavItem {
   offer?: 'retail' | 'services';
   /** Shown in the phone's bottom bar. Everything else sits behind "More". */
   primary?: boolean;
+  /** A heading for long menus (the console): it starts where the group changes. */
+  group?: string;
+  /** Demo tooling, left out of the menu when demo mode is off (NEXT_PUBLIC_DEMO_MODE=false). */
+  demoOnly?: boolean;
 }
 
 export const NAV: Record<Area, { title: string; items: NavItem[] }> = {
@@ -73,31 +77,32 @@ export const NAV: Record<Area, { title: string; items: NavItem[] }> = {
       { href: '/courier', label: 'Deliver', icon: Package, primary: true },
       { href: '/courier/history', label: 'My deliveries', icon: History, primary: true },
       { href: '/courier/team', label: 'Team', icon: Users },
-      { href: '/demo/labels', label: 'Demo labels', icon: Barcode },
+      { href: '/demo/labels', label: 'Demo labels', icon: Barcode, demoOnly: true },
       { href: '/courier/account', label: 'Account', icon: UserRound, primary: true },
     ],
   },
   console: {
     title: 'SDP console',
+    // Grouped so staff scan four short lists instead of one of eighteen. Every page and role filter is unchanged.
     items: [
-      { href: '/console', label: 'Insights', icon: Gauge, primary: true },
-      { href: '/console/reports', label: 'Lapor', icon: ClipboardList, primary: true },
-      { href: '/notifications', label: 'Notifications', icon: Inbox },
-      { href: '/console/operations', label: 'Parcels', icon: Package },
-      { href: '/console/assistant', label: 'Assistant questions', icon: MessageCircleQuestionMark },
-      { href: '/console/banjir', label: 'Flood dashboard', icon: Droplets, primary: true },
-      { href: '/console/campaigns', label: 'Campaigns & sponsors', icon: Megaphone },
-      { href: '/console/people', label: 'People', icon: Users },
-      { href: '/console/shops', label: 'Shops', icon: Building2, roles: ADMINS },
-      { href: '/console/finance', label: 'Float & payments', icon: Landmark },
-      { href: '/console/places', label: 'Kiosks, trails & patrol points', icon: MapPin },
-      { href: '/console/recycling', label: 'Recycling collections', icon: Recycle },
-      { href: '/console/access', label: 'Access places', icon: Accessibility },
-      { href: '/console/komuniti', label: 'Komuniti', gloss: 'Reports & posts', icon: ShieldAlert },
-      { href: '/console/home-services', label: 'Home service reports', icon: Wrench },
-      { href: '/console/audit', label: 'Audit trail', icon: History, roles: ADMINS },
-      { href: '/console/settings', label: 'Rules', icon: Settings },
-      { href: '/console/account', label: 'Account', icon: UserRound },
+      { href: '/console', label: 'Insights', icon: Gauge, primary: true, group: 'Overview' },
+      { href: '/notifications', label: 'Notifications', icon: Inbox, group: 'Overview' },
+      { href: '/console/assistant', label: 'Assistant questions', icon: MessageCircleQuestionMark, group: 'Overview' },
+      { href: '/console/reports', label: 'Lapor', icon: ClipboardList, primary: true, group: 'Operations' },
+      { href: '/console/operations', label: 'Parcels', icon: Package, group: 'Operations' },
+      { href: '/console/banjir', label: 'Flood dashboard', icon: Droplets, primary: true, group: 'Operations' },
+      { href: '/console/places', label: 'Kiosks, trails & patrol points', icon: MapPin, group: 'Operations' },
+      { href: '/console/recycling', label: 'Recycling collections', icon: Recycle, group: 'Operations' },
+      { href: '/console/access', label: 'Access places', icon: Accessibility, group: 'Operations' },
+      { href: '/console/home-services', label: 'Home service reports', icon: Wrench, group: 'Operations' },
+      { href: '/console/komuniti', label: 'Komuniti', gloss: 'Reports & posts', icon: ShieldAlert, group: 'Community & partners' },
+      { href: '/console/campaigns', label: 'Campaigns & sponsors', icon: Megaphone, group: 'Community & partners' },
+      { href: '/console/shops', label: 'Shops', icon: Building2, roles: ADMINS, group: 'Community & partners' },
+      { href: '/console/people', label: 'People', icon: Users, group: 'Community & partners' },
+      { href: '/console/finance', label: 'Float & payments', icon: Landmark, group: 'Money & governance' },
+      { href: '/console/audit', label: 'Audit trail', icon: History, roles: ADMINS, group: 'Money & governance' },
+      { href: '/console/settings', label: 'Rules', icon: Settings, group: 'Money & governance' },
+      { href: '/console/account', label: 'Account', icon: UserRound, group: '' },
     ],
   },
 };

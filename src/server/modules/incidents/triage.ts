@@ -8,6 +8,8 @@ import { matchResident } from '../carriers/matching';
 import { providerFor } from '../carriers/providers';
 import type { CompanyRow } from '../carriers/types';
 import { createIncident } from './engine';
+import type { Photo } from '../../ai/classifier';
+import { storeUpload } from '../../http/uploads';
 
 /**
  * Where a reported problem goes. The reporter picks what went wrong; the
@@ -37,6 +39,8 @@ export interface ReportInput {
   companyId?: string;
   stationId?: string;
   note?: string;
+  /** Kitar and Gerak reports only: a screenshot or photo, already checked by readPhoto. */
+  photo?: Photo;
   /** The resident has seen the township's records and still wants a case opened. */
   confirm?: boolean;
 }
@@ -236,6 +240,17 @@ export async function reportProblem(db: Db, actor: Actor, input: ReportInput, no
     const incident = await createIncident(db, {
       ...base, responsibility: reason.responsibility === 'MIXED' ? 'MIXED' : 'UNCERTAIN', companyId: input.companyId ?? null,
       summary: `${reason.label}${tracking ? ` (${tracking})` : ''}.`, details: { reason: reason.key, trackingNo: tracking }, dedupeKey: `report:${actor.homeId}:arrive:${tracking ?? now.getTime()}:${reason.key}`,
+    }, now);
+    return { route: 'TOWNSHIP', incident: { reference: incident.reference, created: incident.created } };
+  }
+
+  // --- Kitar (recycling kiosks) and Gerak (township loops), with an optional screenshot or photo ----
+  if (input.context === 'KITAR' || input.context === 'GERAK') {
+    const photoId = input.photo ? await storeUpload(db, actor.id, input.photo) : null;
+    const incident = await createIncident(db, {
+      ...base, responsibility: reason.responsibility === 'UNCERTAIN' ? 'UNCERTAIN' : 'TOWNSHIP', photoId,
+      summary: `${reason.label}.`, details: { reason: reason.key, page: input.context.toLowerCase() },
+      dedupeKey: `report:${actor.homeId}:${input.context.toLowerCase()}:${reason.key}:${now.toISOString().slice(0, 10)}`,
     }, now);
     return { route: 'TOWNSHIP', incident: { reference: incident.reference, created: incident.created } };
   }

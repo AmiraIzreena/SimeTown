@@ -1,15 +1,17 @@
 import type { ReportCategory, ReportStatus, Urgency } from '@/shared/domain';
-import { REPORT_CATEGORY_LABELS, STAFF } from '@/shared/domain';
-import { suggestReport, type Photo } from '../../ai/classifier';
+import { REPORT_CATEGORIES, REPORT_CATEGORY_LABELS, STAFF } from '@/shared/domain';
+import { suggestReport, suggestReportByRules, type IssueWording, type Photo, type ReportSuggestion } from '../../ai/classifier';
 import { one, type Db, type Queryable } from '../../db/client';
 import { requireVerifiedResident, type Actor } from '../../auth/actor';
-import { conflict, notFound, ruleViolation } from '../../errors';
+import { badRequest, conflict, notFound, ruleViolation } from '../../errors';
 import { decodeCursor, toPage, type PageQuery } from '../../http/pagination';
 import { audit } from '../audit';
 import { notify } from '../notifications';
 import { reportSignal } from '../banjir/agent';
 import { recordAction, rewardUserById } from '../rewards';
 import { todayIn } from '../settings';
+import { afterJoin, cleanWording, issueFacts, refreshIssueWording, words } from './issue-core';
+import { checkReportText } from './text-check';
 
 /**
  * Lapor: report a hazard or an access barrier, and follow it until it is closed.
@@ -30,43 +32,101 @@ export interface ReportInput {
   /** The resident's own choice. When absent, the suggestion is used. */
   category?: ReportCategory;
   photo?: Photo;
+  /** The issue the resident agreed this report belongs to. Absent: the report starts a new issue. */
+  issueId?: string;
 }
 
+/**
+ * What a resident typed must read as a report (no keyboard mash, no rude words) and any area must be in their
+ * township. Checked before a match is looked for and again when the report is saved.
+ */
+export async function checkReportInput(db: Queryable, resident: { townshipId: string }, input: Pick<ReportInput, 'description' | 'locationText' | 'zoneId'>) {
+  const fields = checkReportText(input);
+  if (fields) throw badRequest('Please check what you wrote.', { fields });
+  if (input.zoneId && !(await one(db, 'SELECT 1 FROM flood_zones WHERE id = $1 AND township_id = $2', [input.zoneId, resident.townshipId]))) {
+    throw notFound('Area');
+  }
+}
+
+/** An open issue in the resident's township that they have not reported themselves yet. */
+async function joinableIssue(db: Queryable, resident: { id: string; townshipId: string }, issueId: string) {
+  const issue = await issueFacts(db, issueId);
+  if (!issue || issue.township_id !== resident.townshipId) throw notFound('Issue');
+  if (!OPEN.includes(issue.status)) throw ruleViolation('ISSUE_CLOSED', 'This problem has already been fixed or closed. Send it as a new report.');
+  if (await one(db, 'SELECT 1 FROM reports WHERE issue_id = $1 AND reporter_id = $2', [issueId, resident.id])) {
+    throw ruleViolation('ALREADY_REPORTED', 'You have already reported this problem. You will hear every update.');
+  }
+  return issue;
+}
+
+/**
+ * Saves a report. It either starts a new issue, with a title and summary the model writes in the same call that
+ * sorts it, or joins the issue the resident agreed it belongs to: then it takes that issue's type and progress, no
+ * model call is needed, and the township office is not told again (it hears once the issue needs attention).
+ */
 export async function createReport(db: Db, actor: Actor, input: ReportInput, now: Date) {
   const resident = requireVerifiedResident(actor);
-  const suggestion = await suggestReport(input.description, input.photo); // outside the transaction: it may call a remote service
-  return db.tx(async (tx) => {
-    if (input.zoneId && !(await one(tx, 'SELECT 1 FROM flood_zones WHERE id = $1 AND township_id = $2', [input.zoneId, resident.townshipId]))) {
-      throw notFound('Area');
-    }
+  await checkReportInput(db, resident, input);
+  const joining = input.issueId ? await joinableIssue(db, resident, input.issueId) : null;
+  // Outside the transaction: it may call a remote service.
+  const suggestion: ReportSuggestion & { wording?: IssueWording } = joining ? suggestReportByRules(input.description) : await suggestReport(input.description, input.photo, input.locationText);
+  const wording = suggestion.wording ? cleanWording(suggestion.wording) : null;
+  const created = await db.tx(async (tx) => {
     const photoId = input.photo ? await storePhoto(tx, resident.id, input.photo) : null;
-    const category = input.category ?? suggestion.category;
+    const category = joining ? joining.category : input.category ?? suggestion.category;
+    let issueId: string;
+    let peopleBefore = 0;
+    if (joining) {
+      await tx.query('SELECT 1 FROM report_issues WHERE id = $1 FOR UPDATE', [joining.id]);
+      peopleBefore = (await issueFacts(tx, joining.id))!.people;
+      issueId = joining.id;
+    } else {
+      issueId = (await one<{ id: string }>(
+        tx,
+        `INSERT INTO report_issues (township_id, category, zone_id, title, title_ms, summary, summary_ms, title_source, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $9) RETURNING id`,
+        [resident.townshipId, category, input.zoneId ?? null, wording?.title ?? null, wording?.titleMs ?? null, wording?.summary ?? null, wording?.summaryMs ?? null, wording ? 'MODEL' : null, now],
+      ))!.id;
+    }
     const report = await one<{ id: string }>(
       tx,
-      `INSERT INTO reports (township_id, reporter_id, zone_id, category, urgency, ai_category, ai_urgency, ai_source, description, location_text, photo_id, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $12) RETURNING id`,
-      [resident.townshipId, resident.id, input.zoneId ?? null, category, suggestion.urgency, suggestion.category, suggestion.urgency, suggestion.source, input.description, input.locationText, photoId, now],
+      `INSERT INTO reports (township_id, reporter_id, zone_id, category, urgency, ai_category, ai_urgency, ai_source, description, location_text, photo_id, issue_id, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $13) RETURNING id`,
+      [resident.townshipId, resident.id, input.zoneId ?? null, category, suggestion.urgency, suggestion.category, suggestion.urgency, suggestion.source, input.description, input.locationText, photoId, issueId, now],
     );
-    // Every new report reaches the township's staff and admins. BR19: urgent safety reports jump the
-    // queue, and HQ is told about those too, so a danger is never missed. HQ is not sent routine
-    // reports: it covers every township and sees them all in its Lapor list.
-    const urgent = suggestion.urgency === 'URGENT';
-    const staff = await tx.query<{ id: string }>(
-      `SELECT id FROM users WHERE status = 'ACTIVE' AND ((township_id = $1 AND role IN ('TOWNSHIP_STAFF', 'TOWNSHIP_ADMIN')) OR ($2 AND role = 'HQ_ADMIN'))`,
-      [resident.townshipId, urgent],
-    );
-    await notify(tx, staff.map((s) => s.id), {
-      priority: urgent ? 'URGENT' : 'NORMAL',
-      title: urgent ? 'Urgent safety report' : 'New Lapor report',
-      body: `${input.locationText}: ${input.description.slice(0, 120)}`,
-      link: '/console/reports',
-      dedupeKey: `report-new:${report!.id}`,
-    });
+    if (joining?.status === 'IN_PROGRESS') {
+      // A report added to a problem already being fixed is in progress too, with the same team and date.
+      await tx.query(
+        `UPDATE reports SET status = 'IN_PROGRESS', checked_at = $2::timestamptz, assigned_to = $3, assigned_at = CASE WHEN $3::text IS NULL THEN NULL ELSE $2::timestamptz END, target_date = $4::date WHERE id = $1`,
+        [report!.id, now, joining.assigned_to, joining.target_date],
+      );
+    }
+    if (!joining) {
+      // Every new issue reaches the township's staff and admins. BR19: urgent safety reports jump the
+      // queue, and HQ is told about those too, so a danger is never missed. HQ is not sent routine
+      // reports: it covers every township and sees them all in its Lapor list.
+      const urgent = suggestion.urgency === 'URGENT';
+      const staff = await tx.query<{ id: string }>(
+        `SELECT id FROM users WHERE status = 'ACTIVE' AND ((township_id = $1 AND role IN ('TOWNSHIP_STAFF', 'TOWNSHIP_ADMIN')) OR ($2 AND role = 'HQ_ADMIN'))`,
+        [resident.townshipId, urgent],
+      );
+      await notify(tx, staff.map((s) => s.id), {
+        priority: urgent ? 'URGENT' : 'NORMAL',
+        title: urgent ? 'Urgent safety report' : 'New Lapor report',
+        body: `${input.locationText}: ${input.description.slice(0, 120)}`,
+        link: urgent ? '/console/reports?tab=attention' : '/console/reports',
+        dedupeKey: `report-new:${report!.id}`,
+      });
+    }
     // Water in a drain, reported with its area, is a second opinion for the Banjir agent (never a decision on its own).
     if (category === 'DRAINAGE' && input.zoneId) await reportSignal(tx, input.zoneId, report!.id, now);
     await notify(tx, [resident.id], { title: 'Report received', body: input.locationText, link: `/app/lapor/${report!.id}`, dedupeKey: `report-received:${report!.id}` });
-    return { id: report!.id, category, urgency: suggestion.urgency, suggestion };
+    if (joining) await afterJoin(tx, issueId, peopleBefore);
+    const { category: sCategory, urgency: sUrgency, source } = suggestion;
+    return { id: report!.id, issueId, joined: Boolean(joining), category, urgency: suggestion.urgency, suggestion: { category: sCategory, urgency: sUrgency, source } };
   });
+  if (joining) await refreshIssueWording(db, joining.id);
+  return created;
 }
 
 async function storePhoto(q: Queryable, ownerId: string, photo: Photo): Promise<string> {
@@ -83,8 +143,9 @@ const REPORT_SELECT = `
   SELECT r.id, r.category, r.urgency, r.ai_category, r.ai_urgency, r.ai_source, r.description, r.location_text, r.photo_id,
          r.status, r.staff_note, r.created_at, r.updated_at, r.resolved_at, z.name AS zone_name, r.reporter_id, r.township_id,
          r.checked_at, r.assigned_to, r.assigned_at, r.target_date::text AS target_date, r.fixed_photo_id,
-         1 + (SELECT count(*)::int FROM report_supporters s WHERE s.report_id = r.id) AS affected
-    FROM reports r LEFT JOIN flood_zones z ON z.id = r.zone_id`;
+         1 + (SELECT count(*)::int FROM report_supporters s WHERE s.report_id = r.id) AS affected,
+         r.issue_id, f.people AS issue_people, f.reports AS issue_reports, (SELECT issue_public_threshold FROM program_settings) AS issue_threshold
+    FROM reports r LEFT JOIN flood_zones z ON z.id = r.zone_id LEFT JOIN report_issue_facts f ON f.id = r.issue_id`;
 
 interface ReportRow {
   id: string;
@@ -135,6 +196,66 @@ export async function listReports(db: Db, actor: Actor, filter: { status?: Repor
   const today = await todayIn(db, now);
   const page = toPage(rows, filter.limit, (r) => [r.created_at, r.id]);
   return { ...page, items: page.items.map((r) => present(r, actor, today)) };
+}
+
+/** Ongoing: received or in progress. Finished: resolved, or closed with no action. */
+export const LAPOR_VIEWS = ['ongoing', 'finished'] as const;
+/** Reports the resident made, or ones they follow after tapping "Me too". */
+export const LAPOR_WHO = ['mine', 'following'] as const;
+
+/**
+ * A resident's Lapor list, one page at a time: ongoing or finished, by type, made by them or
+ * followed, and searchable by description, place or area. Each count follows every filter except
+ * its own, so the pills and chips always say what choosing them would show.
+ */
+export async function myLaporReports(
+  db: Db, actor: Actor,
+  filter: { view: (typeof LAPOR_VIEWS)[number]; category?: ReportCategory; who?: (typeof LAPOR_WHO)[number]; q?: string } & PageQuery,
+  now: Date,
+) {
+  const params: unknown[] = [actor.id];
+  const q = filter.q?.trim();
+  if (q) params.push(`%${q.replace(/[\\%_]/g, (m) => `\\${m}`)}%`);
+  // % and _ in a search are literal; the pattern is the second parameter when there is one.
+  const SEARCH = q ? `(r.description ILIKE $2 OR r.location_text ILIKE $2 OR z.name ILIKE $2)` : 'TRUE';
+  const VISIBLE = `(r.reporter_id = $1 OR EXISTS (SELECT 1 FROM report_supporters s WHERE s.report_id = r.id AND s.user_id = $1))`;
+  const WHO = filter.who === 'mine' ? `r.reporter_id = $1` : filter.who === 'following' ? `r.reporter_id <> $1` : 'TRUE';
+  // The category is one of REPORT_CATEGORIES (checked by the route), so it is written into the SQL; a bind
+  // parameter would break the per-type counts, which leave this filter out.
+  const CATEGORY = filter.category ? `r.category = '${filter.category}'` : 'TRUE';
+  const ONGOING = `r.status IN ('NEW', 'IN_PROGRESS')`;
+  const VIEW = filter.view === 'finished' ? `NOT ${ONGOING}` : ONGOING;
+  const FROM = `FROM reports r LEFT JOIN flood_zones z ON z.id = r.zone_id WHERE ${VISIBLE} AND ${SEARCH}`;
+
+  const [after, afterId] = decodeCursor(filter.cursor, 'time');
+  const pageParams = [...params];
+  let page = '';
+  if (after && afterId) {
+    pageParams.push(after, afterId);
+    page = `AND (r.created_at, r.id) < ($${pageParams.length - 1}::timestamptz, $${pageParams.length}::uuid)`;
+  }
+  pageParams.push(filter.limit + 1);
+  const rows = await db.query<ReportRow>(
+    `${REPORT_SELECT} WHERE ${VISIBLE} AND ${SEARCH} AND ${VIEW} AND ${CATEGORY} AND ${WHO} ${page}
+      ORDER BY r.created_at DESC, r.id DESC LIMIT $${pageParams.length}`,
+    pageParams,
+  );
+  const counts = await one<{ ongoing: number; finished: number; mine: number; following: number }>(
+    db,
+    `SELECT count(*) FILTER (WHERE ${ONGOING} AND ${CATEGORY} AND ${WHO})::int AS ongoing,
+            count(*) FILTER (WHERE NOT ${ONGOING} AND ${CATEGORY} AND ${WHO})::int AS finished,
+            count(*) FILTER (WHERE ${VIEW} AND ${CATEGORY} AND r.reporter_id = $1)::int AS mine,
+            count(*) FILTER (WHERE ${VIEW} AND ${CATEGORY} AND r.reporter_id <> $1)::int AS following
+       ${FROM}`,
+    params,
+  );
+  const byCategory = await db.query<{ category: ReportCategory; n: number }>(`SELECT r.category, count(*)::int AS n ${FROM} AND ${VIEW} AND ${WHO} GROUP BY r.category`, params);
+  const categories = Object.fromEntries(REPORT_CATEGORIES.map((c) => [c, 0])) as Record<ReportCategory, number>;
+  for (const row of byCategory) categories[row.category] = row.n;
+
+  const today = await todayIn(db, now);
+  const result = toPage(rows, filter.limit, (r) => [r.created_at, r.id]);
+  return { ...result, items: result.items.map((r) => present(r, actor, today)), counts: counts ?? { ongoing: 0, finished: 0, mine: 0, following: 0 }, categories };
 }
 
 async function loadVisibleReport(db: Queryable, actor: Actor, id: string) {
@@ -198,67 +319,74 @@ async function followers(q: Queryable, reportId: string, reporterId: string): Pr
 
 /** Staff work the case. Changing what the classifier suggested is always allowed and always logged (BR21). */
 export async function updateReport(db: Db, actor: Actor, id: string, update: ReportUpdate, now: Date) {
-  return db.tx(async (tx) => {
-    const r = await one<{
-      township_id: string; reporter_id: string; status: ReportStatus; category: ReportCategory; urgency: string; ai_category: string | null; ai_urgency: string | null;
-      assigned_to: string | null; target_date: string | null; location_text: string;
-    }>(
-      tx,
-      `SELECT township_id, reporter_id, status, category, urgency, ai_category, ai_urgency, assigned_to, target_date::text AS target_date, location_text
-         FROM reports WHERE id = $1 FOR UPDATE`,
-      [id],
-    );
-    if (!r || (actor.role !== 'HQ_ADMIN' && r.township_id !== actor.townshipId)) throw notFound('Report');
-    const closed = r.status === 'RESOLVED' || r.status === 'REJECTED';
-    if (closed && update.status && update.status !== r.status) {
-      throw conflict('REPORT_CLOSED', 'This report is already closed.');
+  return db.tx((tx) => applyReportUpdate(tx, actor, id, update, now));
+}
+
+/** One report's update inside a transaction; a whole issue's update applies it to each of its reports. */
+export async function applyReportUpdate(tx: Queryable, actor: Actor, id: string, update: ReportUpdate, now: Date) {
+  const r = await one<{
+    township_id: string; reporter_id: string; status: ReportStatus; category: ReportCategory; urgency: string; ai_category: string | null; ai_urgency: string | null;
+    assigned_to: string | null; target_date: string | null; location_text: string; issue_id: string;
+  }>(
+    tx,
+    `SELECT township_id, reporter_id, status, category, urgency, ai_category, ai_urgency, assigned_to, target_date::text AS target_date, location_text, issue_id
+       FROM reports WHERE id = $1 FOR UPDATE`,
+    [id],
+  );
+  if (!r || (actor.role !== 'HQ_ADMIN' && r.township_id !== actor.townshipId)) throw notFound('Report');
+  const closed = r.status === 'RESOLVED' || r.status === 'REJECTED';
+  if (closed && update.status && update.status !== r.status) {
+    throw conflict('REPORT_CLOSED', 'This report is already closed.');
+  }
+  const category = update.category ?? r.category;
+  const urgency = update.urgency ?? r.urgency;
+  const status = update.status ?? r.status;
+  const assignedTo = update.assignedTo === undefined ? r.assigned_to : update.assignedTo.trim() || null;
+  const targetDate = update.targetDate === undefined ? r.target_date : update.targetDate;
+  if (targetDate && targetDate !== r.target_date && targetDate < (await todayIn(tx, now))) {
+    throw ruleViolation('TARGET_IN_PAST', 'The target date cannot be in the past.');
+  }
+  if (r.ai_category && (category !== r.category || urgency !== r.urgency)) {
+    await audit(tx, actor.id, 'AI_OVERRIDE', 'report', id, { suggested: { category: r.ai_category, urgency: r.ai_urgency }, set: { category, urgency } });
+  }
+  await tx.query(
+    `UPDATE reports SET category = $2, urgency = $3, status = $4, staff_note = coalesce($5, staff_note), updated_at = $6,
+            resolved_at = CASE WHEN $4 IN ('RESOLVED', 'REJECTED') THEN coalesce(resolved_at, $6) ELSE NULL END,
+            checked_at = CASE WHEN $4 IN ('IN_PROGRESS', 'RESOLVED') THEN coalesce(checked_at, $6) ELSE checked_at END,
+            assigned_to = $7,
+            assigned_at = CASE WHEN $7::text IS NULL THEN NULL WHEN assigned_to IS DISTINCT FROM $7 THEN $6 ELSE assigned_at END,
+            target_date = $8::date
+      WHERE id = $1`,
+    [id, category, urgency, status, update.staffNote ?? null, now, assignedTo, targetDate],
+  );
+  // A report that is its issue's only one keeps the issue's type in step with it.
+  if (category !== r.category) {
+    await tx.query('UPDATE report_issues SET category = $2 WHERE id = $1 AND (SELECT count(*) FROM reports WHERE issue_id = $1) = 1', [r.issue_id, category]);
+  }
+  const people = await followers(tx, id, r.reporter_id);
+  const where = `${REPORT_CATEGORY_LABELS[r.category]} at ${r.location_text}`;
+  if (status !== r.status) {
+    await audit(tx, actor.id, 'REPORT_STATUS', 'report', id, { from: r.status, to: status });
+    // XP only once staff have confirmed the report is genuine, so nobody is rewarded for a false one.
+    // Only the first reporter earns it: a "Me too" never does.
+    if (status === 'IN_PROGRESS' || status === 'RESOLVED') {
+      const reporter = await rewardUserById(tx, r.reporter_id);
+      if (reporter) await recordAction(tx, { user: reporter, activity: 'LAPOR_REPORT', ref: id, now });
     }
-    const category = update.category ?? r.category;
-    const urgency = update.urgency ?? r.urgency;
-    const status = update.status ?? r.status;
-    const assignedTo = update.assignedTo === undefined ? r.assigned_to : update.assignedTo.trim() || null;
-    const targetDate = update.targetDate === undefined ? r.target_date : update.targetDate;
-    if (targetDate && targetDate !== r.target_date && targetDate < (await todayIn(tx, now))) {
-      throw ruleViolation('TARGET_IN_PAST', 'The target date cannot be in the past.');
-    }
-    if (r.ai_category && (category !== r.category || urgency !== r.urgency)) {
-      await audit(tx, actor.id, 'AI_OVERRIDE', 'report', id, { suggested: { category: r.ai_category, urgency: r.ai_urgency }, set: { category, urgency } });
-    }
-    await tx.query(
-      `UPDATE reports SET category = $2, urgency = $3, status = $4, staff_note = coalesce($5, staff_note), updated_at = $6,
-              resolved_at = CASE WHEN $4 IN ('RESOLVED', 'REJECTED') THEN coalesce(resolved_at, $6) ELSE NULL END,
-              checked_at = CASE WHEN $4 IN ('IN_PROGRESS', 'RESOLVED') THEN coalesce(checked_at, $6) ELSE checked_at END,
-              assigned_to = $7,
-              assigned_at = CASE WHEN $7::text IS NULL THEN NULL WHEN assigned_to IS DISTINCT FROM $7 THEN $6 ELSE assigned_at END,
-              target_date = $8::date
-        WHERE id = $1`,
-      [id, category, urgency, status, update.staffNote ?? null, now, assignedTo, targetDate],
-    );
-    const people = await followers(tx, id, r.reporter_id);
-    const where = `${REPORT_CATEGORY_LABELS[r.category]} at ${r.location_text}`;
-    if (status !== r.status) {
-      await audit(tx, actor.id, 'REPORT_STATUS', 'report', id, { from: r.status, to: status });
-      // XP only once staff have confirmed the report is genuine, so nobody is rewarded for a false one.
-      // Only the first reporter earns it: a "Me too" never does.
-      if (status === 'IN_PROGRESS' || status === 'RESOLVED') {
-        const reporter = await rewardUserById(tx, r.reporter_id);
-        if (reporter) await recordAction(tx, { user: reporter, activity: 'LAPOR_REPORT', ref: id, now });
-      }
-      const words: Record<ReportStatus, string> = { NEW: 'received', IN_PROGRESS: 'being worked on', RESOLVED: 'resolved', REJECTED: 'closed without action' };
-      await notify(tx, people, { title: `Your report is ${words[status]}`, body: update.staffNote ?? 'Open Lapor to see the details.', link: `/app/lapor/${id}`, dedupeKey: `report-status:${id}:${status}:${now.getTime()}` });
-    } else if (targetDate && targetDate !== r.target_date && OPEN.includes(status)) {
-      await notify(tx, people, {
-        title: assignedTo ? `${assignedTo} will fix it` : 'A fix date is set',
-        body: `${where}: expected by ${targetDate}.`,
-        link: `/app/lapor/${id}`,
-        dedupeKey: `report-target:${id}:${targetDate}:${now.getTime()}`,
-      });
-    }
-    if (assignedTo !== r.assigned_to || targetDate !== r.target_date) {
-      await audit(tx, actor.id, 'REPORT_ASSIGNED', 'report', id, { assignedTo, targetDate });
-    }
-    return { ok: true };
-  });
+    const words: Record<ReportStatus, string> = { NEW: 'received', IN_PROGRESS: 'being worked on', RESOLVED: 'resolved', REJECTED: 'closed without action' };
+    await notify(tx, people, { title: `Your report is ${words[status]}`, body: update.staffNote ?? 'Open Lapor to see the details.', link: `/app/lapor/${id}`, dedupeKey: `report-status:${id}:${status}:${now.getTime()}` });
+  } else if (targetDate && targetDate !== r.target_date && OPEN.includes(status)) {
+    await notify(tx, people, {
+      title: assignedTo ? `${assignedTo} will fix it` : 'A fix date is set',
+      body: `${where}: expected by ${targetDate}.`,
+      link: `/app/lapor/${id}`,
+      dedupeKey: `report-target:${id}:${targetDate}:${now.getTime()}`,
+    });
+  }
+  if (assignedTo !== r.assigned_to || targetDate !== r.target_date) {
+    await audit(tx, actor.id, 'REPORT_ASSIGNED', 'report', id, { assignedTo, targetDate });
+  }
+  return { ok: true };
 }
 
 /** Staff attach the "fixed" photo everyone following the report can see. */
@@ -280,8 +408,9 @@ export async function setFixedPhoto(db: Db, actor: Actor, id: string, photo: Pho
 export async function setMeToo(db: Db, actor: Actor, id: string, on: boolean, now: Date) {
   const resident = requireVerifiedResident(actor);
   return db.tx(async (tx) => {
-    const r = await one<{ reporter_id: string; status: ReportStatus }>(tx, 'SELECT reporter_id, status FROM reports WHERE id = $1 AND township_id = $2', [id, resident.townshipId]);
+    const r = await one<{ reporter_id: string; status: ReportStatus; issue_id: string }>(tx, 'SELECT reporter_id, status, issue_id FROM reports WHERE id = $1 AND township_id = $2', [id, resident.townshipId]);
     if (!r) throw notFound('Report');
+    const peopleBefore = (await issueFacts(tx, r.issue_id))?.people ?? 0;
     if (r.reporter_id === resident.id) throw ruleViolation('OWN_REPORT', 'This is your own report.');
     if (on) {
       if (!OPEN.includes(r.status)) throw ruleViolation('REPORT_CLOSED', 'This report is already closed.');
@@ -289,13 +418,12 @@ export async function setMeToo(db: Db, actor: Actor, id: string, on: boolean, no
     } else {
       await tx.query('DELETE FROM report_supporters WHERE report_id = $1 AND user_id = $2', [id, resident.id]);
     }
+    if (on) await afterJoin(tx, r.issue_id, peopleBefore);
     const n = await one<{ affected: number }>(tx, 'SELECT 1 + count(*)::int AS affected FROM report_supporters WHERE report_id = $1', [id]);
     return { affected: n!.affected, following: on };
   });
 }
 
-const words = (text: string) => new Set((text.toLowerCase().match(/[a-z0-9]{4,}/g) ?? []).filter((w) => !STOP_WORDS.has(w)));
-const STOP_WORDS = new Set(['jalan', 'near', 'outside', 'beside', 'front', 'there', 'with', 'from', 'this', 'that', 'have', 'been', 'dekat', 'depan', 'tepi', 'sebelah']);
 
 /**
  * Open reports that look like the one a resident is about to send: the same

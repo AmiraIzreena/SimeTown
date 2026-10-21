@@ -3,6 +3,7 @@
 import { Text } from '@/components/ui/localized-text';
 
 import { CountUp } from '@/components/ui/count-up';
+import { BackLink } from '@/components/ui/back-link';
 import { CheckCircle2, Cpu, Power, QrCode as QrIcon, Recycle, UserRound, XCircle } from 'lucide-react';
 import { use, useState } from 'react';
 import { SimulatedNote } from '@/components/features/preview';
@@ -76,6 +77,7 @@ export default function MachineScreenPage({ params }: { params: Promise<{ machin
 
   return (
     <>
+      <BackLink href="/console/places" className="mb-3"><Text>Back to kiosks, trails & patrol points</Text></BackLink>
       <PageHeader title="Kiosk bin screen" description="What a kiosk bin shows on its own screen. Open it on the tablet beside the kiosk." />
       <Async state={screen}>
         {(s) => {

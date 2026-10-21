@@ -1,9 +1,10 @@
 import { Text } from '@/components/ui/localized-text';
 import { LocalizedImg } from '@/components/ui/localized-elements';
-import { Check, Users } from 'lucide-react';
+import { Check, Eye, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/card';
 import { cn } from '@/lib/cn';
 import { formatDate, formatDateTime } from '@/lib/format';
+import { useLang } from '@/lib/i18n';
 import { REPORT_CATEGORY_LABELS, type ReportCategory, type ReportStatus, type Urgency } from '@/shared/domain';
 
 export interface Report {
@@ -31,6 +32,33 @@ export interface Report {
   affected: number;
   mine: boolean;
   late: boolean;
+  /** The issue this report is grouped into: how many residents it affects, and how many make it public. */
+  issue_id?: string;
+  issue_people?: number;
+  issue_reports?: number;
+  issue_threshold?: number;
+}
+
+/** A Lapor issue as residents see it: the written title and summary, never anyone's own words. */
+export interface Issue {
+  id: string;
+  category: ReportCategory;
+  zone_name: string | null;
+  title: string | null;
+  title_ms: string | null;
+  summary: string | null;
+  summary_ms: string | null;
+  status: ReportStatus;
+  people: number;
+  reports: number;
+  urgent: boolean;
+  created_at: string;
+  updated_at: string;
+  resolved_at: string | null;
+  target_date: string | null;
+  late: boolean;
+  following: boolean;
+  mine: boolean;
 }
 
 export const STATUS_LABELS: Record<ReportStatus, string> = { NEW: 'Received', IN_PROGRESS: 'In progress', RESOLVED: 'Resolved', REJECTED: 'Closed, no action' };
@@ -53,10 +81,36 @@ export function AffectedBadge({ affected }: { affected: number }) {
   );
 }
 
+/** An issue's title in the reader's language; without a written one, its type and area. */
+export function IssueTitle({ issue }: { issue: Pick<Issue, 'category' | 'zone_name' | 'title' | 'title_ms'> }) {
+  const lang = useLang();
+  const written = lang === 'ms' ? issue.title_ms ?? issue.title : issue.title;
+  if (written) return <>{written}</>;
+  return <><Text>{REPORT_CATEGORY_LABELS[issue.category]}</Text>{issue.zone_name && <> · <Text>{issue.zone_name}</Text></>}</>;
+}
+
+/** An issue's one-line summary in the reader's language, or nothing. */
+export function IssueSummary({ issue, className }: { issue: Pick<Issue, 'summary' | 'summary_ms'>; className?: string }) {
+  const lang = useLang();
+  const written = lang === 'ms' ? issue.summary_ms ?? issue.summary : issue.summary;
+  return written ? <p className={className}>{written}</p> : null;
+}
+
+/** On a resident's own report: whether neighbours can see it yet, or how many residents it has so far. */
+export function IssueReach({ report }: { report: Pick<Report, 'issue_people' | 'issue_threshold'> }) {
+  const { issue_people: people, issue_threshold: threshold } = report;
+  if (people === undefined || threshold === undefined) return null;
+  return people >= threshold ? (
+    <Badge tone="success"><Eye className="mr-1 inline size-3.5" aria-hidden /><Text>Neighbours can see this</Text></Badge>
+  ) : (
+    <Badge tone="neutral"><Users className="mr-1 inline size-3.5" aria-hidden /><Text>{`${people} of ${threshold} residents`}</Text></Badge>
+  );
+}
+
 export const LateBadge = ({ late }: { late: boolean }) => (late ? <Badge tone="danger"><Text>Late</Text></Badge> : null);
 
 /** The reporter's photo, served only to them and to township staff. */
-export function ReportPhoto({ report }: { report: Report }) {
+export function ReportPhoto({ report }: { report: Pick<Report, 'id' | 'photo_id'> }) {
   if (!report.photo_id) return null;
   return <LocalizedImg src={`/api/v1/reports/${report.id}/photo`} alt="Photo attached to this report" loading="lazy" className="max-h-72 w-full rounded-lg border border-ink-200 object-cover" />;
 }

@@ -1,9 +1,9 @@
 @import 'tailwindcss';
 
 /*
- * SimeTown design tokens. The palette is our own, inspired by the deep teal and
- * warm red of Sime Darby's corporate identity: teal carries structure and
- * trust, red is kept for emphasis and danger, gold marks points.
+ * SimeTown design tokens. The palette is our own: warm orange carries the brand
+ * and structure, crimson is kept for emphasis and danger, gold marks points, and
+ * the neutrals keep a cool hint so greys sit calmly beside the orange.
  */
 @theme {
   --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -65,10 +65,11 @@
   --radius-xl: 20px;
   --radius-2xl: 28px;
 
-  --shadow-xs: 0 1px 2px rgb(8 52 51 / 0.06);
-  --shadow-sm: 0 1px 2px rgb(8 52 51 / 0.05), 0 2px 6px rgb(8 52 51 / 0.05);
-  --shadow-md: 0 2px 4px rgb(8 52 51 / 0.05), 0 8px 20px rgb(8 52 51 / 0.08);
-  --shadow-lg: 0 4px 8px rgb(8 52 51 / 0.06), 0 20px 44px rgb(8 52 51 / 0.14);
+  /* Warm brown, the same tint as the component shadows, so every card sits the same way on the cream page. */
+  --shadow-xs: 0 1px 2px rgb(79 28 8 / 0.06);
+  --shadow-sm: 0 1px 2px rgb(79 28 8 / 0.05), 0 2px 6px rgb(79 28 8 / 0.05);
+  --shadow-md: 0 2px 4px rgb(79 28 8 / 0.05), 0 8px 20px rgb(79 28 8 / 0.08);
+  --shadow-lg: 0 4px 8px rgb(79 28 8 / 0.06), 0 20px 44px rgb(79 28 8 / 0.14);
 
   /* Motion: one easing curve, three speeds. */
   --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
@@ -118,12 +119,22 @@
   }
   body {
     @apply bg-ink-50 font-sans text-ink-800 antialiased;
+    font-feature-settings: 'cv11', 'ss01';
+  }
+  /*
+   * The page's soft warm glow, on its own fixed layer behind everything. A fixed
+   * background on <body> itself would repaint the whole page on every scroll.
+   */
+  body::before {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
     background-image:
       radial-gradient(ellipse at 8% 4%, rgb(255 176 106 / 0.16), transparent 34rem),
       radial-gradient(ellipse at 96% 24%, rgb(232 111 32 / 0.09), transparent 38rem),
       radial-gradient(ellipse at 45% 96%, rgb(236 203 106 / 0.08), transparent 32rem);
-    background-attachment: fixed;
-    font-feature-settings: 'cv11', 'ss01';
+    content: '';
+    pointer-events: none;
   }
   h1, h2, h3 {
     @apply font-display text-ink-900;
@@ -350,7 +361,7 @@
     left: 0;
     width: 100%;
     height: 2px;
-    background: rgb(35 129 125 / 0.55);
+    background: rgb(232 111 32 / 0.55);
     content: '';
     pointer-events: none;
     animation: scan-sweep 1.5s var(--ease-soft) both;
@@ -444,6 +455,8 @@
     backdrop-filter: blur(24px) saturate(145%);
     -webkit-backdrop-filter: blur(24px) saturate(145%);
     max-height: min(100dvh - 2rem, 46rem);
+    /* Only the body scrolls; the browser's own dialog scrollbar would add a second one beside it. */
+    overflow: hidden;
   }
   dialog.modal[open] {
     animation: var(--animate-pop);
@@ -533,6 +546,29 @@
     }
     dialog.modal[open] {
       animation: var(--animate-sheet);
+    }
+  }
+  /*
+   * Closing: each overlay leaves the way it came in (the modal shrinks and fades, the phone sheet
+   * slides down, a drawer slides out, the backdrop fades). Only in browsers that can keep a closing
+   * dialog in the top layer; the others close at once, as before. Opening keeps its own animation.
+   */
+  @supports (overlay: auto) {
+    @media (prefers-reduced-motion: no-preference) {
+      dialog.modal, dialog.drawer {
+        transition: opacity 200ms var(--ease-soft), transform 200ms var(--ease-soft), overlay 200ms allow-discrete, display 200ms allow-discrete;
+      }
+      dialog.modal:not([open]), dialog.drawer:not([open]) { pointer-events: none; }
+      dialog.modal:not([open]) { opacity: 0; transform: scale(0.97); }
+      dialog.drawer.left:not([open]) { transform: translateX(-100%); }
+      dialog.drawer.right:not([open]) { transform: translateX(100%); }
+      dialog::backdrop {
+        transition: opacity 200ms var(--ease-soft), overlay 200ms allow-discrete, display 200ms allow-discrete;
+      }
+      dialog:not([open])::backdrop { opacity: 0; }
+      @media (max-width: 639px) {
+        dialog.modal:not([open]) { opacity: 1; transform: translateY(100%); }
+      }
     }
   }
 
@@ -833,6 +869,30 @@ html[data-signed-in] .field:focus-within > label { color: var(--color-brand-700)
 }
 .hero-link:active { transform: translateY(-1px) scale(0.99); }
 @media (prefers-reduced-motion: reduce) { .hero-link:hover, .hero-link:active { transform: none; } }
+/* Lapor → "Reports around the township": the whole card is the link, so it lifts and its arrow leads on. */
+.around-link { transition: transform 220ms var(--ease-soft), box-shadow 220ms var(--ease-soft), border-color 220ms var(--ease-soft), background-color 220ms var(--ease-soft); }
+.around-link-arrow { transition: transform 260ms var(--ease-soft); }
+@media (hover: hover) and (pointer: fine) {
+  .around-link:hover { transform: translateY(-2px); border-color: var(--color-brand-300); background-color: var(--color-brand-50); box-shadow: 0 10px 26px rgb(79 28 8 / 0.10); }
+  .around-link:hover .around-link-arrow { transform: translateX(3px); }
+}
+.around-link:active { transform: scale(0.99); }
+.around-link:focus-visible { outline: 2px solid var(--color-brand-500); outline-offset: 3px; }
+/* Neighbours' reports are rows, not links: a quiet tint follows the pointer and focus, nothing moves. */
+.around-row { transition: background-color 160ms var(--ease-soft); }
+.around-row:focus-within { background-color: rgb(255 247 237 / 0.6); }
+.around-rail { transition: background-color 160ms var(--ease-soft), color 160ms var(--ease-soft), box-shadow 160ms var(--ease-soft); }
+.around-rail:focus-visible { outline: 2px solid var(--color-brand-500); outline-offset: 2px; }
+.see-all { transition: background-color 160ms var(--ease-soft); }
+.see-all-arrow { transition: transform 220ms var(--ease-soft); }
+.see-all:focus-visible { outline: 2px solid var(--color-brand-500); outline-offset: -2px; }
+@media (hover: hover) and (pointer: fine) {
+  .around-row:hover { background-color: rgb(255 247 237 / 0.6); }
+  .around-rail[aria-pressed='false']:hover { background-color: rgb(255 255 255 / 0.7); color: var(--color-ink-900); }
+  .see-all:hover { background-color: rgb(255 247 237 / 0.6); }
+  .see-all:hover .see-all-arrow { transform: translateX(3px); }
+}
+@media (prefers-reduced-motion: reduce) { .around-link, .around-link-arrow, .around-row, .around-rail, .see-all, .see-all-arrow { transition: none; } .see-all:hover .see-all-arrow { transform: none; } .around-link:hover, .around-link:active, .around-link:hover .around-link-arrow { transform: none; } }
 @media print {
   .insights-hero { background: none !important; color: var(--color-ink-900) !important; box-shadow: none !important; border: 1px solid var(--color-ink-200); }
   .insights-hero::before { display: none; }
@@ -873,6 +933,11 @@ html[data-signed-in] { scroll-behavior: smooth; scroll-padding-top: 5.5rem; scro
   html[data-signed-in] .value-changed { animation: value-changed 1400ms var(--ease-soft) both; }
   /* How long a toast will stay. */
   html[data-signed-in] .toast-life { display: block; animation: toast-life linear both; transform-origin: left; }
+  /* A dismissed toast fades and drops slightly (the timing matches LEAVE_MS in toast.tsx). */
+  .toast-leaving { animation: toast-leave 180ms var(--ease-soft) both; }
+}
+@keyframes toast-leave {
+  to { opacity: 0; transform: translateY(6px); }
 }
 @keyframes value-changed {
   0%, 35% { background-color: rgb(232 111 32 / 0.16); color: var(--color-brand-800); }
@@ -883,43 +948,15 @@ html[data-signed-in] { scroll-behavior: smooth; scroll-padding-top: 5.5rem; scro
   to { transform: scaleX(0); }
 }
 
-.landing-header {
-  border: 1px solid rgb(255 255 255 / 0.2);
-  border-radius: 9999px;
-  background: rgb(45 20 7 / 0.24);
-  box-shadow: 0 8px 32px rgb(0 0 0 / 0.08), inset 0 1px 0 rgb(255 255 255 / 0.12);
-  backdrop-filter: blur(18px) saturate(140%);
-  -webkit-backdrop-filter: blur(18px) saturate(140%);
-}
-
-.landing-hero {
-  background-image:
-    radial-gradient(ellipse at 78% 34%, rgb(232 111 32 / 0.3), transparent 27rem),
-    radial-gradient(ellipse at 6% 94%, rgb(199 91 23 / 0.22), transparent 32rem),
-    linear-gradient(132deg, #7a2f0d 0%, #4f1c08 54%, #2d1407 100%);
-}
-
-.landing-wallet > div {
-  animation: brand-float 7s ease-in-out 1s infinite;
-}
-
 .landing-community {
   background-image:
     radial-gradient(ellipse at 88% 0%, rgb(232 111 32 / 0.2), transparent 28rem),
     linear-gradient(135deg, #4f1c08, #2d1407 72%);
 }
 
-@keyframes brand-float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-7px); }
-}
-
 @supports not (backdrop-filter: blur(1px)) {
   .glass-surface {
     background-color: rgb(255 255 255 / 0.96);
-  }
-  .landing-header {
-    background: rgb(45 20 7 / 0.8);
   }
   .glass-surface {
     background-image: none;
@@ -984,7 +1021,8 @@ html[data-signed-in] { scroll-behavior: smooth; scroll-padding-top: 5.5rem; scro
   gap: 0.4rem;
   overflow: hidden;
   border-radius: 9999px;
-  background: linear-gradient(135deg, var(--color-brand-500), var(--color-brand-700));
+  /* Starts at the brightest orange that still gives white text 4.5:1 (WCAG AA); brand-500 gave only 3.1:1. */
+  background: linear-gradient(135deg, color-mix(in srgb, var(--color-brand-600) 70%, var(--color-brand-700)), var(--color-brand-700));
   padding: 0.6rem 1.15rem;
   font-size: 0.875rem;
   font-weight: 700;
@@ -1367,7 +1405,8 @@ html[data-signed-in] { scroll-behavior: smooth; scroll-padding-top: 5.5rem; scro
 .module-strip-row {
   animation: module-marquee 60s linear infinite;
 }
-.module-strip:hover .module-strip-row {
+.module-strip:hover .module-strip-row,
+.module-strip-wrap:has(.module-strip-toggle input:checked) .module-strip-row {
   animation-play-state: paused;
 }
 @keyframes module-marquee {
@@ -1657,6 +1696,9 @@ dialog.flash-alert[open] {
   body {
     background: white;
   }
+  body::before {
+    display: none;
+  }
   /* A printed post-event report shows the report only, without the console around it. */
   body:has(.print-report) :is(aside, header, nav, [role='status']) {
     display: none !important;
@@ -1735,6 +1777,23 @@ dialog.flash-alert[open] {
   font-family: var(--font-display, inherit);
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.18em;
+}
+@media (prefers-reduced-motion: no-preference) {
+  /* A new code settles into place once, the digits closing up from slightly apart. */
+  html[data-signed-in] .parcel-code { animation: code-settle 520ms var(--ease-soft) 120ms both; }
+}
+@keyframes code-settle {
+  from { opacity: 0; letter-spacing: 0.34em; }
+}
+
+/* --- Step-by-step guides (Parcels: How to collect) ------------------------------- */
+/* Steps arrive one after another; on a mouse, the step under the pointer lights its number. */
+.guide-step-number { transition: background-color 200ms var(--ease-soft), border-color 200ms var(--ease-soft), color 200ms var(--ease-soft), scale 200ms var(--ease-soft); }
+@media (hover: hover) and (pointer: fine) {
+  .guide-step:hover .guide-step-number { border-color: var(--color-brand-600); background: var(--color-brand-600); color: #fff; scale: 1.06; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  html[data-signed-in] .guide-step { animation: checkpoint-in 380ms var(--ease-soft) both; animation-delay: calc(80ms + var(--i, 0) * 70ms); }
 }
 
 /* --- Occupancy: how full a place looks ------------------------------------------ */

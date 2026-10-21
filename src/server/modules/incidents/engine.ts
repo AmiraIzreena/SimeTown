@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { ADMINS, STAFF } from '@/shared/domain';
 import {
-  ACTIVE_STATUSES, canMoveIncident, CATEGORY_LABELS, INCIDENT_STATUS_LABELS, RESOLUTION_LABELS, SYSTEM_CATEGORIES,
+  ACTIVE_STATUSES, canMoveIncident, CATEGORY_LABELS, INCIDENT_STATUS_LABELS, RESOLUTION_LABELS, residentReportLink, SYSTEM_CATEGORIES,
   type Awaiting, type IncidentModule, type IncidentStatus, type Priority, type ResolutionCategory,
 } from '@/shared/incidents';
 import { one, type Db, type Queryable } from '../../db/client';
@@ -57,6 +57,8 @@ export interface IncidentRow {
   reopen_count: number;
   created_at: Date;
   updated_at: Date;
+  /** The reporter's screenshot or photo, if any (Kitar and Gerak reports). */
+  photo_id: string | null;
 }
 
 type EventKind = 'CREATED' | 'ASSIGNED' | 'REASSIGNED' | 'STATUS' | 'NOTE' | 'RESIDENT_UPDATE' | 'INFO_REQUESTED' | 'RESIDENT_REPLY' | 'ESCALATED' | 'RESOLVED' | 'REOPENED' | 'CLOSED' | 'RECLASSIFIED' | 'REPEATED';
@@ -112,7 +114,7 @@ async function tellEach(q: Queryable, ids: string[], n: { title: string; body: s
   for (const id of ids) await notify(q, [id], { ...n, dedupeKey: `${dedupe}:${id}` });
 }
 
-const residentLink = (i: Pick<IncidentRow, 'reference'>) => `/app/reports#${i.reference}`;
+const residentLink = (i: Pick<IncidentRow, 'reference' | 'module'>) => residentReportLink(i);
 const staffLink = (i: Pick<IncidentRow, 'reference'>) => `/console/incidents?ref=${i.reference}`;
 const title = (i: Pick<IncidentRow, 'kind' | 'reference'>) => `${CATEGORY_LABELS[i.kind] ?? i.kind} (${i.reference})`;
 
@@ -143,6 +145,8 @@ export interface NewIncident {
   dedupeKey?: string;
   /** What the reporter is told when it is received. */
   residentMessage?: string;
+  /** The reporter's screenshot or photo (Kitar and Gerak reports), already stored in uploads. */
+  photoId?: string | null;
 }
 
 const SEVERITY: Record<Priority, string> = { CRITICAL: 'HIGH', HIGH: 'HIGH', NORMAL: 'MEDIUM', LOW: 'LOW' };
@@ -159,13 +163,13 @@ export async function createIncident(q: Queryable, input: NewIncident, now: Date
   const inserted = await one<IncidentRow>(
     q,
     `INSERT INTO incidents (township_id, module, kind, responsibility, priority, severity, summary, description, details, station_id, parcel_id, guard_parcel_id,
-                            shipment_id, company_id, user_id, home_id, dedupe_key, status, assign_due_at, resolve_due_at, created_at, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, 'OPEN', $18, $19, $20, $20)
+                            shipment_id, company_id, user_id, home_id, dedupe_key, status, assign_due_at, resolve_due_at, created_at, updated_at, photo_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, 'OPEN', $18, $19, $20, $20, $21)
      ON CONFLICT (dedupe_key) DO NOTHING RETURNING *`,
     [
       input.townshipId, input.module, input.category, input.responsibility, input.priority, SEVERITY[input.priority], input.summary, input.description ?? null,
       JSON.stringify(input.details ?? {}), input.stationId ?? null, input.parcelId ?? null, input.guardParcelId ?? null, input.shipmentId ?? null,
-      input.companyId ?? null, input.reporterId ?? null, input.homeId ?? null, input.dedupeKey ?? null, assignDue, resolveDue, now,
+      input.companyId ?? null, input.reporterId ?? null, input.homeId ?? null, input.dedupeKey ?? null, assignDue, resolveDue, now, input.photoId ?? null,
     ],
   );
   if (!inserted) {
@@ -174,9 +178,10 @@ export async function createIncident(q: Queryable, input: NewIncident, now: Date
     const reopen = existing.status === 'RESOLVED';
     await q.query(
       `UPDATE incidents SET updated_at = $2, details = details || jsonb_build_object('occurrences', coalesce((details->>'occurrences')::int, 1) + 1),
-              status = CASE WHEN $3 THEN 'REOPENED' ELSE status END, reopen_count = reopen_count + CASE WHEN $3 THEN 1 ELSE 0 END
+              status = CASE WHEN $3 THEN 'REOPENED' ELSE status END, reopen_count = reopen_count + CASE WHEN $3 THEN 1 ELSE 0 END,
+              photo_id = coalesce(photo_id, $4)
         WHERE id = $1`,
-      [existing.id, now, reopen],
+      [existing.id, now, reopen, input.photoId ?? null],
     );
     await appendEvent(q, existing.id, { kind: reopen ? 'REOPENED' : 'REPEATED', visibility: 'INTERNAL', body: input.summary }, now);
     return { id: existing.id, reference: existing.reference, created: false };

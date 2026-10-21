@@ -2,9 +2,9 @@
 
 import { Text } from '@/components/ui/localized-text';
 
-import { ArrowLeft, Briefcase, MessageSquareQuote, ShieldCheck, Wrench } from 'lucide-react';
+import { Briefcase, MessageSquareQuote, ShieldCheck, Wrench } from 'lucide-react';
 import Image from 'next/image';
-import Link from 'next/link';
+import { BackLink } from '@/components/ui/back-link';
 import { useRouter } from 'next/navigation';
 import { useState, type CSSProperties } from 'react';
 import { SERVICE_CATEGORY_PAGE } from '@/components/features/home-service-categories';
@@ -32,9 +32,7 @@ export function ServiceCategoryScreen({ category }: { category: ServiceCategory 
 
   return (
     <div className="space-y-6">
-      <Link href="/app/home-services" className="back-link inline-flex min-h-10 items-center gap-2 rounded-md pr-3 text-sm font-semibold text-ink-600 transition-colors hover:text-brand-700 focus-visible:outline-2 focus-visible:outline-brand-600">
-        <ArrowLeft className="back-link-arrow size-4" aria-hidden /><Text>Back to SimeTown Home</Text>
-      </Link>
+      <BackLink href="/app/home-services"><Text>Back to SimeTown Home</Text></BackLink>
 
       {/* Hero: the category photo under a SimeTown brown wash, with what the category covers. */}
       <header className="service-hero relative isolate overflow-hidden rounded-2xl text-white shadow-lg">

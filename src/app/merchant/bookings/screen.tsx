@@ -75,7 +75,7 @@ export function BookingsScreen({ initialBooking }: { initialBooking: string | nu
         action={<Button href="/merchant/services" variant="secondary"><Wrench className="size-4" aria-hidden /><Text>Services and workers</Text></Button>}
       />
       <Tabs label="Bookings" value={filter} onChange={setFilter} items={[{ key: 'OPEN', label: 'Open', count: filter === 'OPEN' ? waiting || undefined : undefined }, { key: 'CLOSED', label: 'Finished' }]} />
-      <div className="mt-5">
+      <div>
         <Async state={list}>
           {(rows) =>
             rows.length === 0 ? (
@@ -83,12 +83,12 @@ export function BookingsScreen({ initialBooking }: { initialBooking: string | nu
                 <Text>{filter === 'OPEN' ? 'New requests from residents appear here, and you are notified.' : 'Completed, declined and cancelled bookings appear here.'}</Text>
               </EmptyState>
             ) : (
-              <ul className="space-y-3">
+              <ul className="stagger-in space-y-3">
                 {rows.map((b) => {
                   const Icon = SERVICE_ICONS[b.category];
                   return (
                     <li key={b.id}>
-                      <button type="button" onClick={() => setOpenId(b.id)} className="lift flex w-full items-center gap-3 rounded-lg border border-ink-200 bg-white p-4 text-left shadow-xs">
+                      <button type="button" onClick={() => setOpenId(b.id)} className="lift glass-surface flex w-full items-center gap-3 rounded-xl border p-4 text-left shadow-sm">
                         <span className="grid size-10 shrink-0 place-items-center rounded-md bg-brand-50 text-brand-700"><Icon className="size-5" aria-hidden /></span>
                         <span className="min-w-0 flex-1">
                           <span className="flex flex-wrap items-center gap-2">

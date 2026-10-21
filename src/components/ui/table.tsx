@@ -9,7 +9,7 @@ export interface Column<T> {
   header: string;
   cell: (row: T) => ReactNode;
   align?: 'right';
-  /** Leaves the column out on phones, where each row becomes a small card. */
+  /** Secondary detail: on phones, where each row becomes a small card, it shows as a quieter line instead of being left out. */
   desktopOnly?: boolean;
 }
 
@@ -33,7 +33,7 @@ export function DataTable<T>({ columns, rows, keyOf, caption }: { columns: Colum
             {rows.map((row, index) => (
               <tr key={keyOf(row)} style={{ '--i': Math.min(index, 12) } as CSSProperties} className="data-row border-b border-ink-100/80 transition-colors duration-200 last:border-0 hover:bg-[rgb(255_247_240/0.7)]">
                 {columns.map((column) => (
-                  <LocalizedTd key={column.header} data-label={column.header} className={cn('px-5 py-3.5 align-middle text-ink-800', column.align === 'right' && 'text-right tabular-nums', column.desktopOnly && 'max-md:hidden')}>
+                  <LocalizedTd key={column.header} data-label={column.header} className={cn('px-5 py-3.5 align-middle text-ink-800', column.align === 'right' && 'text-right tabular-nums', column.desktopOnly && 'max-md:text-[13px] max-md:text-ink-500')}>
                     <Text>{column.cell(row)}</Text>
                   </LocalizedTd>
                 ))}

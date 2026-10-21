@@ -1,5 +1,5 @@
 'use client';
-import { Button } from '@/components/ui/button';
+import { BackLink } from '@/components/ui/back-link';
 import { Card, PageHeader } from '@/components/ui/card';
 import { Async, SkeletonList } from '@/components/ui/feedback';
 import { Text } from '@/components/ui/localized-text';
@@ -8,7 +8,8 @@ import { useApi } from '@/lib/hooks';
 export default function ReportDetail({ id }: { id: string }) {
   const report = useApi<Report>(`/reports/${encodeURIComponent(id)}`);
   return <>
-    <PageHeader title="Report details" action={<Button variant="secondary" href="/app/lapor"><Text>Open Lapor</Text></Button>} />
+    <BackLink href="/app/lapor" className="mb-3"><Text>Back to Lapor</Text></BackLink>
+    <PageHeader title="Report details" />
     <Async state={report} skeleton={<SkeletonList rows={2} />}>{(r) => <Card className="space-y-4 p-5">
       <div><h2 className="font-semibold"><Text>{categoryLabel(r.category)}</Text></h2><p className="text-sm text-ink-500">{r.location_text}</p></div>
       <StatusBadge status={r.status} /><ReportProgress report={r} />

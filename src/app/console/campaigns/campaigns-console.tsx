@@ -4,7 +4,7 @@ import { Text } from '@/components/ui/localized-text';
 
 import '../operations/parcel-workspace.css';
 import { ArrowRight, Award, BarChart3, CheckCircle2, Clock3, Gift, Hourglass, Plus, Search, Undo2, Wallet, type LucideIcon } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useRef, useState, type CSSProperties, type FormEvent } from 'react';
 import { BudgetSplit, CampaignReport, CampaignSplit, CampaignStatus, givenOf, splitOf } from '@/components/features/campaign-admin';
 import { Button } from '@/components/ui/button';
@@ -479,6 +479,17 @@ const VIEWS: Record<Exclude<CampaignsView, 'sponsors'>, { title: string; hint: s
   closed: { title: 'Closed', hint: 'Finished. Unused reward money has gone back to the funder.', empty: 'No campaigns have closed yet.' },
 };
 
+/**
+ * The console for whichever pill the address names. It lives in the Campaigns layout, so moving
+ * between the pills keeps it mounted: the tiles do not count up again and the page stays put.
+ */
+export function CampaignsRoute() {
+  const pathname = usePathname();
+  const last = pathname.split('/').pop();
+  const view: CampaignsView = last === 'running' || last === 'closed' || last === 'sponsors' ? last : 'action';
+  return <CampaignsConsole view={view} />;
+}
+
 export function CampaignsConsole({ view }: { view: CampaignsView }) {
   const router = useRouter();
   const me = useApi<Me>('/me');
@@ -713,7 +724,7 @@ function CreateCampaign({ open, onClose, onCreated }: { open: boolean; onClose: 
     >
       <ol aria-hidden className="mb-5 grid grid-cols-3 gap-2">
         {STEPS.map((label, i) => (
-          <li key={label} aria-current={i === step ? 'step' : undefined} className={`border-t-2 pt-2 text-xs font-semibold ${i <= step ? 'border-brand-600 text-brand-700' : 'border-ink-200 text-ink-400'}`}>
+          <li key={label} aria-current={i === step ? 'step' : undefined} className={`border-t-2 pt-2 text-xs font-semibold ${i <= step ? 'border-brand-600 text-brand-700' : 'border-ink-200 text-ink-500'}`}>
             <Text>{label}</Text>
           </li>
         ))}

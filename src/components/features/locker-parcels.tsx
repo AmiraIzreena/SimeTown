@@ -103,7 +103,8 @@ function LockerParcelList() {
   return (
     <LocalizedDiv className="space-y-4" aria-label="Parcel lockers">
       {live.length === 0 && <p className="text-[15px] text-ink-600"><Text>Nothing waiting in the lockers right now.</Text></p>}
-      <div className="grid gap-4 lg:grid-cols-2">
+      {/* One column beside the How to collect guide; two only on very wide screens. */}
+      <div className="stagger-in grid gap-4 2xl:grid-cols-2">
         {live.map((p) => <div key={p.id} id={`parcel-${p.id}`} className={`scroll-mt-20 rounded-xl ${parcelId === p.id ? 'ring-2 ring-brand-400' : ''}`}><LockerCard parcel={p} policy={mine.data!.policy} atStation={station} onChange={() => void mine.mutate()} /></div>)}
       </div>
       {done.length > 0 && (

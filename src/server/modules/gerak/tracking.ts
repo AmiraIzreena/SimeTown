@@ -6,6 +6,7 @@ import { conflict, notFound, ruleViolation } from '../../errors';
 import { audit } from '../audit';
 import { recordAction, sumRewards, type ActionReward } from '../rewards';
 import { getSettings } from '../settings';
+import { notifyLoopDone } from './service';
 
 /**
  * Gerak map tracking (proposal 6.2, BR24).
@@ -233,12 +234,12 @@ async function finishLocked(tx: Queryable, a: ActivityRow, now: Date) {
   }
 
   // A loop counts when every one of its checkpoints was passed on this trip, in order (either direction).
-  const loops = await tx.query<{ loop_id: string; distance_m: number; seqs: number[]; hit_seqs: number[] | null; cp_ids: string[] }>(
-    `SELECT l.id AS loop_id, l.distance_m, array_agg(cp.seq ORDER BY cp.seq) AS seqs, array_agg(cp.id ORDER BY cp.seq) AS cp_ids,
+  const loops = await tx.query<{ loop_id: string; name: string; distance_m: number; seqs: number[]; hit_seqs: number[] | null; cp_ids: string[] }>(
+    `SELECT l.id AS loop_id, l.name, l.distance_m, array_agg(cp.seq ORDER BY cp.seq) AS seqs, array_agg(cp.id ORDER BY cp.seq) AS cp_ids,
             (SELECT array_agg(c2.seq ORDER BY h.hit_at) FROM gerak_activity_hits h JOIN gerak_checkpoints c2 ON c2.id = h.checkpoint_id
               WHERE h.activity_id = $1 AND c2.loop_id = l.id) AS hit_seqs
        FROM gerak_loops l JOIN gerak_checkpoints cp ON cp.loop_id = l.id
-      WHERE l.township_id = $2 AND l.active GROUP BY l.id, l.distance_m`,
+      WHERE l.township_id = $2 AND l.active GROUP BY l.id, l.name, l.distance_m`,
     [a.id, a.township_id],
   );
   const loopsDone: string[] = [];
@@ -252,7 +253,9 @@ async function finishLocked(tx: Queryable, a: ActivityRow, now: Date) {
       await tx.query('INSERT INTO gerak_checkins (checkpoint_id, user_id, day, created_at) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING', [cpId, a.user_id, day, now]);
       rewards.push(await recordAction(tx, { user, activity: 'GERAK_CHECKIN', ref: `${cpId}:${day}`, now }));
     }
-    rewards.push(await recordAction(tx, { user, activity: 'GERAK_LOOP', ref: `${loop.loop_id}:${day}`, quantity: loop.distance_m, now, offerEligible: true }));
+    const loopReward = await recordAction(tx, { user, activity: 'GERAK_LOOP', ref: `${loop.loop_id}:${day}`, quantity: loop.distance_m, now, offerEligible: true });
+    rewards.push(loopReward);
+    await notifyLoopDone(tx, a.user_id, loop.name, loopReward.xp, `${loop.loop_id}:${day}`);
   }
 
   const reward = sumRewards(rewards);

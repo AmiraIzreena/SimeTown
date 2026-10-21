@@ -45,6 +45,12 @@ describe('notification center', () => {
     const rewards = await listNotifications(db, user, { category: 'REWARDS' });
     expect(rewards.items).toHaveLength(2);
     expect(rewards.unread).toBe(5);
+    // The category chips count each category under the other filters, whichever category is chosen.
+    expect(rewards.categories).toMatchObject({ REWARDS: 2, PARCELS: 3 });
+    // Search covers the title and text; % is a literal character, not a wildcard.
+    expect((await listNotifications(db, user, { q: 'Event 3' })).items.map((n) => n.title)).toEqual(['Event 3']);
+    expect((await listNotifications(db, user, { q: 'Event 3' })).categories).toEqual({ REWARDS: 1 });
+    expect((await listNotifications(db, user, { q: '%' })).items).toHaveLength(0);
     await markAllRead(db, user, T0);
     expect((await listNotifications(db, user)).unread).toBe(0);
     expect((await listNotifications(db, other)).unread).toBe(1);
@@ -62,6 +68,11 @@ describe('notification center', () => {
     expect(notificationDestination('/app/komuniti?tab=share')).toBe('/app/komuniti?tab=share');
     expect(notificationDestination('/console/komuniti')).toBe('/console/komuniti');
     expect(notificationCategory('/app/komuniti')).toBe('COMMUNITY');
+    // Kitar and Gerak have their own categories; a report made from either page stays with the other reports.
+    expect(notificationCategory('/app/kitar')).toBe('RECYCLING');
+    expect(notificationCategory('/app/gerak')).toBe('GERAK');
+    expect(notificationCategory('/app/lapor?tab=gerak#INC-000001')).toBe('REPORTS');
+    expect(notificationDestination('/app/gerak')).toBe('/app/gerak');
   });
   it('opens a home service report from a staff notification and files it under Home services', () => {
     expect(notificationDestination('/console/home-services?report=abc')).toBe('/console/home-services?report=abc');

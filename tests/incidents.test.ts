@@ -9,7 +9,8 @@ import {
   addIncidentNote, assignIncident, claimIncident, historyIntact, reopenIncident, replyToIncident, requestEscalation, requestInfo, resolveIncident, setIncidentStatus, updateResident,
 } from '@/server/modules/incidents/engine';
 import { addMinutes, DEFAULT_INCIDENT_POLICY } from '@/server/modules/incidents/policy';
-import { incidentBoard, incidentDetail, myReports } from '@/server/modules/incidents/queries';
+import { incidentBoard, incidentDetail, incidentPhoto, myReports } from '@/server/modules/incidents/queries';
+import { residentReportLink } from '@/shared/incidents';
 import { reportProblem, submitCourierTicket } from '@/server/modules/incidents/triage';
 import { createStation, simulateClose } from '@/server/modules/lockers/admin';
 import { myLockerParcels, pickupAtStation } from '@/server/modules/lockers/collection';
@@ -179,7 +180,7 @@ describe('Ownership, investigation and outcome', () => {
     expect(await count('SELECT count(*)::int AS n FROM locker_commands')).toBe(commands);
     expect(await count(`SELECT count(*)::int AS n FROM pickup_credentials WHERE parcel_id = $1 AND status = 'ACTIVE'`, [parcelId])).toBe(credentials);
     // The resident sees the outcome and the updates, never the internal note.
-    const mine = (await myReports(db, aisyah, T0)).reports.find((r) => r.reference === reference)!;
+    const mine = (await myReports(db, aisyah, T0)).items.find((r) => r.reference === reference)!;
     expect(mine).toMatchObject({ status: 'RESOLVED', outcome: 'The door was repaired. Your PIN works again.', canReopen: true });
     expect(JSON.stringify(mine)).not.toContain('hinge side');
     expect(JSON.stringify(mine)).toContain('A technician is on the way.');
@@ -219,6 +220,84 @@ describe('Ownership, investigation and outcome', () => {
     await expect(reopenIncident(db, aisyah, reference, 'Again', new Date(T0.getTime() + 9 * 86_400_000))).rejects.toMatchObject({ code: 'TOO_LATE' });
     // The history cannot be rewritten.
     await expect(db.query(`UPDATE incident_events SET body = 'changed' WHERE incident_id = $1`, [c.id])).rejects.toThrow();
+  });
+
+  it('lists my reports as ongoing or finished, a page at a time, searchable, with counts that match', async () => {
+    const zara = await makeResident(w);
+    const a = await township('DOOR_WONT_OPEN', zara);
+    const b = await township('PARCEL_TRAPPED', zara);
+    const done = await township('DOOR_WONT_OPEN', zara);
+    const c = (await caseOf(done.reference))!;
+    await claimIncident(db, w.staff, c.id, T0);
+    await resolveIncident(db, w.staff, c.id, { category: 'FIXED', outcome: 'Fixed.', actionsTaken: 'Reset.' }, T0);
+
+    const first = await myReports(db, zara, T0, { view: 'ongoing', limit: 1 });
+    expect(first.counts).toMatchObject({ ongoing: 2, finished: 1 });
+    expect(first.items).toHaveLength(1);
+    expect(first.nextCursor).not.toBeNull();
+    // Same timestamps are ordered by id, so the second page neither repeats nor skips a report.
+    const second = await myReports(db, zara, T0, { view: 'ongoing', limit: 1, cursor: first.nextCursor! });
+    expect(second.items).toHaveLength(1);
+    expect(second.nextCursor).toBeNull();
+    expect([first.items[0]!.reference, second.items[0]!.reference].sort()).toEqual([a.reference, b.reference].sort());
+
+    expect((await myReports(db, zara, T0, { view: 'finished' })).items.map((r) => r.reference)).toEqual([done.reference]);
+    const found = await myReports(db, zara, T0, { view: 'ongoing', q: a.reference });
+    expect(found.items.map((r) => r.reference)).toEqual([a.reference]);
+    expect(found.counts).toMatchObject({ ongoing: 1, finished: 0 });
+    // Someone else's reports never appear, even by reference.
+    expect((await myReports(db, aisyah, T0, { view: 'ongoing', q: a.reference })).items).toHaveLength(0);
+    await expect(myReports(db, zara, T0, { view: 'ongoing', cursor: 'not-a-cursor' })).rejects.toMatchObject({ status: 400 });
+    // % and _ in a search are literal characters, not wildcards that match everything.
+    expect((await myReports(db, zara, T0, { view: 'ongoing', q: '%' })).items).toHaveLength(0);
+    expect((await myReports(db, zara, T0, { view: 'ongoing', q: '_' })).items).toHaveLength(0);
+
+    // Each report says where it is from; the type filter and its counts follow the system's modules.
+    expect(first.items[0]!.place).toBe('LOCKER');
+    expect(first.places).toMatchObject({ LOCKER: 2, GUARDHOUSE_PARCEL: 0, GATE: 0 });
+    expect((await myReports(db, zara, T0, { view: 'ongoing', place: 'GATE' })).items).toHaveLength(0);
+    expect((await myReports(db, zara, T0, { view: 'ongoing', place: 'LOCKER' })).items).toHaveLength(2);
+    // Lapor splits parcel and gate reports into two tabs; each tab sees only its own, and knows how many the other has.
+    const gateTab = await myReports(db, zara, T0, { view: 'ongoing', section: 'gate' });
+    expect(gateTab.items).toHaveLength(0);
+    expect(gateTab.sections).toEqual({ parcels: 3, gate: 0, kitar: 0, gerak: 0 });
+    expect((await myReports(db, zara, T0, { view: 'ongoing', section: 'parcels' })).items).toHaveLength(2);
+    expect(residentReportLink({ reference: 'INC-000001', module: 'GUARDHOUSE' })).toBe('/app/lapor?tab=gate#INC-000001');
+    expect(residentReportLink({ reference: 'INC-000002', module: 'LOCKERS' })).toBe('/app/lapor?tab=cases#INC-000002');
+
+    // "Needs your answer" shows only the report the township office asked about.
+    const asked = (await caseOf(a.reference))!;
+    await claimIncident(db, w.staff, asked.id, T0);
+    await requestInfo(db, w.staff, asked.id, 'Which door number was it?', T0);
+    const waiting = await myReports(db, zara, T0, { view: 'ongoing', awaiting: true });
+    expect(waiting.items.map((r) => r.reference)).toEqual([a.reference]);
+    expect(waiting.items[0]!.awaitingYou).toBe(true);
+    expect(waiting.counts).toMatchObject({ ongoing: 1, awaiting: 1 });
+  });
+
+  it('files Kitar and Gerak reports with an optional screenshot, in their own Lapor tabs, the photo seen only by the reporter and staff', async () => {
+    const lee = await makeResident(w);
+    const png = { mime: 'image/png' as const, bytes: new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]) };
+    const kitar = await reportProblem(db, lee, { context: 'KITAR', reason: 'WEIGHT_WRONG', note: 'The scale said 0 kg.', photo: png }, T0);
+    if (kitar.route !== 'TOWNSHIP') throw new Error('expected a case');
+    const gerak = await reportProblem(db, lee, { context: 'GERAK', reason: 'CHECKPOINT' }, T0);
+    if (gerak.route !== 'TOWNSHIP') throw new Error('expected a case');
+    // A page problem needs a few words about what happened.
+    await expect(reportProblem(db, lee, { context: 'GERAK', reason: 'PAGE_PROBLEM' }, T0)).rejects.toMatchObject({ code: 'SAY_WHAT' });
+
+    const kitarTab = await myReports(db, lee, T0, { view: 'ongoing', section: 'kitar' });
+    expect(kitarTab.items.map((r) => [r.reference, r.place, r.hasPhoto])).toEqual([[kitar.incident.reference, 'KITAR', true]]);
+    expect(kitarTab.sections).toMatchObject({ kitar: 1, gerak: 1, parcels: 0 });
+    expect((await myReports(db, lee, T0, { view: 'ongoing', section: 'gerak' })).items.map((r) => r.hasPhoto)).toEqual([false]);
+    expect(residentReportLink({ reference: 'INC-000009', module: 'KITAR' })).toBe('/app/lapor?tab=kitar#INC-000009');
+
+    // The township office sees it in its queue, with the photo; another resident cannot open the photo.
+    expect((await caseOf(kitar.incident.reference))!.module).toBe('KITAR');
+    expect((await incidentPhoto(db, lee, kitar.incident.reference)).headers.get('content-type')).toBe('image/png');
+    expect((await incidentPhoto(db, w.staff, kitar.incident.reference)).status).toBe(200);
+    await expect(incidentPhoto(db, aisyah, kitar.incident.reference)).rejects.toMatchObject({ status: 404 });
+    await expect(incidentPhoto(db, other.staff, kitar.incident.reference)).rejects.toMatchObject({ status: 404 });
+    await expect(incidentPhoto(db, lee, gerak.incident.reference)).rejects.toMatchObject({ status: 404 }); // no photo sent
   });
 });
 

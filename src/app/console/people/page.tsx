@@ -235,7 +235,7 @@ function VerifyResidents() {
                     <span className="block lg:truncate" title={r.address}>{r.address}</span>
                   </span>
                   <span>
-                    <span className="text-xs text-ink-400 lg:hidden"><Text>Property record </Text></span>
+                    <span className="text-xs text-ink-500 lg:hidden"><Text>Property record </Text></span>
                     <span className="font-mono text-[13px] font-semibold text-ink-800">{r.unit_code}</span>
                   </span>
                   <span className="min-w-0 text-ink-600">
@@ -487,7 +487,7 @@ function Accounts({ hq, meId }: { hq: boolean; meId?: string }) {
                 <span aria-hidden className={cn('ops-rail absolute inset-y-2 left-0 w-1 rounded-r-full', a.active ? 'bg-ink-200' : 'bg-warning-600')} />
                 <div className={cn('grid gap-1.5 py-3.5 pl-7 pr-5 text-sm lg:items-center lg:gap-4', ACCOUNT_COLS)}>
                   <span className="min-w-0">
-                    <span className="block text-[15px] font-semibold leading-snug text-ink-900">{a.full_name}{a.id === meId && <span className="ml-1.5 text-xs font-medium text-ink-400"><Text>(you)</Text></span>}</span>
+                    <span className="block text-[15px] font-semibold leading-snug text-ink-900">{a.full_name}{a.id === meId && <span className="ml-1.5 text-xs font-medium text-ink-500"><Text>(you)</Text></span>}</span>
                     <span className="block truncate text-ink-500" title={a.email}>{a.email}</span>
                   </span>
                   <span className="text-ink-700"><Text>{ROLE_LABELS[a.role]}</Text></span>

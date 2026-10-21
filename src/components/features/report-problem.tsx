@@ -1,8 +1,9 @@
 'use client';
 
 import { Text } from '@/components/ui/localized-text';
+import { LocalizedImg, LocalizedInput } from '@/components/ui/localized-elements';
 
-import { CheckCircle2, Copy, ExternalLink, Phone, ShieldQuestion, Truck } from 'lucide-react';
+import { CheckCircle2, Copy, ExternalLink, Flag, ImagePlus, Phone, ShieldQuestion, Truck, X } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/card';
@@ -12,8 +13,9 @@ import { useToast } from '@/components/ui/toast';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { useAction } from '@/lib/hooks';
+import { shrinkPhoto } from '@/lib/image';
 import { useT } from '@/lib/i18n';
-import { REPORT_REASONS, type ReportContext } from '@/shared/incidents';
+import { PHOTO_CONTEXTS, REPORT_REASONS, type ReportContext } from '@/shared/incidents';
 
 export interface CourierGuidance {
   referralId: string;
@@ -28,6 +30,9 @@ type Outcome =
   | { route: 'CONFIRM'; evidence: string[]; question: string }
   | { route: 'FOUND'; message: string }
   | { route: 'TOWNSHIP'; incident: { reference: string; created: boolean } };
+
+/** The Lapor tab where each kind of report is followed (parcel reports are the default). */
+const FOLLOW_TAB: Partial<Record<ReportContext, string>> = { GATE: 'gate', KITAR: 'kitar', GERAK: 'gerak' };
 
 /**
  * Report a problem. The resident says what went wrong; SimeTown decides who
@@ -51,10 +56,29 @@ export function ReportProblemDialog({ open, onClose, context, subtitle, lockerPa
   const [tracking, setTracking] = useState('');
   const [companyId, setCompanyId] = useState('');
   const [outcome, setOutcome] = useState<Outcome | null>(null);
+  // Kitar and Gerak reports may carry one screenshot or photo, shrunk in the browser before it is sent.
+  const withPhoto = PHOTO_CONTEXTS.includes(context);
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const choosePhoto = (file: File | null) => {
+    if (preview) URL.revokeObjectURL(preview);
+    setPhoto(file);
+    setPreview(file ? URL.createObjectURL(file) : null);
+  };
   const chosen = reasons.find((r) => r.key === reason);
-  const send = useAction((confirm: boolean) => api.post<Outcome>('/incidents/report', {
-    context, reason, lockerParcelId, guardParcelId, stationId, note: note.trim() || undefined, trackingNo: tracking.trim() || undefined, companyId: companyId || undefined, confirm,
-  }), {
+  const send = useAction(async (confirm: boolean) => {
+    if (withPhoto) {
+      const data = new FormData();
+      data.set('context', context);
+      data.set('reason', reason);
+      if (note.trim()) data.set('note', note.trim());
+      if (photo) data.set('photo', await shrinkPhoto(photo), 'photo.jpg');
+      return api.post<Outcome>('/incidents/report-with-photo', data);
+    }
+    return api.post<Outcome>('/incidents/report', {
+      context, reason, lockerParcelId, guardParcelId, stationId, note: note.trim() || undefined, trackingNo: tracking.trim() || undefined, companyId: companyId || undefined, confirm,
+    });
+  }, {
     onSuccess: (r) => {
       setOutcome(r);
       if (r.route === 'TOWNSHIP' || r.route === 'COURIER') onFiled?.();
@@ -66,6 +90,7 @@ export function ReportProblemDialog({ open, onClose, context, subtitle, lockerPa
     setTracking('');
     setCompanyId('');
     setOutcome(null);
+    choosePhoto(null);
     onClose();
   };
   const needsTracking = context === 'NOT_ARRIVED' && reason !== 'NOT_SURE';
@@ -95,6 +120,26 @@ export function ReportProblemDialog({ open, onClose, context, subtitle, lockerPa
           </fieldset>
           {context === 'NOT_ARRIVED' && <Input label="Tracking number" value={tracking} onChange={(event) => setTracking(event.target.value.toUpperCase())} maxLength={60} hint="From the courier’s message or the shop’s order page." />}
           <Textarea label={chosen?.needsNote ? 'What happened' : 'Anything to add (optional)'} value={note} onChange={(event) => setNote(event.target.value)} maxLength={1000} />
+          {withPhoto && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-ink-700"><Text>Screenshot or photo (optional)</Text></p>
+              {preview ? (
+                <div className="flex items-start gap-3">
+                  <LocalizedImg src={preview} alt="The screenshot or photo you chose" className="max-h-40 w-auto rounded-lg border border-ink-200 object-contain" />
+                  <Button size="sm" variant="ghost" onClick={() => choosePhoto(null)}><X className="size-4" aria-hidden /><Text>Remove</Text></Button>
+                </div>
+              ) : (
+                <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-ink-300 bg-white p-3 text-sm text-ink-600 transition-colors hover:border-brand-400 hover:bg-brand-50/50 has-focus-visible:outline-2 has-focus-visible:outline-brand-600">
+                  <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-brand-50 text-brand-700"><ImagePlus className="size-4" aria-hidden /></span>
+                  <span>
+                    <span className="block font-semibold text-ink-900"><Text>Add a screenshot or photo</Text></span>
+                    <Text>It helps the township office see the problem. JPEG, PNG or WebP.</Text>
+                  </span>
+                  <LocalizedInput type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(event) => choosePhoto(event.target.files?.[0] ?? null)} />
+                </label>
+              )}
+            </div>
+          )}
         </div>
       )}
       {outcome?.route === 'CHOOSE_COURIER' && (
@@ -118,11 +163,26 @@ export function ReportProblemDialog({ open, onClose, context, subtitle, lockerPa
         <div className="space-y-2 text-[15px] text-ink-800">
           <p className="flex gap-2"><CheckCircle2 className="mt-0.5 size-5 shrink-0 text-success-700" aria-hidden /><span><Text>{outcome.incident.created ? `Report ${outcome.incident.reference} received.` : `You already reported this: ${outcome.incident.reference}.`}</Text></span></p>
           <p><Text>The township office will look into it. You will be told what happens.</Text></p>
-          {context !== 'COURIER_STATION' && <Button size="sm" variant="secondary" href={`/app/reports#${outcome.incident.reference}`}><Text>Open My reports</Text></Button>}
+          {context !== 'COURIER_STATION' && <Button size="sm" variant="secondary" href={`/app/lapor?tab=${FOLLOW_TAB[context] ?? 'cases'}#${outcome.incident.reference}`}><Text>Follow it in Lapor</Text></Button>}
         </div>
       )}
       {outcome?.route === 'COURIER' && <CourierGuidanceCard guidance={outcome.guidance} />}
     </Modal>
+  );
+}
+
+/**
+ * "Report a problem" for a feature page (Kitar, Gerak): the button and its dialog, with a link to that page's own
+ * Lapor tab, where the resident follows what they reported.
+ */
+export function ReportProblemButton({ context, subtitle }: { context: 'KITAR' | 'GERAK'; subtitle: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="flex flex-wrap gap-2">
+      <Button variant="secondary" onClick={() => setOpen(true)}><Flag className="size-4" aria-hidden /><Text>Report a problem</Text></Button>
+      <Button variant="ghost" href={`/app/lapor?tab=${FOLLOW_TAB[context]}`}><Text>My reports</Text></Button>
+      <ReportProblemDialog open={open} onClose={() => setOpen(false)} context={context} subtitle={subtitle} />
+    </div>
   );
 }
 

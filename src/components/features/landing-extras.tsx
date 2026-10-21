@@ -1,6 +1,6 @@
 import { Text } from '@/components/ui/localized-text';
 import { LocalizedLink as Link } from '@/components/ui/localized-elements';
-import { ArrowRight, Plus } from 'lucide-react';
+import { ArrowRight, Pause, Play, Plus } from 'lucide-react';
 import { FEATURES } from '@/components/features/offer-content';
 
 /** Every module as a slow, endless row of chips; the full descriptions live on "What we offer". */
@@ -29,9 +29,21 @@ export function ModuleStrip() {
           <ArrowRight className="size-4 transition-transform duration-200 ease-soft group-hover:translate-x-1" aria-hidden />
         </Link>
       </div>
-      <div className="module-strip mt-8 flex overflow-hidden">
-        {row(false)}
-        {row(true)}
+      {/* The strip moves on its own, so it can be paused with a mouse, a tap or the keyboard (WCAG 2.2.2). No script: the checkbox drives the CSS. */}
+      <div className="module-strip-wrap mt-8">
+        <div className="module-strip flex overflow-hidden">
+          {row(false)}
+          {row(true)}
+        </div>
+        <div className="mx-auto mt-4 flex max-w-6xl justify-end px-5 motion-reduce:hidden sm:px-8">
+          <label className="module-strip-toggle inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-full border border-ink-200 bg-white px-4 text-sm font-semibold text-ink-700 shadow-xs transition-colors duration-200 hover:border-brand-300 hover:text-brand-800 has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-brand-600">
+            <input type="checkbox" className="peer sr-only" />
+            <Pause className="size-3.5 peer-checked:hidden" aria-hidden />
+            <Play className="hidden size-3.5 peer-checked:block" aria-hidden />
+            <span className="peer-checked:hidden"><Text>Pause the moving list</Text></span>
+            <span className="hidden peer-checked:inline"><Text>Play the moving list</Text></span>
+          </label>
+        </div>
       </div>
     </section>
   );

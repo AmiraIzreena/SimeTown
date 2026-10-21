@@ -10,6 +10,7 @@ import { CodeEntry } from '@/components/features/scan';
 import { Tracker } from '@/components/features/tracker';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, PageHeader, Stat } from '@/components/ui/card';
+import { ReportProblemButton } from '@/components/features/report-problem';
 import { Async, EmptyState, SkeletonList, SkeletonStats } from '@/components/ui/feedback';
 import { Input } from '@/components/ui/field';
 import { api } from '@/lib/api';
@@ -51,7 +52,7 @@ export function GerakScreen({ scanned }: { scanned: string }) {
 
   return (
     <AksesPage profile={akses.profile} simple={akses.simple} largeText={akses.largeText} largeTargets={akses.largeTargets}>
-      <PageHeader title="Gerak" description="Walk, run, cycle or wheel a township loop. Track it on the map and the checkpoints tick themselves, or scan the posters on the way." />
+      <PageHeader title="Gerak" description="Walk, run, cycle or wheel a township loop. Track it on the map and the checkpoints tick themselves, or scan the posters on the way." action={<ReportProblemButton context="GERAK" subtitle="A loop, a checkpoint, the map or the Gerak page" />} />
       <div className="space-y-6">
         <Async state={overview} skeleton={<SkeletonStats count={3} />}>
           {(o) => (

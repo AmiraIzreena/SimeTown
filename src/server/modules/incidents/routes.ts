@@ -1,7 +1,9 @@
 import { z } from 'zod';
 import { ADMINS, STAFF } from '@/shared/domain';
-import { INCIDENT_STATUSES, PRIORITIES, REPORT_CONTEXTS, RESOLUTION_CATEGORIES } from '@/shared/incidents';
-import { forbidden, notFound } from '../../errors';
+import { INCIDENT_STATUSES, PRIORITIES, REPORT_CONTEXTS, REPORT_PLACES, REPORT_SECTIONS, RESOLUTION_CATEGORIES } from '@/shared/incidents';
+import { badRequest, forbidden, notFound } from '../../errors';
+import { readForm, readPhoto } from '../../http/uploads';
+import { pageQuery } from '../../http/pagination';
 import { emptyBody, route, zId, zText } from '../../http/router';
 import { verifySupportChannel } from './courier-support';
 import { runIncidentChecks } from './checks';
@@ -9,7 +11,7 @@ import * as engine from './engine';
 import * as queries from './queries';
 import { reportProblem, submitCourierTicket } from './triage';
 
-const MODULES = ['LOCKERS', 'PARCELS', 'GUARDHOUSE', 'COURIERS', 'FACILITIES', 'COMMUNITY'] as const;
+const MODULES = ['LOCKERS', 'PARCELS', 'GUARDHOUSE', 'COURIERS', 'FACILITIES', 'COMMUNITY', 'KITAR', 'GERAK'] as const;
 const zReference = z.string().regex(/^INC-\d{6,}$/, 'A case reference such as INC-000123.');
 const zTarget = z.object({ assign: z.number().int().min(1).max(60 * 24 * 30), resolve: z.number().int().min(2).max(60 * 24 * 90), working: z.boolean() });
 
@@ -25,8 +27,31 @@ export const incidentRoutes = [
     handler: (c) => reportProblem(c.db, c.actor, c.body, c.now),
   }),
   route({
-    method: 'GET', path: '/incidents/mine', tag: 'Incidents', summary: 'My reports, with what the township office told me, and my courier referrals', auth: 'session', roles: ['RESIDENT', 'COURIER'],
-    handler: (c) => queries.myReports(c.db, c.actor, c.now),
+    method: 'POST', path: '/incidents/report-with-photo', tag: 'Incidents', summary: 'Report a Kitar or Gerak problem, with an optional screenshot or photo (multipart form)', auth: 'session', roles: ['RESIDENT'],
+    rateLimit: { limit: 20, windowSec: 3600, by: 'user' },
+    handler: async (c) => {
+      const form = await readForm(c.req);
+      const text = (name: string) => {
+        const value = form.get(name);
+        return typeof value === 'string' ? value : undefined;
+      };
+      const input = z.object({ context: z.enum(['KITAR', 'GERAK']), reason: z.string().max(40), note: z.string().trim().max(1000).optional() })
+        .safeParse({ context: text('context'), reason: text('reason'), note: text('note') || undefined });
+      if (!input.success) throw badRequest('Choose what went wrong.');
+      return reportProblem(c.db, c.actor, { ...input.data, photo: await readPhoto(form) }, c.now);
+    },
+  }),
+  route({
+    method: 'GET', path: '/incident-photos/:reference', tag: 'Incidents', summary: "A report's screenshot or photo (the reporter and that township's staff only)", auth: 'session', roles: ['RESIDENT', ...STAFF],
+    handler: (c) => queries.incidentPhoto(c.db, c.actor, zReference.parse(c.params.reference)),
+  }),
+  route({
+    method: 'GET', path: '/incidents/mine', tag: 'Incidents', summary: 'My reports (ongoing or finished, a page at a time, searchable, by type or waiting for my answer), with what the township office told me, and my courier referrals', auth: 'session', roles: ['RESIDENT', 'COURIER'],
+    query: pageQuery.extend({
+      view: z.enum(queries.MY_REPORT_VIEWS).optional(), section: z.enum(REPORT_SECTIONS).optional(), q: z.string().trim().max(60).optional(), place: z.enum(REPORT_PLACES).optional(),
+      awaiting: z.enum(['true', 'false']).optional().transform((value) => value === 'true'),
+    }),
+    handler: (c) => queries.myReports(c.db, c.actor, c.now, c.query),
   }),
   route({
     method: 'POST', path: '/incidents/mine/:reference/reply', tag: 'Incidents', summary: 'Answer the township office’s question about my report', auth: 'session', roles: ['RESIDENT', 'COURIER'],

@@ -28,7 +28,7 @@ export const walletRoutes = [
   }),
   route({
     method: 'GET', path: '/notifications', tag: 'Points & XP', summary: 'My notifications', auth: 'session',
-    query: pageQuery.extend({ unread: z.enum(['true', 'false']).optional(), category: z.enum(NOTIFICATION_CATEGORIES).optional() }),
+    query: pageQuery.extend({ unread: z.enum(['true', 'false']).optional(), category: z.enum(NOTIFICATION_CATEGORIES).optional(), q: z.string().trim().max(60).optional() }),
     handler: (c) => listNotifications(c.db, c.actor.id, { ...c.query, unread: c.query.unread === 'true' }),
   }),
   route({

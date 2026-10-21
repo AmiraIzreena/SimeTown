@@ -1,4 +1,5 @@
 import type { ReportCategory, ReportStatus } from '@/shared/domain';
+import { residentReportLink, type IncidentModule } from '@/shared/incidents';
 import type { Db } from '../../db/client';
 import { requireVerifiedResident, type Actor } from '../../auth/actor';
 import { todayIn } from '../settings';
@@ -48,8 +49,8 @@ export async function myRequests(db: Db, actor: Actor, now: Date) {
         WHERE x.home_id = $1 AND x.status IN ('REQUESTED', 'CONFIRMED') ORDER BY x.day`,
       [resident.homeId],
     ),
-    db.query<{ id: string; reference: string; kind: string; status: string; awaiting: string | null; owner_id: string | null; created_at: Date; updated_at: Date }>(
-      `SELECT id, reference, kind, status, awaiting, owner_id, created_at, updated_at FROM incidents
+    db.query<{ id: string; reference: string; kind: string; module: IncidentModule; status: string; awaiting: string | null; owner_id: string | null; created_at: Date; updated_at: Date }>(
+      `SELECT id, reference, kind, module, status, awaiting, owner_id, created_at, updated_at FROM incidents
         WHERE user_id = $1 AND (status NOT IN ('RESOLVED', 'CLOSED') OR updated_at > $2::timestamptz - interval '14 days') ORDER BY updated_at DESC LIMIT 20`,
       [resident.id, now],
     ),
@@ -82,7 +83,7 @@ export async function myRequests(db: Db, actor: Actor, now: Date) {
     ...collections.map((x) => ({ kind: 'COLLECTION' as const, id: x.id, open: true, collector: x.collector, day: x.day, slot: x.slot, status: x.status, at: x.created_at, link: '/app/kitar' })),
     ...cases.map((c) => ({
       kind: 'INCIDENT' as const, id: c.id, reference: c.reference, category: c.kind, status: c.status, open: c.status !== 'RESOLVED' && c.status !== 'CLOSED',
-      awaitingYou: c.status === 'AWAITING_EXTERNAL_PARTY' && c.awaiting === 'RESIDENT', handled: c.owner_id !== null, at: c.updated_at, link: `/app/reports#${c.reference}`,
+      awaitingYou: c.status === 'AWAITING_EXTERNAL_PARTY' && c.awaiting === 'RESIDENT', handled: c.owner_id !== null, at: c.updated_at, link: residentReportLink(c),
     })),
   ];
   return {

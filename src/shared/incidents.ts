@@ -42,10 +42,43 @@ export const PRIORITIES = ['CRITICAL', 'HIGH', 'NORMAL', 'LOW'] as const;
 export type Priority = (typeof PRIORITIES)[number];
 export const PRIORITY_LABELS: Record<Priority, string> = { CRITICAL: 'Critical', HIGH: 'High', NORMAL: 'Normal', LOW: 'Low' };
 
-export type IncidentModule = 'LOCKERS' | 'PARCELS' | 'GUARDHOUSE' | 'COURIERS' | 'FACILITIES' | 'COMMUNITY';
+export type IncidentModule = 'LOCKERS' | 'PARCELS' | 'GUARDHOUSE' | 'COURIERS' | 'FACILITIES' | 'COMMUNITY' | 'KITAR' | 'GERAK';
 export const MODULE_LABELS: Record<IncidentModule | 'LAPOR', string> = {
-  LOCKERS: 'Smart lockers', PARCELS: 'Guardhouse parcels', GUARDHOUSE: 'Gate and access', COURIERS: 'Courier platform', FACILITIES: 'Facilities', COMMUNITY: 'Community', LAPOR: 'Lapor',
+  LOCKERS: 'Smart lockers', PARCELS: 'Guardhouse parcels', GUARDHOUSE: 'Gate and access', COURIERS: 'Courier platform', FACILITIES: 'Facilities', COMMUNITY: 'Community',
+  KITAR: 'Kitar recycling', GERAK: 'Gerak loops', LAPOR: 'Lapor',
 };
+
+/**
+ * What a resident's report is about, in the words residents use on My reports. "Guardhouse" is two
+ * different things in the system (parcels kept on the guard's shelf, and the gate itself), so they
+ * stay separate here; facilities and community reports share "Other".
+ */
+export const REPORT_PLACES = ['LOCKER', 'GUARDHOUSE_PARCEL', 'GATE', 'DELIVERY', 'OTHER', 'KITAR', 'GERAK'] as const;
+export type ReportPlace = (typeof REPORT_PLACES)[number];
+export const REPORT_PLACE_MODULES: Record<ReportPlace, IncidentModule[]> = {
+  LOCKER: ['LOCKERS'], GUARDHOUSE_PARCEL: ['PARCELS'], GATE: ['GUARDHOUSE'], DELIVERY: ['COURIERS'], OTHER: ['FACILITIES', 'COMMUNITY'], KITAR: ['KITAR'], GERAK: ['GERAK'],
+};
+export const REPORT_PLACE_LABELS: Record<ReportPlace, string> = {
+  LOCKER: 'Parcel locker', GUARDHOUSE_PARCEL: 'Guardhouse', GATE: 'Gate & visitors', DELIVERY: 'Delivery', OTHER: 'Other', KITAR: 'Kitar', GERAK: 'Gerak',
+};
+export const placeOfModule = (module: IncidentModule): ReportPlace =>
+  REPORT_PLACES.find((place) => REPORT_PLACE_MODULES[place].includes(module)) ?? 'OTHER';
+
+/** Lapor shows these reports in tabs: parcel problems, the gate (from Tamu), Kitar recycling and Gerak loops. */
+export const REPORT_SECTIONS = ['parcels', 'gate', 'kitar', 'gerak'] as const;
+export type ReportSection = (typeof REPORT_SECTIONS)[number];
+export const REPORT_SECTION_PLACES: Record<ReportSection, ReportPlace[]> = {
+  parcels: ['LOCKER', 'GUARDHOUSE_PARCEL', 'DELIVERY', 'OTHER'],
+  gate: ['GATE'],
+  kitar: ['KITAR'],
+  gerak: ['GERAK'],
+};
+export const sectionOfModule = (module: IncidentModule): ReportSection =>
+  REPORT_SECTIONS.find((section) => REPORT_SECTION_PLACES[section].includes(placeOfModule(module))) ?? 'parcels';
+/** The Lapor tab (?tab=) for each section; parcel reports keep their original "cases". */
+export const SECTION_TAB: Record<ReportSection, string> = { parcels: 'cases', gate: 'gate', kitar: 'kitar', gerak: 'gerak' };
+/** Where a resident follows a report: its own Lapor tab, opened on it. */
+export const residentReportLink = (i: { reference: string; module: IncidentModule }) => `/app/lapor?tab=${SECTION_TAB[sectionOfModule(i.module)]}#${i.reference}`;
 
 export const AWAITING_LABELS = { RESIDENT: 'the resident', COURIER: 'the courier company', CONTRACTOR: 'a contractor', OTHER: 'someone else' } as const;
 export type Awaiting = keyof typeof AWAITING_LABELS;
@@ -58,7 +91,9 @@ export const RESOLUTION_LABELS: Record<ResolutionCategory, string> = {
 };
 
 /** Where a problem is being reported from: it decides which reasons make sense. */
-export const REPORT_CONTEXTS = ['LOCKER_WAITING', 'LOCKER_DONE', 'GUARD_WAITING', 'GUARD_DONE', 'NOT_ARRIVED', 'GATE', 'COURIER_STATION'] as const;
+export const REPORT_CONTEXTS = ['LOCKER_WAITING', 'LOCKER_DONE', 'GUARD_WAITING', 'GUARD_DONE', 'NOT_ARRIVED', 'GATE', 'COURIER_STATION', 'KITAR', 'GERAK'] as const;
+/** Reports from the Kitar and Gerak pages, which may carry a screenshot or photo. */
+export const PHOTO_CONTEXTS: readonly ReportContext[] = ['KITAR', 'GERAK'];
 export type ReportContext = (typeof REPORT_CONTEXTS)[number];
 
 /** Who must act. COURIER problems are referred, not opened as township cases. */
@@ -124,6 +159,20 @@ export const REPORT_REASONS: Record<ReportContext, ReportReason[]> = {
     { key: 'SECURITY', label: 'A safety or security concern', hint: 'Something at the gate or guardhouse that the township should know.', responsibility: 'TOWNSHIP', module: 'GUARDHOUSE', category: 'SECURITY_CONCERN', priority: 'HIGH', needsNote: true },
     notSure('GUARDHOUSE'),
   ],
+  KITAR: [
+    { key: 'BIN_FAULT', label: 'A bin or kiosk is not working', hint: 'The bin did not open, the screen froze, or it would not take my items.', responsibility: 'TOWNSHIP', module: 'KITAR', category: 'KITAR_BIN_FAULT', priority: 'NORMAL' },
+    { key: 'WEIGHT_WRONG', label: 'The weight, points or XP was wrong', hint: 'The scale showed the wrong weight, or my points or XP did not arrive.', responsibility: 'TOWNSHIP', module: 'KITAR', category: 'KITAR_WEIGHT_WRONG', priority: 'NORMAL' },
+    { key: 'BIN_FULL', label: 'The bin is full or dirty', hint: 'There was no room for my items, or the kiosk needs cleaning.', responsibility: 'TOWNSHIP', module: 'KITAR', category: 'KITAR_BIN_FULL', priority: 'LOW' },
+    { key: 'PAGE_PROBLEM', label: 'Something on the Kitar page is wrong', hint: 'The map, the guide, a button or my history does not work as it should.', responsibility: 'TOWNSHIP', module: 'KITAR', category: 'KITAR_APP', priority: 'LOW', needsNote: true },
+    notSure('KITAR'),
+  ],
+  GERAK: [
+    { key: 'ROUTE_PROBLEM', label: 'A problem on the route or loop', hint: 'A blocked path, broken pavement, poor lighting or something unsafe on the loop.', responsibility: 'TOWNSHIP', module: 'GERAK', category: 'GERAK_ROUTE', priority: 'NORMAL' },
+    { key: 'CHECKPOINT', label: 'A checkpoint did not tick', hint: 'I passed a checkpoint, or scanned its QR poster, but it was not counted.', responsibility: 'TOWNSHIP', module: 'GERAK', category: 'GERAK_CHECKPOINT', priority: 'NORMAL' },
+    { key: 'MAP_WRONG', label: 'The map or tracking is wrong', hint: 'The map shows the wrong place, or my trip was not tracked properly.', responsibility: 'TOWNSHIP', module: 'GERAK', category: 'GERAK_MAP', priority: 'LOW' },
+    { key: 'PAGE_PROBLEM', label: 'Something on the Gerak page is wrong', hint: 'A button, my distance or my loops do not work as they should.', responsibility: 'TOWNSHIP', module: 'GERAK', category: 'GERAK_APP', priority: 'LOW', needsNote: true },
+    notSure('GERAK'),
+  ],
   COURIER_STATION: [
     { key: 'STATION_FAULT', label: 'The locker is not working', hint: 'Doors not opening, keypad or screen broken, station offline.', responsibility: 'TOWNSHIP', module: 'LOCKERS', category: 'LOCKER_MALFUNCTION', priority: 'HIGH' },
     { key: 'DENIED_ENTRY', label: 'I was turned away at the gate', hint: 'The guardhouse did not let me in to deliver.', responsibility: 'TOWNSHIP', module: 'GUARDHOUSE', category: 'COURIER_DENIED_ENTRY', priority: 'NORMAL' },
@@ -152,4 +201,7 @@ export const CATEGORY_LABELS: Record<string, string> = {
   DOOR_LEFT_OPEN: 'Door left open', UNLOCK_FAILED: 'Door did not open', COMMAND_REJECTED: 'Door command refused', KEYPAD_LOCKED: 'Keypad locked',
   SUSPICIOUS_LOGIN: 'Suspicious courier sign-in', NOT_COLLECTED_BY_ME: 'Household says it did not collect', PARCEL_PROBLEM: 'Household reported a parcel problem',
   STAFF_REPORT: 'Reported by staff', RELOCATION_PROBLEM: 'Parcel relocation stopped',
+  KITAR_BIN_FAULT: 'Kitar bin or kiosk not working', KITAR_WEIGHT_WRONG: 'Kitar weight, points or XP wrong', KITAR_BIN_FULL: 'Kitar bin full or dirty',
+  KITAR_APP: 'Problem on the Kitar page', GERAK_ROUTE: 'Problem on a Gerak route', GERAK_CHECKPOINT: 'Gerak checkpoint did not tick',
+  GERAK_MAP: 'Gerak map or tracking wrong', GERAK_APP: 'Problem on the Gerak page',
 };

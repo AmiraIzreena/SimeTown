@@ -54,6 +54,7 @@ const GROUPS: { title: string; description: string; fields: { key: string; label
       { key: 'flood_warning_pct', label: 'Flood warning line (%)' },
       { key: 'flood_danger_pct', label: 'Flood danger line (%)', hint: 'Agree this level with the drainage team.' },
       { key: 'flag_hide_threshold', label: 'Flags that hide a post' },
+      { key: 'issue_public_threshold', label: 'Residents before a Lapor issue is public', hint: 'Reporters and “Me too” together. Below this, only the people who reported it see it.' },
       { key: 'min_group_size', label: 'Smallest group shown to a sponsor' },
     ],
   },

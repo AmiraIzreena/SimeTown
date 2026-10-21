@@ -107,7 +107,7 @@ export default function RequestsPage() {
                           <span className="mt-1 block text-[15px] text-ink-800"><Text>{l.now}</Text></span>
                           {l.next && <span className="block text-sm text-ink-500"><Text>{l.next}</Text></span>}
                         </span>
-                        <span className="flex shrink-0 flex-col items-end gap-2 text-xs text-ink-400">
+                        <span className="flex shrink-0 flex-col items-end gap-2 text-xs text-ink-500">
                           <Text>{timeAgo(item.at)}</Text>
                           <ChevronRight className="size-4" aria-hidden />
                         </span>

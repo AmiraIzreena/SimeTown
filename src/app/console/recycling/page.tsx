@@ -282,7 +282,7 @@ function Attention({ state, scope, hq }: { state: ReturnType<typeof useApi<Excep
                           <div className="min-w-0 text-sm">
                             <p className="font-semibold text-accent-700"><Text>{REASON[t.r.review_reason].title}</Text></p>
                             <p className="line-clamp-2 text-ink-600"><Text>{REASON[t.r.review_reason].why}</Text></p>
-                            <p className="mt-0.5 text-xs text-ink-400">
+                            <p className="mt-0.5 text-xs text-ink-500">
                               {t.r.reported_weight_g ? <Text>{`${formatKg(t.r.reported_weight_g)} from the household`}</Text> : <Text>No weight sent</Text>}
                               {' · '}<Text>{t.r.gate_scanned ? 'Gate scanned' : 'No gate scan'}</Text>
                               {' · '}<Text>{timeAgo(t.r.reported_at)}</Text>

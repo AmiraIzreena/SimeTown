@@ -8,7 +8,7 @@ import { OFFER_DAYS, offerTerms } from '@/components/features/offers';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, PageHeader, Progress, Stat } from '@/components/ui/card';
 import { ConfirmDialog } from '@/components/ui/dialog';
-import { Async, EmptyState, SkeletonStats } from '@/components/ui/feedback';
+import { Async, SkeletonPanel, SkeletonStats } from '@/components/ui/feedback';
 import { Input } from '@/components/ui/field';
 import { Switch } from '@/components/ui/switch';
 import { api } from '@/lib/api';
@@ -136,6 +136,12 @@ export default function OffersPage() {
           <Card>
             <CardHeader title="Create an offer" description={`You choose the terms. The only fee is ${feePct}% of each discount actually used.`} />
             <form method="post" onSubmit={submit} className="space-y-5 p-5" noValidate>
+              {data.data.offers.length === 0 && (
+                <p className="flex items-start gap-3 rounded-lg bg-gold-50 p-4 text-sm leading-relaxed text-ink-700">
+                  <Tag className="mt-0.5 size-4 shrink-0 text-gold-700" aria-hidden />
+                  <span><strong className="block font-semibold text-ink-900"><Text>No offers yet</Text></strong><Text>An offer brings green-minded residents to your shop. You decide the discount, the days and hours, and the most you will give in a month.</Text></span>
+                </p>
+              )}
               <Input name="title" label="Offer name" placeholder="e.g. RM3 off afternoon tea" required maxLength={80} error={create.fields.title} />
               <div className="grid gap-4 sm:grid-cols-3">
                 <Input name="discount" label="Discount (RM, whole ringgit)" inputMode="numeric" placeholder="3" required error={create.fields.discountSen} hint="The resident gives the same number of points: RM3 = 300 points." />
@@ -148,7 +154,7 @@ export default function OffersPage() {
                   {OFFER_DAYS.map((day, i) => {
                     const on = (days & (1 << i)) !== 0;
                     return (
-                      <button key={day} type="button" aria-pressed={on} onClick={() => setDays((d) => (on && d !== 1 << i ? d & ~(1 << i) : d | (1 << i)))} className={cn('min-h-11 min-w-14 rounded-md border px-3 text-sm font-semibold', on ? 'border-brand-600 bg-brand-50 text-brand-800' : 'border-ink-200 text-ink-500')}>
+                      <button key={day} type="button" aria-pressed={on} onClick={() => setDays((d) => (on && d !== 1 << i ? d & ~(1 << i) : d | (1 << i)))} className={cn('min-h-11 min-w-14 rounded-md border px-3 text-sm font-semibold transition-[background-color,border-color,color,scale] duration-200 ease-soft active:scale-[0.97] active:duration-100 motion-reduce:transition-none', on ? 'border-brand-600 bg-brand-50 text-brand-800' : 'border-ink-200 text-ink-500')}>
                         <Text>{day}</Text>
                       </button>
                     );
@@ -164,21 +170,6 @@ export default function OffersPage() {
             </form>
           </Card>
         )}
-
-        <Async state={summary}>
-          {(s) => (
-            <Card className="p-5">
-              <div className="flex items-start gap-3">
-                <span className="grid size-10 shrink-0 place-items-center rounded-md bg-brand-50 text-brand-700">
-                  <Accessibility className="size-5" aria-hidden />
-                </span>
-                <div className="flex-1">
-                  <Switch label="Akses-friendly badge" hint="Show residents that your shop has step-free entry, space for a wheelchair, and staff happy to help." checked={s.merchant.akses_friendly} onChange={(v) => void akses.run(v)} disabled={akses.pending} />
-                </div>
-              </div>
-            </Card>
-          )}
-        </Async>
 
         <Async state={data}>
           {(d) =>
@@ -204,9 +195,23 @@ export default function OffersPage() {
             )
           }
         </Async>
-        {data.data && data.data.offers.length === 0 && (
-          <EmptyState icon={Tag} title="No offers yet"><Text>An offer brings green-minded residents to your shop. You decide the discount, the days and hours, and the most you will give in a month.</Text></EmptyState>
-        )}
+
+        {/* A shop setting rather than part of an offer, so it sits last. */}
+        <Async state={summary} skeleton={<SkeletonPanel body="lines" />}>
+          {(s) => (
+            <Card>
+              <CardHeader title="Shop settings" />
+              <div className="flex items-start gap-3 p-5">
+                <span className="grid size-10 shrink-0 place-items-center rounded-md bg-brand-50 text-brand-700">
+                  <Accessibility className="size-5" aria-hidden />
+                </span>
+                <div className="flex-1">
+                  <Switch label="Akses-friendly badge" hint="Show residents that your shop has step-free entry, space for a wheelchair, and staff happy to help." checked={s.merchant.akses_friendly} onChange={(v) => void akses.run(v)} disabled={akses.pending} />
+                </div>
+              </div>
+            </Card>
+          )}
+        </Async>
       </div>
 
       <ConfirmDialog open={ending !== null} onClose={() => setEnding(null)} onConfirm={() => ending && void setStatus.run(ending.id, 'ENDED')} title="End this offer?" confirmLabel="End offer" destructive pending={setStatus.pending}>

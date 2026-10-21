@@ -127,8 +127,13 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 
 | Method | Path | Who | What it does |
 | --- | --- | --- | --- |
-| POST | `/reports` | RESIDENT | Report a hazard or access barrier (multipart form; optional photo) |
+| POST | `/reports` | RESIDENT | Report a hazard or access barrier (multipart form; optional photo). Without "issue", a likely matching issue is returned first ({ needsChoice, issue, alreadyYours }) and nothing is saved |
 | GET | `/reports` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | My reports and the ones I follow (resident) or the township queue (staff) |
+| GET | `/report-issues` | RESIDENT | Public issues in my township (enough residents affected): written title, type, area, status and dates only, with the township's figures |
+| GET | `/report-issues/similar` | RESIDENT | Public open issues that look like the report being written, to tap "Me too" instead |
+| GET | `/report-issues/attention` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Open issues that reached the public threshold or are urgent, with their reports (Needs attention) |
+| POST | `/report-issues/:issueId/me-too` | RESIDENT | Say "Me too" on an issue (follow it and count as affected; no XP) |
+| PATCH | `/report-issues/:issueId` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Staff update every open report in an issue at once, or correct its public title (logged) |
 | GET | `/reports/similar` | RESIDENT | Open reports that look like the one about to be sent, to tap "Me too" instead |
 | GET | `/reports/stats` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Open, late, duplicates avoided and time to fix (the one-channel test) |
 | GET | `/reports/:reportId` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | One report |
@@ -330,7 +335,9 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | Method | Path | Who | What it does |
 | --- | --- | --- | --- |
 | POST | `/incidents/report` | RESIDENT, COURIER | Report a problem: sent to the courier company, filed for the township, or checked against the township’s records first |
-| GET | `/incidents/mine` | RESIDENT, COURIER | My reports, with what the township office told me, and my courier referrals |
+| POST | `/incidents/report-with-photo` | RESIDENT | Report a Kitar or Gerak problem, with an optional screenshot or photo (multipart form) |
+| GET | `/incident-photos/:reference` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | A report's screenshot or photo (the reporter and that township's staff only) |
+| GET | `/incidents/mine` | RESIDENT, COURIER | My reports (ongoing or finished, a page at a time, searchable, by type or waiting for my answer), with what the township office told me, and my courier referrals |
 | POST | `/incidents/mine/:reference/reply` | RESIDENT, COURIER | Answer the township office’s question about my report |
 | POST | `/incidents/mine/:reference/reopen` | RESIDENT, COURIER | Not fixed: reopen my report within the township’s window (the admins are told) |
 | POST | `/incidents/referrals/:referralId/ticket` | RESIDENT | Simulated courier companies only: file the complaint in the company’s (simulated) ticket system |

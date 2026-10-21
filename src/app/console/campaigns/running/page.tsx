@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
-import { CampaignsConsole } from '../campaigns-console';
 
 export const metadata: Metadata = { title: 'Running campaigns' };
 
+/** The console itself is in the Campaigns layout, so switching pills does not remount it. */
 export default function Page() {
-  return <CampaignsConsole view="running" />;
+  return null;
 }

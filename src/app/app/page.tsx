@@ -6,7 +6,8 @@ import {
   Accessibility, ArrowRight, Bike, Bot, CalendarClock, DoorOpen, Droplets, HandHeart, Inbox, Package, PiggyBank, Recycle, Sparkles, Tag, TriangleAlert, Wallet, type LucideIcon,
 } from 'lucide-react';
 import { LocalizedLink as Link } from '@/components/ui/localized-elements';
-import { useState } from 'react';
+import { useContext, useState } from 'react';
+import { AksesViewContext } from '@/components/features/akses-mode';
 import { CampaignCard, PendingRedemption } from '@/components/features/rewards';
 import { SimpleHome } from '@/components/features/simple-mode';
 import { SponsoredBanner } from '@/components/features/sponsored';
@@ -150,6 +151,7 @@ export default function ResidentHome() {
   const t = useT();
   const me = useApi<Me>('/me');
   const access = useApi<{ simpleMode: boolean }>('/me/access');
+  const viewOverride = useContext(AksesViewContext);
   const wallet = useApi<WalletOverview>('/wallet', { refreshInterval: 5_000 });
   const campaigns = useApi<Campaign[]>('/campaigns');
   const league = useApi<{ streets: { street: string; xp: number; mine: boolean }[] }>('/leagues/streets');
@@ -161,7 +163,8 @@ export default function ResidentHome() {
   });
   const firstName = me.data?.fullName.split(' ')[0];
 
-  if (access.data?.simpleMode && !fullApp) {
+  // The top bar's Accessible / Standard view switch decides once used; until then, the saved Simple Mode does.
+  if ((viewOverride ?? access.data?.simpleMode) && !fullApp) {
     return (
       <SimpleHome
         onFullApp={() => {

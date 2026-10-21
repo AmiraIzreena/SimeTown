@@ -152,7 +152,7 @@ function StationQueue({ station, tasks, total, hasSearch, overflow, onChange, ex
       </div>
       <p className="text-sm font-medium text-ink-600">
         <Text>{total === 1 ? '1 parcel awaiting transfer' : `${total} parcels awaiting transfer`}</Text>
-        {hasSearch && tasks.length !== total && <span className="text-ink-400"> · <Text>{`${tasks.length} matching`}</Text></span>}
+        {hasSearch && tasks.length !== total && <span className="text-ink-500"> · <Text>{`${tasks.length} matching`}</Text></span>}
       </p>
     </div>
     {tasks.length > 0

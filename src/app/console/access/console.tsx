@@ -216,8 +216,8 @@ function TimeCell({ i }: { i: IncidentRow }) {
         <span className="font-semibold text-success-700"><Text>{`Fixed ${timeAgo(i.resolved_at)}`}</Text></span>
       ) : i.resolve_due_at ? (
         <span className={cn('inline-flex items-center gap-1.5 font-semibold', late ? 'text-accent-700' : 'text-ink-600')}><Clock3 className="size-3.5" aria-hidden /><Text>{late ? 'Past its target' : `Fix by ${formatDateTime(i.resolve_due_at)}`}</Text></span>
-      ) : <span className="text-ink-400">–</span>}
-      <span className="text-ink-400 lg:mt-0.5 lg:block"><Text>{`opened ${timeAgo(i.created_at)}`}</Text></span>
+      ) : <span className="text-ink-500">–</span>}
+      <span className="text-ink-500 lg:mt-0.5 lg:block"><Text>{`opened ${timeAgo(i.created_at)}`}</Text></span>
     </div>
   );
 }
@@ -396,7 +396,7 @@ function TodayTab({ state, places, onOpen, onInspect, onIssues, onPlaces }: {
                             <div className="min-w-0 text-sm">
                               <p className="font-semibold text-accent-700"><Text>{REASON_LABELS[t.reason] ?? 'Escalated'}</Text></p>
                               <p className="line-clamp-2 text-ink-600"><Text>{REASON_HELP[t.reason]?.why ?? ''}</Text></p>
-                              <p className="mt-0.5 text-xs text-ink-400">{t.i.party_name ? <Text>{`With ${t.i.party_name}`}</Text> : <Text>No team yet</Text>} · <Text>{`opened ${timeAgo(t.i.created_at)}`}</Text></p>
+                              <p className="mt-0.5 text-xs text-ink-500">{t.i.party_name ? <Text>{`With ${t.i.party_name}`}</Text> : <Text>No team yet</Text>} · <Text>{`opened ${timeAgo(t.i.created_at)}`}</Text></p>
                             </div>
                             <div className="lg:text-right">
                               <Button size="sm" variant="secondary" className="w-full lg:w-auto" onClick={() => onOpen(t.i.reference)}><Text>{REASON_HELP[t.reason]?.action ?? 'Review'}</Text></Button>
@@ -415,7 +415,7 @@ function TodayTab({ state, places, onOpen, onInspect, onIssues, onPlaces }: {
                               <p className="line-clamp-2 text-ink-600">
                                 <Text>{t.s.verification === 'PENDING_VERIFICATION' ? 'A resident suggested this place. It shows as unverified until someone checks it on site.' : 'Residents say this listing is wrong. Check it on site.'}</Text>
                               </p>
-                              {t.s.duplicate_name && <p className="mt-0.5 text-xs text-ink-400"><Text>{`May duplicate “${t.s.duplicate_name}”`}</Text></p>}
+                              {t.s.duplicate_name && <p className="mt-0.5 text-xs text-ink-500"><Text>{`May duplicate “${t.s.duplicate_name}”`}</Text></p>}
                             </div>
                             <div className="lg:text-right">
                               <Button size="sm" variant="secondary" className="w-full lg:w-auto" onClick={() => onInspect({ id: t.s.id, name: t.s.name })}><Text>Check on site</Text></Button>
@@ -591,7 +591,7 @@ function IncidentsTab({ initialStage, onOpen }: { initialStage: StageFilter; onO
                           <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
                             <span className="font-mono font-semibold text-ink-500">{i.reference}</span>
                             {PRIORITY_TAG(i.priority)}
-                            {i.reporter_count > 1 && <span className="text-ink-400"><Text>{`${i.reporter_count} reporter(s)`}</Text></span>}
+                            {i.reporter_count > 1 && <span className="text-ink-500"><Text>{`${i.reporter_count} reporter(s)`}</Text></span>}
                           </span>
                           <span className="mt-0.5 block truncate text-[15px] font-semibold text-ink-900"><Text>{categoryLabel(i.category)}</Text>: {i.place_name}</span>
                           <span className="block truncate text-xs text-ink-500">{i.place_location}</span>
@@ -639,7 +639,7 @@ function Progress({ incident }: { incident: IncidentRow }) {
         return (
           <li key={label} aria-current={current ? 'step' : undefined} className="text-center">
             <span className={cn('block h-1.5 rounded-full', done ? 'bg-success-600' : current ? (stuck ? 'bg-accent-600' : 'bg-brand-600') : 'bg-ink-200')} />
-            <span className={cn('mt-1.5 block text-xs leading-tight', current ? 'font-semibold text-ink-900' : done ? 'text-ink-600' : 'text-ink-400')}>
+            <span className={cn('mt-1.5 block text-xs leading-tight', current ? 'font-semibold text-ink-900' : done ? 'text-ink-600' : 'text-ink-500')}>
               <Text>{label}</Text>
               {current && stuck && <span className="block text-accent-700"><Text>Stuck</Text></span>}
             </span>
@@ -998,7 +998,7 @@ function PlacesTab({ initialAvail, initialParty, isAdmin, onInspect, onChanged }
                       <span><AvailabilityBadge value={p.availability} /></span>
                       <span className="min-w-0">
                         <VerificationBadge value={p.verification} />
-                        <span className="mt-0.5 block text-xs text-ink-400"><Text>{p.last_verified_at ? `Last verified ${formatDate(p.last_verified_at)}` : 'Never verified'}</Text></span>
+                        <span className="mt-0.5 block text-xs text-ink-500"><Text>{p.last_verified_at ? `Last verified ${formatDate(p.last_verified_at)}` : 'Never verified'}</Text></span>
                       </span>
                       <span className="flex min-w-0 items-center gap-1.5 text-sm">
                         {p.party_integration === 'SIMULATED' ? <FlaskConical className="size-3.5 shrink-0 text-gold-700" aria-hidden /> : <Users className="size-3.5 shrink-0 text-ink-400" aria-hidden />}
@@ -1280,7 +1280,7 @@ function ProvidersSection({ state, isAdmin, onOpen }: { state: ReturnType<typeof
                       {p.integration === 'SIMULATED' && <span className="inline-block rounded bg-gold-50 px-1.5 py-px text-[10px] font-bold uppercase tracking-wide text-gold-700 lg:mt-0.5"><Text>Simulated</Text></span>}
                     </span>
                     <span className={cn('tabular-nums lg:text-right', p.integration === 'IN_APP' && p.members.length === 0 ? 'font-semibold text-warning-700' : 'text-ink-700')}>
-                      {p.integration === 'IN_APP' ? p.members.length : <span className="text-xs text-ink-400"><Text>Own system</Text></span>}
+                      {p.integration === 'IN_APP' ? p.members.length : <span className="text-xs text-ink-500"><Text>Own system</Text></span>}
                       <span className="lg:hidden"> <Text>responders</Text></span>
                     </span>
                     <span className="tabular-nums text-ink-700 lg:text-right">{p.places}<span className="lg:hidden"> <Text>places</Text></span></span>
@@ -1388,7 +1388,7 @@ function ProviderPanel({ provider, people, places, isAdmin, onClose, onChanged }
             ) : (
               <ul className="mt-1.5 space-y-1">
                 {places.map((x) => (
-                  <li key={x.id} className="flex items-center gap-2 text-ink-700"><span aria-hidden className={cn('status-dot', PLACE_DOT[x.availability])} />{x.name} <span className="text-xs text-ink-400"><Text>{PLACE_KIND_LABELS[x.kind]}</Text></span></li>
+                  <li key={x.id} className="flex items-center gap-2 text-ink-700"><span aria-hidden className={cn('status-dot', PLACE_DOT[x.availability])} />{x.name} <span className="text-xs text-ink-500"><Text>{PLACE_KIND_LABELS[x.kind]}</Text></span></li>
                 ))}
               </ul>
             )}

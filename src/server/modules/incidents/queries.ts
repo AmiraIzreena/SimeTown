@@ -1,8 +1,9 @@
 import { ADMINS, STAFF } from '@/shared/domain';
-import { ACTIVE_STATUSES, PRIORITIES, type IncidentModule, type IncidentStatus, type Priority } from '@/shared/incidents';
+import { ACTIVE_STATUSES, PRIORITIES, REPORT_PLACE_MODULES, REPORT_PLACES, REPORT_SECTION_PLACES, placeOfModule, sectionOfModule, type IncidentModule, type IncidentStatus, type Priority, type ReportPlace, type ReportSection } from '@/shared/incidents';
 import { one, type Db } from '../../db/client';
 import type { Actor } from '../../auth/actor';
 import { forbidden, notFound, ruleViolation } from '../../errors';
+import { decodeCursor, toPage } from '../../http/pagination';
 import { audit } from '../audit';
 import { resolveTownship } from '../townships';
 import { historyIntact, type IncidentRow } from './engine';
@@ -143,9 +144,84 @@ export async function incidentDetail(db: Db, actor: Actor, idOrRef: string) {
 }
 
 /** The reporter's own reports, with only what was written for them, and their courier referrals. */
-export async function myReports(db: Db, actor: Actor, now: Date) {
+/** Ongoing: still with the township office. Finished: resolved or closed. All: both, ongoing first (the original list). */
+export const MY_REPORT_VIEWS = ['ongoing', 'finished', 'all'] as const;
+export type MyReportView = (typeof MY_REPORT_VIEWS)[number];
+const FINISHED = `status IN ('RESOLVED', 'CLOSED')`;
+
+/**
+ * My reports. With a view of ongoing or finished, one page at a time (most recent activity first),
+ * so an account with many reports never loses the older ones. Filters: `q` (the reference or the
+ * summary), `place` (Parcel locker, Guardhouse parcel, Gate & visitors, Delivery, Other) and
+ * `awaiting` (only those waiting for the resident's answer). Each count follows every filter except
+ * its own, so the pills, the type menu and the chip always describe what choosing them would show.
+ */
+export async function myReports(
+  db: Db, actor: Actor, now: Date,
+  opts: { view?: MyReportView; section?: ReportSection; q?: string; place?: ReportPlace; awaiting?: boolean; cursor?: string; limit?: number } = {},
+) {
   const policy = actor.townshipId ? await getIncidentPolicy(db, actor.townshipId) : DEFAULT_INCIDENT_POLICY;
-  const cases = await db.query<IncidentRow>(`SELECT * FROM incidents WHERE user_id = $1 ORDER BY (status IN ('RESOLVED', 'CLOSED')), updated_at DESC LIMIT 50`, [actor.id]);
+  const view = opts.view ?? 'all';
+  const params: unknown[] = [actor.id];
+  const arg = (value: unknown) => {
+    params.push(value);
+    return `$${params.length}`;
+  };
+  const q = opts.q?.trim();
+  // % and _ (and the escape character itself) are matched literally, so a search for "50%" finds exactly that.
+  const SEARCH = q ? `(reference ILIKE ${arg(`%${q.replace(/[\\%_]/g, (m) => `\\${m}`)}%`)} OR summary ILIKE $${params.length})` : 'TRUE';
+  // Module names come from our own constant table (the place is already one of REPORT_PLACES), never from input, so they
+  // are written into the SQL. A bind parameter would break the per-type counts, which leave this filter out.
+  const PLACE = opts.place ? `module IN (${REPORT_PLACE_MODULES[opts.place].map((m) => `'${m}'`).join(', ')})` : 'TRUE';
+  const AWAITING = `(status = 'AWAITING_EXTERNAL_PARTY' AND awaiting = 'RESIDENT')`;
+  const WANT_AWAITING = opts.awaiting ? AWAITING : 'TRUE';
+  const VIEW = view === 'all' ? 'TRUE' : view === 'finished' ? FINISHED : `NOT ${FINISHED}`;
+  const modulesIn = (places: readonly ReportPlace[]) => `module IN (${places.flatMap((p) => REPORT_PLACE_MODULES[p]).map((m) => `'${m}'`).join(', ')})`;
+  // The Lapor tab (parcel or gate reports) scopes everything below, counts included.
+  const MINE = `user_id = $1 AND ${opts.section ? modulesIn(REPORT_SECTION_PLACES[opts.section]) : 'TRUE'}`;
+
+  let cases: IncidentRow[];
+  let nextCursor: string | null = null;
+  const filters = `${MINE} AND ${VIEW} AND ${SEARCH} AND ${PLACE} AND ${WANT_AWAITING}`;
+  if (view === 'all') {
+    cases = await db.query<IncidentRow>(`SELECT * FROM incidents WHERE ${filters} ORDER BY (${FINISHED}), updated_at DESC LIMIT 50`, params);
+  } else {
+    const limit = opts.limit ?? 20;
+    const [at, id] = decodeCursor(opts.cursor, 'time');
+    const pageParams = [...params];
+    let after = '';
+    if (at && id) {
+      pageParams.push(at, id);
+      after = `AND (date_trunc('milliseconds', updated_at), id) < ($${pageParams.length - 1}::timestamptz, $${pageParams.length}::uuid)`;
+    }
+    pageParams.push(limit + 1);
+    const rows = await db.query<IncidentRow>(
+      `SELECT * FROM incidents WHERE ${filters} ${after} ORDER BY date_trunc('milliseconds', updated_at) DESC, id DESC LIMIT $${pageParams.length}`,
+      pageParams,
+    );
+    const page = toPage(rows, limit, (row) => [row.updated_at, row.id]);
+    cases = page.items;
+    nextCursor = page.nextCursor;
+  }
+
+  const counts = await one<{ ongoing: number; finished: number; awaiting: number }>(
+    db,
+    `SELECT count(*) FILTER (WHERE NOT ${FINISHED} AND ${WANT_AWAITING})::int AS ongoing,
+            count(*) FILTER (WHERE ${FINISHED} AND ${WANT_AWAITING})::int AS finished,
+            count(*) FILTER (WHERE ${VIEW} AND ${AWAITING})::int AS awaiting
+       FROM incidents WHERE ${MINE} AND ${SEARCH} AND ${PLACE}`,
+    params,
+  );
+  const byModule = await db.query<{ module: IncidentModule; n: number }>(
+    `SELECT module, count(*)::int AS n FROM incidents WHERE ${MINE} AND ${VIEW} AND ${SEARCH} AND ${WANT_AWAITING} GROUP BY module`,
+    params,
+  );
+  const places = Object.fromEntries(REPORT_PLACES.map((place) => [place, 0])) as Record<ReportPlace, number>;
+  for (const row of byModule) places[placeOfModule(row.module)] += row.n;
+  // How many match the search in each tab, so a linked report that sits in the other tab can be found there.
+  const bySection = await db.query<{ module: IncidentModule; n: number }>(`SELECT module, count(*)::int AS n FROM incidents WHERE user_id = $1 AND ${SEARCH} GROUP BY module`, params);
+  const sections: Record<ReportSection, number> = { parcels: 0, gate: 0, kitar: 0, gerak: 0 };
+  for (const row of bySection) sections[sectionOfModule(row.module)] += row.n;
   const events = cases.length
     ? await db.query<{ incident_id: string; kind: string; body: string | null; at: Date; mine: boolean }>(
         `SELECT incident_id, kind, body, at, (actor_id = $2) AS mine FROM incident_events WHERE incident_id = ANY($1::uuid[]) AND visibility = 'RESIDENT' ORDER BY id`,
@@ -160,8 +236,12 @@ export async function myReports(db: Db, actor: Actor, now: Date) {
   );
   return {
     disputeDays: policy.dispute_days,
-    reports: cases.map((c) => ({
-      reference: c.reference, category: c.kind, module: c.module, status: c.status, summary: c.summary, createdAt: c.created_at, updatedAt: c.updated_at,
+    counts: counts ?? { ongoing: 0, finished: 0, awaiting: 0 },
+    places,
+    sections,
+    nextCursor,
+    items: cases.map((c) => ({
+      reference: c.reference, category: c.kind, module: c.module, place: placeOfModule(c.module), hasPhoto: c.photo_id !== null, status: c.status, summary: c.summary, createdAt: c.created_at, updatedAt: c.updated_at,
       outcome: c.status === 'RESOLVED' || c.status === 'CLOSED' ? c.resident_outcome : null,
       awaitingYou: c.status === 'AWAITING_EXTERNAL_PARTY' && c.awaiting === 'RESIDENT',
       handled: c.owner_id !== null,
@@ -170,6 +250,20 @@ export async function myReports(db: Db, actor: Actor, now: Date) {
     })),
     referrals,
   };
+}
+
+/** A report's screenshot or photo: only for the person who reported it and staff of that township (HQ: any). */
+export async function incidentPhoto(db: Db, actor: Actor, reference: string): Promise<Response> {
+  const i = await one<{ user_id: string | null; township_id: string; photo_id: string | null }>(db, 'SELECT user_id, township_id, photo_id FROM incidents WHERE reference = $1', [reference]);
+  const staff = STAFF.includes(actor.role);
+  const allowed = i && (staff ? actor.role === 'HQ_ADMIN' || i.township_id === actor.townshipId : i.user_id === actor.id);
+  // The same answer whether the report is missing, someone else's, or has no photo.
+  if (!allowed || !i.photo_id) throw notFound('Photo');
+  const upload = await one<{ mime: string; bytes: Uint8Array }>(db, 'SELECT mime, bytes FROM uploads WHERE id = $1', [i.photo_id]);
+  if (!upload) throw notFound('Photo');
+  return new Response(Buffer.from(upload.bytes), {
+    headers: { 'Content-Type': upload.mime, 'X-Content-Type-Options': 'nosniff', 'Content-Disposition': 'inline', 'Cache-Control': 'private, max-age=3600' },
+  });
 }
 
 // --- Policy -------------------------------------------------------------------------------------

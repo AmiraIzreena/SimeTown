@@ -1,7 +1,7 @@
 
 import { Text } from '@/components/ui/localized-text';
 import { LocalizedDiv } from '@/components/ui/localized-elements';
-import { CloudOff, Inbox, Lock, type LucideIcon } from 'lucide-react';
+import { CloudOff, Inbox, Info, Lock, TriangleAlert, type LucideIcon } from 'lucide-react';
 import type { CSSProperties, ReactNode } from 'react';
 import type { ApiError } from '@/lib/api';
 import { cn } from '@/lib/cn';
@@ -190,6 +190,24 @@ export function SkeletonPage() {
       <div className="space-y-6">
         <SkeletonStats />
         <SkeletonList rows={3} />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * A message about the whole page's situation (waiting for approval, suspended): an icon, a short
+ * title and one line of what it means. Warning for something that blocks work, info otherwise.
+ */
+export function Notice({ tone = 'warning', icon: Icon = tone === 'warning' ? TriangleAlert : Info, title, children }: { tone?: 'warning' | 'info'; icon?: LucideIcon; title: string; children?: ReactNode }) {
+  return (
+    <div role="status" className={cn('flex items-start gap-3.5 rounded-xl border p-4 sm:p-5', tone === 'warning' ? 'border-warning-600/25 bg-warning-50' : 'border-brand-200 bg-brand-50')}>
+      <span className={cn('status-settle grid size-10 shrink-0 place-items-center rounded-lg', tone === 'warning' ? 'bg-warning-600/10 text-warning-700' : 'bg-brand-100 text-brand-700')}>
+        <Icon className="size-5" aria-hidden />
+      </span>
+      <div className="min-w-0 pt-0.5">
+        <p className={cn('text-[15px] font-semibold', tone === 'warning' ? 'text-warning-700' : 'text-brand-800')}><Text>{title}</Text></p>
+        {children && <p className="mt-0.5 text-sm leading-relaxed text-ink-700"><Text>{children}</Text></p>}
       </div>
     </div>
   );

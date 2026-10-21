@@ -1,6 +1,6 @@
 'use client';
 
-import { Bell, Package, Wrench, Users, Wallet, Flag, Recycle, ShieldAlert, UserRound } from 'lucide-react';
+import { Bell, Bike, Package, Wrench, Users, Wallet, Flag, Recycle, ShieldAlert, UserRound } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import type { CSSProperties } from 'react';
 import { useSWRConfig } from 'swr';
@@ -21,7 +21,7 @@ export function useNotificationActions() {
     return true;
   });
 }
-const ICONS = { PARCELS: Package, SERVICES: Wrench, COMMUNITY: Users, REWARDS: Wallet, REPORTS: Flag, RECYCLING: Recycle, ALERTS: ShieldAlert, ACCOUNT: UserRound };
+const ICONS = { PARCELS: Package, SERVICES: Wrench, COMMUNITY: Users, REWARDS: Wallet, REPORTS: Flag, RECYCLING: Recycle, GERAK: Bike, ALERTS: ShieldAlert, ACCOUNT: UserRound };
 export function NotificationRows({ items, compact = false, onNavigate }: { items: NotificationItem[]; compact?: boolean; onNavigate?: () => void }) {
   if (!items.length) return <EmptyState icon={Bell} title="No notifications"><Text>Updates will appear here when there is something new.</Text></EmptyState>;
   return <ul className="divide-y divide-ink-100">{items.map((item, index) => <NotificationRow key={item.id} item={item} index={index} compact={compact} onNavigate={onNavigate} />)}</ul>;

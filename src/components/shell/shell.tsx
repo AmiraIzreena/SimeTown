@@ -6,7 +6,7 @@ import { LocalizedButton, LocalizedNav } from '@/components/ui/localized-element
 import { Accessibility, Bell, Languages, LogOut, Menu } from 'lucide-react';
 import { LocalizedLink as Link } from '@/components/ui/localized-elements';
 import { usePathname } from 'next/navigation';
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { Fragment, useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Drawer } from '@/components/ui/dialog';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
@@ -21,10 +21,13 @@ import type { NotificationList } from '@/shared/notifications';
 import { ProfileCompletion } from './profile-completion';
 import { reloadTo } from '@/lib/navigate';
 import { AccountLanguage, persistLanguage } from '@/components/ui/language';
-import { AksesViewContext } from '@/components/features/akses-mode';
+import { AksesViewContext, useAccessibleViewChoice } from '@/components/features/akses-mode';
 import { SignedInMotion } from '@/lib/use-min-loading';
+import { DEMO_MODE } from '@/lib/demo';
 
 export interface ShellUser {
+  /** Keys per-account choices kept in this browser, such as Accessible view. */
+  id?: string;
   fullName: string;
   role: Role;
   /** Business accounts only: whether it runs a shop, home services, or both. */
@@ -68,6 +71,14 @@ function pageMotion(pathname: string) {
   return routes.find(([route]) => pathname === route || pathname.startsWith(`${route}/`))?.[1] ?? 'motion-utility';
 }
 
+/**
+ * Pages whose sub-routes are pill views of one screen (Campaigns: Needs action, Running, Closed,
+ * Sponsors). They share one transition key, so moving between pills does not replay the page's
+ * entrance; arriving from another page still does.
+ */
+const PILL_PAGES = ['/console/campaigns'];
+const transitionKey = (pathname: string) => PILL_PAGES.find((page) => pathname === page || pathname.startsWith(`${page}/`)) ?? pathname;
+
 async function signOut() {
   await api.post('/auth/logout').catch(() => undefined);
   reloadTo('/');
@@ -85,7 +96,8 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
   const closeInbox = useCallback(() => setInboxOpen(false), []);
   const inbox = useApi<NotificationList>('/notifications', { refreshInterval: 30_000 });
   const access = useApi<AccessProfile>(area === 'resident' ? '/me/access' : null);
-  const [accessibleOverride, setAccessibleOverride] = useState<boolean | null>(null);
+  // Remembered per account in this browser, so the switch holds on every page and after a refresh.
+  const [accessibleOverride, setAccessibleOverride] = useAccessibleViewChoice(area === 'resident' ? user.id : undefined);
   // The top bar gains a light shadow once the page scrolls under it.
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
@@ -109,7 +121,13 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
   };
 
   const root = NAV[area].items[0]!.href;
-  const items = NAV[area].items.filter((item) => (!item.roles || item.roles.includes(user.role)) && (!item.offer || !user.offers || user.offers[item.offer]));
+  const items = NAV[area].items.filter((item) => (!item.roles || item.roles.includes(user.role)) && (!item.offer || !user.offers || user.offers[item.offer]) && (!item.demoOnly || DEMO_MODE));
+  const accountHref = items.find((item) => item.href.endsWith('/account'))?.href;
+  // Long menus (the console) start a new group with a heading; a group with no name is only set apart by a line.
+  const groupStart = (index: number) => {
+    const item = items[index]!;
+    return item.group !== undefined && index > 0 && item.group !== items[index - 1]!.group ? item.group : index === 0 && item.group ? item.group : null;
+  };
   const primary = items.filter((item) => item.primary).slice(0, 4);
   const needsMore = items.length > primary.length;
   const initials = user.fullName.split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase();
@@ -159,15 +177,29 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
         </div>
         <p className="hidden px-6 pb-2 pt-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-300/70 lg:block"><Text>{NAV[area].title}</Text></p>
         <LocalizedNav aria-label="Main" className="flex-1 space-y-0.5 overflow-y-auto px-3 pb-4">
-          <Text>{items.map((item) => link(item, true))}</Text>
+          <Text>
+            {items.map((item, index) => {
+              const group = groupStart(index);
+              return (
+                <Fragment key={item.href}>
+                  {group !== null && index > 0 && <span aria-hidden className={cn('mx-3 my-2.5 block h-px bg-white/10', group && 'lg:hidden')} />}
+                  {group && <p className={cn('hidden px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-brand-300/70 lg:block', index > 0 ? 'pt-4' : 'pt-1')}>{t(group)}</p>}
+                  {link(item, true)}
+                </Fragment>
+              );
+            })}
+          </Text>
         </LocalizedNav>
         <div className="border-t border-white/10 p-3">
           <div className="flex flex-col items-center justify-center gap-2 lg:flex-row lg:justify-start lg:gap-3">
-            <span aria-hidden title={whoAmI} className="grid size-9 shrink-0 place-items-center rounded-xl border border-white/15 bg-brand-400/20 text-sm font-semibold text-white shadow-[inset_0_1px_0_rgb(255_255_255_/_0.15)]"><Text>{initials}</Text></span>
-            <div className="hidden min-w-0 flex-1 lg:block">
-              <p className="truncate text-sm font-semibold text-white">{user.fullName}</p>
-              <p className="truncate text-xs text-brand-200/70"><Text>{ROLE_LABELS[user.role]}</Text></p>
-            </div>
+            {/* The avatar and name open the account page, as in most apps. */}
+            <Link href={accountHref ?? root} title={whoAmI} aria-label={`${user.fullName}, ${t('Account')}`} className="group flex min-w-0 flex-1 items-center justify-center gap-3 rounded-lg p-0.5 transition-colors duration-200 hover:bg-white/8 lg:justify-start">
+              <span aria-hidden className="grid size-9 shrink-0 place-items-center rounded-xl border border-white/15 bg-brand-400/20 text-sm font-semibold text-white shadow-[inset_0_1px_0_rgb(255_255_255_/_0.15)] transition-colors duration-200 group-hover:bg-brand-400/30"><Text>{initials}</Text></span>
+              <span aria-hidden className="hidden min-w-0 flex-1 lg:block">
+                <span className="block truncate text-sm font-semibold text-white">{user.fullName}</span>
+                <span className="block truncate text-xs text-brand-200/70"><Text>{ROLE_LABELS[user.role]}</Text></span>
+              </span>
+            </Link>
             <LocalizedButton type="button" onClick={signOut} aria-label="Sign out" title="Sign out" className="grid size-9 shrink-0 place-items-center rounded-md text-brand-100/80 transition-[background-color,color,scale] duration-200 hover:bg-white/10 hover:text-white active:scale-95">
               <LogOut className="size-[18px]" aria-hidden />
             </LocalizedButton>
@@ -225,7 +257,7 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
       <main id="main" className={cn('mx-auto w-full max-w-7xl px-4 pb-28 pt-7 sm:px-6 md:pb-14 md:pt-9 lg:px-10 lg:pt-10', accessible && 'akses-view')}>
         <ProfileCompletion accountHref={`${root}/account`} />
         {/* A short fade-and-rise when moving between screens. */}
-        <div key={pathname} className={cn('animate-rise', motion)}>
+        <div key={transitionKey(pathname)} className={cn('animate-rise', motion)}>
           <Text>{children}</Text>
         </div>
       </main>
@@ -253,14 +285,19 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
 
       <Drawer open={menuOpen} onClose={() => setMenuOpen(false)} title={user.fullName} description={ROLE_LABELS[user.role]}>
         <LocalizedNav aria-label="All sections" className="-mx-2 space-y-0.5" onClick={() => setMenuOpen(false)}>
-          {items.map((item) => {
+          {items.map((item, index) => {
             const active = isActive(pathname, item, root);
+            const group = groupStart(index);
             return (
-              <Link key={item.href} href={item.href} aria-current={active ? 'page' : undefined} className={cn('flex min-h-12 items-center gap-3 rounded-md px-3 text-[15px] font-medium transition-colors duration-200', active ? 'bg-brand-50 text-brand-800' : 'text-ink-700 hover:bg-ink-50 active:bg-ink-100')}>
-                <item.icon className="size-5" aria-hidden />
-                {t(item.label)}
-                {item.gloss && <span className="text-xs font-normal text-ink-500">{t(item.gloss)}</span>}
-              </Link>
+              <Fragment key={item.href}>
+                {group !== null && index > 0 && !group && <span aria-hidden className="mx-3 my-2 block h-px bg-ink-100" />}
+                {group && <p className={cn('px-3 pb-1 text-xs font-semibold text-ink-500', index > 0 ? 'pt-4' : 'pt-1')}>{t(group)}</p>}
+                <Link href={item.href} aria-current={active ? 'page' : undefined} className={cn('flex min-h-12 items-center gap-3 rounded-md px-3 text-[15px] font-medium transition-colors duration-200', active ? 'bg-brand-50 text-brand-800' : 'text-ink-700 hover:bg-ink-50 active:bg-ink-100')}>
+                  <item.icon className="size-5" aria-hidden />
+                  {t(item.label)}
+                  {item.gloss && <span className="text-xs font-normal text-ink-500">{t(item.gloss)}</span>}
+                </Link>
+              </Fragment>
             );
           })}
         </LocalizedNav>

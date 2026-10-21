@@ -25,6 +25,8 @@ import { seedCourierPlatform } from './seed-couriers';
 import { seedIncidents } from './seed-incidents';
 import { seedLockers } from './seed-lockers';
 import { seedRequestShowcase, seedTomorrow } from './seed-tomorrow';
+import { seedShowcase } from './seed-showcase';
+import { seedAroundReports } from './seed-around';
 
 /**
  * Demo data for local development and the hackathon demo. Everything here is
@@ -61,6 +63,8 @@ async function main() {
     await seedLockers(db, { passwordHash, now, log: (line) => console.log(`  ${line}`) });
     await seedCourierPlatform(db, { passwordHash, now, log: (line) => console.log(`  ${line}`) });
     await seedIncidents(db, { passwordHash, now, log: (line) => console.log(`  ${line}`) });
+    await seedShowcase(db, { now, log: (line) => console.log(`  ${line}`) });
+    await seedAroundReports(db, { now, log: (line) => console.log(`  ${line}`) });
     const check = await runFloatCheck(db, null, now);
     console.log(`\n  Float check: ${check.ok ? 'OK' : `FAILED: ${check.issues.join(' ')}`}`);
     if (!process.env.SEED_DEMO_PASSWORD) console.log(`  A new account (if any was added) uses the password: ${password}`);
@@ -281,6 +285,8 @@ async function main() {
   await seedLockers(db, { passwordHash, now, log: () => undefined });
   await seedCourierPlatform(db, { passwordHash, now, log: () => undefined });
   await seedIncidents(db, { passwordHash, now, log: () => undefined });
+  await seedShowcase(db, { now, log: () => undefined });
+  await seedAroundReports(db, { now, log: () => undefined });
 
   const check = await runFloatCheck(db, admin2.id, now);
   if (!check.ok) throw new Error(`Seed left the float out of balance: ${check.issues.join(' ')}`);

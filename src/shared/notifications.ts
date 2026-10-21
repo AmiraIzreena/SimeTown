@@ -1,8 +1,9 @@
-export const NOTIFICATION_CATEGORIES = ['PARCELS', 'SERVICES', 'COMMUNITY', 'REWARDS', 'REPORTS', 'RECYCLING', 'ALERTS', 'ACCOUNT'] as const;
+export const NOTIFICATION_CATEGORIES = ['PARCELS', 'SERVICES', 'COMMUNITY', 'REWARDS', 'REPORTS', 'RECYCLING', 'GERAK', 'ALERTS', 'ACCOUNT'] as const;
 export type NotificationCategory = typeof NOTIFICATION_CATEGORIES[number];
+/** RECYCLING keeps its stored name; residents know it by its feature name, Kitar, as in the menu. */
 export const NOTIFICATION_LABELS: Record<NotificationCategory, string> = {
   PARCELS: 'Parcels', SERVICES: 'Home services', COMMUNITY: 'Community', REWARDS: 'Points & XP',
-  REPORTS: 'Reports & requests', RECYCLING: 'Recycling', ALERTS: 'Township alerts', ACCOUNT: 'Account',
+  REPORTS: 'Reports & requests', RECYCLING: 'Kitar', GERAK: 'Gerak', ALERTS: 'Township alerts', ACCOUNT: 'Account',
 };
 /** The filter only offers categories the account can actually receive. */
 export function notificationCategoriesFor(role: string, offers?: { retail: boolean; services: boolean }): readonly NotificationCategory[] {
@@ -13,7 +14,13 @@ export interface NotificationItem {
   id: string; priority: 'NORMAL' | 'URGENT'; title: string; body: string; link: string | null;
   category: NotificationCategory; read_at: string | null; created_at: string;
 }
-export interface NotificationList { items: NotificationItem[]; unread: number; nextCursor: string | null }
+export interface NotificationList {
+  items: NotificationItem[];
+  unread: number;
+  nextCursor: string | null;
+  /** How many in each category under the current read state and search (for the filter chips). */
+  categories?: Partial<Record<NotificationCategory, number>>;
+}
 
 export function notificationCategory(link?: string | null): NotificationCategory {
   if (/parcels|lockers|courier|operations/.test(link ?? '')) return 'PARCELS';
@@ -22,6 +29,7 @@ export function notificationCategory(link?: string | null): NotificationCategory
   if (/lapor|reports|incidents|requests|assistant/.test(link ?? '')) return 'REPORTS';
   if (/komuniti|jiran|kongsi|moderation/.test(link ?? '')) return 'COMMUNITY';
   if (/kitar|recycling/.test(link ?? '')) return 'RECYCLING';
+  if (/gerak|loops/.test(link ?? '')) return 'GERAK';
   if (/banjir|alerts/.test(link ?? '')) return 'ALERTS';
   return 'ACCOUNT';
 }
@@ -31,6 +39,6 @@ export function notificationDestination(link: string | null): string | null {
   if (!link || !/^\/(app|console|merchant|courier|guard|sponsor)(\/|\?|#|$)/.test(link) || /[\\\u0000-\u0020]/.test(link)) return null;
   const path = link.split(/[?#]/)[0];
   if (/^\/app\/lapor\/[0-9a-f-]{36}$/i.test(path ?? '')) return link;
-  const sections = /^\/(app(?:\/(?:wallet|parcels|home-services|lapor|reports|requests|komuniti|jiran|kongsi|kitar|banjir|akses|assistant|tamu|account))?|console(?:\/(?:komuniti|operations|lockers|parcels|reports|incidents|people|home-services|recycling|places|access|finance|assistant|banjir|account))?|merchant(?:\/(?:bookings|services|sales|statements|account))?|courier(?:\/(?:team|account|history))?|guard(?:\/parcels)?|sponsor)$/;
+  const sections = /^\/(app(?:\/(?:wallet|parcels|home-services|lapor|reports|requests|komuniti|jiran|kongsi|kitar|gerak|banjir|akses|assistant|tamu|account))?|console(?:\/(?:komuniti|operations|lockers|parcels|reports|incidents|people|home-services|recycling|places|access|finance|assistant|banjir|account))?|merchant(?:\/(?:bookings|services|sales|statements|account))?|courier(?:\/(?:team|account|history))?|guard(?:\/parcels)?|sponsor)$/;
   return sections.test(path ?? '') ? link : null;
 }

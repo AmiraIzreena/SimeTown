@@ -1,4 +1,5 @@
-import { one, type Db } from '../../db/client';
+import { one, type Db, type Queryable } from '../../db/client';
+import { notify } from '../notifications';
 import { requireVerifiedResident, type Actor } from '../../auth/actor';
 import { conflict, notFound } from '../../errors';
 import { audit } from '../audit';
@@ -45,6 +46,17 @@ export async function gerakOverview(db: Db, actor: Actor, now: Date) {
  * checkpoint counts once a day. When every checkpoint of a loop has been
  * scanned on the same day, the loop is complete and its distance is credited.
  */
+/** Tells the resident a loop is complete, once per loop per day, under the Gerak notification category. */
+export async function notifyLoopDone(q: Queryable, userId: string, loopName: string, xp: number, ref: string) {
+  await notify(q, [userId], {
+    title: `Loop completed: ${loopName}`,
+    body: xp > 0 ? `Well done. You earned ${xp} Impact XP for walking, running or cycling the loop.` : 'Well done. Your loop is recorded on your Gerak page.',
+    link: '/app/gerak',
+    category: 'GERAK',
+    dedupeKey: `gerak-loop:${userId}:${ref}`,
+  });
+}
+
 export async function checkIn(db: Db, actor: Actor, code: string, now: Date) {
   const resident = requireVerifiedResident(actor);
   return db.tx(async (tx) => {
@@ -73,6 +85,7 @@ export async function checkIn(db: Db, actor: Actor, code: string, now: Date) {
     const loopCompleted = left!.n === 0;
     if (loopCompleted) {
       rewards.push(await recordAction(tx, { user: resident, activity: 'GERAK_LOOP', ref: `${cp.loop_id}:${cp.day}`, quantity: cp.distance_m, now }));
+      await notifyLoopDone(tx, resident.id, cp.loop_name, rewards.reduce((sum, r) => sum + r.xp, 0), `${cp.loop_id}:${cp.day}`);
     }
     return {
       checkpoint: cp.name,

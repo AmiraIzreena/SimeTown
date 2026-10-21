@@ -17,6 +17,7 @@ import { RatesList } from '@/components/features/kitar/rates-list';
 import { RecycleSheet } from '@/components/features/kitar/recycle-sheet';
 import type { KitarOverview, WalletSummary } from '@/components/features/kitar/types';
 import { Badge } from '@/components/ui/card';
+import { ReportProblemButton } from '@/components/features/report-problem';
 import { useState } from 'react';
 import { CampaignCard } from '@/components/features/rewards';
 import { Button } from '@/components/ui/button';
@@ -207,7 +208,7 @@ export function KitarScreen() {
 
   return (
     <AksesPage profile={akses.profile} simple={akses.simple} largeText={akses.largeText} largeTargets={akses.largeTargets}>
-      <PageHeader title="Kitar" description="Recycle at a kiosk. Each bin has a scale that sends the weight by itself, so you never type it. Every drop-off earns Impact XP." />
+      <PageHeader title="Kitar" description="Recycle at a kiosk. Each bin has a scale that sends the weight by itself, so you never type it. Every drop-off earns Impact XP." action={<ReportProblemButton context="KITAR" subtitle="A bin, its weight, your points or the Kitar page" />} />
       {akses.simple ? (
         <div className="space-y-6">
           {statsBlock}

@@ -39,7 +39,7 @@ export function DemoMarker() {
         <div role="dialog" aria-labelledby="demo-marker-title" className="demo-pop absolute bottom-full left-0 mb-2 w-72 rounded-2xl border border-ink-200 bg-white p-4 text-sm text-ink-700 shadow-lg">
           <div className="flex items-start justify-between gap-3">
             <p id="demo-marker-title" className="font-semibold text-ink-900"><Text>Demo environment</Text></p>
-            <LocalizedButton type="button" aria-label="Close" onClick={() => setOpen(false)} className="-m-1 rounded-md p-1 text-ink-400 hover:text-ink-700"><X className="size-4" aria-hidden /></LocalizedButton>
+            <LocalizedButton type="button" aria-label="Close" onClick={() => setOpen(false)} className="-m-1 rounded-md p-1 text-ink-500 hover:text-ink-700"><X className="size-4" aria-hidden /></LocalizedButton>
           </div>
           <p className="mt-2 leading-relaxed"><Text>Accounts, shops, sponsors and figures are sample data. No real payments are made, and sensors and machines are simulated. SimeTown is not an official Sime Darby Property service.</Text></p>
         </div>

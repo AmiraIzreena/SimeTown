@@ -3,7 +3,7 @@
 import { Text } from '@/components/ui/localized-text';
 
 import { ScrollText } from 'lucide-react';
-import { Card, PageHeader } from '@/components/ui/card';
+import { PageHeader } from '@/components/ui/card';
 import { CountUp } from '@/components/ui/count-up';
 import { Async, EmptyState } from '@/components/ui/feedback';
 import { DataTable } from '@/components/ui/table';
@@ -26,13 +26,14 @@ export default function StatementsPage() {
       <Async state={data}>
         {(d) => (
           <div className="space-y-6">
-            <Card className="bg-gradient-to-br from-brand-700 to-brand-900 p-6 text-white">
+            {/* The same brand surface as the Home points card and the console Insights hero. */}
+            <section className="brand-hero relative animate-rise overflow-hidden rounded-xl p-6 text-white shadow-sm sm:p-7">
               <p className="text-sm font-medium text-brand-100"><Text>Due to you this week</Text></p>
               <p className="mt-2 font-display text-5xl font-bold leading-none tracking-tight tabular-nums">
-                <CountUp value={d.dueThisWeekSen} format={formatRM} />
+                <CountUp value={d.dueThisWeekSen} format={formatRM} duration={1400} />
               </p>
-              <p className="mt-2 text-[15px] text-brand-100"><Text>Paid at the next weekly settlement, at 100% of value</Text><Text>{d.successFeesDueSen ? `, less ${formatRM(d.successFeesDueSen)} of Shop Offer success fees still waiting` : ''}</Text>.</p>
-            </Card>
+              <p className="mt-3 max-w-2xl text-[15px] text-brand-100"><Text>Paid at the next weekly settlement, at 100% of value</Text><Text>{d.successFeesDueSen ? `, less ${formatRM(d.successFeesDueSen)} of Shop Offer success fees still waiting` : ''}</Text>.</p>
+            </section>
             {d.statements.length === 0 ? (
               <EmptyState icon={ScrollText} title="No statements yet"><Text>Your first statement appears after the first weekly settlement that includes points you accepted.</Text></EmptyState>
             ) : (

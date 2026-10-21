@@ -202,7 +202,7 @@ export default function AssistantPage() {
                   <span className="block truncate text-sm font-medium text-ink-900">{c.title}</span>
                   <span className="block text-xs text-ink-500"><Text>{timeAgo(c.updated_at)}</Text></span>
                 </button>
-                <LocalizedButton type="button" onClick={() => void remove.run(c.id)} disabled={remove.pending} aria-label="Delete this chat" title="Delete this chat" className="grid size-9 shrink-0 place-items-center rounded-md text-ink-400 hover:bg-ink-100 hover:text-accent-700">
+                <LocalizedButton type="button" onClick={() => void remove.run(c.id)} disabled={remove.pending} aria-label="Delete this chat" title="Delete this chat" className="grid size-9 shrink-0 place-items-center rounded-md text-ink-500 hover:bg-ink-100 hover:text-accent-700">
                   <Trash2 className="size-4" aria-hidden />
                 </LocalizedButton>
               </li>

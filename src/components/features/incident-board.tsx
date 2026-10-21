@@ -1,6 +1,7 @@
 'use client';
 
 import { Text } from '@/components/ui/localized-text';
+import { LocalizedImg } from '@/components/ui/localized-elements';
 
 import { AlertTriangle, ArrowRight, CheckCircle2, Flag, Hand, ShieldAlert, ShieldCheck, UserRound } from 'lucide-react';
 import { useEffect, useState, type CSSProperties } from 'react';
@@ -57,9 +58,10 @@ export function dueText(r: Pick<Row, 'status' | 'unassigned_late' | 'overdue' | 
 }
 
 /** The areas a case belongs to, as the board's filter offers them. Smart locker cases include the courier platform's. */
-export const CASE_AREAS = ['LOCKERS,COURIERS', 'LOCKERS', 'PARCELS', 'GUARDHOUSE', 'COURIERS', 'FACILITIES', 'COMMUNITY', 'LAPOR'] as const;
+export const CASE_AREAS = ['LOCKERS,COURIERS', 'LOCKERS', 'PARCELS', 'GUARDHOUSE', 'COURIERS', 'FACILITIES', 'COMMUNITY', 'KITAR', 'GERAK', 'LAPOR'] as const;
 export const PARCEL_MODULES: IncidentModule[] = ['PARCELS', 'LOCKERS', 'COURIERS'];
-export const COMMUNITY_MODULES: IncidentModule[] = ['GUARDHOUSE', 'FACILITIES', 'COMMUNITY'];
+// Console Lapor → Gate & community cases also holds the Kitar and Gerak reports residents send from those pages.
+export const COMMUNITY_MODULES: IncidentModule[] = ['GUARDHOUSE', 'FACILITIES', 'COMMUNITY', 'KITAR', 'GERAK'];
 export type CaseArea = (typeof CASE_AREAS)[number];
 const AREA_LABELS: Record<CaseArea, string> = { 'LOCKERS,COURIERS': 'Smart lockers & couriers', ...MODULE_LABELS };
 
@@ -264,6 +266,8 @@ interface Detail {
   incident: Row & {
     description: string | null; responsibility: string; reporter: string | null; reporter_role: string | null; home: string | null; company: string | null;
     resident_outcome: string | null; actions_taken: string | null; resolution_category: string | null; details: { evidence?: string[]; occurrences?: number };
+    /** The reporter's screenshot or photo (Kitar and Gerak reports). */
+    photo_id: string | null;
   };
   events: { id: number; kind: string; visibility: 'INTERNAL' | 'RESIDENT'; body: string | null; at: string; actor: string | null; data: Record<string, unknown> }[];
   escalations: { reason: string; note: string | null; at: string; raised_by: string | null }[];
@@ -328,6 +332,11 @@ function CaseDetail({ modules, id, staff, isAdmin, onClose, onChange }: { module
             <h3 className="mb-2 text-sm font-semibold text-ink-900"><Text>Issue summary</Text></h3>
             <p className="text-[15px] leading-relaxed text-ink-800"><Text>{i.summary}</Text></p>
             {i.description && <blockquote className="mt-3 border-l-2 border-brand-300 bg-ink-50 p-3 text-sm leading-relaxed"><Text>{i.description}</Text></blockquote>}
+            {i.photo_id && (
+              <a href={`/api/v1/incident-photos/${i.reference}`} target="_blank" rel="noopener noreferrer" className="mt-3 block w-fit overflow-hidden rounded-lg border border-ink-200 bg-white shadow-xs hover:shadow-md">
+                <LocalizedImg src={`/api/v1/incident-photos/${i.reference}`} alt="The resident's screenshot or photo" className="max-h-64 w-auto object-contain" loading="lazy" />
+              </a>
+            )}
             <dl className="mt-4 grid gap-x-6 gap-y-4 border-t border-ink-100 pt-4 text-sm sm:grid-cols-2">
               <CaseField label="Handled by" value={i.owner ?? 'Nobody has taken it yet'} />
               <CaseField label="Deadline" value={i.status === 'RESOLVED' || i.status === 'CLOSED' ? INCIDENT_STATUS_LABELS[i.status] : (i.owner_id ? i.resolve_due_at : i.assign_due_at) ? formatDateTime((i.owner_id ? i.resolve_due_at : i.assign_due_at)!) : 'Not set'} />

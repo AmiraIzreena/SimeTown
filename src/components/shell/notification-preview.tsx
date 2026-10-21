@@ -19,7 +19,7 @@ export function NotificationsPreview({ onClose }: { onClose: () => void }) {
     document.addEventListener('keydown', escape);
     return () => { document.removeEventListener('pointerdown', outside); document.removeEventListener('keydown', escape); };
   }, [onClose]);
-  return <LocalizedDiv ref={panel} id="notification-preview" role="region" tabIndex={-1} aria-label="Notifications" className="glass-surface fixed left-3 right-3 top-16 z-50 overflow-hidden rounded-xl border shadow-xl sm:absolute sm:left-auto sm:right-4 sm:w-96">
+  return <LocalizedDiv ref={panel} id="notification-preview" role="region" tabIndex={-1} aria-label="Notifications" className="fixed left-3 right-3 top-16 z-50 overflow-hidden rounded-xl border border-ink-200 bg-white shadow-xl sm:absolute sm:left-auto sm:right-4 sm:w-96">
     <div className="flex items-center justify-between border-b border-ink-100 p-4"><h2 className="font-semibold"><Text>Notifications</Text></h2><Button size="sm" variant="ghost" onClick={onClose}><Text>Close</Text></Button></div>
     <div className="max-h-[min(60dvh,32rem)] overflow-y-auto overscroll-contain"><Async state={list} skeleton={<SkeletonList rows={3} className="p-4" />}>{(data) => <NotificationRows items={data.items.slice(0, 5)} compact onNavigate={onClose} />}</Async></div>
     <div className="border-t border-ink-100 p-3" onClick={onClose}><Button variant="secondary" href="/notifications" className="w-full"><Text>View all notifications</Text></Button></div>

@@ -245,7 +245,7 @@ export function Tracker({ onFinished }: { onFinished: () => void }) {
                     )}
                     <span className="map-key-chip">
                       <span aria-hidden className="h-1 w-6 rounded-full bg-accent-600" />
-                      {activity ? <Text>This trip</Text> : <><Text>Your last trip</Text><span className="text-ink-400"><Text>(trimmed near home)</Text></span></>}
+                      {activity ? <Text>This trip</Text> : <><Text>Your last trip</Text><span className="text-ink-500"><Text>(trimmed near home)</Text></span></>}
                     </span>
                   </figcaption>
                 </figure>

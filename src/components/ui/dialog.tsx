@@ -4,7 +4,7 @@ import { Text } from '@/components/ui/localized-text';
 import { LocalizedButton, LocalizedDialog } from '@/components/ui/localized-elements';
 
 import { X } from 'lucide-react';
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 import { Button } from './button';
 
@@ -36,6 +36,29 @@ function useDialog(open: boolean, onClose: () => void) {
   };
 }
 
+/** How long a closing dialog takes to fade out (matches the dialog exit transitions in globals.css). */
+const EXIT_MS = 200;
+
+/**
+ * True while the dialog's content should render: while open, and for a moment after closing, so
+ * the dialog fades out with its content instead of as an empty box. Focus and onClose are not
+ * delayed; reduced-motion users get no hold at all.
+ */
+function useShowFrame(open: boolean): boolean {
+  const [closing, setClosing] = useState(false);
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    setClosing(!open && typeof window !== 'undefined' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  }
+  useEffect(() => {
+    if (!closing) return;
+    const timer = setTimeout(() => setClosing(false), EXIT_MS);
+    return () => clearTimeout(timer);
+  }, [closing]);
+  return open || closing;
+}
+
 function Frame({ title, description, onClose, children, footer }: Omit<DialogProps, 'open'>) {
   return (
     <div className="flex max-h-[inherit] flex-col">
@@ -57,9 +80,10 @@ function Frame({ title, description, onClose, children, footer }: Omit<DialogPro
 /** A centred dialog on larger screens and a bottom sheet on phones. */
 export function Modal({ open, wide, className, ...props }: DialogProps & { wide?: boolean; className?: string }) {
   const dialog = useDialog(open, props.onClose);
+  const showFrame = useShowFrame(open);
   return (
     <LocalizedDialog {...dialog} className={cn('modal', wide && 'wide', className)} aria-label={props.title}>
-      {open && <Frame {...props} />}
+      {showFrame && <Frame {...props} />}
     </LocalizedDialog>
   );
 }
@@ -67,9 +91,10 @@ export function Modal({ open, wide, className, ...props }: DialogProps & { wide?
 /** A panel that slides in from the side. Used for mobile navigation and notifications. */
 export function Drawer({ open, side = 'left', ...props }: DialogProps & { side?: 'left' | 'right' }) {
   const dialog = useDialog(open, props.onClose);
+  const showFrame = useShowFrame(open);
   return (
     <LocalizedDialog {...dialog} className={cn('drawer', side)} aria-label={props.title}>
-      {open && <Frame {...props} />}
+      {showFrame && <Frame {...props} />}
     </LocalizedDialog>
   );
 }

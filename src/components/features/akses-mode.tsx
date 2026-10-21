@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { Volume2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/dialog';
@@ -21,6 +21,51 @@ export interface AksesProfile {
 }
 
 export const AksesViewContext = createContext<boolean | null>(null);
+
+/*
+ * The "Accessible view / Standard view" switch in the top bar. The resident's choice is remembered in this browser,
+ * per account, so it holds on every page (the app pages and Notifications have separate frames), after a refresh
+ * and in other tabs, until they switch again. Before they ever switch, their saved Akses+ profile decides.
+ */
+const viewKey = (userId: string) => `simetown:accessible-view:${userId}`;
+const viewListeners = new Set<() => void>();
+
+function readViewChoice(userId: string | undefined): boolean | null {
+  if (!userId) return null;
+  try {
+    const value = window.localStorage.getItem(viewKey(userId));
+    return value === 'on' ? true : value === 'off' ? false : null;
+  } catch {
+    return null;
+  }
+}
+
+export function useAccessibleViewChoice(userId: string | undefined): [boolean | null, (on: boolean) => void] {
+  const subscribe = useCallback((notify: () => void) => {
+    viewListeners.add(notify);
+    // Another tab switched it.
+    const onStorage = (event: StorageEvent) => { if (userId && event.key === viewKey(userId)) notify(); };
+    window.addEventListener('storage', onStorage);
+    return () => {
+      viewListeners.delete(notify);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, [userId]);
+  const stored = useSyncExternalStore(subscribe, () => readViewChoice(userId), () => null);
+  // Still works for this visit when the browser blocks storage (a private window, say).
+  const [local, setLocal] = useState<boolean | null>(null);
+  const choose = useCallback((on: boolean) => {
+    setLocal(on);
+    if (!userId) return;
+    try {
+      window.localStorage.setItem(viewKey(userId), on ? 'on' : 'off');
+    } catch {
+      /* storage blocked: the choice lasts for this page only */
+    }
+    viewListeners.forEach((listener) => listener());
+  }, [userId]);
+  return [stored ?? local, choose];
+}
 
 export function useAksesMode() {
   const access = useApi<AksesProfile>('/me/access');

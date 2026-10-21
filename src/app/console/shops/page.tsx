@@ -243,9 +243,9 @@ function Row({ s, index, onOpen, onDeposit }: { s: Shop; index: number; onOpen: 
         <span className="tabular-nums lg:text-right">
           <span className={cn('font-semibold', unfunded ? 'text-warning-700' : 'text-ink-900')}>{formatRM(s.pool_sen)}</span>
           {unfunded && <span className="block text-xs text-warning-700"><Text>Not funded yet</Text></span>}
-          <span className="text-xs text-ink-400 lg:hidden"> <Text>reward pool</Text></span>
+          <span className="text-xs text-ink-500 lg:hidden"> <Text>reward pool</Text></span>
         </span>
-        <span className="tabular-nums text-ink-700 lg:text-right">{formatRM(s.owed_sen)}<span className="text-xs text-ink-400 lg:hidden"> <Text>owed this week</Text></span></span>
+        <span className="tabular-nums text-ink-700 lg:text-right">{formatRM(s.owed_sen)}<span className="text-xs text-ink-500 lg:hidden"> <Text>owed this week</Text></span></span>
         <span className="lg:text-right" onClick={(event) => event.stopPropagation()}>
           {s.status === 'ACTIVE' ? (
             <Button size="sm" variant="secondary" className="w-full lg:w-auto" onClick={onDeposit}><Text>Record deposit</Text></Button>

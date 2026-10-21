@@ -81,7 +81,8 @@ export function FilterChips<K extends string>({ options, value, onChange, label,
   size?: 'md' | 'sm';
 }) {
   return (
-    <LocalizedDiv role="group" aria-label={label} className="filter-chips -mx-1 flex gap-2 overflow-x-auto px-1 py-0.5">
+    // One scrolling row on a phone; on wider screens the chips wrap, so none is cut off at the edge.
+    <LocalizedDiv role="group" aria-label={label} className="filter-chips -mx-1 flex gap-2 overflow-x-auto px-1 py-0.5 sm:flex-wrap sm:overflow-visible">
       {options.map((option) => {
         const on = option.key === value;
         return (
@@ -96,6 +97,53 @@ export function FilterChips<K extends string>({ options, value, onChange, label,
             {option.count !== undefined && (
               <span className={cn('filter-chip-count rounded-full px-1.5 text-xs tabular-nums', option.alert && option.count > 0 && 'is-alert')}>{option.count}</span>
             )}
+          </button>
+        );
+      })}
+    </LocalizedDiv>
+  );
+}
+
+/**
+ * One labelled line of a filter bar ("Type", "Category"): the name on the left, the choices beside it. On a phone
+ * the name sits above the choices.
+ */
+export function FilterRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1.5 sm:flex-row sm:items-start sm:gap-4">
+      <span className="shrink-0 text-[13px] font-semibold text-ink-600 sm:w-20 sm:pt-1.5"><Text>{label}</Text></span>
+      <div className="min-w-0 flex-1">{children}</div>
+    </div>
+  );
+}
+
+/**
+ * A choice between a few views of the same list ("Everything I follow / Reported by me / Following"), drawn as a
+ * joined switch so it reads differently from the filter chips. One option is always on.
+ */
+export function FilterSegmented<K extends string>({ options, value, onChange, label }: {
+  options: ChipOption<K>[];
+  value: K;
+  onChange: (key: K) => void;
+  label: string;
+}) {
+  return (
+    <LocalizedDiv role="group" aria-label={label} className="inline-flex max-w-full shrink-0 overflow-x-auto rounded-full border border-ink-200 bg-ink-50 p-1">
+      {options.map((option) => {
+        const on = option.key === value;
+        return (
+          <button
+            key={option.key}
+            type="button"
+            aria-pressed={on}
+            onClick={() => onChange(option.key)}
+            className={cn(
+              'inline-flex min-h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-[13px] font-semibold transition-[background-color,color,box-shadow] duration-200 ease-soft',
+              on ? 'bg-white text-brand-800 shadow-sm ring-1 ring-ink-200' : 'text-ink-600 hover:text-ink-900',
+            )}
+          >
+            <Text>{option.label}</Text>
+            {option.count !== undefined && <span className={cn('rounded-full px-1.5 text-xs tabular-nums', on ? 'bg-brand-50 text-brand-700' : 'bg-ink-100 text-ink-600')}>{option.count}</span>}
           </button>
         );
       })}

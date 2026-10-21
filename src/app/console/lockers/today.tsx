@@ -226,8 +226,8 @@ function QueueRow({ c, index }: { c: CaseRow; index: number }) {
           <p className="mt-0.5 line-clamp-2 text-sm leading-relaxed text-ink-600"><Text>{c.summary}</Text></p>
         </div>
         <div className="flex items-center gap-2 text-xs lg:block">
-          {due ? <span className={cn('inline-flex items-center gap-1.5 font-semibold', due.late ? 'text-accent-700' : 'text-ink-600')}><Clock className="size-3.5" aria-hidden /><Text>{due.text}</Text></span> : <span className="text-ink-400">–</span>}
-          <span className="text-ink-400 lg:mt-0.5 lg:block"><Text>{`opened ${timeAgo(c.created_at)}`}</Text></span>
+          {due ? <span className={cn('inline-flex items-center gap-1.5 font-semibold', due.late ? 'text-accent-700' : 'text-ink-600')}><Clock className="size-3.5" aria-hidden /><Text>{due.text}</Text></span> : <span className="text-ink-500">–</span>}
+          <span className="text-ink-500 lg:mt-0.5 lg:block"><Text>{`opened ${timeAgo(c.created_at)}`}</Text></span>
         </div>
         <div className="flex min-w-0 items-center gap-1.5 text-sm">
           <UserRound className="size-3.5 shrink-0 text-ink-400" aria-hidden />
@@ -267,7 +267,7 @@ function Kpis({ cases, moves, overview, onQueue, onMoves, onParcels, onPerforman
             <span className="ops-kpi-icon grid size-8 shrink-0 place-items-center rounded-lg"><t.icon className="size-4" aria-hidden /></span>
           </span>
           <span className="mt-2 block font-display text-[28px] font-bold leading-none tracking-tight text-ink-900 tabular-nums">
-            <CountUp value={t.value} delay={i * 60} />{t.suffix && <span className="text-lg font-semibold text-ink-400">{t.suffix}</span>}
+            <CountUp value={t.value} delay={i * 60} />{t.suffix && <span className="text-lg font-semibold text-ink-500">{t.suffix}</span>}
           </span>
           <span className="ops-kpi-hint mt-2 flex items-center justify-between gap-2 text-xs">
             <span className="line-clamp-2 min-w-0"><Text>{t.hint}</Text></span>

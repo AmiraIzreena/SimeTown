@@ -26,6 +26,7 @@ const settingsBody = z
     flood_warning_pct: z.number().int().min(1).max(100),
     flood_danger_pct: z.number().int().min(1).max(100),
     flag_hide_threshold: z.number().int().min(1).max(100),
+    issue_public_threshold: z.number().int().min(1).max(100),
     min_group_size: z.number().int().min(2).max(1000),
     issuance_paused: z.boolean(),
     offer_points_monthly_home: z.number().int().min(1).max(1_000_000),

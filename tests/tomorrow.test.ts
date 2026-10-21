@@ -4,7 +4,7 @@ import { one, type Db } from '@/server/db/client';
 import { runJob } from '@/server/modules/admin/service';
 import { bookCollection, cancelCollection, completeCollection, confirmCollection, createCollector, recyclingStats } from '@/server/modules/kitar/collections';
 import { checkParcelCode, guardParcels, handOverParcel, logParcel, myParcels, parcelStats, reportParcelProblem } from '@/server/modules/parcels/service';
-import { createReport, getReport, listReports, reportStats, setMeToo, similarReports, updateReport } from '@/server/modules/reports/service';
+import { createReport, getReport, listReports, myLaporReports, reportStats, setMeToo, similarReports, updateReport } from '@/server/modules/reports/service';
 import { myRequests } from '@/server/modules/requests/service';
 import { searchGuide } from '@/shared/recycling-guide';
 import { T0, at, freshDb, makeHome, makeResident, makeWorld, type World } from './helpers';
@@ -72,6 +72,35 @@ describe('One reporting channel: live progress and "Me too"', () => {
     await updateReport(db, w.staff, id, { status: 'RESOLVED' }, at(6));
     await expect(setMeToo(db, await makeResident(w), id, true, at(6))).rejects.toMatchObject({ code: 'REPORT_CLOSED' });
     expect((await reportStats(db, w.staff, at(6))).medianDaysToFix).toBe(6);
+  });
+
+  it('lists a resident’s Lapor reports as ongoing or finished, by type, mine or followed, searchable, with matching counts', async () => {
+    const me = await makeResident(w);
+    const neighbour = await makeResident(w);
+    const light = await createReport(db, me, { description: 'Street light out by the surau', locationText: 'Jalan Dua', category: 'LIGHTING' }, T0);
+    const drain = await createReport(db, me, { description: 'Drain 50% blocked with leaves', locationText: 'Bus stop', category: 'DRAINAGE' }, T0);
+    const theirs = await createReport(db, neighbour, { description: 'Pothole at the junction', locationText: 'Jalan Tiga', category: 'POTHOLE' }, T0);
+    await setMeToo(db, me, theirs.id, true, T0);
+    await updateReport(db, w.staff, drain.id, { status: 'RESOLVED' }, at(1));
+
+    const ongoing = await myLaporReports(db, me, { view: 'ongoing', limit: 10 }, at(1));
+    expect(ongoing.items.map((r) => r.id).sort()).toEqual([light.id, theirs.id].sort());
+    expect(ongoing.counts).toEqual({ ongoing: 2, finished: 1, mine: 1, following: 1 });
+    expect(ongoing.categories).toMatchObject({ LIGHTING: 1, POTHOLE: 1, DRAINAGE: 0 });
+
+    expect((await myLaporReports(db, me, { view: 'finished', limit: 10 }, at(1))).items.map((r) => r.id)).toEqual([drain.id]);
+    expect((await myLaporReports(db, me, { view: 'ongoing', who: 'following', limit: 10 }, at(1))).items.map((r) => r.id)).toEqual([theirs.id]);
+    expect((await myLaporReports(db, me, { view: 'ongoing', category: 'LIGHTING', limit: 10 }, at(1))).items.map((r) => r.id)).toEqual([light.id]);
+    // Search covers the place too, and % is a literal character.
+    expect((await myLaporReports(db, me, { view: 'ongoing', q: 'Jalan Dua', limit: 10 }, at(1))).items.map((r) => r.id)).toEqual([light.id]);
+    expect((await myLaporReports(db, me, { view: 'finished', q: '50%', limit: 10 }, at(1))).items.map((r) => r.id)).toEqual([drain.id]);
+    expect((await myLaporReports(db, me, { view: 'ongoing', q: '%', limit: 10 }, at(1))).items).toHaveLength(0);
+    // Paging: one at a time, nothing repeated.
+    const first = await myLaporReports(db, me, { view: 'ongoing', limit: 1 }, at(1));
+    const second = await myLaporReports(db, me, { view: 'ongoing', limit: 1, cursor: first.nextCursor! }, at(1));
+    expect(new Set([...first.items, ...second.items].map((r) => r.id)).size).toBe(2);
+    // A stranger's report never shows.
+    expect((await myLaporReports(db, neighbour, { view: 'ongoing', limit: 10 }, at(1))).items.map((r) => r.id)).toEqual([theirs.id]);
   });
 });
 

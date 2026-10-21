@@ -18,8 +18,13 @@ interface Page<T> {
 
 /** A list that loads more on request, using the API's cursor. */
 /** `Extra` types anything the API adds to the first page, such as filter counts. */
-export function usePaged<T, Extra extends object = object>(path: string | null) {
-  const swr = useSWRInfinite<Page<T> & Partial<Extra>, ApiError>(
+/**
+ * With `keepPrevious`, a changed filter keeps the last results (and their counts) on screen until the new ones
+ * arrive, and `stale` says so: the page around the list stays still and only the list itself changes.
+ */
+export function usePaged<T, Extra extends object = object>(path: string | null, options: { keepPrevious?: boolean } = {}) {
+  type P = Page<T> & Partial<Extra>;
+  const swr = useSWRInfinite<P, ApiError>(
     (index, previous) => {
       if (!path || (previous && !previous.nextCursor)) return null;
       const joiner = path.includes('?') ? '&' : '?';
@@ -28,12 +33,17 @@ export function usePaged<T, Extra extends object = object>(path: string | null) 
     api.get,
     { shouldRetryOnError: false, revalidateFirstPage: true },
   );
-  const pages = swr.data ?? [];
+  const [last, setLast] = useState<P[] | null>(null);
+  if (options.keepPrevious && swr.data && swr.data !== last) setLast(swr.data);
+  const stale = Boolean(options.keepPrevious && !swr.data && !swr.error && last && path);
+  const pages = swr.data ?? (stale ? last! : []);
   return {
     items: pages.flatMap((p) => p.items),
     first: pages[0],
     error: swr.error,
-    isLoading: swr.isLoading,
+    isLoading: swr.isLoading && !stale,
+    /** Showing the previous filter's results while the new ones load. */
+    stale,
     hasMore: Boolean(pages[pages.length - 1]?.nextCursor),
     loadingMore: swr.isValidating && swr.size > pages.length,
     loadMore: () => swr.setSize(swr.size + 1),

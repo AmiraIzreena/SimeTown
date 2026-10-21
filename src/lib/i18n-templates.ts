@@ -8,6 +8,9 @@ import { campaignsTemplates } from './i18n-campaigns';
 
 /** Templates for application-generated messages; interpolated personal values stay unchanged. */
 export const messageTemplates: readonly (readonly [string, string])[] = [
+  // Gerak: a loop completed (notification).
+  ["Loop completed: {0}", "Laluan selesai: {0}"],
+  ["Well done. You earned {0} Impact XP for walking, running or cycling the loop.", "Syabas. Anda memperoleh {0} XP Impak kerana berjalan, berlari atau berbasikal di laluan itu."],
   // Old Taman notifications are still stored in residents' inboxes; keep translating them.
   ["You won plot {0} at {1}", "Anda memenangi plot {0} di {1}"],
   // A resident's home rejected by staff, with the reason they gave.
@@ -926,6 +929,22 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
   ...homeServicesTemplates,
   ...komunitiTemplates,
   ["Reported {0}", "Dilaporkan {0}"],
+  ["To be fixed by {0}", "Dijangka dibaiki pada {0}"],
+  ["See all {0} reports", "Lihat kesemua {0} laporan"],
+  ["{0} of {1} shown", "{0} daripada {1} dipaparkan"],
+  ["A problem appears here once {0} residents have reported it or said Me too. Titles are written for the township, never copied from anyone's report.", "Masalah dipaparkan di sini apabila {0} penduduk telah melaporkannya atau menekan Saya juga. Tajuk ditulis untuk perbandaran, tidak sekali-kali disalin daripada laporan sesiapa."],
+  ["{0} residents have this problem, so neighbours can see it in Reports around the township, without your words or photo.", "{0} penduduk menghadapi masalah ini, jadi jiran dapat melihatnya dalam Laporan di sekitar perbandaran, tanpa kata-kata atau gambar anda."],
+  ["Neighbours see a problem once {0} residents have reported it or said Me too. So far: {1}. Until then only you and the township office see your report.", "Jiran dapat melihat masalah apabila {0} penduduk telah melaporkannya atau menekan Saya juga. Setakat ini: {1}. Sehingga itu, hanya anda dan pejabat perbandaran dapat melihat laporan anda."],
+  ["{0} residents affected so far", "{0} penduduk terjejas setakat ini"],
+  ["Problems that {0} or more residents reported or said Me too to, and anything urgent. One update reaches every report in the problem.", "Masalah yang dilaporkan atau ditekan Saya juga oleh {0} penduduk atau lebih, serta apa-apa yang segera. Satu kemas kini sampai kepada setiap laporan dalam masalah itu."],
+  ["{0} smaller problems are still in Community reports.", "{0} masalah yang lebih kecil masih dalam Laporan komuniti."],
+  ["{0} of {1} residents", "{0} daripada {1} penduduk"],
+  ["{0} residents", "{0} penduduk"],
+  ["{0} reports", "{0} laporan"],
+  ["The {0} reports", "{0} laporan itu"],
+  ["+{0} Me too", "+{0} Saya juga"],
+  ["Shared problem · {0} residents", "Masalah bersama · {0} penduduk"],
+  ["A Lapor issue now affects {0} residents", "Isu Lapor kini menjejaskan {0} penduduk"],
   ["{0} affected", "{0} terjejas"],
   ["{0} residents affected", "{0} penduduk terjejas"],
   ["Assigned to {0}", "Diserahkan kepada {0}"],

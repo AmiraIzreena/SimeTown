@@ -2,13 +2,13 @@
 
 import { Text } from '@/components/ui/localized-text';
 
-import { Plus, UserRound, Wrench } from 'lucide-react';
+import { CircleSlash, Clock, Plus, UserRound, Wrench } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { PriceLine, SERVICE_ICONS } from '@/components/features/home-services';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, PageHeader } from '@/components/ui/card';
 import { Modal } from '@/components/ui/dialog';
-import { Async, EmptyState } from '@/components/ui/feedback';
+import { Async, EmptyState, Notice } from '@/components/ui/feedback';
 import { Input, Select, Textarea } from '@/components/ui/field';
 import { api } from '@/lib/api';
 import { parseRM } from '@/lib/format';
@@ -62,25 +62,10 @@ export default function ServicesPage() {
         {(data) => (
           <div className="space-y-6">
             {data.merchant.status !== 'ACTIVE' && (
-              <p className="rounded-lg border border-warning-600/30 bg-warning-50 p-4 text-[15px] text-warning-700">
+              <Notice icon={data.merchant.status === 'PENDING' ? Clock : CircleSlash} title={data.merchant.status === 'PENDING' ? 'Your business is waiting for approval.' : 'Your business is suspended.'}>
                 <Text>{data.merchant.status === 'PENDING' ? 'The township office is checking your business. You can set up now; residents see you once you are approved.' : 'Your business is suspended. Residents cannot book you. Contact the township office.'}</Text>
-              </p>
+              </Notice>
             )}
-
-            <Card>
-              <CardHeader title="About your company" description="A few lines residents read on your profile." />
-              <form
-                method="post"
-                className="space-y-3 p-5"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  void about.run(String(new FormData(event.currentTarget).get('about') ?? '').trim());
-                }}
-              >
-                <Textarea label="About" name="about" maxLength={600} defaultValue={data.merchant.about ?? ''} placeholder="e.g. Family plumbing business serving Elmina since 2015. Licensed and insured." error={about.fields.about} />
-                <Button type="submit" size="sm" variant="secondary" pending={about.pending}><Text>Save</Text></Button>
-              </form>
-            </Card>
 
             <Card>
               <CardHeader title="Services" description="One listing per type of service. Say how you price it, and any call-out fee, so residents know before they book." />
@@ -140,6 +125,22 @@ export default function ServicesPage() {
                   ))}
                 </ul>
               )}
+            </Card>
+
+            {/* The profile text changes rarely, so it sits after the services and workers used every day. */}
+            <Card>
+              <CardHeader title="About your company" description="A few lines residents read on your profile." />
+              <form
+                method="post"
+                className="space-y-3 p-5"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void about.run(String(new FormData(event.currentTarget).get('about') ?? '').trim());
+                }}
+              >
+                <Textarea label="About" name="about" maxLength={600} defaultValue={data.merchant.about ?? ''} placeholder="e.g. Family plumbing business serving Elmina since 2015. Licensed and insured." error={about.fields.about} />
+                <Button type="submit" size="sm" variant="secondary" pending={about.pending}><Text>Save</Text></Button>
+              </form>
             </Card>
           </div>
         )}

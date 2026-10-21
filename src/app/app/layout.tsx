@@ -7,7 +7,7 @@ import { requireArea } from '@/server/auth/guard';
 export default async function Layout({ children }: { children: ReactNode }) {
   const actor = await requireArea(['RESIDENT']);
   return (
-    <Shell area="resident" user={{ fullName: actor.fullName, role: actor.role }}>
+    <Shell area="resident" user={{ id: actor.id, fullName: actor.fullName, role: actor.role }}>
       <Text>{children}</Text>
     </Shell>
   );

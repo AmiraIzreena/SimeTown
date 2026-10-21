@@ -235,7 +235,7 @@ export function CompaniesTab() {
                       {c.managers.map((m) => (
                         <span key={m.userId} className="inline-flex items-center gap-1 rounded-full bg-ink-50 px-2.5 py-0.5">
                           {m.fullName}{m.status !== 'ACTIVE' && <> · <Text>removed</Text></>}
-                          {isAdmin && m.status === 'ACTIVE' && <LocalizedButton type="button" className="text-ink-400 hover:text-accent-700" onClick={() => void removeRep.run(c.id, m.userId)} aria-label={`Remove ${m.fullName}`}>×</LocalizedButton>}
+                          {isAdmin && m.status === 'ACTIVE' && <LocalizedButton type="button" className="text-ink-500 hover:text-accent-700" onClick={() => void removeRep.run(c.id, m.userId)} aria-label={`Remove ${m.fullName}`}>×</LocalizedButton>}
                         </span>
                       ))}
                     </p>
