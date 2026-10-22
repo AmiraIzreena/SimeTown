@@ -8,6 +8,7 @@ let config: Config = parseConfig(env);
 vi.mock('@/server/config', async (actual) => ({ ...(await actual<typeof import('@/server/config')>()), getConfig: () => config }));
 
 const { suggestReport } = await import('@/server/ai/classifier');
+const { checkReportTextByModel } = await import('@/server/modules/reports/text-check');
 
 /** A fake provider: records the request and answers with `reply`. */
 function fakeProvider(reply: unknown, status = 200) {
@@ -65,6 +66,19 @@ describe('OpenAI requests', () => {
     const sent = fakeProvider({ choices: [{ message: { content: '{"category": "POTHOLE", "urgency": "MEDIUM"}' } }] });
     expect(await suggestReport('Jalan berlubang')).toMatchObject({ category: 'POTHOLE', source: 'MODEL' });
     expect(sent().body.max_completion_tokens).toBe(2000);
+  });
+
+  it('asks the model about slang the word list misses, and lets the text through when it does not answer', async () => {
+    config = parseConfig({ ...env, AI_PROVIDER: 'openai', AI_API_KEY: 'sk-test', AI_MODEL: 'gpt-4.1-mini' });
+    const sent = fakeProvider({ choices: [{ message: { content: '{"description": true, "place": false}' } }] });
+    expect(await checkReportTextByModel({ description: 'kontraktor ni memang bngng', locationText: 'Jalan Satu' })).toEqual({ description: expect.stringContaining('rude') });
+    expect(sent().body.messages[1].content).toEqual([{ type: 'text', text: '{"description":"kontraktor ni memang bngng","place":"Jalan Satu"}' }]);
+
+    fakeProvider({ choices: [{ message: { content: '{"description": false, "place": false}' } }] });
+    expect(await checkReportTextByModel({ description: 'Babi hutan selongkar tong sampah', locationText: 'Jalan Dua' })).toBeNull();
+
+    fakeProvider({ error: { message: 'overloaded' } }, 529);
+    expect(await checkReportTextByModel({ description: 'Lampu rosak', locationText: 'Jalan Tiga' })).toBeNull();
   });
 
   it('falls back to the keyword rules when OpenAI refuses the request', async () => {

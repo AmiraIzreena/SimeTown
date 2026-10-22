@@ -1,3 +1,4 @@
+import { formatSchedule, openSlots, type Schedule } from '../src/shared/collector-schedule';
 import type { Actor } from '../src/server/auth/actor';
 import { ACTOR_COLUMNS, toActor } from '../src/server/auth/session';
 import { one, type Db } from '../src/server/db/client';
@@ -63,11 +64,17 @@ export async function seedTomorrow(db: Db, input: { now: Date; log: (line: strin
   await parcel(meiling, 'GDex', 'C1', ago(1, 2));
 
   // --- Recycling collections ----------------------------------------------------------------
-  const eWaste = await createCollector(db, admin, { name: 'Kitar Plus Recyclers', phone: '+60355550101', materials: ['E_WASTE', 'PAPER', 'ALUMINIUM'], days: 'Tue and Sat mornings', notes: 'Demo partner' });
-  await createCollector(db, admin, { name: 'Minyak Hijau Collectors', phone: '+60355550102', materials: ['COOKING_OIL', 'TEXTILE'], days: 'Every Thursday', notes: 'Demo partner' });
-  const past = await bookCollection(db, daniel, { collectorId: eWaste.id, materials: ['E_WASTE'], items: 'Old desktop computer and a printer', day: dayOf(ago(6)), slot: 'MORNING' }, ago(9));
-  await completeCollection(db, staff, past.id, 14_500, ago(6));
-  await bookCollection(db, aisyah, { collectorId: eWaste.id, materials: ['E_WASTE', 'PAPER'], items: 'Two boxes of old cables and a broken kettle', day: dayOf(new Date(now.getTime() + 3 * DAY)), slot: 'MORNING' }, now);
+  // Real schedules, so residents can only book the days these collectors come.
+  const eWasteSchedule: Schedule = { days: ['TUE', 'SAT'], time: 'MORNING' };
+  const eWaste = await createCollector(db, admin, { name: 'Kitar Plus Recyclers', phone: '+60355550101', materials: ['E_WASTE', 'PAPER', 'ALUMINIUM'], schedule: eWasteSchedule, notes: 'Demo partner' });
+  await createCollector(db, admin, { name: 'Minyak Hijau Collectors', phone: '+60355550102', materials: ['COOKING_OIL', 'TEXTILE'], schedule: { days: ['THU'], time: 'BOTH' }, notes: 'Demo partner' });
+  // Bookings fall on a day Kitar Plus Recyclers comes: one in the week before today, one ahead.
+  const eWasteDays = formatSchedule(eWasteSchedule);
+  const pastDay = openSlots(eWasteDays, dayOf(ago(8)), 7)![0]!.day;
+  const past = await bookCollection(db, daniel, { collectorId: eWaste.id, materials: ['E_WASTE'], items: 'Old desktop computer and a printer', day: pastDay, slot: 'MORNING' }, ago(9));
+  await completeCollection(db, staff, past.id, 14_500, new Date(`${pastDay}T04:00:00Z`));
+  const nextDay = openSlots(eWasteDays, dayOf(new Date(now.getTime() + 2 * DAY)), 7)![0]!.day;
+  await bookCollection(db, aisyah, { collectorId: eWaste.id, materials: ['E_WASTE', 'PAPER'], items: 'Two boxes of old cables and a broken kettle', day: nextDay, slot: 'MORNING' }, now);
 
   log('Brief features: report progress, parcels and recycling collections added.');
 }
@@ -109,12 +116,16 @@ export async function seedRequestShowcase(db: Db, input: { now: Date; log: (line
   await logParcel(db, guard, { homeId: daniel.homeId!, courier: 'J&T Express', shelf: 'B4', trackingNo: 'JT7781200456' }, ago(0, 5));
 
   // Two recycling collections: one waiting for the collector, one confirmed (its gate pass is made).
-  const collector = async (name: string) => (await one<{ id: string }>(db, 'SELECT id FROM recycling_collectors WHERE name = $1', [name]))?.id;
+  // Each falls on the first day and time the collector comes, from the given number of days ahead.
+  const collector = async (name: string) => one<{ id: string; days: string }>(db, 'SELECT id, days FROM recycling_collectors WHERE name = $1', [name]);
+  const firstOpen = (days: string, daysAhead: number) => openSlots(days, dayOf(new Date(now.getTime() + daysAhead * DAY)), 7)?.[0];
   const oil = await collector('Minyak Hijau Collectors');
   const paper = await collector('Kitar Plus Recyclers');
-  if (oil) await bookCollection(db, daniel, { collectorId: oil, materials: ['COOKING_OIL'], items: 'Two bottles of used cooking oil', day: dayOf(new Date(now.getTime() + 2 * DAY)), slot: 'AFTERNOON' }, now);
+  const oilWhen = oil && firstOpen(oil.days, 2);
+  if (oil && oilWhen) await bookCollection(db, daniel, { collectorId: oil.id, materials: ['COOKING_OIL'], items: 'Two bottles of used cooking oil', day: oilWhen.day, slot: oilWhen.slot }, now);
   // Bookings confirm themselves, with the collector's gate pass.
-  if (paper) await bookCollection(db, daniel, { collectorId: paper, materials: ['PAPER'], items: 'A stack of old newspapers and boxes', day: dayOf(new Date(now.getTime() + 5 * DAY)), slot: 'MORNING' }, now);
+  const paperWhen = paper && firstOpen(paper.days, 5);
+  if (paper && paperWhen) await bookCollection(db, daniel, { collectorId: paper.id, materials: ['PAPER'], items: 'A stack of old newspapers and boxes', day: paperWhen.day, slot: paperWhen.slot }, now);
 
   log('My requests showcase: Daniel Tan has every kind of request and every report step.');
 }

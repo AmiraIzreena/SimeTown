@@ -11,7 +11,7 @@ import { reportSignal } from '../banjir/agent';
 import { recordAction, rewardUserById } from '../rewards';
 import { todayIn } from '../settings';
 import { afterJoin, cleanWording, issueFacts, refreshIssueWording, words } from './issue-core';
-import { checkReportText } from './text-check';
+import { checkReportText, checkReportTextByModel } from './text-check';
 
 /**
  * Lapor: report a hazard or an access barrier, and follow it until it is closed.
@@ -46,6 +46,9 @@ export async function checkReportInput(db: Queryable, resident: { townshipId: st
   if (input.zoneId && !(await one(db, 'SELECT 1 FROM flood_zones WHERE id = $1 AND township_id = $2', [input.zoneId, resident.townshipId]))) {
     throw notFound('Area');
   }
+  // Last, as it may call a remote service: the model's look at slang and short forms the word list misses.
+  const rude = await checkReportTextByModel(input);
+  if (rude) throw badRequest('Please check what you wrote.', { fields: rude });
 }
 
 /** An open issue in the resident's township that they have not reported themselves yet. */

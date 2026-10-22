@@ -47,6 +47,33 @@ export function weekdayOf(day: string): Weekday {
   return WEEKDAYS[(new Date(`${day}T00:00:00Z`).getUTCDay() + 6) % 7]!;
 }
 
+/** How far ahead a household can book a collection: from tomorrow up to this many days from today. */
+export const BOOK_AHEAD_DAYS = 30;
+
+/** One day and half-day a collector can come: "2026-10-27", "MORNING". */
+export interface OpenSlot {
+  day: string;
+  slot: 'MORNING' | 'AFTERNOON';
+}
+
+/**
+ * Every day and time a collector comes, for `count` days starting at `from` (YYYY-MM-DD), in order,
+ * so the booking form can offer only those. Null for an older free-text schedule, which the system
+ * cannot read: the form then asks for any day and time, as `worksOn` allows.
+ */
+export function openSlots(stored: string, from: string, count: number): OpenSlot[] | null {
+  const s = parseSchedule(stored);
+  if (!s) return null;
+  const start = Date.parse(`${from}T00:00:00Z`);
+  const out: OpenSlot[] = [];
+  for (let i = 0; i < count; i++) {
+    const day = new Date(start + i * 86_400_000).toISOString().slice(0, 10);
+    if (!s.days.includes(weekdayOf(day))) continue;
+    for (const slot of ['MORNING', 'AFTERNOON'] as const) if (s.time === 'BOTH' || s.time === slot) out.push({ day, slot });
+  }
+  return out;
+}
+
 /** Whether a collector with this stored text works on that day and slot. Unreadable text: yes. */
 export function worksOn(stored: string, day: string, slot: 'MORNING' | 'AFTERNOON'): boolean {
   const s = parseSchedule(stored);
