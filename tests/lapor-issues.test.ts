@@ -4,7 +4,7 @@ import { type Db } from '@/server/db/client';
 import { cleanWording } from '@/server/modules/reports/issue-core';
 import { attentionIssues, findIssueMatch, getIssue, setIssueMeToo, similarIssues, townshipIssues, updateIssue } from '@/server/modules/reports/issues';
 import { createReport, getReport, myLaporReports } from '@/server/modules/reports/service';
-import { checkReportText, looksLikeJunk } from '@/server/modules/reports/text-check';
+import { checkReportText, hasRudeWords, looksLikeJunk } from '@/server/modules/reports/text-check';
 import { T0, at, freshDb, makeResident, makeWorld, type World } from './helpers';
 
 /** Lapor issues: the same problem grouped, public only once enough residents are affected, and Needs attention. */
@@ -30,6 +30,15 @@ describe('What residents may type', () => {
     expect(checkReportText({ description: 'Bodoh punya jalan, lubang besar', locationText: 'Jalan Satu' })).toEqual({ description: expect.stringContaining('rude') });
     expect(checkReportText({ description: 'Wild boar (babi hutan) near the bins at night', locationText: 'Jalan Satu' })).toBeNull();
     expect(checkReportText({ description: 'Pothole on the bend', locationText: 'zzzzzz' })).toEqual({ locationText: expect.any(String) });
+  });
+
+  it('also refuses rude short forms and disguised spellings, but not the ordinary words around them', () => {
+    for (const rude of ['fk this road', 'wtf lampu ni', 'jalan sh1t', 'f*ck the drain', 'f.u.c.k', 'fuuuuck!', 'b0doh punya kontraktor', 'bgst', 'pkm lubang ni', '$hit everywhere', 'haram jadah betul']) {
+      expect(hasRudeWords(rude), rude).toBe(true);
+    }
+    for (const fine of ['Shuttle stop sign fell over', 'Residential lane lights out', 'Pukul 3 pagi bunyi bising', 'Fikir dulu sebelum potong pokok', 'Block B-12-3A, U16/1N', 'Social hall roof leaking', 'Dickson Road kerb broken', 'Assistance needed at the ramp']) {
+      expect(hasRudeWords(fine), fine).toBe(false);
+    }
   });
 
   it('turns a junk report away before anything is saved', async () => {
