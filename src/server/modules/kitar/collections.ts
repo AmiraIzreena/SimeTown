@@ -1,4 +1,4 @@
-import { formatSchedule, worksOn, type Schedule } from '@/shared/collector-schedule';
+import { BOOK_AHEAD_DAYS, formatSchedule, worksOn, type Schedule } from '@/shared/collector-schedule';
 import { MATERIAL_INFO, shortAddress, type HomeAddress, type Material } from '@/shared/domain';
 import { one, type Db, type Queryable } from '../../db/client';
 import { assertTownshipAccess, requireVerifiedResident, type Actor } from '../../auth/actor';
@@ -26,7 +26,6 @@ import { testEntryEnabled } from './test-entry';
 export const COLLECTION_SLOTS = ['MORNING', 'AFTERNOON'] as const;
 export type CollectionSlot = (typeof COLLECTION_SLOTS)[number];
 const MAX_OPEN_PER_HOME = 3;
-const BOOK_AHEAD_DAYS = 30;
 /** A typed weight up to this, after a gate scan, is credited without staff. More goes to review. */
 export const AUTO_ACCEPT_MAX_G = 20_000;
 /** A collection the gate scanned but nobody weighed closes this many days after its day, with no points. */

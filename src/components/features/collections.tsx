@@ -14,6 +14,7 @@ import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { formatDate, formatKg } from '@/lib/format';
 import { useAction, useApi } from '@/lib/hooks';
+import { BOOK_AHEAD_DAYS, openSlots } from '@/shared/collector-schedule';
 import { MATERIALS, MATERIAL_INFO, type Material } from '@/shared/domain';
 
 interface Collector {
@@ -60,6 +61,13 @@ const tomorrow = () => {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kuala_Lumpur' }).format(d);
 };
 
+/** "Tuesday, 27 October" for a YYYY-MM-DD day, in the shape the Malay translation reads. */
+const dayLabel = (day: string) => {
+  const parts = new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }).formatToParts(new Date(`${day}T00:00:00Z`));
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)?.value ?? '';
+  return `${part('weekday')}, ${part('day')} ${part('month')}`;
+};
+
 /**
  * Booked collections from partner collectors, for things too big or too
  * special for a kiosk. A booking is confirmed at once and the collector's gate
@@ -68,13 +76,23 @@ const tomorrow = () => {
  */
 export function Collections({ request }: { request: { material: Material; n: number } | null }) {
   const mine = useApi<Collection[]>('/kitar/collections');
-  // Only collectors who work on the chosen day and time; the list reloads when either changes.
-  const [day, setDay] = useState(tomorrow);
-  const [slot, setSlot] = useState<'MORNING' | 'AFTERNOON'>('MORNING');
-  const collectors = useApi<Collector[]>(/^\d{4}-\d{2}-\d{2}$/.test(day) ? `/kitar/collectors?day=${day}&slot=${slot}` : null);
   const [open, setOpen] = useState(false);
+  const collectors = useApi<Collector[]>(open ? '/kitar/collectors' : null);
   const [materials, setMaterials] = useState<Material[]>([]);
   const [collectorId, setCollectorId] = useState('');
+  const [day, setDay] = useState(tomorrow);
+  const [slot, setSlot] = useState<'MORNING' | 'AFTERNOON'>('MORNING');
+  // The collector comes first, then only the days and times they come. Null: their days are
+  // older free text the system cannot read, so the household picks any day and time.
+  const chosen = collectors.data?.find((c) => c.id === collectorId);
+  const slots = chosen ? openSlots(chosen.days, tomorrow(), BOOK_AHEAD_DAYS) : null;
+  const chooseCollector = (id: string) => {
+    setCollectorId(id);
+    const c = collectors.data?.find((x) => x.id === id);
+    const first = c ? openSlots(c.days, tomorrow(), BOOK_AHEAD_DAYS)?.[0] : undefined;
+    setDay(first?.day ?? tomorrow());
+    setSlot(first?.slot ?? 'MORNING');
+  };
   const [weighing, setWeighing] = useState<Collection | null>(null);
   // A tap on "Book a collection" in the guide opens the form with that material chosen.
   const [seen, setSeen] = useState(0);
@@ -214,8 +232,8 @@ export function Collections({ request }: { request: { material: Material; n: num
         open={open}
         onClose={() => setOpen(false)}
         title="Book a collection"
-        description="Choose what you have, then a collector who takes it."
-        footer={<><Button variant="secondary" onClick={() => setOpen(false)}><Text>Cancel</Text></Button><Button type="submit" form="book-collection" pending={book.pending} disabled={materials.length === 0 || !collectorId}><Text>Request collection</Text></Button></>}
+        description="Choose what you have, then a collector who takes it and a day they come."
+        footer={<><Button variant="secondary" onClick={() => setOpen(false)}><Text>Cancel</Text></Button><Button type="submit" form="book-collection" pending={book.pending} disabled={materials.length === 0 || !collectorId || slots?.length === 0}><Text>Request collection</Text></Button></>}
       >
         <form method="post" id="book-collection" onSubmit={submit} className="space-y-4" noValidate>
           <fieldset>
@@ -235,25 +253,39 @@ export function Collections({ request }: { request: { material: Material; n: num
             </div>
           </fieldset>
           <Select
-            label="Collector" value={collectorId} onChange={(event) => setCollectorId(event.target.value)} error={book.fields.collectorId}
+            label="Collector" value={collectorId} onChange={(event) => chooseCollector(event.target.value)} error={book.fields.collectorId}
             hint={collectors.data && collectors.data.length === 0
-              ? 'No collector works on that day. Try another day or time.'
+              ? 'No partner collectors yet'
               : materials.length > 0 && fitting.length === 0 ? 'No collector takes all of these together. Book them separately.' : undefined}
           >
             <option value=""><Text>Choose…</Text></option>
             {fitting.map((c) => <option key={c.id} value={c.id}>{c.name} · <ScheduleText stored={c.days} /></option>)}
           </Select>
-          <Textarea label="What should they collect?" name="items" maxLength={300} placeholder="e.g. One old fridge, and two boxes of old cables" required error={book.fields.items} />
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Input
-              label="Day" name="day" type="date" min={tomorrow()} required error={book.fields.day}
-              value={day} onChange={(event) => { setDay(event.target.value); setCollectorId(''); }}
-            />
-            <Select label="Time" name="slot" value={slot} onChange={(event) => { setSlot(event.target.value as 'MORNING' | 'AFTERNOON'); setCollectorId(''); }}>
-              <option value="MORNING"><Text>Morning</Text></option>
-              <option value="AFTERNOON"><Text>Afternoon</Text></option>
+          {!chosen ? (
+            <Select label="When" name="when" value="" disabled hint="Choose a collector first.">
+              <option value=""><Text>Choose…</Text></option>
             </Select>
-          </div>
+          ) : slots ? (
+            <Select
+              label="When" name="when" value={`${day} ${slot}`} error={book.fields.day}
+              onChange={(event) => { const [d, s] = event.target.value.split(' '); setDay(d!); setSlot(s as 'MORNING' | 'AFTERNOON'); }}
+              hint={slots.length === 0 ? 'This collector has no days free in the next 30 days.' : undefined}
+            >
+              {slots.map((o) => <option key={`${o.day} ${o.slot}`} value={`${o.day} ${o.slot}`}><Text>{dayLabel(o.day)}</Text> · <Text>{SLOTS[o.slot]}</Text></option>)}
+            </Select>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-sm text-ink-600"><Text>Their days are not set in SimeTown yet. Choose a day and time they come.</Text></p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Input label="Day" name="day" type="date" min={tomorrow()} required error={book.fields.day} value={day} onChange={(event) => setDay(event.target.value)} />
+                <Select label="Time" name="slot" value={slot} onChange={(event) => setSlot(event.target.value as 'MORNING' | 'AFTERNOON')}>
+                  <option value="MORNING"><Text>Morning</Text></option>
+                  <option value="AFTERNOON"><Text>Afternoon</Text></option>
+                </Select>
+              </div>
+            </div>
+          )}
+          <Textarea label="What should they collect?" name="items" maxLength={300} placeholder="e.g. One old fridge, and two boxes of old cables" required error={book.fields.items} />
         </form>
       </Modal>
     </Card>

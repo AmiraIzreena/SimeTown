@@ -135,6 +135,15 @@ export const collectionsMalay: Record<string, string> = {
   'Choose at least one day.': 'Pilih sekurang-kurangnya satu hari.', // native review
   'No collector works on that day. Try another day or time.': 'Tiada pengutip bekerja pada hari itu. Cuba hari atau masa lain.', // native review
 
+  // Booking form: the collector first, then only the days they come
+  'Choose what you have, then a collector who takes it and a day they come.':
+    'Pilih apa yang anda ada, kemudian pengutip yang menerimanya dan hari mereka datang.', // native review
+  'When': 'Bila', // native review
+  'Choose a collector first.': 'Pilih pengutip dahulu.', // native review
+  'This collector has no days free in the next 30 days.': 'Pengutip ini tiada hari kosong dalam 30 hari akan datang.', // native review
+  'Their days are not set in SimeTown yet. Choose a day and time they come.':
+    'Hari mereka belum ditetapkan dalam SimeTown. Pilih hari dan masa mereka datang.', // native review
+
   // Demo helper (local demos only)
   'Demo only': 'Demo sahaja', // native review
   'For local demos. Only the date and the gate scan are simulated. Everything after works as normal.':
