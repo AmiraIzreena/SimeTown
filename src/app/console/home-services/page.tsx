@@ -12,13 +12,14 @@ import { Modal } from '@/components/ui/dialog';
 import { Async, EmptyState, SkeletonList } from '@/components/ui/feedback';
 import { Textarea } from '@/components/ui/field';
 import { DataTable } from '@/components/ui/table';
+import { FilterBar, FilterChips, FilterMenu, FilterSummary, SearchField } from '@/components/ui/filter-bar';
 import { Tabs } from '@/components/ui/tabs';
 import { api } from '@/lib/api';
 import { formatDateTime, timeAgo } from '@/lib/format';
 import { useAction, useApi } from '@/lib/hooks';
 import {
-  formatPhone, SERVICE_CATEGORY_LABELS, SERVICE_REPORT_CATEGORY_LABELS,
-  type BookingStatus, type ServiceCategory, type ServiceReportCategory, type ServiceReportStatus,
+  formatPhone, ROLE_LABELS, SERVICE_CATEGORY_LABELS, SERVICE_REPORT_CATEGORIES, SERVICE_REPORT_CATEGORY_LABELS,
+  type BookingStatus, type Role, type ServiceCategory, type ServiceReportCategory, type ServiceReportStatus,
 } from '@/shared/domain';
 
 interface Row {
@@ -31,7 +32,13 @@ interface Row {
   worker_name: string | null;
   resident_name: string;
   service_category: ServiceCategory;
+  /** The staff member who last changed the status, and when; null while nobody has. */
+  handled: { by: string; role: Role; at: string } | null;
 }
+
+/** The list loads the latest reports at most; filters search within what is loaded, and say so when it is the cap. */
+const LOADED_MAX = 100;
+const ALL = 'ALL';
 interface Detail {
   id: string;
   category: ServiceReportCategory;
@@ -65,6 +72,11 @@ export default function HomeServiceReportsPage() {
 
 function HomeServiceReports() {
   const [tab, setTab] = useState<'OPEN' | 'CLOSED'>('OPEN');
+  const [query, setQuery] = useState('');
+  const [problem, setProblem] = useState<ServiceReportCategory | typeof ALL>(ALL);
+  const [company, setCompany] = useState<string>(ALL);
+  const [service, setService] = useState<ServiceCategory | typeof ALL>(ALL);
+  const [status, setStatus] = useState<ServiceReportStatus | typeof ALL>(ALL);
   const reports = useApi<Row[]>('/admin/home-services/reports');
   // A notification links straight to its report. Only a report id is taken from the link.
   const linked = useSearchParams().get('report');
@@ -72,27 +84,103 @@ function HomeServiceReports() {
   return (
     <>
       <PageHeader title="Home service reports" description="Private reports from residents about a home service visit. Each is tied to the booking and the worker assigned at the time. Companies never see them." />
-      <Tabs label="Reports" value={tab} onChange={setTab} items={[{ key: 'OPEN', label: 'Open' }, { key: 'CLOSED', label: 'Closed' }]} />
+      <Tabs label="Reports" value={tab} onChange={(next) => { setTab(next); setStatus(ALL); }} items={[{ key: 'OPEN', label: 'Open', count: reports.data?.filter((r) => r.status !== 'CLOSED').length }, { key: 'CLOSED', label: 'Closed' }]} />
       <div className="mt-5">
         <Async state={reports}>
           {(all) => {
-            const list = all.filter((r) => (tab === 'CLOSED') === (r.status === 'CLOSED'));
-            return list.length === 0 ? (
-              <EmptyState icon={ShieldCheck} title={tab === 'OPEN' ? 'No open reports' : 'No closed reports'}><Text>{tab === 'OPEN' ? 'New reports from residents will appear here.' : 'Reports you close will appear here.'}</Text></EmptyState>
-            ) : (
-              <DataTable
-                caption="Home service reports"
-                rows={list}
-                keyOf={(r) => r.id}
-                columns={[
-                  { header: 'Received', cell: (r) => timeAgo(r.created_at) },
-                  { header: 'Problem', cell: (r) => <Badge tone={r.category === 'HARASSMENT' ? 'danger' : 'warning'}><Text>{SERVICE_REPORT_CATEGORY_LABELS[r.category]}</Text></Badge> },
-                  { header: 'Company', cell: (r) => r.merchant_name },
-                  { header: 'Worker', desktopOnly: true, cell: (r) => r.worker_name ?? '—' },
-                  { header: 'Status', cell: (r) => <Badge tone={REPORT_STATUS_TONES[r.status]}><Text>{REPORT_STATUS_LABELS[r.status]}</Text></Badge> },
-                  { header: '', align: 'right', cell: (r) => <Button size="sm" variant="secondary" onClick={() => setOpenId(r.id)}><Text>Open</Text></Button> },
-                ]}
-              />
+            const inTab = all.filter((r) => (tab === 'CLOSED') === (r.status === 'CLOSED'));
+            // Search covers what staff read in the table and the report itself: who reported it, the worker, the company and the words.
+            const words = query.trim().toLowerCase();
+            const matches = (r: Row) =>
+              (problem === ALL || r.category === problem) &&
+              (company === ALL || r.merchant_name === company) &&
+              (service === ALL || r.service_category === service) &&
+              (status === ALL || r.status === status) &&
+              (!words || [r.resident_name, r.worker_name ?? '', r.merchant_name, r.description, SERVICE_REPORT_CATEGORY_LABELS[r.category], SERVICE_CATEGORY_LABELS[r.service_category]].some((s) => s.toLowerCase().includes(words)));
+            const list = inTab.filter(matches);
+            const filtered = Boolean(words) || problem !== ALL || company !== ALL || service !== ALL || status !== ALL;
+            const clear = () => { setQuery(''); setProblem(ALL); setCompany(ALL); setService(ALL); setStatus(ALL); };
+            const companies = [...new Set(inTab.map((r) => r.merchant_name))].sort();
+            const services = [...new Set(inTab.map((r) => r.service_category))];
+            const problems = SERVICE_REPORT_CATEGORIES.filter((c) => inTab.some((r) => r.category === c));
+            if (inTab.length === 0) {
+              return <EmptyState icon={ShieldCheck} title={tab === 'OPEN' ? 'No open reports' : 'No closed reports'}><Text>{tab === 'OPEN' ? 'New reports from residents will appear here.' : 'Reports you close will appear here.'}</Text></EmptyState>;
+            }
+            return (
+              <div className="space-y-4">
+                <FilterBar
+                  search={<SearchField value={query} onChange={setQuery} label="Search reports" placeholder="Resident, worker, company or words in the report" />}
+                  chips={
+                    <FilterChips<ServiceReportCategory | typeof ALL>
+                      label="Problem"
+                      value={problem}
+                      onChange={setProblem}
+                      options={[
+                        { key: ALL, label: 'All problems', count: inTab.length },
+                        ...problems.map((c) => ({ key: c, label: SERVICE_REPORT_CATEGORY_LABELS[c], count: inTab.filter((r) => r.category === c).length, alert: c === 'HARASSMENT' })),
+                      ]}
+                    />
+                  }
+                  controls={
+                    <>
+                      <FilterMenu label="Company" value={company} onChange={setCompany} options={[{ value: ALL, label: 'Any' }, ...companies.map((c) => ({ value: c, label: c, raw: true }))]} />
+                      <FilterMenu<ServiceCategory | typeof ALL> label="Service" value={service} onChange={setService} options={[{ value: ALL, label: 'Any' }, ...services.map((s) => ({ value: s, label: SERVICE_CATEGORY_LABELS[s] }))]} />
+                      {tab === 'OPEN' && (
+                        <FilterMenu<ServiceReportStatus | typeof ALL> label="Status" value={status} onChange={setStatus} options={[{ value: ALL, label: 'Any' }, { value: 'NEW', label: REPORT_STATUS_LABELS.NEW }, { value: 'REVIEWING', label: REPORT_STATUS_LABELS.REVIEWING }]} />
+                      )}
+                    </>
+                  }
+                  summary={<FilterSummary shown={list.length} total={inTab.length} noun={inTab.length === 1 ? 'report' : 'reports'} onClear={filtered ? clear : undefined} />}
+                />
+                {all.length >= LOADED_MAX && (
+                  <p className="text-sm text-ink-500"><Text>{`Showing the latest ${LOADED_MAX} reports. Search and filters look within these.`}</Text></p>
+                )}
+                {list.length === 0 ? (
+                  <EmptyState icon={ShieldCheck} title="No reports match" action={<Button variant="secondary" onClick={clear}><Text>Clear filters</Text></Button>}><Text>Try another name or word, or clear the filters.</Text></EmptyState>
+                ) : (
+                  <DataTable
+                    caption="Home service reports"
+                    rows={list}
+                    keyOf={(r) => r.id}
+                    columns={[
+                      { header: 'Received', cell: (r) => <span title={formatDateTime(r.created_at)}><Text>{timeAgo(r.created_at)}</Text></span> },
+                      {
+                        header: 'Problem',
+                        cell: (r) => (
+                          <span className="block min-w-0 max-w-sm">
+                            <Badge tone={r.category === 'HARASSMENT' ? 'danger' : 'warning'}><Text>{SERVICE_REPORT_CATEGORY_LABELS[r.category]}</Text></Badge>
+                            <span className="mt-1 block truncate text-sm text-ink-600" title={r.description}>{r.description}</span>
+                          </span>
+                        ),
+                      },
+                      // Who made the report: residents are named to staff only; companies never see these reports.
+                      { header: 'Reported by', cell: (r) => <span className="font-medium text-ink-900">{r.resident_name}</span> },
+                      {
+                        header: 'Company and worker',
+                        desktopOnly: true,
+                        cell: (r) => (
+                          <span className="block">
+                            <span className="block text-ink-900">{r.merchant_name}</span>
+                            <span className="block text-sm text-ink-500">{r.worker_name ?? <Text>No worker assigned</Text>} · <Text>{SERVICE_CATEGORY_LABELS[r.service_category]}</Text></span>
+                          </span>
+                        ),
+                      },
+                      {
+                        header: 'Status',
+                        cell: (r) => (
+                          <span className="block">
+                            <Badge tone={REPORT_STATUS_TONES[r.status]}><Text>{REPORT_STATUS_LABELS[r.status]}</Text></Badge>
+                            <span className="mt-1 block text-xs text-ink-500">
+                              {r.handled ? <><Text>by </Text>{r.handled.by}<Text>{` (${ROLE_LABELS[r.handled.role]})`}</Text>{' · '}<Text>{timeAgo(r.handled.at)}</Text></> : <Text>Not picked up yet</Text>}
+                            </span>
+                          </span>
+                        ),
+                      },
+                      { header: '', align: 'right', cell: (r) => <Button size="sm" variant="secondary" onClick={() => setOpenId(r.id)}><Text>Open</Text></Button> },
+                    ]}
+                  />
+                )}
+              </div>
             );
           }}
         </Async>

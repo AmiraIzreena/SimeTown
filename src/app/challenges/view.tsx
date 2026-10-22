@@ -1,7 +1,7 @@
 'use client';
 
 import { Text } from '@/components/ui/localized-text';
-import { CalendarClock, Coins, Flag, Repeat, Sparkles, Trophy } from 'lucide-react';
+import { CalendarClock, Coins, Flag, Repeat, Route, Sparkles, Trophy } from 'lucide-react';
 import Image from 'next/image';
 import { useState, type CSSProperties } from 'react';
 import { ACTIVITY_MEDIA, FALLBACK_MEDIA } from '@/components/features/showcase-content';
@@ -11,6 +11,7 @@ import { useApi } from '@/lib/hooks';
 import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/cn';
 import { formatRM } from '@/shared/domain';
+import { GERAK_CHALLENGE_RULES, gerakChallengeKind } from '@/shared/gerak-challenges';
 
 interface Challenge {
   id: string;
@@ -108,6 +109,13 @@ export function ChallengesView() {
                             <li className="flex items-center gap-1.5 rounded-lg bg-ink-50 px-2.5 py-2"><Flag className="size-3.5 text-brand-600" aria-hidden />{goalText(c, t)}</li>
                             <li className="flex items-center gap-1.5 rounded-lg bg-ink-50 px-2.5 py-2"><CalendarClock className="size-3.5 text-brand-600" aria-hidden />{days <= 1 ? <Text>Ends today</Text> : t('Ends in {n} days', { n: days })}</li>
                             <li className="col-span-2 flex items-center gap-1.5 rounded-lg bg-ink-50 px-2.5 py-2"><Repeat className="size-3.5 text-brand-600" aria-hidden />{c.per_person_cap === 1 ? <Text>One reward per resident</Text> : t('Up to {n} rewards per resident', { n: c.per_person_cap })}</li>
+                            {/* Gerak: whether a loop must be finished, in the same words as the resident's Gerak page. */}
+                            {(() => {
+                              const kind = gerakChallengeKind(c.activity, c.goal_metric);
+                              return kind ? (
+                                <li className="col-span-2 flex items-start gap-1.5 rounded-lg bg-brand-50 px-2.5 py-2 text-brand-900"><Route className="mt-px size-3.5 shrink-0 text-brand-600" aria-hidden /><Text>{GERAK_CHALLENGE_RULES[kind].rule}</Text></li>
+                              ) : null;
+                            })()}
                           </ul>
                           <Link href={m.href} className="group/cta mt-5 inline-flex items-center justify-between rounded-2xl bg-brand-950 px-4 py-3 text-sm font-semibold text-white transition-colors duration-200 hover:bg-brand-800">
                             {t('Take part in {module}', { module: m.module })}

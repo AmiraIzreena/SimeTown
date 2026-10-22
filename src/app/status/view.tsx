@@ -2,7 +2,7 @@
 
 import { Text } from '@/components/ui/localized-text';
 import { LocalizedButton } from '@/components/ui/localized-elements';
-import { BadgeCheck, Camera, CheckCircle2, Clock, CloudRain, Gauge, MapPin, Megaphone, Navigation, Phone, Share2, ShieldCheck, UserCheck, type LucideIcon } from 'lucide-react';
+import { BadgeCheck, Camera, CheckCircle2, Clock, CloudRain, Gauge, MapPin, Megaphone, Navigation, Phone, Share2, ShieldCheck, TrendingDown, TriangleAlert, UserCheck, type LucideIcon } from 'lucide-react';
 import { useEffect, useState, type CSSProperties } from 'react';
 import { FloodBadge, useVerifiedText, type Verified } from '@/components/features/flood';
 import { WaterColumn } from '@/components/features/water-column';
@@ -61,55 +61,122 @@ function useCountdown(stamp: unknown) {
   return left;
 }
 
+/**
+ * What an alert banner says. A warning reads in red too, so it is taken seriously, while danger is
+ * still a clear step stronger (darker band, faster pulse), so the two levels never look the same.
+ */
+const ALERT: Record<'WARNING' | 'DANGER', { title: string; action: string }> = {
+  WARNING: { title: 'Flood warning', action: 'Get ready to move. Check your safe route now.' },
+  DANGER: { title: 'Flood danger', action: 'Move to your meeting point now.' },
+};
+
+/** The time now, refreshed every `ms`, for "overdue" checks that stay right while the page is left open. */
+function useNow(ms: number) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), ms);
+    return () => window.clearInterval(timer);
+  }, [ms]);
+  return now;
+}
+
 function ZoneCard({ z, t, index }: { z: StatusZone; t: Township; index: number }) {
   const verified = useVerifiedText();
+  const now = useNow(30_000);
+  const alert = z.status === 'NORMAL' ? null : ALERT[z.status];
+  // The alert holds until two separate checks agree it is safe, so the level can fall below the line first. Say so.
+  const line = z.status === 'DANGER' ? t.dangerPct : t.warningPct;
+  const dropped = alert !== null && z.level_pct < line;
+  // An update promised but not sent: say it plainly rather than show a time that has passed.
+  const overdue = alert !== null && z.next_update_at !== null && Date.parse(z.next_update_at) < now;
   return (
-    <article className={cn('zone-card relative flex flex-col overflow-hidden rounded-3xl border bg-white p-6 shadow-sm', z.status === 'DANGER' && 'is-danger border-accent-200', z.status === 'WARNING' && 'border-warning-600/40', z.status === 'NORMAL' && 'border-white/80')} style={{ '--i': index } as CSSProperties}>
-      <div className="flex items-start justify-between gap-3">
-        <h3 className="text-lg font-semibold leading-snug">{z.name}</h3>
-        <FloodBadge status={z.status} />
-      </div>
-      <div className="mt-5 flex items-stretch gap-5">
-        <WaterColumn level={z.level_pct} status={z.status} warningPct={t.warningPct} dangerPct={t.dangerPct} className="h-32" />
-        <div className="flex min-w-0 flex-1 flex-col justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-500"><Text>Water level</Text></p>
-            <p className={cn('font-display text-5xl font-bold tabular-nums leading-none', z.status === 'DANGER' ? 'text-accent-600' : z.status === 'WARNING' ? 'text-warning-700' : 'text-ink-900')}>
-              <CountUp value={z.level_pct} />%
-            </p>
-          </div>
-          <div className="space-y-0.5 text-xs text-ink-500">
-            <p className="flex items-center gap-1.5"><Clock className="size-3.5" aria-hidden /><Text>Updated </Text><Text>{timeAgo(z.updated_at)}</Text></p>
-            <p className="flex items-center gap-1.5"><BadgeCheck className="size-3.5" aria-hidden />{verified(z)}</p>
-          </div>
-        </div>
-      </div>
-
-      {z.what && (
-        <div className={cn('mt-5 rounded-2xl p-4 text-sm', z.status === 'DANGER' ? 'bg-accent-50' : 'bg-warning-50')}>
-          <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-ink-600">
-            <Megaphone className="size-3.5" aria-hidden /><Text>Official message · </Text><Text>{z.sent_at ? formatDateTime(z.sent_at) : ''}</Text>
-          </p>
-          <p className="mt-1.5 font-semibold text-ink-900"><Text>{z.what}</Text></p>
-          {z.todo && <p className="mt-1 text-ink-700"><Text>{z.todo}</Text></p>}
-          {z.next_update_at && (
-            <p className="mt-2 flex items-center gap-1.5 text-ink-600">
-              <Clock className="size-3.5" aria-hidden /><Text>Next update by </Text><Text>{new Date(z.next_update_at).toLocaleTimeString('en-MY', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Kuala_Lumpur' })}</Text>
-            </p>
-          )}
+    <article
+      className={cn(
+        'zone-card relative flex flex-col overflow-hidden rounded-3xl border bg-white shadow-sm',
+        z.status === 'DANGER' && 'is-danger is-alert border-accent-300',
+        z.status === 'WARNING' && 'is-warning is-alert border-accent-200',
+        z.status === 'NORMAL' && 'border-white/80',
+      )}
+      style={{ '--i': index } as CSSProperties}
+    >
+      {alert && (
+        // The alert band: what is happening and the one thing to do, before any figure.
+        <div className="zone-alert-band relative flex items-start gap-3 overflow-hidden px-6 py-3.5 text-white" role="alert">
+          <span className="zone-alert-icon relative grid size-9 shrink-0 place-items-center rounded-full bg-white/15">
+            <TriangleAlert className="size-4.5" aria-hidden />
+          </span>
+          <span className="min-w-0">
+            <span className="flex items-center gap-2 text-[13px] font-bold uppercase tracking-[0.12em]">
+              <Text>{alert.title}</Text><span className="zone-alert-dot" aria-hidden />
+            </span>
+            <span className="mt-0.5 block text-sm font-medium text-white/90"><Text>{alert.action}</Text></span>
+          </span>
         </div>
       )}
-
-      <ul className="mt-5 space-y-2.5 border-t border-ink-100 pt-4 text-sm text-ink-700">
-        <li className="flex gap-2.5">
-          <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-brand-50 text-brand-700"><Navigation className="size-3.5" aria-hidden /></span>
-          <span><span className="block text-xs font-semibold text-ink-500"><Text>Safe route</Text></span><Text>{z.safe_route}</Text></span>
-        </li>
-        <li className="flex gap-2.5">
-          <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-brand-50 text-brand-700"><MapPin className="size-3.5" aria-hidden /></span>
-          <span><span className="block text-xs font-semibold text-ink-500"><Text>Meeting point</Text></span><Text>{z.assembly_point}</Text></span>
-        </li>
-      </ul>
+      <div className="flex flex-1 flex-col p-6">
+        <div className="flex items-start justify-between gap-3">
+          <h3 className="text-lg font-semibold leading-snug">{z.name}</h3>
+          {alert ? (
+            <span className={cn('inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold text-white', z.status === 'DANGER' ? 'bg-accent-700' : 'bg-accent-600')}>
+              <TriangleAlert className="size-3.5" aria-hidden /><Text>{z.status === 'DANGER' ? 'Danger' : 'Warning'}</Text>
+            </span>
+          ) : <FloodBadge status={z.status} />}
+        </div>
+        <div className="mt-5 flex items-stretch gap-5">
+          <WaterColumn level={z.level_pct} status={z.status} warningPct={t.warningPct} dangerPct={t.dangerPct} className="h-32" />
+          <div className="flex min-w-0 flex-1 flex-col justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-500"><Text>Water level</Text></p>
+              <p className={cn('font-display text-5xl font-bold tabular-nums leading-none', z.status === 'DANGER' ? 'text-accent-700' : z.status === 'WARNING' ? 'text-accent-600' : 'text-ink-900')}>
+                <CountUp value={z.level_pct} />%
+              </p>
+            </div>
+            <div className="space-y-0.5 text-xs text-ink-500">
+              <p className="flex items-center gap-1.5"><Clock className="size-3.5" aria-hidden /><Text>Updated </Text><Text>{timeAgo(z.updated_at)}</Text></p>
+              <p className="flex items-center gap-1.5"><BadgeCheck className="size-3.5" aria-hidden />{verified(z)}</p>
+            </div>
+          </div>
+        </div>
+  
+        {z.what && (
+          <div className={cn('zone-message mt-5 rounded-2xl border-l-4 p-4 text-sm', alert ? 'border-accent-600 bg-accent-50' : 'border-warning-600 bg-warning-50')}>
+            <p className={cn('flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide', alert ? 'text-accent-700' : 'text-ink-600')}>
+              <Megaphone className="size-3.5" aria-hidden /><Text>Official message · </Text><Text>{z.sent_at ? formatDateTime(z.sent_at) : ''}</Text>
+            </p>
+            <p className="mt-1.5 font-semibold text-ink-900"><Text>{z.what}</Text></p>
+            {z.todo && <p className="mt-1 text-ink-700"><Text>{z.todo}</Text></p>}
+            {dropped && (
+              <p className="mt-2 flex items-start gap-1.5 rounded-lg bg-white/70 px-2.5 py-2 text-ink-700">
+                <TrendingDown className="mt-0.5 size-3.5 shrink-0 text-success-600" aria-hidden />
+                <Text>{`Since this message, the water has dropped to ${z.level_pct}%, below the ${line}% ${z.status === 'DANGER' ? 'danger' : 'warning'} line. The ${z.status === 'DANGER' ? 'danger alert' : 'warning'} stays until two separate checks confirm it is safe.`}</Text>
+              </p>
+            )}
+            {z.next_update_at && (
+              overdue ? (
+                <p className="mt-2 flex items-center gap-1.5 font-semibold text-accent-700">
+                  <Clock className="size-3.5" aria-hidden /><Text>Update overdue (was due by </Text><Text>{new Date(z.next_update_at).toLocaleTimeString('en-MY', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Kuala_Lumpur' })}</Text><Text>). If you are in danger, call 999.</Text>
+                </p>
+              ) : (
+                <p className="mt-2 flex items-center gap-1.5 text-ink-600">
+                  <Clock className="size-3.5" aria-hidden /><Text>Next update by </Text><Text>{new Date(z.next_update_at).toLocaleTimeString('en-MY', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Kuala_Lumpur' })}</Text>
+                </p>
+              )
+            )}
+          </div>
+        )}
+  
+        {/* In an alert, the safe route and meeting point are the action, so they stand out in red. */}
+        <ul className={cn('mt-5 space-y-2.5 border-t pt-4 text-sm text-ink-700', alert ? 'border-accent-100' : 'border-ink-100')}>
+          <li className={cn('zone-route flex gap-2.5', alert && '-mx-2 rounded-xl bg-accent-50/70 px-2 py-2')}>
+            <span className={cn('grid size-7 shrink-0 place-items-center rounded-lg', alert ? 'bg-accent-600 text-white' : 'bg-brand-50 text-brand-700')}><Navigation className="size-3.5" aria-hidden /></span>
+            <span><span className={cn('block text-xs font-semibold', alert ? 'text-accent-700' : 'text-ink-500')}><Text>Safe route</Text></span><Text>{z.safe_route}</Text></span>
+          </li>
+          <li className={cn('zone-route flex gap-2.5', alert && '-mx-2 rounded-xl px-2')}>
+            <span className={cn('grid size-7 shrink-0 place-items-center rounded-lg', alert ? 'bg-accent-100 text-accent-700' : 'bg-brand-50 text-brand-700')}><MapPin className="size-3.5" aria-hidden /></span>
+            <span><span className={cn('block text-xs font-semibold', alert ? 'text-accent-700' : 'text-ink-500')}><Text>Meeting point</Text></span><Text>{z.assembly_point}</Text></span>
+          </li>
+        </ul>
+      </div>
     </article>
   );
 }

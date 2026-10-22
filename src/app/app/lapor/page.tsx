@@ -17,6 +17,7 @@ import { FilterBar, FilterChips, FilterRow, FilterSummary, SearchField } from '@
 import { SubNav } from '@/components/ui/sub-nav';
 import { TabPanel, Tabs } from '@/components/ui/tabs';
 import { ParcelGateReports } from './cases';
+import { HomeServiceReports } from './home-reports';
 import { AroundLink } from './around-link';
 import type { ReportSection } from '@/shared/incidents';
 import { api } from '@/lib/api';
@@ -46,8 +47,8 @@ interface NeedsChoice {
 
 type View = 'ongoing' | 'finished';
 /** community: from New report. cases: parcel problems (from Parcels). gate: the main gate (from Tamu). kitar, gerak: from those pages. */
-type LaporTab = 'community' | 'cases' | 'gate' | 'kitar' | 'gerak';
-const TAB_SECTION: Record<Exclude<LaporTab, 'community'>, ReportSection> = { cases: 'parcels', gate: 'gate', kitar: 'kitar', gerak: 'gerak' };
+type LaporTab = 'community' | 'cases' | 'gate' | 'kitar' | 'gerak' | 'home';
+const TAB_SECTION: Record<Exclude<LaporTab, 'community' | 'home'>, ReportSection> = { cases: 'parcels', gate: 'gate', kitar: 'kitar', gerak: 'gerak' };
 interface LaporExtra {
   counts: Record<View | 'mine' | 'following', number>;
   categories: Record<ReportCategory, number>;
@@ -78,7 +79,7 @@ function LaporScreen() {
   // Ongoing or Finished, and the type, are part of the address; search and "mine or followed" stay on the page.
   // Three sections: community reports from New report, parcel problems raised from Parcels, and gate problems from Tamu.
   const askedTab = params.get('tab');
-  const tab: LaporTab = askedTab === 'cases' || askedTab === 'gate' || askedTab === 'kitar' || askedTab === 'gerak' ? askedTab : 'community';
+  const tab: LaporTab = askedTab === 'cases' || askedTab === 'gate' || askedTab === 'kitar' || askedTab === 'gerak' || askedTab === 'home' ? askedTab : 'community';
   const view: View = params.get('view') === 'finished' ? 'finished' : 'ongoing';
   const category: ReportCategory | 'ALL' = REPORT_CATEGORIES.find((c) => TYPE_PARAM[c] === params.get('type')) ?? 'ALL';
   const [search, setSearch] = useState('');
@@ -127,11 +128,13 @@ function LaporScreen() {
         onChange={(next) => router.push(next === 'community' ? '/app/lapor' : `/app/lapor?tab=${next}`, { scroll: false })}
         items={[
           { key: 'community', label: 'Community reports' }, { key: 'cases', label: 'Parcel reports' }, { key: 'gate', label: 'Gate reports' },
-          { key: 'kitar', label: 'Kitar reports' }, { key: 'gerak', label: 'Gerak reports' },
+          { key: 'kitar', label: 'Kitar reports' }, { key: 'gerak', label: 'Gerak reports' }, { key: 'home', label: 'Home service reports' },
         ]}
       />
       <TabPanel>
-      {tab !== 'community' ? (
+      {tab === 'home' ? (
+        <HomeServiceReports />
+      ) : tab !== 'community' ? (
         <ParcelGateReports key={tab} section={TAB_SECTION[tab]} />
       ) : (
       <div className="space-y-5">

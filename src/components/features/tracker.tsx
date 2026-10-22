@@ -2,7 +2,7 @@
 
 import { Text } from '@/components/ui/localized-text';
 
-import { Flag, LocateFixed, Play, ShieldCheck, Square, Timer } from 'lucide-react';
+import { Flag, LocateFixed, Play, RotateCcw, ShieldCheck, Square, Timer, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { SimulatedNote } from '@/components/features/preview';
 import { AksesWizard, useAksesMode } from '@/components/features/akses-mode';
@@ -37,6 +37,8 @@ interface Progress {
   distanceM: number;
   validM: number;
   tooFastM: number;
+  /** The part of the trip on the township loops, finished or not. */
+  onLoopM: number;
   activeS: number;
   ignored: number;
   ticked: string[];
@@ -47,6 +49,7 @@ interface Finished {
   distanceM: number;
   validM: number;
   tooFastM: number;
+  onLoopM: number;
   activeS: number;
   loopsCompleted: number;
   countedAsTrip: boolean;
@@ -81,7 +84,14 @@ const minutes = (s: number) => `${Math.floor(s / 60)} min`;
  * activity runs, and sent in small batches; the fair-play checks happen on
  * the server, not here.
  */
-export function Tracker({ onFinished }: { onFinished: () => void }) {
+export function Tracker({ onFinished, focusLoopId, focusKey = 0, onClearFocus }: {
+  onFinished: () => void;
+  /** A loop to highlight and frame on the map. */
+  focusLoopId?: string | null;
+  /** Changes on every "Show on map" tap, so the map frames the loop again even if it was panned away. */
+  focusKey?: number;
+  onClearFocus?: () => void;
+}) {
   const akses = useAksesMode();
   const toast = useToast();
   const map = useApi<MapData>('/gerak/map');
@@ -97,6 +107,7 @@ export function Tracker({ onFinished }: { onFinished: () => void }) {
   const [busy, setBusy] = useState(false);
   const [guidedOpen, setGuidedOpen] = useState(false);
   const [guidedStep, setGuidedStep] = useState(0);
+  const [resets, setResets] = useState(0);
   const buffer = useRef<Point[]>([]);
   const timers = useRef<{ watch?: number; flush?: number; play?: number }>({});
 
@@ -133,7 +144,7 @@ export function Tracker({ onFinished }: { onFinished: () => void }) {
         }
         if (p.ended) {
           toast.show('Ten minutes without moving: your activity ended by itself.', 'success');
-          finishWith({ distanceM: p.distanceM, validM: p.validM, tooFastM: p.tooFastM, activeS: p.activeS, loopsCompleted: 0, countedAsTrip: p.validM >= 200, reward: p.reward ?? { xp: 0, points: 0, fundedBy: [] } });
+          finishWith({ distanceM: p.distanceM, validM: p.validM, tooFastM: p.tooFastM, onLoopM: p.onLoopM, activeS: p.activeS, loopsCompleted: 0, countedAsTrip: p.validM >= 200, reward: p.reward ?? { xp: 0, points: 0, fundedBy: [] } });
         }
       } catch (error) {
         if (error instanceof ApiError && error.code === 'ACTIVITY_ENDED') stopTimers();
@@ -230,7 +241,42 @@ export function Tracker({ onFinished }: { onFinished: () => void }) {
               <>
                 {/* The map with its key attached underneath, then a divider before the trip controls. */}
                 <figure className="border-b border-ink-100/80 pb-5">
-                  <TownshipMap loops={m.loops} checkpoints={m.checkpoints} gate={m.gate} route={route} here={activity ? here : null} hits={activity ? hits : (m.active?.hits ?? [])} />
+                  {/* Map toolbar: what the map is showing, and a way back to the whole township from any view. */}
+                  {(() => {
+                    const focused = m.loops.find((loop) => loop.id === focusLoopId);
+                    return (
+                      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                        <p key={focused?.id ?? "all"} className="content-in flex min-w-0 items-center gap-2 text-sm text-ink-600" role="status">
+                          {focused ? (
+                            <>
+                              <span aria-hidden className={focused.mode === 'CYCLE' ? 'w-5 shrink-0 border-t-2 border-dashed border-gold-500' : 'h-1 w-5 shrink-0 rounded-full bg-[#23817d]'} />
+                              <Text>Showing </Text><span className="truncate font-semibold text-ink-900">{focused.name}</span>
+                            </>
+                          ) : (
+                            <Text>All township loops</Text>
+                          )}
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {focused && onClearFocus && (
+                            <Button variant="secondary" size="sm" onClick={onClearFocus}>
+                              <X className="size-4" aria-hidden /><Text>Show all loops</Text>
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              onClearFocus?.();
+                              setResets((n) => n + 1);
+                            }}
+                          >
+                            <RotateCcw className="size-4" aria-hidden /><Text>Reset view</Text>
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                  <TownshipMap loops={m.loops} checkpoints={m.checkpoints} gate={m.gate} route={route} here={activity ? here : null} hits={activity ? hits : (m.active?.hits ?? [])} focusLoopId={focusLoopId} viewKey={`${focusKey}:${resets}`} />
                   <figcaption className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-ink-100/80 bg-ink-25/70 px-3 py-2.5">
                     <span className="mr-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-500"><Text>Map key</Text></span>
                     {m.loops.some((loop) => loop.mode === 'WALK') && (
@@ -285,6 +331,7 @@ export function Tracker({ onFinished }: { onFinished: () => void }) {
                         <p className="flex items-center gap-2 font-semibold">
                           <Flag className="size-4" aria-hidden />
                           <Text>{finished.countedAsTrip ? `${formatKm(finished.validM)} verified` : 'Too short to count as a trip (200 m or more)'}</Text>
+                          <Text>{finished.countedAsTrip && finished.onLoopM > 0 && ` · ${formatKm(finished.onLoopM)} on township loops`}</Text>
                           <Text>{finished.loopsCompleted > 0 && ` · ${finished.loopsCompleted} loop${finished.loopsCompleted === 1 ? '' : 's'} complete`}</Text>
                         </p>
                         <p className="mt-1 text-sm"><Text>{rewardMessage(finished.reward, 'Thank you for moving.')}</Text></p>

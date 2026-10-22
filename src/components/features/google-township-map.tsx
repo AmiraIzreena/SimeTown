@@ -81,9 +81,9 @@ function loadGoogleMaps(apiKey: string): Promise<GoogleMapsApi> {
   return mapsPromise;
 }
 
-function markerContent(label: string, options: { hit?: boolean; gate?: boolean; here?: boolean } = {}) {
+function markerContent(label: string, options: { hit?: boolean; gate?: boolean; here?: boolean; dim?: boolean } = {}) {
   const root = document.createElement('div');
-  root.className = 'flex items-center gap-1.5 whitespace-nowrap font-sans text-xs font-semibold text-ink-900 drop-shadow-sm';
+  root.className = cn('flex items-center gap-1.5 whitespace-nowrap font-sans text-xs font-semibold text-ink-900 drop-shadow-sm', options.dim && 'opacity-35');
 
   const pin = document.createElement('span');
   pin.className = cn(
@@ -110,6 +110,8 @@ export function GoogleTownshipMap({
   route,
   here,
   hits,
+  focusLoopId,
+  viewKey,
   className,
   fallback,
 }: {
@@ -120,6 +122,8 @@ export function GoogleTownshipMap({
   route: [number, number][];
   here?: Position | null;
   hits: string[];
+  focusLoopId?: string | null;
+  viewKey?: string;
   className?: string;
   fallback: ReactNode;
 }) {
@@ -167,9 +171,11 @@ export function GoogleTownshipMap({
             map: instance,
             path: loop.path.map(([lat, lng]) => ({ lat, lng })),
             strokeColor: loop.mode === 'CYCLE' ? '#c68a12' : '#23817d',
-            strokeOpacity: 0.9,
-            strokeWeight: 5,
-            icons: loop.mode === 'CYCLE' ? [{ icon: { path: 'M 0,-1 0,1', strokeOpacity: 1, scale: 3 }, offset: '0', repeat: '18px' }] : undefined,
+            strokeOpacity: focusLoopId ? (loop.id === focusLoopId ? 1 : 0.2) : 0.9,
+            strokeWeight: loop.id === focusLoopId ? 7 : 5,
+            zIndex: loop.id === focusLoopId ? 4 : 1,
+            // The cycling dashes fade with their line, or a faded cycling loop would still look highlighted.
+            icons: loop.mode === 'CYCLE' ? [{ icon: { path: 'M 0,-1 0,1', strokeOpacity: focusLoopId && loop.id !== focusLoopId ? 0.25 : 1, scale: 3 }, offset: '0', repeat: '18px' }] : undefined,
           }));
         }
 
@@ -189,7 +195,8 @@ export function GoogleTownshipMap({
             map: instance,
             position: { lat: checkpoint.lat, lng: checkpoint.lng },
             title: checkpoint.name,
-            content: markerContent(checkpoint.name, { hit: hits.includes(checkpoint.id) }),
+            content: markerContent(checkpoint.name, { hit: hits.includes(checkpoint.id), dim: Boolean(focusLoopId) && checkpoint.loop_id !== focusLoopId }),
+            zIndex: checkpoint.loop_id === focusLoopId ? 3 : undefined,
           }));
         }
 
@@ -209,10 +216,13 @@ export function GoogleTownshipMap({
           );
         }
 
+        // A highlighted loop gets the whole frame, unless a trip is being followed.
+        const focused = loops.find((loop) => loop.id === focusLoopId);
+        const framed = focused && focused.path.length > 1 && !here ? focused.path.map(([lat, lng]) => ({ lat, lng })) : all;
         const bounds = new maps.LatLngBounds();
-        for (const point of all) bounds.extend(point);
-        if (all.length === 1) {
-          instance.setCenter(all[0]!);
+        for (const point of framed) bounds.extend(point);
+        if (framed.length === 1) {
+          instance.setCenter(framed[0]!);
           instance.setZoom(17);
         } else if (!bounds.isEmpty()) {
           instance.fitBounds(bounds, 48);
@@ -225,7 +235,7 @@ export function GoogleTownshipMap({
     return () => {
       cancelled = true;
     };
-  }, [apiKey, checkpoints, gate, here, hits, loops, route, t]);
+  }, [apiKey, checkpoints, focusLoopId, gate, here, hits, loops, route, t, viewKey]);
 
   if (failed) {
     return (

@@ -253,24 +253,70 @@ async function deadlinesFor(q: Queryable, townshipId: string, priority: Priority
  * Sends the incident to its party, or to the exception queue with the reason.
  * Called on a new incident, a reopened one, and when an admin picks a party.
  */
-async function route(q: Queryable, i: AccessIncident, place: PlaceRow, policy: AccessPolicy, now: Date, chosen?: { partyId: string; actorId: string; reason: string }) {
+/** Who would take an incident, decided without changing anything: the matching rule, then the township's default team. */
+interface RoutingDecision {
+  party: PartyRow | undefined;
+  routing: Record<string, unknown>;
+  exception: string | null;
+  /** Why the default team was used: the rule could not place it. */
+  fallbackBecause: string | null;
+}
+
+/** A team that can take work now: active, and for an in-app team, with someone signed up to act for it. */
+async function canTakeWork(q: Queryable, party: PartyRow | undefined): Promise<boolean> {
+  if (!party?.active) return false;
+  return party.integration !== 'IN_APP' || (await memberCount(q, party.id)) > 0;
+}
+
+/**
+ * The routing decision, as service desks make it: rules from the most specific to the most general, and a
+ * catch-all default team last, so a problem never waits just because nobody recorded who runs the place.
+ * Side-effect free, so it can be re-run safely when teams or places change.
+ */
+async function decideRoute(q: Queryable, i: AccessIncident, place: PlaceRow, policy: AccessPolicy): Promise<RoutingDecision> {
+  const rule = pickRule(await townshipRules(q, i.township_id), i.category, place.kind);
+  const decided = resolveParty(rule, place.party_id, await partyRefs(q, i.township_id));
+  const routing: Record<string, unknown> = { rule: { source: rule.source, category: rule.category, placeKind: rule.placeKind, target: rule.target } };
+  let exception: string | null = 'exception' in decided ? decided.exception : null;
+  let party = 'partyId' in decided ? await loadParty(q, decided.partyId) : undefined;
+  if (party && !(await canTakeWork(q, party))) {
+    exception = `Nobody is set up to act for ${party.name}.`;
+    party = undefined;
+  }
+  if (party) return { party, routing: { ...routing, partyId: party.id }, exception: null, fallbackBecause: null };
+  // The last rule: the township's default team, if one is set and can take work.
+  if (policy.defaultPartyId) {
+    const fallback = await loadParty(q, policy.defaultPartyId);
+    if (await canTakeWork(q, fallback)) {
+      return { party: fallback, routing: { ...routing, partyId: fallback!.id, fallback: { because: exception } }, exception: null, fallbackBecause: exception };
+    }
+    exception = `${exception} The default team cannot take it: ${fallback?.active ? 'nobody is set up to act for it' : 'it is not active'}.`;
+  }
+  return { party: undefined, routing: { ...routing, exception }, exception, fallbackBecause: null };
+}
+
+async function route(q: Queryable, i: AccessIncident, place: PlaceRow, policy: AccessPolicy, now: Date, chosen?: { partyId: string; actorId: string; reason: string }, decision?: RoutingDecision) {
+  let party: PartyRow | undefined;
   let partyId: string | null = null;
   let exception: string | null = null;
   let routing: Record<string, unknown> = i.routing;
+  let fallbackBecause: string | null = null;
   if (chosen) {
+    // A person's choice is final: it is never re-routed or sent to the default team automatically.
     partyId = chosen.partyId;
     routing = { ...i.routing, manual: { by: chosen.actorId, reason: chosen.reason } };
+    party = await loadParty(q, partyId);
+    if (party && party.integration === 'IN_APP' && (await memberCount(q, party.id)) === 0) {
+      exception = `Nobody is set up to act for ${party.name}.`;
+      partyId = null;
+    }
   } else {
-    const rule = pickRule(await townshipRules(q, i.township_id), i.category, place.kind);
-    const decided = resolveParty(rule, place.party_id, await partyRefs(q, i.township_id));
-    routing = { rule: { source: rule.source, category: rule.category, placeKind: rule.placeKind, target: rule.target }, ...('partyId' in decided ? { partyId: decided.partyId } : { exception: decided.exception }) };
-    if ('partyId' in decided) partyId = decided.partyId;
-    else exception = decided.exception;
-  }
-  const party = await loadParty(q, partyId);
-  if (party && party.integration === 'IN_APP' && (await memberCount(q, party.id)) === 0) {
-    exception = `Nobody is set up to act for ${party.name}.`;
-    partyId = null;
+    const d = decision ?? (await decideRoute(q, i, place, policy));
+    party = d.party;
+    partyId = d.party?.id ?? null;
+    routing = d.routing;
+    exception = d.exception;
+    fallbackBecause = d.fallbackBecause;
   }
   if (!party || !partyId) {
     await q.query('UPDATE access_incidents SET party_id = NULL, routing = $2, exception_reason = $3, updated_at = $4 WHERE id = $1', [i.id, JSON.stringify(routing), exception, now]);
@@ -286,10 +332,16 @@ async function route(q: Queryable, i: AccessIncident, place: PlaceRow, policy: A
   );
   Object.assign(i, { party_id: party.id, assigned_at: now, acknowledged_at: null, ack_due_at: due.ack });
   if (i.status !== 'ASSIGNED') await setStatus(q, i, 'ASSIGNED', now, { actorId: chosen?.actorId ?? null }, { partyId: party.id });
-  await appendAccessEvent(q, i.id, { kind: 'ASSIGNED', visibility: 'PUBLIC', body: `Sent to ${party.name}.`, data: { partyId: party.id, manual: Boolean(chosen) }, actorId: chosen?.actorId ?? null }, now);
+  await appendAccessEvent(q, i.id, { kind: 'ASSIGNED', visibility: 'PUBLIC', body: `Sent to ${party.name}.`, data: { partyId: party.id, manual: Boolean(chosen), fallback: Boolean(fallbackBecause) }, actorId: chosen?.actorId ?? null }, now);
+  if (fallbackBecause) {
+    // Staff see why it went to the default team, so the missing ownership gets recorded once.
+    await appendAccessEvent(q, i.id, { kind: 'NOTE', visibility: 'INTERNAL', body: `Sent to ${party.name}, the default team: ${fallbackBecause} Please record who runs ${place.name}.`, data: { fallback: true } }, now);
+  }
   await tellParty(q, i, party, i.reopen_count > 0 && !chosen ? 'REOPENED' : 'ASSIGNMENT', {
     title: i.reopen_count > 0 ? `Reopened accessibility issue: ${label(i)}` : `New accessibility issue: ${label(i)}`,
-    body: `${place.name}, ${place.location}. Please acknowledge it.`,
+    body: fallbackBecause
+      ? `${place.name}, ${place.location}. Please acknowledge it. You have it as the default team: nobody is recorded as running this place yet, so please record who does in Access places.`
+      : `${place.name}, ${place.location}. Please acknowledge it.`,
   }, `access-assigned:${i.id}:${party.id}:${i.reopen_count}`, now);
 }
 
@@ -617,6 +669,37 @@ const loadForStaff = async (q: Queryable, actor: Actor, id: string) => {
   if (actor.role !== 'HQ_ADMIN' && i.township_id !== actor.townshipId) throw notFound('Incident');
   return i;
 };
+
+/**
+ * Routes again every open incident still waiting without a team, now that something may have changed: a place
+ * was given a team, a team was added or gained its first member, a rule changed, or a default team was set. Run
+ * after those changes and on the regular checks, as a safety net. An incident whose team a person chose is
+ * never touched. Nothing is sent, logged or escalated again for an incident that still cannot be placed.
+ * Returns how many were sent to a team.
+ */
+export async function rerouteWaiting(db: Db, townshipId: string | null, now: Date): Promise<number> {
+  const waiting = await db.query<{ id: string }>(
+    `SELECT id FROM access_incidents
+      WHERE party_id IS NULL AND status <> 'RESOLVED' AND NOT (routing ? 'manual') AND ($1::uuid IS NULL OR township_id = $1)
+      ORDER BY created_at LIMIT 200`,
+    [townshipId],
+  );
+  let sent = 0;
+  for (const { id } of waiting) {
+    sent += await db.tx(async (tx) => {
+      const i = await one<AccessIncident>(tx, 'SELECT * FROM access_incidents WHERE id = $1 FOR UPDATE', [id]);
+      if (!i || i.party_id || i.status === 'RESOLVED' || 'manual' in (i.routing ?? {})) return 0;
+      const place = (await one<PlaceRow>(tx, 'SELECT id, township_id, name, kind, location, verification, availability, party_id FROM access_places WHERE id = $1', [i.place_id]))!;
+      const policy = await getAccessPolicy(tx, i.township_id);
+      const decision = await decideRoute(tx, i, place, policy);
+      if (!decision.party) return 0; // still nowhere to send it: leave it in the console, without new alerts
+      await route(tx, i, place, policy, now, undefined, { ...decision, routing: { ...decision.routing, rerouted: { at: now.toISOString() } } });
+      await appendAccessEvent(tx, i.id, { kind: 'NOTE', visibility: 'INTERNAL', body: 'Sent automatically once a team could take it.', data: { rerouted: true } }, now);
+      return 1;
+    });
+  }
+  return sent;
+}
 
 /** An admin picks the party for an unroutable incident, or moves it to another with a reason. */
 export async function assignParty(db: Db, actor: Actor, id: string, input: { partyId: string; reason: string }, now: Date) {

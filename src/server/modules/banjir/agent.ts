@@ -1,4 +1,4 @@
-import { CAMERA_MIN_CONFIDENCE, FLOOD_TEST_PICTURES, type FloodSource, type FloodStatus, type FloodTestPictureId, type WarningSource } from '@/shared/domain';
+import { CAMERA_MIN_CONFIDENCE, type FloodSource, type FloodStatus, type FloodTestPictureId, type WarningSource } from '@/shared/domain';
 import { one, type Db, type Queryable } from '../../db/client';
 import { assertTownshipAccess, type Actor } from '../../auth/actor';
 import { conflict, notFound, ruleViolation } from '../../errors';
@@ -8,6 +8,10 @@ import { getSettings, type Settings } from '../settings';
 import { queueSms } from '../sms';
 import { closeEvent, eventForAlert, notePeak, notePeopleWarned } from './events';
 import { checkSilentSensors, simulatedHeartbeat, simulateZoneLevel } from './sensors';
+import { photoReader, readPhoto, readTestPicture } from './camera-reader';
+import { trendEstimate } from './trend';
+import { getConfig } from '../../config';
+import type { Photo } from '../../ai/classifier';
 
 /**
  * The Banjir agent (proposal 6.5, BR28). Fixed rules on numbers decide the
@@ -441,9 +445,9 @@ export async function simulateSignal(
     const zone = await lockZone(tx, zoneId);
     assertTownshipAccess(actor, zone.township_id);
     if (input.source === 'CAMERA') {
-      // The image model's reading of a test picture. Its result is a number with a confidence; the rules decide what it means.
-      const picture = FLOOD_TEST_PICTURES.find((p) => p.id === input.pictureId)!;
-      return addSignal(tx, { zoneId, source: 'CAMERA', levelPct: picture.readPct, confidence: picture.confidence, detail: { pictureId: picture.id, truePct: picture.truePct } }, now);
+      // A labelled test picture through the camera reader. Its result is a number with a confidence; the rules decide what it means.
+      const reading = readTestPicture(input.pictureId);
+      return addSignal(tx, { zoneId, source: 'CAMERA', levelPct: reading.levelPct, confidence: reading.confidence, detail: { pictureId: input.pictureId, truePct: reading.truePct, reader: reading.reader } }, now);
     }
     if (input.source === 'RAIN') return addSignal(tx, { zoneId, source: 'RAIN', rainMmHr: input.rainMmHr }, now);
     // The zone's simulated sensors move to this level and send signed readings through the real ingestion path.
@@ -451,6 +455,27 @@ export async function simulateSignal(
     // A zone with no registered sensor: an unsigned test signal, as before sensors were registered.
     return addSignal(tx, { zoneId, source: 'SENSOR', levelPct: input.levelPct }, now);
   });
+}
+
+/**
+ * A drain photo, standing in for a CCTV frame, read by the configured camera reader (camera-reader.ts):
+ * your own model server, or the hosted AI. The reading becomes the zone's camera signal, judged by the
+ * same rules as every other. The photo is read, not stored. When no reader is set up, or it cannot
+ * answer, nothing is recorded, so a failed read can neither raise nor clear an alert.
+ */
+export async function readCameraPhoto(db: Db, actor: Actor, zoneId: string, photo: Photo, now: Date) {
+  const zone = await one<{ township_id: string }>(db, 'SELECT township_id FROM flood_zones WHERE id = $1', [zoneId]);
+  if (!zone) throw notFound('Zone');
+  assertTownshipAccess(actor, zone.township_id);
+  if (!photoReader()) throw ruleViolation('NO_CAMERA_READER', 'No camera reader is set up. Set AI_PROVIDER for the hosted AI, or FLOOD_MODEL_URL for your own model, or use a test picture.');
+  // The model is asked before the transaction opens, so a slow answer never holds the zone locked.
+  const reading = await readPhoto(photo);
+  if (!reading) throw ruleViolation('CAMERA_UNREADABLE', 'The camera reader could not answer for this photo. Nothing was recorded. Try again, or use a test picture.');
+  const assessment = await db.tx(async (tx) => {
+    await lockZone(tx, zoneId);
+    return addSignal(tx, { zoneId, source: 'CAMERA', levelPct: reading.levelPct, confidence: reading.confidence, detail: { reader: reading.reader, uploaded: true, by: actor.id } }, now);
+  });
+  return { reading, trusted: reading.levelPct !== null && reading.confidence >= CAMERA_MIN_CONFIDENCE, agreed: assessment.agreed };
 }
 
 /**
@@ -575,7 +600,7 @@ export async function agentOverview(db: Db, actor: Actor, now: Date) {
   );
   const result = [];
   for (const zone of zones) {
-    const [assessment, draft, timeline, messages, checkins, sensors, event] = await Promise.all([
+    const [assessment, draft, timeline, messages, checkins, sensors, event, trend] = await Promise.all([
       assessZone(db, zone.id, now, s),
       one(db, `SELECT id, level, what, where_text, todo, deadline_at, created_at, signals FROM flood_messages WHERE zone_id = $1 AND status = 'DRAFT'`, [zone.id]),
       db.query(`SELECT id, at, step, detail FROM flood_agent_log WHERE zone_id = $1 ORDER BY id DESC LIMIT 12`, [zone.id]),
@@ -591,10 +616,34 @@ export async function agentOverview(db: Db, actor: Actor, now: Date) {
            FROM flood_events e WHERE e.zone_id = $1 AND e.ended_at IS NULL`,
         [zone.id],
       ),
+      trendEstimate(db, zone.id, now, s),
     ]);
-    result.push({ ...zone, assessment, draft: draft ?? null, timeline, messages, checkins, sensors, event: event ?? null });
+    result.push({ ...zone, assessment, draft: draft ?? null, timeline, messages, checkins, sensors, event: event ?? null, trend });
   }
-  return { zones: result, warningPct: s.flood_warning_pct, dangerPct: s.flood_danger_pct };
+  return { zones: result, warningPct: s.flood_warning_pct, dangerPct: s.flood_danger_pct, integration: await integrationStatus(db, actor) };
+}
+
+/**
+ * What each flood data source is today, and where a real device or model connects: the readiness the
+ * console shows, so it is plain which parts are simulated in the prototype and how each one goes live.
+ * Read from the real configuration and data, never assumed.
+ */
+async function integrationStatus(db: Db, actor: Actor) {
+  const config = getConfig();
+  const sensors = await one<{ simulated: number; real: number }>(
+    db,
+    `SELECT count(*) FILTER (WHERE s.simulated)::int AS simulated, count(*) FILTER (WHERE NOT s.simulated)::int AS real
+       FROM flood_sensors s JOIN flood_zones z ON z.id = s.zone_id
+      WHERE s.status = 'ACTIVE' AND ($1::uuid IS NULL OR z.township_id = $1)`,
+    [actor.townshipId],
+  );
+  return {
+    // Real sensors post signed readings to POST /flood/readings, checked against each sensor's own key: always open.
+    sensors: { simulated: sensors!.simulated, real: sensors!.real },
+    camera: { photoReader: photoReader(), modelServer: Boolean(config.FLOOD_MODEL_URL), hostedAi: config.AI_PROVIDER !== 'none' },
+    forecast: { method: 'LINEAR_TREND' as const },
+    scheduler: config.APP_ENV === 'development' ? ('DEV_CLOCK' as const) : ('SCHEDULED_JOB' as const),
+  };
 }
 
 /**

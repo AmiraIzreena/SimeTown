@@ -1,4 +1,5 @@
 import type { Role, WarningSource } from '@/shared/domain';
+import type { FloodTrendView } from '@/components/features/flood-trend';
 
 /** Shapes the screens receive from the API. Kept small: only what is displayed. */
 
@@ -121,6 +122,8 @@ export interface BanjirOverview {
     sources: WarningSource[] | null;
     /** A sensor is climbing faster than its rate-of-rise line: the early warning. */
     rising_fast: boolean;
+    /** Where the water is heading from the recent trend: an estimate, never an alert. */
+    trend: FloodTrendView | null;
   })[];
   myZoneId: string | null;
   myCheckin: 'SAFE' | 'NEED_HELP' | null;

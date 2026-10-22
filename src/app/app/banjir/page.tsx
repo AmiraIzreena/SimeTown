@@ -6,6 +6,7 @@ import { CountUp } from '@/components/ui/count-up';
 import { BadgeCheck, Clock, ExternalLink, HeartPulse, MapPin, Megaphone, Navigation, ShieldCheck, TrendingUp } from 'lucide-react';
 import { AksesPage, AksesReadAloud, useAksesMode } from '@/components/features/akses-mode';
 import { FloodBadge, LevelGauge, LevelHistory, useVerifiedText } from '@/components/features/flood';
+import { FloodTrend } from '@/components/features/flood-trend';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, PageHeader } from '@/components/ui/card';
 import { Async, EmptyState } from '@/components/ui/feedback';
@@ -44,7 +45,7 @@ export default function BanjirPage() {
         title="Banjir"
         description="Water levels by zone, from drain sensors and camera readings checked by the Banjir agent. Two signals must agree before the highest alert goes out by itself."
         action={
-          <Button href="/status" variant="secondary">
+          <Button href="/status" newTab variant="secondary">
             <ExternalLink className="size-4" aria-hidden />
             {t('Official status page')}
           </Button>
@@ -135,6 +136,7 @@ export default function BanjirPage() {
                           <Text>The water is rising fast here. Get ready to move: charge your phone and move valuables up.</Text>
                         </p>
                       )}
+                      <FloodTrend trend={zone.trend} className="mt-3" />
                       <ZoneHistory zoneId={zone.id} warningPct={o.warningPct} dangerPct={o.dangerPct} />
                       <ul className="mt-4 space-y-2 border-t border-ink-100 pt-3 text-sm text-ink-700">
                         <li className="flex gap-2">

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { GERAK_MODES, STAFF } from '@/shared/domain';
+import { ADMINS, GERAK_MODES, STAFF } from '@/shared/domain';
 import { requireVerifiedResident } from '../../auth/actor';
 import { getConfig } from '../../config';
 import { emptyBody, route, zId, zText } from '../../http/router';
@@ -32,6 +32,13 @@ export const gerakRoutes = [
     handler: (c) => gerak.createLoop(c.db, c.actor, c.body),
   }),
 
+  route({
+    method: 'POST', path: '/admin/gerak/loops/:loopId/visibility', tag: 'Gerak',
+    summary: 'Show a loop to residents again, or hide it (township admin or SDP HQ; a reason is kept in the audit log). Every part of Gerak follows at once',
+    auth: 'session', roles: ADMINS,
+    body: z.object({ active: z.boolean(), reason: zText(300, 3) }),
+    handler: (c) => gerak.setLoopActive(c.db, c.actor, c.params.loopId!, c.body, c.now),
+  }),
   route({
     method: 'POST', path: '/admin/gerak/loops/:loopId/map', tag: 'Gerak', summary: 'Draw a loop on the map: its path and where each checkpoint is', auth: 'session', roles: STAFF,
     body: z.object({

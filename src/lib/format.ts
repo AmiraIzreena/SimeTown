@@ -15,6 +15,17 @@ export const formatKg = (grams: number) => `${(grams / 1000).toLocaleString(LOCA
 export const formatKm = (metres: number) => `${(metres / 1000).toLocaleString(LOCALE, { maximumFractionDigits: 1 })} km`;
 export const formatNumber = (n: number) => n.toLocaleString(LOCALE);
 
+/** A length of time in readable units: "45 min", "2 h 15 min", "12 days 21 h". */
+export function formatDuration(totalMinutes: number): string {
+  const m = Math.max(0, Math.round(totalMinutes));
+  if (m < 60) return `${m} min`;
+  const days = Math.floor(m / 1440);
+  const hours = Math.floor((m % 1440) / 60);
+  const mins = m % 60;
+  if (days > 0) return hours > 0 ? `${days} ${days === 1 ? 'day' : 'days'} ${hours} h` : `${days} ${days === 1 ? 'day' : 'days'}`;
+  return mins > 0 ? `${hours} h ${mins} min` : `${hours} h`;
+}
+
 /** "A few minutes ago" style for recent things, a date for older ones. */
 export function timeAgo(value: string | Date): string {
   const minutes = Math.round((Date.now() - new Date(value).getTime()) / 60_000);

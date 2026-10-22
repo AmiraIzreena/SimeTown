@@ -34,6 +34,10 @@ type TownshipMapProps = {
   route?: [number, number][];
   here?: { lat: number; lng: number } | null;
   hits?: string[];
+  /** One loop to draw strongly, with the others faded behind it. */
+  focusLoopId?: string | null;
+  /** Changes when the map should frame its view again (a new "Show on map" tap, or Reset view). */
+  viewKey?: string;
   className?: string;
 };
 
@@ -54,12 +58,15 @@ function LocalTownshipMap({
   route = [],
   here,
   hits = [],
+  focusLoopId,
   className,
 }: TownshipMapProps) {
   const W = 640;
   const H = 400;
+  // A highlighted loop fills the frame (unless a trip is being followed); otherwise the whole township.
+  const focusPath = focusLoopId && !here ? loops.find((l) => l.id === focusLoopId)?.path : undefined;
   const project = useMemo(() => {
-    const all: [number, number][] = [...loops.flatMap((l) => l.path), ...checkpoints.map((c) => [c.lat, c.lng] as [number, number]), ...(gate ? [[gate.lat, gate.lng] as [number, number]] : [])];
+    const all: [number, number][] = focusPath && focusPath.length > 1 ? focusPath : [...loops.flatMap((l) => l.path), ...checkpoints.map((c) => [c.lat, c.lng] as [number, number]), ...(gate ? [[gate.lat, gate.lng] as [number, number]] : [])];
     if (all.length === 0) return null;
     const lats = all.map((p) => p[0]);
     const lngs = all.map((p) => p[1]);
@@ -72,7 +79,7 @@ function LocalTownshipMap({
     const ox = (W - spanX * scale) / 2;
     const oy = (H - spanY * scale) / 2;
     return (lat: number, lng: number): [number, number] => [ox + (lng - minLng) * kx * scale, H - (oy + (lat - minLat) * scale)];
-  }, [loops, checkpoints, gate]);
+  }, [loops, checkpoints, gate, focusPath]);
 
   if (!project) {
     return <div className={cn('grid h-56 place-items-center rounded-lg bg-ink-50 text-sm text-ink-500', className)}><Text>The township map has not been drawn yet.</Text></div>;
@@ -104,15 +111,18 @@ function LocalTownshipMap({
           <text x={x} y={y} textAnchor="middle" className="fill-[#4b8ea3] text-[13px] font-semibold italic"><Text>Tasik</Text></text>
         );
       })()}
-      {loops.map((loop) => (
-        <path key={loop.id} d={line(loop.path)} fill="none" stroke={loop.mode === 'CYCLE' ? '#c68a12' : '#23817d'} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" strokeDasharray={loop.mode === 'CYCLE' ? '10 7' : undefined} opacity="0.75" />
-      ))}
+      {[...loops].sort((a, b) => Number(a.id === focusLoopId) - Number(b.id === focusLoopId)).map((loop) => {
+        const focused = focusLoopId === loop.id;
+        return (
+          <path key={loop.id} className="gerak-map-line" d={line(loop.path)} fill="none" stroke={loop.mode === 'CYCLE' ? '#c68a12' : '#23817d'} strokeWidth={focused ? 6 : 4} strokeLinecap="round" strokeLinejoin="round" strokeDasharray={loop.mode === 'CYCLE' ? '10 7' : undefined} opacity={focusLoopId ? (focused ? 1 : 0.2) : 0.75} />
+        );
+      })}
       {route.length > 1 && <path d={line(route)} fill="none" stroke="#b91229" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />}
       {checkpoints.map((cp) => {
         const [x, y] = project(cp.lat, cp.lng);
         const hit = hits.includes(cp.id);
         return (
-          <g key={cp.id}>
+          <g key={cp.id} opacity={focusLoopId && cp.loop_id !== focusLoopId ? 0.3 : 1}>
             <circle cx={x} cy={y} r="9" fill={hit ? '#1a7f52' : 'white'} stroke={hit ? '#14643f' : '#0f5351'} strokeWidth="2.5" />
             {hit && <path d={`M${x - 4} ${y} l3 3 l5 -6`} fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />}
             <text x={x + 13} y={y + 4} className="fill-ink-800 text-[12px] font-semibold" paintOrder="stroke" stroke="#eef5ee" strokeWidth="4">

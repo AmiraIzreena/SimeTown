@@ -4,6 +4,7 @@ import type { Actor } from '../../auth/actor';
 import { notFound } from '../../errors';
 import { getSettings } from '../settings';
 import { assessZone, levelOf, sendLevel, VERIFIED_COLUMNS, VERIFIED_JOIN, withSources } from './agent';
+import { trendEstimate } from './trend';
 
 /** Banjir: water levels by zone, and warnings that take priority over everything else. */
 
@@ -21,7 +22,8 @@ export async function banjirOverview(db: Db, actor: Actor, now: Date) {
   );
   // The early warning residents see: a sensor climbing faster than its rate-of-rise line (Appendix E.2, rule 5).
   const zones = [];
-  for (const z of rows) zones.push({ ...withSources(z as typeof z & { status: FloodStatus }), rising_fast: (await assessZone(db, z.id, now, s)).risingFast });
+  // And an estimate of where the water is heading, from the recent trend (advisory only; see trend.ts).
+  for (const z of rows) zones.push({ ...withSources(z as typeof z & { status: FloodStatus }), rising_fast: (await assessZone(db, z.id, now, s)).risingFast, trend: await trendEstimate(db, z.id, now, s) });
   const mine = actor.homeId ? await one<{ zone_id: string | null }>(db, 'SELECT zone_id FROM homes WHERE id = $1', [actor.homeId]) : undefined;
   // During an alert in their own zone, a resident can say "I'm safe" or "I need help".
   const checkin = mine?.zone_id

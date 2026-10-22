@@ -29,6 +29,10 @@ const schema = z
     AI_TIMEOUT_SECONDS: z.coerce.number().int().min(2).max(120).default(8),
     // Questions each resident may ask the AI Assistant in 24 hours (cost control). Rule answers do not count.
     AI_ASSISTANT_DAILY_LIMIT: z.coerce.number().int().min(1).max(2_000).default(100),
+    // Optional: a water-level model server (for example a CNN trained on township CCTV frames). When set, it reads
+    // drain camera photos instead of the hosted AI. Contract: POST JSON {image, mime} → {levelPct, confidence}.
+    FLOOD_MODEL_URL: z.url().optional(),
+    FLOOD_MODEL_TOKEN: z.string().min(16).optional(),
     // Optional Upstash Redis (REST). Rate limits and the session cache use it; without it they use PostgreSQL alone.
     UPSTASH_REDIS_REST_URL: z.url().optional(),
     UPSTASH_REDIS_REST_TOKEN: z.string().min(20).optional(),
@@ -54,6 +58,10 @@ const schema = z
     // The token travels in every request header, so it must never cross the network in clear text.
     if (env.UPSTASH_REDIS_REST_URL && !env.UPSTASH_REDIS_REST_URL.startsWith('https://') && hosted) {
       ctx.addIssue({ code: 'custom', path: ['UPSTASH_REDIS_REST_URL'], message: 'must be https outside development' });
+    }
+    // A photo of a drain goes to the model server, so it must not cross the network in clear text.
+    if (env.FLOOD_MODEL_URL && !env.FLOOD_MODEL_URL.startsWith('https://') && hosted) {
+      ctx.addIssue({ code: 'custom', path: ['FLOOD_MODEL_URL'], message: 'must be https outside development' });
     }
     if (env.AI_PROVIDER !== 'none' && !(env.AI_API_KEY && env.AI_MODEL)) {
       ctx.addIssue({ code: 'custom', path: ['AI_PROVIDER'], message: 'AI_API_KEY and AI_MODEL are required when AI_PROVIDER is set' });

@@ -2,7 +2,8 @@ import { z } from 'zod';
 import { ACCESS_NEEDS, ADMINS, PLACE_KINDS, STAFF } from '@/shared/domain';
 import { ACCESS_CATEGORIES, ACCESS_INCIDENT_STATUSES, PARTY_KINDS } from '@/shared/akses';
 import { PRIORITIES } from '@/shared/incidents';
-import { requireVerifiedResident } from '../../auth/actor';
+import { requireVerifiedResident, type Actor } from '../../auth/actor';
+import type { Db } from '../../db/client';
 import { resolveTownship } from '../townships';
 import { badRequest } from '../../errors';
 import { emptyBody, route, zId, zText } from '../../http/router';
@@ -17,6 +18,16 @@ import * as queries from './queries';
 
 const placeBody = z.object({ name: zText(100, 3), kind: z.enum(PLACE_KINDS), location: zText(160, 3), note: zText(300).optional() });
 const zReason = zText(300, 5);
+
+/**
+ * Runs a change that may unblock incidents waiting without a team (a place given a team, a team added or given
+ * a member, a rule or the default team changed), then routes those incidents again straight away.
+ */
+async function withReroute<T>(c: { db: Db; actor: Actor; now: Date }, run: () => Promise<T>): Promise<T> {
+  const result = await run();
+  await incidents.rerouteWaiting(c.db, c.actor.townshipId ?? null, c.now);
+  return result;
+}
 
 /** Reads the text fields of a multipart form with a schema, the way JSON bodies are checked. */
 function formFields<T>(form: FormData, schema: z.ZodType<T>, names: string[]): T {
@@ -188,7 +199,7 @@ export const aksesRoutes = [
   route({
     method: 'POST', path: '/admin/access-places', tag: 'Akses+', summary: 'Add a place staff have checked (verified, with its first inspection)', auth: 'session', roles: STAFF,
     body: placeBody.extend({ partyId: zId.nullable().optional() }),
-    handler: (c) => places.createPlace(c.db, c.actor, c.body, c.now),
+    handler: (c) => withReroute(c, () => places.createPlace(c.db, c.actor, c.body, c.now)),
   }),
   route({
     method: 'POST', path: '/admin/access-places/:placeId/inspect', tag: 'Akses+', summary: 'Record an inspection: the only way verification changes (multipart form; optional photo)', auth: 'session', roles: STAFF,
@@ -201,7 +212,7 @@ export const aksesRoutes = [
   route({
     method: 'POST', path: '/admin/access-places/:placeId/party', tag: 'Akses+', summary: 'Record which organisation runs a place', auth: 'session', roles: ADMINS,
     body: z.object({ partyId: zId.nullable() }),
-    handler: (c) => places.setPlaceParty(c.db, c.actor, c.params.placeId!, c.body.partyId),
+    handler: (c) => withReroute(c, () => places.setPlaceParty(c.db, c.actor, c.params.placeId!, c.body.partyId)),
   }),
   route({
     method: 'POST', path: '/admin/access-places/:placeId/archive', tag: 'Akses+', summary: 'Archive a place (kept with its history; never deleted)', auth: 'session', roles: ADMINS,
@@ -226,12 +237,12 @@ export const aksesRoutes = [
   route({
     method: 'POST', path: '/admin/access/parties', tag: 'Akses+', summary: 'Add an organisation', auth: 'session', roles: ADMINS,
     body: z.object({ name: zText(100, 3), kind: z.enum(PARTY_KINDS), integration: z.enum(['IN_APP', 'SIMULATED']), contact: zText(160).optional() }),
-    handler: (c) => config.createParty(c.db, c.actor, c.body),
+    handler: (c) => withReroute(c, () => config.createParty(c.db, c.actor, c.body)),
   }),
   route({
     method: 'POST', path: '/admin/access/parties/:partyId', tag: 'Akses+', summary: 'Change an organisation: active, members, simulated failures', auth: 'session', roles: ADMINS,
     body: z.object({ active: z.boolean().optional(), simulateFailures: z.number().int().min(0).max(10).optional(), addMember: zId.optional(), removeMember: zId.optional() }),
-    handler: (c) => config.updateParty(c.db, c.actor, c.params.partyId!, c.body),
+    handler: (c) => withReroute(c, () => config.updateParty(c.db, c.actor, c.params.partyId!, c.body)),
   }),
   route({
     method: 'GET', path: '/admin/access/rules', tag: 'Akses+', summary: 'Routing rules that apply (the township’s own, then the defaults)', auth: 'session', roles: STAFF,
@@ -240,11 +251,11 @@ export const aksesRoutes = [
   route({
     method: 'POST', path: '/admin/access/rules', tag: 'Akses+', summary: 'Set where a kind of problem goes, and its priority', auth: 'session', roles: ADMINS,
     body: z.object({ category: z.enum(ACCESS_CATEGORIES), placeKind: z.enum(PLACE_KINDS).nullable(), target: z.enum(['PLACE', 'PARTY']), partyId: zId.nullable().optional(), priority: z.enum(PRIORITIES) }),
-    handler: (c) => config.saveRule(c.db, c.actor, c.body, c.now),
+    handler: (c) => withReroute(c, () => config.saveRule(c.db, c.actor, c.body, c.now)),
   }),
   route({
     method: 'POST', path: '/admin/access/rules/:ruleId/delete', tag: 'Akses+', summary: 'Remove a township rule (the default applies again)', auth: 'session', roles: ADMINS, body: emptyBody,
-    handler: (c) => config.deleteRule(c.db, c.actor, c.params.ruleId!),
+    handler: (c) => withReroute(c, () => config.deleteRule(c.db, c.actor, c.params.ruleId!)),
   }),
   route({
     method: 'GET', path: '/admin/access/policy', tag: 'Akses+', summary: 'Response targets and verification rules (proposed values)', auth: 'session', roles: STAFF,
@@ -258,7 +269,9 @@ export const aksesRoutes = [
       corroboration: z.number().int().min(2).max(10).optional(),
       verifyHours: z.number().int().min(1).max(336).optional(),
       disputeDays: z.number().int().min(1).max(60).optional(),
+      // The catch-all team for problems no rule can place; null turns it off.
+      defaultPartyId: zId.nullable().optional(),
     }),
-    handler: (c) => config.saveAccessPolicy(c.db, c.actor, c.body as never, c.now),
+    handler: (c) => withReroute(c, () => config.saveAccessPolicy(c.db, c.actor, c.body as never, c.now)),
   }),
 ];

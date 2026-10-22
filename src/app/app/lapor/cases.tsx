@@ -64,7 +64,7 @@ const PLACE_EMPTY: Record<ReportPlace, { title: string; text: string }> = {
   DELIVERY: { title: 'No delivery reports', text: 'Problems with a delivery, such as a late parcel or one marked delivered that is not here, appear here.' },
   OTHER: { title: 'No other reports', text: 'Reports about anything else appear here.' },
   KITAR: { title: 'No Kitar reports yet', text: 'Had a problem with a recycling bin, its weight or your points? Tap Report a problem on the Kitar page and follow it here.' },
-  GERAK: { title: 'No Gerak reports yet', text: 'Had a problem on a loop, with a checkpoint or the map? Tap Report a problem on the Gerak page and follow it here.' },
+  GERAK: { title: 'No Gerak reports yet', text: 'Had a problem on a loop, a checkpoint, the map, your distance or a challenge? Tap Report a problem on the Gerak page and follow it here.' },
 };
 
 /** The type as it appears in the address (/app/lapor?tab=cases&type=locker), so Parcels can link straight to its own reports. */

@@ -204,6 +204,25 @@ export async function writeIssueWording(input: { type: string; area: string | nu
 
 const materialReply = z.object({ material: z.enum(MATERIALS).nullable() });
 
+const waterReply = z.object({ levelPct: z.number().min(0).max(100).nullable(), confidence: z.number().min(0).max(1) });
+
+/**
+ * Reads the water level on a drain's measuring post from a photo (a stand-in for a CCTV frame). Returns
+ * null when no provider is configured or the call fails. The reading is only a number with a confidence:
+ * the Banjir rules, not the model, decide what it means, and a low confidence is not trusted as a signal.
+ */
+export async function readWaterLevel(photo: Photo): Promise<{ levelPct: number | null; confidence: number } | null> {
+  const reply = await askModel(
+    'You read the water level on a drain measuring post (a pole marked from 0% at the drain floor to 100% at the overflow line) in a photo. ' +
+      'Reply with JSON only: {"levelPct": the water level as a whole number from 0 to 100, or null if you cannot see the post or the water line, ' +
+      '"confidence": how sure you are, from 0 to 1}. Lower your confidence for darkness, glare, rain on the lens, debris or a post you cannot read clearly. Never guess a level you cannot see.',
+    'What is the water level on the measuring post?',
+    photo,
+    120,
+  );
+  return parseReply(reply, waterReply);
+}
+
 /** Returns null when no provider is configured or the model is unsure: the resident then picks from the list. */
 export async function identifyMaterial(photo: Photo): Promise<{ material: Material | null; source: 'MODEL' | 'NONE' }> {
   const reply = await askModel(

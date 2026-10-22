@@ -2,6 +2,7 @@
 
 import { Text } from '@/components/ui/localized-text';
 
+import { Cctv, CloudRain, Radio, TrendingUp, type LucideIcon } from 'lucide-react';
 import { useState } from 'react';
 import { SimulatedNote } from '@/components/features/preview';
 import { Badge, Card, CardHeader, PageHeader } from '@/components/ui/card';
@@ -13,7 +14,7 @@ import { EventsTab } from './events-tab';
 import { HelpTab } from './help-tab';
 import { LiveMap } from './live-map';
 import { SensorsTab } from './sensors-tab';
-import type { Agent } from './types';
+import type { Agent, Integration } from './types';
 import { ZoneAgent } from './zone-agent';
 
 type TabKey = 'map' | 'queue' | 'sensors' | 'help' | 'events';
@@ -56,6 +57,72 @@ function CameraTestSet() {
   );
 }
 
+const READER_LABEL = { HOSTED_AI: 'Hosted AI reads uploaded photos', MODEL_SERVER: 'Your water-level model reads photos' } as const;
+
+/**
+ * Data sources and integration: for each source, what it is in this prototype and exactly where the real
+ * device or model connects. Read from the live configuration (agentOverview), so it never claims more
+ * than is true. It answers "is this ready for real sensors, CCTV and machine learning?" on the page itself.
+ */
+function IntegrationPanel({ integration: i }: { integration: Integration }) {
+  const rows: { icon: LucideIcon; title: string; now: string; live: boolean; next: string }[] = [
+    {
+      icon: Radio,
+      title: 'Drain sensors',
+      now: i.sensors.real > 0 ? `${i.sensors.real} real, ${i.sensors.simulated} simulated` : `${i.sensors.simulated} simulated`,
+      live: i.sensors.real > 0,
+      next: 'Real sensors post signed readings to POST /api/v1/flood/readings, the same endpoint the simulated ones use. Register a sensor in the Sensors tab and it counts.',
+    },
+    {
+      icon: Cctv,
+      title: 'CCTV camera reading',
+      now: i.camera.photoReader ? READER_LABEL[i.camera.photoReader] : 'Test pictures with recorded readings',
+      live: i.camera.photoReader !== null,
+      next: 'A water-level model (for example a CNN trained on township CCTV frames) set at FLOOD_MODEL_URL. A CCTV frame grabber sends frames to the same reader; the rules do not change.',
+    },
+    {
+      icon: TrendingUp,
+      title: 'Forecast',
+      now: 'Trend estimate from the last 30 minutes',
+      live: false,
+      next: 'A trained forecast model (for example LSTM or gradient boosting on months of sensor and rain history) fills the same slot. Advisory only: it never sends an alert.',
+    },
+    {
+      icon: CloudRain,
+      title: 'Rain gauge',
+      now: 'Entered by hand in test mode',
+      live: false,
+      next: 'A rain gauge or a weather feed sends the rain signal, which can support a warning but never declare danger.',
+    },
+  ];
+  return (
+    <Card>
+      <CardHeader
+        title="Data sources and integration"
+        description="What each source is in this prototype, and where the real device or model connects. AI only reports a reading with a confidence; fixed rules and the duty officer decide every alert (BR28)."
+        action={<Badge tone={i.scheduler === 'DEV_CLOCK' ? 'neutral' : 'success'}><Text>{i.scheduler === 'DEV_CLOCK' ? 'Agent clock: local, every minute' : 'Agent clock: scheduled job'}</Text></Badge>}
+      />
+      <ul className="grid gap-px overflow-hidden bg-ink-100 sm:grid-cols-2 xl:grid-cols-4">
+        {rows.map((r) => (
+          <li key={r.title} className="flex flex-col gap-2 bg-white p-5">
+            <span className="flex items-center justify-between gap-2">
+              <span className="flex items-center gap-2 text-sm font-semibold text-ink-900">
+                <span className="grid size-8 place-items-center rounded-lg bg-brand-50 text-brand-700"><r.icon className="size-4" aria-hidden /></span>
+                <Text>{r.title}</Text>
+              </span>
+              <Badge tone={r.live ? 'success' : 'gold'}><Text>{r.live ? 'Live' : 'Prototype'}</Text></Badge>
+            </span>
+            <p className="text-sm text-ink-700"><Text>{r.now}</Text></p>
+            <p className="mt-auto rounded-md bg-ink-50 px-3 py-2 text-xs leading-relaxed text-ink-600">
+              <span className="font-semibold text-ink-700"><Text>Goes live: </Text></span><Text>{r.next}</Text>
+            </p>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
+
 /**
  * The Flood dashboard (proposal Appendix E.3): five tabs over one live picture of
  * every zone. The agent's rules, drafts, timers and messages run as normal; in
@@ -79,7 +146,7 @@ export default function FloodDashboardPage() {
     <>
       <PageHeader title="Flood dashboard" description="Numbers and fixed rules decide the flood level; the AI only reads pictures and fills in the message. Two signals of different types must agree before an alert goes out by itself." />
       <div className="space-y-6">
-        <SimulatedNote><Text>Test mode: the sensors are simulated and the CCTV and rain readings are entered by hand. Sensor readings are still signed and go through the real ingestion endpoint; the agent’s rules, drafts, timers and messages run as normal. SMS is recorded, not sent.</Text></SimulatedNote>
+        <SimulatedNote><Text>Test mode: the sensors are simulated, CCTV readings come from test pictures or uploaded photos, and rain readings are entered by hand. Sensor readings are still signed and go through the real ingestion endpoint; the agent’s rules, drafts, timers and messages run as normal. SMS is recorded, not sent.</Text></SimulatedNote>
         <Tabs<TabKey>
           label="Flood dashboard"
           value={tab}
@@ -98,7 +165,14 @@ export default function FloodDashboardPage() {
               <EmptyState title="No zones set up" />
             ) : (
               <>
-                {tab === 'map' && <TabPanel><LiveMap agent={a} onOpenZone={openZone} /></TabPanel>}
+                {tab === 'map' && (
+                  <TabPanel>
+                    <div className="space-y-6">
+                      <LiveMap agent={a} onOpenZone={openZone} />
+                      <IntegrationPanel integration={a.integration} />
+                    </div>
+                  </TabPanel>
+                )}
                 {tab === 'queue' && (
                   <TabPanel>
                     <div className="space-y-6">

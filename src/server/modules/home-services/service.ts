@@ -848,10 +848,38 @@ export async function cancelByMerchant(db: Db, actor: Actor, id: string, reason:
 // Township staff: reports and business set-up
 // ---------------------------------------------------------------------------
 
+/**
+ * The resident's own private reports about home-service visits, open ones first. Companies never see these;
+ * staff_note is the township team's last message to the resident, so it is safe to show them.
+ * history: each status change and message from the township team, oldest first. It never names the staff
+ * member; the resident hears from "the township team".
+ */
+export async function listMyServiceReports(db: Db, actor: Actor) {
+  const resident = requireVerifiedResident(actor);
+  return db.query(
+    `SELECT r.id, r.booking_id, r.category, r.status, r.description, r.staff_note, r.created_at, r.updated_at,
+            m.name AS merchant_name, w.full_name AS worker_name, l.category AS service_category, b.scheduled_at,
+            coalesce((SELECT jsonb_agg(jsonb_build_object('at', a.created_at, 'to', a.detail->>'to', 'note', a.detail->>'note') ORDER BY a.id)
+                        FROM audit_log a
+                       WHERE a.entity_type = 'service_report' AND a.entity_id = r.id::text
+                         AND a.action IN ('SERVICE_REPORT_STATUS', 'SERVICE_REPORT_NOTE')), '[]'::jsonb) AS history
+       FROM service_reports r JOIN merchants m ON m.id = r.merchant_id
+       JOIN service_bookings b ON b.id = r.booking_id JOIN service_listings l ON l.id = b.listing_id
+       LEFT JOIN service_workers w ON w.id = r.worker_id
+      WHERE r.resident_id = $1
+      ORDER BY (r.status = 'CLOSED'), r.updated_at DESC LIMIT 100`,
+    [resident.id],
+  );
+}
+
 export async function listServiceReports(db: Db, actor: Actor, status: ServiceReportStatus | undefined) {
   return db.query(
+    // handled: the staff member who last changed the report's status, and when (from the audit log).
     `SELECT r.id, r.category, r.status, r.description, r.created_at, r.updated_at, m.name AS merchant_name, w.full_name AS worker_name,
-            u.full_name AS resident_name, l.category AS service_category
+            u.full_name AS resident_name, l.category AS service_category,
+            (SELECT jsonb_build_object('by', su.full_name, 'role', su.role, 'at', a.created_at)
+               FROM audit_log a JOIN users su ON su.id = a.actor_user_id
+              WHERE a.entity_type = 'service_report' AND a.entity_id = r.id::text ORDER BY a.id DESC LIMIT 1) AS handled
        FROM service_reports r JOIN merchants m ON m.id = r.merchant_id JOIN users u ON u.id = r.resident_id
        JOIN service_bookings b ON b.id = r.booking_id JOIN service_listings l ON l.id = b.listing_id
        LEFT JOIN service_workers w ON w.id = r.worker_id
@@ -908,13 +936,15 @@ export async function updateServiceReport(db: Db, actor: Actor, id: string, inpu
     if (r.status === 'CLOSED' && input.status && input.status !== 'CLOSED') throw conflict('REPORT_CLOSED', 'This report is already closed.');
     const status = input.status ?? r.status;
     await tx.query('UPDATE service_reports SET status = $2, staff_note = coalesce($3, staff_note), updated_at = $4 WHERE id = $1', [id, status, input.staffNote ?? null, now]);
-    if (status !== r.status) await audit(tx, actor.id, 'SERVICE_REPORT_STATUS', 'service_report', id, { from: r.status, to: status });
+    // Each change and each message is kept, so the resident can follow the report step by step (Lapor).
+    if (status !== r.status) await audit(tx, actor.id, 'SERVICE_REPORT_STATUS', 'service_report', id, { from: r.status, to: status, ...(input.staffNote ? { note: input.staffNote } : {}) });
+    else if (input.staffNote) await audit(tx, actor.id, 'SERVICE_REPORT_NOTE', 'service_report', id, { note: input.staffNote });
     // A new note is news to the resident too, even when the status stays the same.
     if (status !== r.status || input.staffNote) {
       await notify(tx, [r.resident_id], {
         title: status === 'CLOSED' ? 'Your home service report is closed' : status === r.status ? 'Update on your home service report' : 'Your home service report is under review',
         body: input.staffNote ?? 'The township team has updated your report.',
-        link: '/app/home-services',
+        link: `/app/lapor?tab=home&report=${id}`, // opens this report, expanded
       });
     }
     return { status };

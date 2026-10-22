@@ -124,7 +124,7 @@ export function AccessWorkCard() {
   if (work.data && work.data.parties.length === 0) return null;
   return (
     <Card id="access">
-      <CardHeader title="Accessibility issues for your team" description="Routed to you automatically. Acknowledge, fix, then add a photo of the result." />
+      <CardHeader title="Accessibility issues for your team" description="Sent to your team by the assignment rules, or because you are the default team. Acknowledge, fix, then add a photo of the result." />
       <Async state={work}>
         {(w) =>
           w.incidents.length === 0 ? (

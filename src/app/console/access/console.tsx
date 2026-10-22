@@ -72,7 +72,7 @@ interface Overview {
   suggestions: { id: string; name: string; kind: PlaceKind; location: string; note: string | null; verification: Verification; created_at: string; suggested_by: string | null; duplicate_id: string | null; duplicate_name: string | null; listing_reports: number }[];
   inspections: { id: string; name: string; kind: PlaceKind; next_inspection_at: string; party_name: string | null }[];
   recent: IncidentRow[];
-  automation: { incidents_30d: number; auto_routed_30d: number; dispatch_retrying: number; dispatch_failed: number };
+  automation: { incidents_30d: number; auto_routed_30d: number; fallback_30d: number; dispatch_retrying: number; dispatch_failed: number };
 }
 interface Place {
   id: string;
@@ -353,7 +353,7 @@ function TodayTab({ state, places, onOpen, onInspect, onIssues, onPlaces }: {
         <Card id="access-queue" className="ops-panel min-w-0 scroll-mt-24 overflow-hidden">
           <CardHeader
             title="To do"
-            description="Only what the app could not handle on its own, worst first. Everything else is already with its team."
+            description="Only what the app could not route safely on its own, worst first. Everything else is already with its team, or with the default team."
             action={<span className="inline-flex items-center gap-2 text-xs font-semibold text-ink-500"><span aria-hidden className="live-dot" /><Text>Live</Text></span>}
           />
           <Async state={state} skeleton={<SkeletonList rows={4} className="p-5" />}>
@@ -487,7 +487,12 @@ function TodayTab({ state, places, onOpen, onInspect, onIssues, onPlaces }: {
                       <div className="ml-5 mt-2 h-1.5 overflow-hidden rounded-full bg-ink-100">
                         <span className="ops-bar block h-full rounded-full bg-brand-500" style={{ width: `${pct}%` }} />
                       </div>
-                      <p className="ml-5 mt-1.5 text-xs text-ink-500"><Text>Last 30 days</Text></p>
+                      {/* Honest about how it works: the place's own team when known, otherwise the default team. */}
+                      <p className="ml-5 mt-1.5 text-xs text-ink-500">
+                        <Text>Last 30 days</Text>
+                        {o.automation.fallback_30d > 0 && <Text>{` · ${o.automation.fallback_30d} to the default team`}</Text>}
+                      </p>
+                      <p className="ml-5 mt-0.5 text-xs text-ink-500"><Text>To the team that runs the place when the app knows it; otherwise to the default team. Only when neither can take it does it wait in To do.</Text></p>
                     </li>
                     <li style={{ '--i': 1 } as CSSProperties} className="ops-row flex items-center gap-3 px-5 py-3.5 sm:px-6">
                       <span aria-hidden className={cn('status-dot shrink-0', o.automation.dispatch_failed ? 'is-danger is-pulsing' : o.automation.dispatch_retrying ? 'is-warning' : 'is-ok')} />
@@ -1409,6 +1414,47 @@ function ProviderPanel({ provider, people, places, isAdmin, onClose, onChanged }
   );
 }
 
+/**
+ * The last rule: the default team. A problem no rule can place (nobody recorded for the place, no team of the
+ * right kind, or more than one) goes here at once instead of waiting, marked so its owner gets recorded. Changing
+ * it also sends anything already waiting there.
+ */
+function DefaultTeamCard({ policy, parties, isAdmin }: { policy: ReturnType<typeof useApi<AccessPolicy>>; parties: Party[]; isAdmin: boolean }) {
+  const save = useAction((defaultPartyId: string | null) => api.post<AccessPolicy>('/admin/access/policy', { defaultPartyId }), {
+    onSuccess: (p) => void policy.mutate(p, { revalidate: false }),
+    success: 'Default team saved. Anything waiting for a team was sent there.',
+  });
+  const current = parties.find((p) => p.id === policy.data?.defaultPartyId);
+  const empty = current && current.integration === 'IN_APP' && current.members.length === 0;
+  return (
+    <Card className="ops-panel overflow-hidden">
+      <SectionHead
+        title="Last rule: default team"
+        description="When no rule can place an issue (nobody is recorded for the place, or no single team fits), it goes to this team at once instead of waiting. They are asked to record who runs the place, so it routes on its own next time."
+      />
+      <div className="space-y-3 px-5 pb-5 pt-4 sm:px-6">
+        {isAdmin ? (
+          <Select
+            label="Default team"
+            value={policy.data?.defaultPartyId ?? ''}
+            disabled={save.pending || !policy.data}
+            onChange={(event) => void save.run(event.target.value || null)}
+            hint="Usually township operations. Choose None to send such issues to To do for an admin instead."
+          >
+            <option value=""><Text>None: wait in To do for an admin</Text></option>
+            {parties.filter((p) => p.active).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </Select>
+        ) : (
+          <p className="text-sm text-ink-700"><Text>{current ? `Default team: ${current.name}` : 'No default team: such issues wait in To do for an admin.'}</Text></p>
+        )}
+        {empty && (
+          <p className="rounded-md bg-warning-50 px-3 py-2 text-sm text-warning-700"><Text>{`${current!.name} has nobody set up to act for it, so issues cannot go there. Add a responder in Organisations.`}</Text></p>
+        )}
+      </div>
+    </Card>
+  );
+}
+
 function RulesSection({ rules, parties, places, change, isAdmin }: {
   rules: ReturnType<typeof useApi<RoutingRule[]>>; parties: Party[]; places: Place[]; change: { at: string; by: string | null } | null; isAdmin: boolean;
 }) {
@@ -1420,14 +1466,20 @@ function RulesSection({ rules, parties, places, change, isAdmin }: {
   const target = (r: RoutingRule) =>
     r.target.type === 'PLACE' ? 'The facility’s service provider' : r.target.type === 'PARTY' ? parties.find((p) => p.id === (r.target as { partyId: string }).partyId)?.name ?? 'A named provider' : PARTY_KIND_LABELS[r.target.kind];
 
-  // Test routing: the same rules the server applies, run here on a sample issue.
+  const policy = useApi<AccessPolicy>('/admin/access/policy');
+  // Test routing: the same rules the server applies, run here on a sample issue, then the default team last.
   const place = places.find((p) => p.id === testPlace) ?? places[0];
+  const canTake = (p: Party | undefined) => Boolean(p && p.active && (p.integration !== 'IN_APP' || p.members.length > 0));
   const result = place && rules.data ? (() => {
     const rule = pickRule(rules.data, testCategory, place.kind);
     const decided = resolveParty(rule, place.party_id, parties.map((p) => ({ id: p.id, kind: p.kind, active: p.active })));
     const party = 'partyId' in decided ? parties.find((p) => p.id === decided.partyId) : undefined;
     const noResponders = party && party.integration === 'IN_APP' && party.members.length === 0;
-    return { rule, party: noResponders ? undefined : party, reason: 'exception' in decided ? decided.exception : noResponders ? `${party!.name} has no responders.` : null };
+    const reason = 'exception' in decided ? decided.exception : noResponders ? `${party!.name} has no responders.` : null;
+    if (canTake(party)) return { rule, party, reason: null, fallback: false };
+    const fallback = parties.find((p) => p.id === policy.data?.defaultPartyId);
+    if (canTake(fallback)) return { rule, party: fallback, reason, fallback: true };
+    return { rule, party: undefined, reason, fallback: false };
   })() : null;
 
   return (
@@ -1451,7 +1503,7 @@ function RulesSection({ rules, parties, places, change, isAdmin }: {
                 {' · '}<Text>Priority</Text>: <Text>{PRIORITY_LABELS[result.rule.priority]}</Text>
               </p>
               <p className="mt-0.5 text-ink-600">
-                <Text>{result.rule.source === 'TOWNSHIP' ? 'Based on a custom rule.' : 'Based on the standard rule.'}</Text>{' '}
+                <Text>{result.fallback ? 'Sent to the default team, because the rule could not place it.' : result.rule.source === 'TOWNSHIP' ? 'Based on a custom rule.' : 'Based on the standard rule.'}</Text>{' '}
                 {result.reason && <Text>{result.reason}</Text>}
               </p>
             </div>
@@ -1488,6 +1540,8 @@ function RulesSection({ rules, parties, places, change, isAdmin }: {
         </Async>
         <Governance change={change} isAdmin={isAdmin} />
       </Card>
+
+      <DefaultTeamCard policy={policy} parties={parties} isAdmin={isAdmin} />
 
       <Modal open={adding} onClose={() => setAdding(false)} title="Add assignment rule" description="If a rule already exists for the same issue and facility, it is replaced." footer={<Button type="submit" form="access-rule" pending={save.pending}><Text>Save rule</Text></Button>}>
         <form id="access-rule" method="post" className="space-y-4" onSubmit={(event) => {

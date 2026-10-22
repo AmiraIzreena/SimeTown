@@ -9,8 +9,8 @@ export const floodMalay: Record<string, string> = {
   'Flood dashboard': 'Papan pemuka banjir',
   'Numbers and fixed rules decide the flood level; the AI only reads pictures and fills in the message. Two signals of different types must agree before an alert goes out by itself.':
     'Nombor dan peraturan tetap menentukan tahap banjir; AI hanya membaca gambar dan mengisi mesej. Dua isyarat daripada jenis berbeza mesti bersetuju sebelum amaran dihantar dengan sendirinya.',
-  'Test mode: the sensors are simulated and the CCTV and rain readings are entered by hand. Sensor readings are still signed and go through the real ingestion endpoint; the agent’s rules, drafts, timers and messages run as normal. SMS is recorded, not sent.':
-    'Mod ujian: sensor disimulasikan dan bacaan CCTV serta hujan dimasukkan secara manual. Bacaan sensor tetap ditandatangani dan melalui titik penerimaan sebenar; peraturan, draf, pemasa dan mesej ejen berjalan seperti biasa. SMS direkodkan, bukan dihantar.',
+  'Test mode: the sensors are simulated, CCTV readings come from test pictures or uploaded photos, and rain readings are entered by hand. Sensor readings are still signed and go through the real ingestion endpoint; the agent’s rules, drafts, timers and messages run as normal. SMS is recorded, not sent.':
+    'Mod ujian: sensor disimulasikan, bacaan CCTV datang daripada gambar ujian atau foto yang dimuat naik, dan bacaan hujan dimasukkan secara manual. Bacaan sensor tetap ditandatangani dan melalui titik penerimaan sebenar; peraturan, draf, pemasa dan mesej ejen berjalan seperti biasa. SMS direkodkan, bukan dihantar.',
   'Live map': 'Peta langsung',
   'Agent queue': 'Barisan ejen',
   Sensors: 'Sensor',

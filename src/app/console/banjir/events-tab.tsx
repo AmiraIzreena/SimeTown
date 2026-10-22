@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/card';
 import { Async, EmptyState } from '@/components/ui/feedback';
 import { DataTable } from '@/components/ui/table';
-import { formatDateTime } from '@/lib/format';
+import { formatDateTime, formatDuration } from '@/lib/format';
 import { useApi } from '@/lib/hooks';
 import type { EventRow } from './types';
 
@@ -30,9 +30,9 @@ export function EventsTab() {
             columns={[
               { header: 'Zone', cell: (e) => <span className="font-semibold text-ink-900">{e.zone_name}</span> },
               { header: 'Started', cell: (e) => <Text>{formatDateTime(e.started_at)}</Text> },
-              { header: 'Length', desktopOnly: true, cell: (e) => (e.ended_at ? <span><Text>{minutes(e.started_at, e.ended_at)}</Text><Text> min</Text></span> : <Badge tone="warning"><Text>Open</Text></Badge>) },
+              { header: 'Length', desktopOnly: true, cell: (e) => (e.ended_at ? <Text>{formatDuration(minutes(e.started_at, e.ended_at) ?? 0)}</Text> : <Badge tone="warning"><Text>Open</Text></Badge>) },
               { header: 'Peak', cell: (e) => <span className="flex items-center gap-2"><FloodBadge status={e.peak_status} />{e.peak_level_pct !== null && <span className="tabular-nums"><Text>{e.peak_level_pct}</Text>%</span>}</span> },
-              { header: 'Warning lead time', desktopOnly: true, cell: (e) => (e.first_danger_at ? <span><Text>{minutes(e.first_warning_at, e.first_danger_at)}</Text><Text> min</Text></span> : '–') },
+              { header: 'Warning lead time', desktopOnly: true, cell: (e) => (e.first_danger_at ? <Text>{formatDuration(minutes(e.first_warning_at, e.first_danger_at) ?? 0)}</Text> : <span className="text-ink-500"><Text>{e.ended_at ? 'Never reached danger' : 'Not reached danger yet'}</Text></span>) },
               { header: 'People warned', desktopOnly: true, align: 'right', cell: (e) => <Text>{e.people_warned}</Text> },
               {
                 header: 'Review',

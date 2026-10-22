@@ -53,6 +53,7 @@ export const ACTIVITY_MEDIA: Record<string, { image: string; icon: LucideIcon; h
   GERAK_LOOP: { image: '/images/challenges/trail.jpg', icon: Bike, href: '/app/gerak', module: 'Gerak' },
   GERAK_TRIP: { image: '/images/challenges/move.jpg', icon: Bike, href: '/app/gerak', module: 'Gerak' },
   GERAK_CHECKIN: { image: '/images/challenges/trail.jpg', icon: Bike, href: '/app/gerak', module: 'Gerak' },
+  GERAK_ON_LOOP: { image: '/images/challenges/trail.jpg', icon: Bike, href: '/app/gerak', module: 'Gerak' },
   JIRAN_EVENT: { image: '/images/challenges/neighbours.jpg', icon: HandHeart, href: '/app/komuniti', module: 'Komuniti' },
   JIRAN_HELP: { image: '/images/challenges/neighbours.jpg', icon: HandHeart, href: '/app/komuniti', module: 'Komuniti' },
   KONGSI_SHARE: { image: '/images/challenges/share.jpg', icon: Repeat2, href: '/app/komuniti?tab=share', module: 'Komuniti' },

@@ -3,7 +3,7 @@
 import { Text } from '@/components/ui/localized-text';
 
 import '../operations/parcel-workspace.css';
-import { ArrowRight, Award, BarChart3, CheckCircle2, Clock3, Gift, Hourglass, Plus, Search, Undo2, Wallet, type LucideIcon } from 'lucide-react';
+import { ArrowRight, Award, BarChart3, CheckCircle2, Clock3, Gift, Hourglass, Plus, Search, Target, Undo2, Wallet, type LucideIcon } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useRef, useState, type CSSProperties, type FormEvent } from 'react';
 import { BudgetSplit, CampaignReport, CampaignSplit, CampaignStatus, givenOf, splitOf } from '@/components/features/campaign-admin';
@@ -24,13 +24,15 @@ import { useT } from '@/lib/i18n';
 import type { Campaign, Me } from '@/lib/types';
 import { useMinLoading } from '@/lib/use-min-loading';
 import { ADMINS, campaignSplit, formatPoints, formatRM, SPONSOR_TIERS, SPONSOR_TIER_INFO, type SponsorTier } from '@/shared/domain';
+import { GERAK_CHALLENGE_RULES, gerakChallengeKind } from '@/shared/gerak-challenges';
 
 /** What a campaign can reward, in words staff recognise. `unit` is set where a milestone total makes sense. */
 const GOALS: { value: string; label: string; activity: string; metric: 'COUNT' | 'QUANTITY'; unit?: string; per?: number }[] = [
   { value: 'kitar-count', label: 'Kitar: each recycling drop-off', activity: 'KITAR_DROPOFF', metric: 'COUNT' },
   { value: 'kitar-kg', label: 'Kitar: kilograms recycled', activity: 'KITAR_DROPOFF', metric: 'QUANTITY', unit: 'kg', per: 1000 },
   { value: 'gerak-count', label: 'Gerak: each loop completed', activity: 'GERAK_LOOP', metric: 'COUNT' },
-  { value: 'gerak-km', label: 'Gerak: kilometres walked or cycled', activity: 'GERAK_LOOP', metric: 'QUANTITY', unit: 'km', per: 1000 },
+  // Distance on the township loops, finished or not; distance off the loops never counts (server/modules/gerak/distance.ts).
+  { value: 'gerak-km', label: 'Gerak: kilometres on township loops (part-loops count)', activity: 'GERAK_LOOP', metric: 'QUANTITY', unit: 'km', per: 1000 },
   { value: 'jiran-help', label: 'Jiran: neighbours helped', activity: 'JIRAN_HELP', metric: 'COUNT' },
   { value: 'jiran-event', label: 'Jiran: events attended', activity: 'JIRAN_EVENT', metric: 'COUNT' },
   { value: 'kongsi', label: 'Kongsi: items given or lent', activity: 'KONGSI_SHARE', metric: 'COUNT' },
@@ -88,6 +90,26 @@ interface CardActions {
   onReport: (c: Campaign) => void;
 }
 
+/**
+ * What a campaign counts and its goal, as staff chose them, so a whole-loops Gerak challenge is never
+ * mistaken for a part-loops one. Gerak rules use the same words residents see (shared/gerak-challenges.ts).
+ */
+function GoalSummary({ campaign: c }: { campaign: Campaign }) {
+  const goal = GOALS.find((g) => g.activity === c.activity && g.metric === c.goal_metric);
+  const kind = gerakChallengeKind(c.activity, c.goal_metric);
+  const target = c.goal_metric === 'QUANTITY' && goal?.per ? `${(c.goal_target / goal.per).toLocaleString('en-MY')} ${goal.unit}` : c.goal_target === 1 ? 'once' : `${c.goal_target} times`;
+  return (
+    <div className="mt-3 space-y-2">
+      <p className="flex flex-wrap items-center gap-2 text-sm text-ink-700">
+        <Target className="size-4 shrink-0 text-brand-600" aria-hidden />
+        <span><Text>{goal?.label ?? c.activity}</Text><Text>{` · goal ${target}`}</Text></span>
+        {kind && <Badge tone={kind === 'WHOLE_LOOPS' ? 'brand' : 'neutral'}><Text>{GERAK_CHALLENGE_RULES[kind].tag}</Text></Badge>}
+      </p>
+      {kind && <p className="rounded-lg bg-ink-50 px-3 py-2 text-xs text-ink-600"><Text>{GERAK_CHALLENGE_RULES[kind].rule}</Text></p>}
+    </div>
+  );
+}
+
 function CampaignCard({ campaign: c, isAdmin, now, onFund, onClose, onReport }: { campaign: Campaign } & CardActions) {
   const attention = attentionOf(c, now);
   const { pool, given } = givenOf(c);
@@ -102,6 +124,7 @@ function CampaignCard({ campaign: c, isAdmin, now, onFund, onClose, onReport }: 
       </div>
       <h3 className="mt-3 text-lg font-semibold">{c.title}</h3>
       <p className="mt-1 line-clamp-2 text-[15px] text-ink-600">{c.description}</p>
+      <GoalSummary campaign={c} />
       <p className="mt-3 text-sm text-ink-700">
         <Text>{c.sponsor_id ? 'Sponsor' : 'Community programme'}</Text><Text>{': '}</Text><strong>{c.funder}</strong>
       </p>
@@ -770,6 +793,16 @@ function CreateCampaign({ open, onClose, onCreated }: { open: boolean; onClose: 
               </option>
             ))}
           </Select>
+          {/* For Gerak, say exactly what counts before staff commit a budget: whole loops, part-loops, any trip or checkpoints. */}
+          {(() => {
+            const kind = gerakChallengeKind(selected.activity, selected.metric);
+            return kind ? (
+              <p className="flex items-start gap-2 rounded-lg bg-brand-50 px-3.5 py-2.5 text-sm text-brand-900 sm:col-span-2" role="note">
+                <Target className="mt-0.5 size-4 shrink-0 text-brand-700" aria-hidden />
+                <span><strong><Text>{GERAK_CHALLENGE_RULES[kind].tag}</Text></strong><Text>{'. '}</Text><Text>{GERAK_CHALLENGE_RULES[kind].rule}</Text><Text>{' Residents see this rule on the challenge card.'}</Text></span>
+              </p>
+            ) : null;
+          })()}
           <Input label={selected.unit ? `A reward for every (${selected.unit})` : 'A reward for every (times)'} name="target" type="number" min={selected.unit ? 0.1 : 1} step={selected.unit ? 0.1 : 1} defaultValue={1} required error={f.goalTarget} hint={selected.unit ? `e.g. 10 means one reward per 10 ${selected.unit}` : 'e.g. 3 means one reward after every 3 times'} />
           <Input label="Points per reward" type="number" min={1} value={reward} onChange={(event) => setReward(event.target.value)} required error={f.rewardPoints} hint={Number(reward) > 0 ? `Worth ${formatRM(Number(reward))}` : undefined} />
           <Input label="Most rewards per person" name="cap" type="number" min={1} max={100} defaultValue={1} required error={f.perPersonCap} hint="Keep it at 1 so more residents get a reward." />

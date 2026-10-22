@@ -3,10 +3,10 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Actor } from '@/server/auth/actor';
 import { one, type Db } from '@/server/db/client';
 import { runAccessChecks } from '@/server/modules/akses/automation';
-import { createParty, saveRule, updateParty } from '@/server/modules/akses/config';
-import { accessHistoryIntact, acknowledgeIncident, assignParty, confirmFix, disputeResolved, overrideIncident, reportIssue, submitResolution, verifyResolution } from '@/server/modules/akses/incidents';
+import { createParty, saveAccessPolicy, saveRule, updateParty } from '@/server/modules/akses/config';
+import { accessHistoryIntact, acknowledgeIncident, assignParty, rerouteWaiting, confirmFix, disputeResolved, overrideIncident, reportIssue, submitResolution, verifyResolution } from '@/server/modules/akses/incidents';
 import { deliverDispatches, handlePartyEvent, MAX_ATTEMPTS } from '@/server/modules/akses/integrations';
-import { createPlace, inspectPlace, listPlaces, followPlace, suggestPlace, archivePlace } from '@/server/modules/akses/places';
+import { createPlace, inspectPlace, listPlaces, followPlace, suggestPlace, archivePlace, setPlaceParty } from '@/server/modules/akses/places';
 import { accessOverview, myAccessReports, partyWork } from '@/server/modules/akses/queries';
 import { isLikelyDuplicate, pickRule, resolveParty, verificationOutcome, DEFAULT_ACCESS_POLICY } from '@/shared/akses';
 import { createSession } from '@/server/auth/session';
@@ -394,5 +394,52 @@ describe('over HTTP', () => {
     // The report photo is the reporter's and staff's, not another resident's.
     const asOther = await handle(new Request(`${ORIGIN}/api/v1/access-photos/${photoId}`, { headers: { cookie: `kita_session=${await createSession(db, ben.id, T0)}` } }));
     expect(asOther.status).toBe(404);
+  });
+});
+
+describe('routing: the default team and re-routing what waits', () => {
+  const routingOf = (reference: string) => one<{ routing: Record<string, unknown> }>(db, 'SELECT routing FROM access_incidents WHERE reference = $1', [reference]).then((r) => r!.routing);
+
+  it('re-routes a report waiting for a team once its place is given one, without alerting admins again meanwhile', async () => {
+    const orphan = await newPlace('RAMP', null);
+    const r = await reportIssue(db, aisyah, orphan, { category: 'DAMAGED', idempotencyKey: key() }, T0);
+    expect(await incident(r.reference)).toMatchObject({ status: 'ESCALATED', party_id: null });
+    const alerts = await notes(w.admin.id, `Accessibility escalation:%${r.reference}%`);
+    // Re-checking while nothing changed sends nothing and alerts nobody again.
+    expect(await rerouteWaiting(db, w.townshipId, at(0.1))).toBe(0);
+    expect(await notes(w.admin.id, `Accessibility escalation:%${r.reference}%`)).toBe(alerts);
+    // The place gets its team: the waiting report goes there by itself.
+    await setPlaceParty(db, w.admin, orphan, ops.id);
+    expect(await rerouteWaiting(db, w.townshipId, at(0.2))).toBe(1);
+    expect(await incident(r.reference)).toMatchObject({ status: 'ASSIGNED', party_id: ops.id, exception_reason: null });
+    expect(await routingOf(r.reference)).toHaveProperty('rerouted');
+  });
+
+  it('sends a problem no rule can place to the default team at once, marked so its owner gets recorded', async () => {
+    await saveAccessPolicy(db, w.admin, { defaultPartyId: ops.id }, T0);
+    const orphan = await newPlace('RAMP', null);
+    const r = await reportIssue(db, aisyah, orphan, { category: 'DAMAGED', idempotencyKey: key() }, T0);
+    expect(await incident(r.reference)).toMatchObject({ status: 'ASSIGNED', party_id: ops.id, exception_reason: null });
+    expect(await routingOf(r.reference)).toMatchObject({ partyId: ops.id, fallback: { because: expect.stringMatching(/No organisation/) } });
+    expect(await notes(w.admin.id, `Accessibility escalation:%${r.reference}%`)).toBe(0); // nothing for an admin to do
+    expect(await notes(w.staff.id, `New accessibility issue:%`)).toBeGreaterThan(0); // the default team is told
+    const note = await one<{ body: string }>(db, `SELECT e.body FROM access_incident_events e JOIN access_incidents i ON i.id = e.incident_id WHERE i.reference = $1 AND e.kind = 'NOTE'`, [r.reference]);
+    expect(note!.body).toMatch(/default team.*Please record who runs/);
+  });
+
+  it('never moves a team an admin chose, and does not count a default team with nobody in it', async () => {
+    const empty = await createParty(db, w.admin, { name: 'Empty Team', kind: 'TOWNSHIP_OPERATIONS', integration: 'IN_APP' });
+    await saveAccessPolicy(db, w.admin, { defaultPartyId: empty.id }, T0);
+    const orphan = await newPlace('RAMP', null);
+    const r = await reportIssue(db, aisyah, orphan, { category: 'DAMAGED', idempotencyKey: key() }, T0);
+    // The default team cannot take it, so it waits for an admin, saying why.
+    expect(await incident(r.reference)).toMatchObject({ status: 'ESCALATED', party_id: null });
+    expect((await incident(r.reference))!.exception_reason).toMatch(/default team cannot take it: nobody is set up/);
+    // An admin chooses a team by hand; even if that choice cannot be acted on, the re-check leaves it alone.
+    await assignParty(db, w.admin, (await incident(r.reference))!.id, { partyId: empty.id, reason: 'They will staff it this week.' }, T0);
+    await setPlaceParty(db, w.admin, orphan, ops.id);
+    expect(await rerouteWaiting(db, w.townshipId, at(0.3))).toBe(0);
+    expect(await routingOf(r.reference)).toHaveProperty('manual');
+    await saveAccessPolicy(db, w.admin, { defaultPartyId: null }, T0); // leave the township as the other tests found it
   });
 });

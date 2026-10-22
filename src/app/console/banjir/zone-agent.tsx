@@ -4,10 +4,11 @@ import { Text } from '@/components/ui/localized-text';
 import { CountUp } from '@/components/ui/count-up';
 import { LocalizedButton, LocalizedInput } from '@/components/ui/localized-elements';
 
-import { Bot, CloudRain, Gauge, HeartPulse, MessageSquareText, PhoneCall, Send, ShieldCheck, Timer, TrendingUp, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Bot, Camera, CloudRain, Gauge, HeartPulse, MessageSquareText, PhoneCall, Send, ShieldCheck, Timer, TrendingUp, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { FloodBadge, LevelGauge } from '@/components/features/flood';
 import { FloodPicture } from '@/components/features/flood-picture';
+import { FloodTrend } from '@/components/features/flood-trend';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/field';
@@ -45,6 +46,59 @@ function Countdown({ until }: { until: string }) {
       <Timer className="size-3.5" aria-hidden />
       <Text>{Math.floor(left / 60)}</Text>:<Text>{String(left % 60).padStart(2, '0')}</Text>
     </Badge>
+  );
+}
+
+const READER_NAME = { HOSTED_AI: 'hosted AI', MODEL_SERVER: 'your water-level model' } as const;
+
+/**
+ * A drain photo standing in for a CCTV frame: read by the camera reader (your own model server, or the
+ * hosted AI) and recorded as this zone's camera signal. Later, a CCTV frame grabber sends frames to the
+ * same place. Without a reader set up, the control says how to set one up instead of failing silently.
+ */
+function CameraPhoto({ zoneId, reader, onDone }: { zoneId: string; reader: 'HOSTED_AI' | 'MODEL_SERVER' | null; onDone: () => void }) {
+  const input = useRef<HTMLInputElement>(null);
+  const [result, setResult] = useState<{ reading: { levelPct: number | null; confidence: number; reader: string }; trusted: boolean } | null>(null);
+  const upload = useAction(
+    (file: File) => {
+      const form = new FormData();
+      form.append('photo', file);
+      return api.post<{ reading: { levelPct: number | null; confidence: number; reader: string }; trusted: boolean }>(`/admin/banjir/zones/${zoneId}/camera-photo`, form);
+    },
+    { onSuccess: (r) => { setResult(r); onDone(); } },
+  );
+  return (
+    <div className="rounded-lg border border-dashed border-ink-300 p-4">
+      <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-ink-700">
+        <Camera className="size-4" aria-hidden /><Text>Upload a drain photo (a CCTV stand-in)</Text>
+        {reader ? <Badge tone="brand"><Text>{`Read by ${READER_NAME[reader]}`}</Text></Badge> : <Badge><Text>No reader set up</Text></Badge>}
+      </p>
+      {reader ? (
+        <>
+          <p className="mt-1 text-xs text-ink-500"><Text>A photo of the measuring post, as a CCTV camera would take it. The reading becomes this zone’s camera signal; the rules decide what it means. The photo is not stored.</Text></p>
+          <LocalizedInput
+            ref={input}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            disabled={upload.pending}
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) void upload.run(file).finally(() => { if (input.current) input.current.value = ''; });
+            }}
+            className="mt-2 block w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-brand-50 file:px-3 file:py-2 file:font-semibold file:text-brand-700 hover:file:bg-brand-100"
+          />
+          {upload.pending && <p className="mt-2 text-sm text-ink-600" aria-live="polite"><Text>Reading the photo…</Text></p>}
+          {result && !upload.pending && (
+            <p className={cn('mt-2 rounded-md px-3 py-2 text-sm', result.trusted ? 'bg-success-50 text-success-700' : 'bg-ink-50 text-ink-600')} aria-live="polite">
+              <Text>{result.reading.levelPct === null ? 'The reader could not see the water line.' : `Read as ${result.reading.levelPct}%, ${Math.round(result.reading.confidence * 100)}% sure.`}</Text>{' '}
+              <Text>{result.trusted ? 'Used as the camera signal.' : 'Too unsure: recorded, but not trusted as a signal.'}</Text>
+            </p>
+          )}
+        </>
+      ) : (
+        <p className="mt-1 text-xs text-ink-500"><Text>To read real photos, set AI_PROVIDER (hosted AI) or FLOOD_MODEL_URL (your own model, such as a CNN) in the server settings. Until then, use the test pictures above.</Text></p>
+      )}
+    </div>
   );
 }
 
@@ -95,6 +149,7 @@ export function ZoneAgent({ zone, agent, onChange }: { zone: AgentZone; agent: A
       />
       <div className="space-y-5 p-5">
         <LevelGauge level={zone.level_pct} status={zone.status} warningPct={agent.warningPct} dangerPct={agent.dangerPct} />
+        <FloodTrend trend={zone.trend} />
 
         <div className="rounded-lg bg-ink-50 p-4">
           <p className="flex flex-wrap items-center gap-2 text-sm font-semibold text-ink-900">
@@ -190,6 +245,7 @@ export function ZoneAgent({ zone, agent, onChange }: { zone: AgentZone; agent: A
               ))}
             </div>
           </div>
+          <CameraPhoto zoneId={zone.id} reader={agent.integration.camera.photoReader} onDone={onChange} />
           <div className="flex flex-wrap items-center gap-2">
             <span className="flex items-center gap-1.5 text-sm font-medium text-ink-700">
               <CloudRain className="size-4" aria-hidden /><Text> Rain gauge:</Text></span>

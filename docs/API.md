@@ -177,6 +177,7 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | GET | `/home-services/providers/:merchantId` | RESIDENT | A company's profile, listings and reviews |
 | POST | `/home-services/bookings` | RESIDENT | Ask a company for a visit (multipart form; optional photo) |
 | GET | `/home-services/bookings` | RESIDENT | My bookings, open ones first |
+| GET | `/home-services/reports` | RESIDENT | My private reports about home-service visits, open ones first |
 | GET | `/home-services/logbook` | RESIDENT | The home logbook: jobs confirmed at my home, and services due again |
 | GET | `/home-services/bookings/:bookingId` | RESIDENT | One of my bookings: the worker, the history and what I can do next |
 | GET | `/home-services/bookings/:bookingId/photo` | RESIDENT, MERCHANT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | The problem photo (the resident, the company booked and township staff only) |
@@ -365,6 +366,7 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | POST | `/gerak/checkins` | RESIDENT | Scan a checkpoint code |
 | GET | `/admin/gerak/loops` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Loops with their printable checkpoint codes |
 | POST | `/admin/gerak/loops` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Create a loop and its checkpoints |
+| POST | `/admin/gerak/loops/:loopId/visibility` | TOWNSHIP_ADMIN, HQ_ADMIN | Show a loop to residents again, or hide it (township admin or SDP HQ; a reason is kept in the audit log). Every part of Gerak follows at once |
 | POST | `/admin/gerak/loops/:loopId/map` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Draw a loop on the map: its path and where each checkpoint is |
 | GET | `/gerak/map` | RESIDENT | Checkpoints with their positions, the activity in progress and recent trips |
 | POST | `/gerak/activities` | RESIDENT | Tap Start: begin a tracked walk, run, ride or wheelchair trip |
@@ -428,6 +430,7 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | POST | `/admin/banjir/zones/:zoneId/level` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | The duty officer sets a zone water level by hand (sent at once) |
 | GET | `/admin/banjir/agent` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | The Banjir agent: each zone's signals, sensors, drafts waiting for the officer and the decision timeline |
 | POST | `/admin/banjir/zones/:zoneId/signals` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Prototype: a signal from the sensor simulator (signed readings from the zone's simulated sensors), a camera test picture or the rain gauge |
+| POST | `/admin/banjir/zones/:zoneId/camera-photo` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | A drain photo (a CCTV stand-in, multipart field "photo") read by the camera reader (your model server or the hosted AI) and recorded as the camera signal. The photo is not stored |
 | POST | `/admin/banjir/drafts/:messageId` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | One tap: send (optionally edited) or cancel a one-signal draft; a cancel or an edit needs a reason (BR21) |
 | POST | `/flood/readings` | Signed device (own HMAC key) | A sensor (or its gateway) posts signed readings: signature checked, duplicates dropped, stored, and the agent woken |
 | GET | `/admin/banjir/sensors` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Every sensor: battery, signal strength, last seen, health, open ticket and maintenance log |

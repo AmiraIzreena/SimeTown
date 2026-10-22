@@ -169,7 +169,10 @@ export const REPORT_REASONS: Record<ReportContext, ReportReason[]> = {
   GERAK: [
     { key: 'ROUTE_PROBLEM', label: 'A problem on the route or loop', hint: 'A blocked path, broken pavement, poor lighting or something unsafe on the loop.', responsibility: 'TOWNSHIP', module: 'GERAK', category: 'GERAK_ROUTE', priority: 'NORMAL' },
     { key: 'CHECKPOINT', label: 'A checkpoint did not tick', hint: 'I passed a checkpoint, or scanned its QR poster, but it was not counted.', responsibility: 'TOWNSHIP', module: 'GERAK', category: 'GERAK_CHECKPOINT', priority: 'NORMAL' },
-    { key: 'MAP_WRONG', label: 'The map or tracking is wrong', hint: 'The map shows the wrong place, or my trip was not tracked properly.', responsibility: 'TOWNSHIP', module: 'GERAK', category: 'GERAK_MAP', priority: 'LOW' },
+    { key: 'MAP_WRONG', label: 'The map or tracking is wrong', hint: 'A loop line on the map does not follow the real path, the map shows the wrong place, or my trip was not tracked properly.', responsibility: 'TOWNSHIP', module: 'GERAK', category: 'GERAK_MAP', priority: 'LOW' },
+    // Distance on the loops (part-loops included) and challenge progress are worked out from the tracked route and the drawn loop paths.
+    { key: 'DISTANCE_WRONG', label: 'My distance or challenge progress is wrong', hint: 'I walked or rode on a loop, finished or part of it, but my distance or a challenge did not go up as it should.', responsibility: 'TOWNSHIP', module: 'GERAK', category: 'GERAK_DISTANCE', priority: 'NORMAL' },
+    { key: 'CHALLENGE_REWARD', label: 'A challenge reward did not arrive', hint: 'I reached a challenge goal, but the points did not arrive, or the card says my reward is waiting.', responsibility: 'TOWNSHIP', module: 'GERAK', category: 'GERAK_CHALLENGE', priority: 'NORMAL' },
     { key: 'PAGE_PROBLEM', label: 'Something on the Gerak page is wrong', hint: 'A button, my distance or my loops do not work as they should.', responsibility: 'TOWNSHIP', module: 'GERAK', category: 'GERAK_APP', priority: 'LOW', needsNote: true },
     notSure('GERAK'),
   ],
@@ -204,4 +207,5 @@ export const CATEGORY_LABELS: Record<string, string> = {
   KITAR_BIN_FAULT: 'Kitar bin or kiosk not working', KITAR_WEIGHT_WRONG: 'Kitar weight, points or XP wrong', KITAR_BIN_FULL: 'Kitar bin full or dirty',
   KITAR_APP: 'Problem on the Kitar page', GERAK_ROUTE: 'Problem on a Gerak route', GERAK_CHECKPOINT: 'Gerak checkpoint did not tick',
   GERAK_MAP: 'Gerak map or tracking wrong', GERAK_APP: 'Problem on the Gerak page',
+  GERAK_DISTANCE: 'Gerak distance or challenge progress wrong', GERAK_CHALLENGE: 'Gerak challenge reward missing',
 };

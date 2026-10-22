@@ -7,6 +7,7 @@ import { createAccount, credit, debit, getAccount, postTxn, systemAccounts } fro
 import { getSettings } from '../settings';
 import { resolveTownship } from '../townships';
 import { activeTier } from './tiers';
+import { LOOP_DISTANCE_ACTIVITIES, loopDistanceSql } from '../gerak/distance';
 
 /** SimeTown Partner Hub: challenges with a fixed, prefunded reward pool. */
 
@@ -189,16 +190,21 @@ export async function publicChallenges(db: Db, now: Date) {
  */
 export async function listCampaigns(db: Db, actor: Actor, now: Date) {
   if (actor.role === 'RESIDENT') {
+    const tz = (await getSettings(db)).timezone;
+    // Gerak kilometre challenges count distance on the loops (gerak/distance.ts), as rewards.ts does when paying them.
+    const window = 'e.created_at >= x.starts_at AND e.created_at < x.ends_at';
     return db.query(
       `SELECT x.*,
-              (SELECT coalesce(CASE x.goal_metric WHEN 'COUNT' THEN count(*) ELSE sum(e.quantity) END, 0)::int
-                 FROM xp_events e
-                WHERE e.user_id = $3 AND e.activity = x.activity AND e.created_at >= x.starts_at AND e.created_at < x.ends_at) AS my_progress,
+              CASE WHEN x.goal_metric = 'QUANTITY' AND x.activity IN (${LOOP_DISTANCE_ACTIVITIES.map((a) => `'${a}'`).join(', ')})
+                THEN ${loopDistanceSql('e.user_id = $3', window, '$4')}
+                ELSE (SELECT coalesce(CASE x.goal_metric WHEN 'COUNT' THEN count(*) ELSE sum(e.quantity) END, 0)::int
+                        FROM xp_events e WHERE e.user_id = $3 AND e.activity = x.activity AND ${window})
+              END AS my_progress,
               (SELECT count(*)::int FROM campaign_awards w WHERE w.campaign_id = x.id AND w.user_id = $3) AS my_rewards
          FROM (${CAMPAIGN_LIST} WHERE c.township_id = $2 AND c.status = 'FUNDED' AND c.starts_at <= $1 AND c.ends_at > $1
            AND c.activity NOT IN ('TAMAN_WATERING', 'TAMAN_SIGHTING')) x
         ORDER BY x.ends_at`,
-      [now, actor.townshipId, actor.id],
+      [now, actor.townshipId, actor.id, tz],
     );
   }
   if (actor.role === 'SPONSOR') {

@@ -809,6 +809,108 @@ html[data-signed-in] .field:focus-within > label { color: var(--color-brand-700)
 /* --- Map key chips (Gerak tracker map): each line style as a small labelled pill ----------------- */
 .map-key-chip { display: inline-flex; align-items: center; gap: 0.5rem; border-radius: 9999px; background: #fff; padding: 0.25rem 0.75rem; font-size: 0.75rem; font-weight: 500; color: var(--color-ink-700); box-shadow: 0 1px 2px rgb(45 20 7 / 0.05), inset 0 0 0 1px var(--color-ink-100); }
 
+/* --- Gerak loop card: checkpoints drawn as numbered stops joined by a line ---------------------- */
+.gerak-stop { position: relative; }
+.gerak-stop:not(:last-child)::after { position: absolute; top: 1.625rem; bottom: -0.5rem; left: 0.6875rem; width: 2px; border-radius: 1px; background: var(--color-ink-100); content: ''; }
+.gerak-stop.gerak-checkpoint-done:not(:last-child)::after { background: rgb(26 127 82 / 0.35); }
+
+/*
+ * Gerak loop card. A 3px bar in the loop's own map colour (teal walking, gold cycling) ties the card
+ * to its line on the map. The card holds buttons rather than being one link, so hover only firms the
+ * border and shadow; it does not lift. Focused (shown on map) and done-today states stay readable
+ * without colour alone: a ring, and the "Done today" badge.
+ */
+.loop-card { --loop: #23817d; transition: box-shadow 240ms var(--ease-soft), border-color 240ms var(--ease-soft); }
+.loop-card.is-cycle { --loop: var(--color-gold-500); }
+.loop-card::before { position: absolute; inset: 0 0 auto; height: 3px; background: var(--loop); opacity: 0.85; content: ''; }
+.loop-card.is-complete { border-color: rgb(26 127 82 / 0.3); }
+.loop-card.is-complete::before { background: var(--color-success-600); }
+.loop-card.is-focused { border-color: var(--color-brand-300); box-shadow: 0 0 0 2px var(--color-brand-500), 0 12px 28px rgb(79 28 8 / 0.1); }
+@media (hover: hover) and (pointer: fine) {
+  .loop-card:not(.is-focused):hover { border-color: var(--color-brand-200); box-shadow: 0 10px 26px rgb(79 28 8 / 0.08); }
+}
+@media (prefers-reduced-motion: reduce) { .loop-card { transition: none; } }
+
+/* Gerak challenge card: the same gold bar as the reward badge; finished or unpayable ones step back. */
+.challenge-card { transition: box-shadow 240ms var(--ease-soft), border-color 240ms var(--ease-soft); }
+.challenge-card::before { position: absolute; inset: 0 0 auto; height: 3px; background: var(--color-gold-500); opacity: 0.85; content: ""; }
+.challenge-card.is-quiet::before { background: var(--color-ink-300); }
+.challenge-card.is-quiet > :not(:first-child) { opacity: 0.8; }
+@media (hover: hover) and (pointer: fine) {
+  .challenge-card:hover { border-color: var(--color-gold-500); box-shadow: 0 10px 26px rgb(79 28 8 / 0.08); }
+}
+@media (prefers-reduced-motion: reduce) { .challenge-card { transition: none; } }
+
+/*
+ * --- Gerak motion (Track, Loops and About tabs) ---------------------------------------------------
+ * Calm, one-time and purposeful, on the same --ease-soft curve as the rest of SimeTown: nothing
+ * loops forever, nothing moves under the pointer of a form, and hover effects are kept to things
+ * that can be clicked. The global reduced-motion rule turns all of it off.
+ */
+
+/* A tab's content settles in with a short 8px rise each time it is chosen. */
+.gerak-tab-in { animation: rise 280ms var(--ease-soft) both; }
+
+/* Progress bars on loop and challenge cards fill from the left as the card arrives (and wait while it is still below the fold). */
+:is(.loop-card, .challenge-card) [role='progressbar'] > div { transform-origin: left center; animation: bar-grow 1s var(--ease-soft) 220ms both; }
+.reveal[data-visible='false'] :is(.loop-card, .challenge-card) [role='progressbar'] > div { animation: none; transform: scaleX(0); }
+
+/* The card's colour bar firms up on hover; the checkpoint line of stops follows it. */
+.loop-card::before, .challenge-card::before { transform-origin: top; transition: transform 240ms var(--ease-soft), opacity 240ms var(--ease-soft); }
+@media (hover: hover) and (pointer: fine) {
+  .loop-card:hover::before, .challenge-card:hover::before { opacity: 1; transform: scaleY(1.34); }
+}
+
+/* Icons inside buttons lean towards what the button does: up for the map, out for directions. */
+.gerak-icon-up, .gerak-icon-out { transition: transform 220ms var(--ease-soft); }
+@media (hover: hover) and (pointer: fine) {
+  .btn:hover .gerak-icon-up { transform: translateY(-2px); }
+  .gerak-link-btn:hover .gerak-icon-out { transform: translate(2px, -2px); }
+}
+
+/* Checkpoint stops on a loop card arrive one after another, once the card is in view. */
+.motion-gerak .gerak-stop { animation-delay: calc(80ms + var(--i, 0) * 60ms); }
+.reveal[data-visible='false'] .gerak-stop { animation: none; opacity: 0; }
+
+/* The poster strip comes alive while you type a code: a firmer border and a solid icon tile. */
+.gerak-scan { transition: border-color 220ms var(--ease-soft), box-shadow 220ms var(--ease-soft); }
+.gerak-scan-icon { transition: background-color 220ms var(--ease-soft), color 220ms var(--ease-soft); }
+.gerak-scan:focus-within { border-color: var(--color-brand-300); box-shadow: 0 0 0 3px rgb(232 111 32 / 0.12), 0 10px 26px rgb(79 28 8 / 0.06); }
+.gerak-scan:focus-within .gerak-scan-icon { background-color: var(--color-brand-700); color: #fff; }
+
+/* The built-in map's loop lines fade and thicken smoothly when a loop is highlighted. */
+.gerak-map-line { transition: opacity 320ms var(--ease-soft), stroke-width 320ms var(--ease-soft); }
+
+/* About: the Good to know tiles are buttons, so they lift, and their icon tile turns solid. */
+.gerak-tile { transition: transform 220ms var(--ease-soft), box-shadow 220ms var(--ease-soft), border-color 220ms var(--ease-soft); }
+.gerak-tile-icon { transition: background-color 200ms var(--ease-soft), color 200ms var(--ease-soft), transform 260ms var(--ease-soft); }
+@media (hover: hover) and (pointer: fine) {
+  .gerak-tile:hover { transform: translateY(-3px); border-color: var(--color-brand-300); box-shadow: 0 12px 28px rgb(79 28 8 / 0.10); }
+  .gerak-tile:hover .gerak-tile-icon { background-color: var(--color-brand-700); color: #fff; transform: scale(1.06); }
+}
+.gerak-tile:active { transform: translateY(-1px) scale(0.99); }
+.gerak-tile:focus-visible { outline: 2px solid var(--color-brand-500); outline-offset: 3px; }
+
+/* About: the step numbers and their text come in one after another as the list scrolls into view. */
+.gerak-step { animation: checkpoint-in 360ms var(--ease-soft) both; animation-delay: calc(120ms + var(--i, 0) * 90ms); }
+.reveal[data-visible='false'] .gerak-step { animation: none; opacity: 0; }
+
+/* About illustration, played once: the loop draws itself, the checkpoints tick, the walker and cyclist move along. */
+.gerak-ill-path { stroke-dasharray: 1; stroke-dashoffset: 0; animation: gerak-draw 1400ms var(--ease-soft) 200ms both; }
+/* The dashed cycling route keeps its own dashes, so it fades in instead of drawing. */
+.gerak-ill-fade { animation: fade-in 900ms var(--ease-soft) 600ms both; }
+.gerak-ill-cp { transform-box: fill-box; transform-origin: center bottom; animation: section-pop 420ms var(--ease-soft) both; animation-delay: calc(900ms + var(--i, 0) * 160ms); }
+.gerak-ill-walker { animation: gerak-walk 1800ms var(--ease-soft) 500ms both; }
+.gerak-ill-cyclist { animation: gerak-ride 1800ms var(--ease-soft) 650ms both; }
+@keyframes gerak-draw { from { stroke-dashoffset: 1; } }
+@keyframes gerak-walk { from { transform: translate(118px, 104px); opacity: 0; } 20% { opacity: 1; } to { transform: translate(150px, 96px); } }
+@keyframes gerak-ride { from { transform: translate(208px, 140px); opacity: 0; } 20% { opacity: 1; } to { transform: translate(268px, 132px); } }
+
+/* Cards wrapped in <Reveal> on Gerak already rise in; they skip the global scroll-driven reveal so they do not rise twice. */
+@supports (animation-timeline: view()) {
+  html[data-signed-in] #main .motion-gerak .reveal .glass-surface { animation: none; }
+}
+
 /* --- Material ring (Kitar "Recycled this month"): slices sweep in, then react to hover/focus ---- */
 .material-slice { transition: stroke-width 220ms var(--ease-soft), opacity 220ms var(--ease-soft); }
 .material-slice.is-dim { opacity: 0.3; }
@@ -1306,6 +1408,61 @@ html[data-signed-in] { scroll-behavior: smooth; scroll-padding-top: 5.5rem; scro
   50% { box-shadow: 0 0 0 8px rgb(217 26 50 / 0); }
 }
 
+/*
+ * Zones on alert. A warning reads in red as well, so people take it seriously; danger stays a clear
+ * step stronger (darker band, faster pulse) so the two levels are never confused. Normal zones stay
+ * calm, so alerts stand out by contrast. The global reduced-motion rule stops every pulse and sweep.
+ */
+.zone-card.is-warning {
+  box-shadow: 0 0 0 1px rgb(217 26 50 / 0.12), 0 12px 30px rgb(185 18 41 / 0.10);
+  animation: card-in 600ms var(--ease-soft) both, zone-breathe 3.2s ease-in-out 900ms infinite;
+}
+.zone-card.is-danger { animation: card-in 600ms var(--ease-soft) both, zone-alarm 1.4s ease-in-out 800ms infinite; }
+@keyframes zone-breathe {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(217 26 50 / 0.22), 0 12px 30px rgb(185 18 41 / 0.10); }
+  50% { box-shadow: 0 0 0 6px rgb(217 26 50 / 0), 0 16px 36px rgb(185 18 41 / 0.16); }
+}
+
+/* The band across the top of an alert card: what is happening and the one thing to do. */
+.zone-alert-band { background-image: linear-gradient(100deg, var(--color-accent-600) 0%, var(--color-accent-500) 100%); }
+.zone-card.is-danger .zone-alert-band { background-image: linear-gradient(100deg, #800d1c 0%, var(--color-accent-700) 100%); }
+/* A sheen crosses the band once as the card arrives, and again on hover, to draw the eye without nagging. */
+.zone-alert-band::after {
+  position: absolute; inset: 0; content: ''; pointer-events: none;
+  background: linear-gradient(105deg, transparent 30%, rgb(255 255 255 / 0.28) 50%, transparent 70%);
+  transform: translateX(-120%);
+  animation: zone-sheen 1.3s var(--ease-soft) 700ms both;
+}
+@keyframes zone-sheen { to { transform: translateX(120%); } }
+@media (hover: hover) and (pointer: fine) {
+  .zone-card.is-alert:hover .zone-alert-band::after { animation: zone-sheen 900ms var(--ease-soft) both; }
+}
+/* The warning icon sends out a soft ring, slower for a warning and quicker for danger. */
+.zone-alert-icon::after {
+  position: absolute; inset: 0; border-radius: 9999px; content: ''; pointer-events: none;
+  box-shadow: 0 0 0 0 rgb(255 255 255 / 0.55);
+  animation: zone-ring 2s ease-out infinite;
+}
+.zone-card.is-danger .zone-alert-icon::after { animation-duration: 1.2s; }
+@keyframes zone-ring { to { box-shadow: 0 0 0 10px rgb(255 255 255 / 0); } }
+/* A live dot beside the alert title. */
+.zone-alert-dot { width: 7px; height: 7px; border-radius: 9999px; background: #fff; animation: zone-dot 1.6s ease-in-out infinite; }
+.zone-card.is-danger .zone-alert-dot { animation-duration: 0.9s; }
+@keyframes zone-dot { 50% { opacity: 0.25; transform: scale(0.7); } }
+
+/* On an alert card the official message and the safe route lead, and respond to the pointer. */
+.zone-message { transition: transform 220ms var(--ease-soft), box-shadow 220ms var(--ease-soft); }
+.zone-route { transition: background-color 200ms var(--ease-soft); }
+@media (hover: hover) and (pointer: fine) {
+  .zone-card.is-alert:hover { transform: translateY(-4px); box-shadow: 0 0 0 1px rgb(217 26 50 / 0.2), 0 22px 44px rgb(185 18 41 / 0.18); }
+  .zone-card.is-alert .zone-message:hover { transform: translateX(2px); box-shadow: 0 8px 20px rgb(185 18 41 / 0.10); }
+  .zone-card.is-alert .zone-route:hover { background-color: var(--color-accent-100); }
+}
+
+/* The water in a warning zone runs red-orange, between the calm brand orange and danger red. */
+.zone-card.is-warning .water-col .water-fill { background: linear-gradient(180deg, #f0735f, var(--color-accent-500)); }
+.zone-card.is-warning .water-col .water-wave path { fill: #f0735f; }
+
 .water-col .water-fill {
   height: var(--level);
   background: linear-gradient(180deg, var(--color-brand-400), var(--color-brand-600));
@@ -1771,6 +1928,40 @@ dialog.flash-alert[open] {
   border-color: var(--color-accent-600);
   box-shadow: 0 0 0 4px var(--color-accent-100);
 }
+
+/* --- Lapor → Home service reports: a card opens to show its progress --------------- */
+/* The panel unfolds by its own height (no measuring); closed, it takes no space and no focus (inert). */
+.hs-report { transition: box-shadow 220ms var(--ease-soft), border-color 220ms var(--ease-soft), translate 220ms var(--ease-soft); }
+.hs-report.is-open { border-color: var(--color-brand-200); box-shadow: 0 12px 32px rgb(79 28 8 / 0.08); }
+.hs-report-head { transition: background-color 200ms var(--ease-soft); }
+.hs-report-icon { transition: background-color 200ms var(--ease-soft), color 200ms var(--ease-soft), scale 200ms var(--ease-soft); }
+.hs-report.is-open .hs-report-icon { background: var(--color-brand-600); color: #fff; }
+.hs-report-panel {
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 360ms var(--ease-soft), opacity 260ms var(--ease-soft);
+}
+.hs-report.is-open .hs-report-panel { grid-template-rows: 1fr; opacity: 1; }
+.hs-link svg { transition: translate 180ms var(--ease-soft); }
+@media (hover: hover) and (pointer: fine) {
+  .hs-report:not(.is-open):hover { translate: 0 -2px; border-color: var(--color-ink-300); box-shadow: 0 10px 28px rgb(79 28 8 / 0.08); }
+  .hs-report-head:hover { background: color-mix(in srgb, var(--color-brand-50) 50%, transparent); }
+  .hs-report-head:hover .hs-report-icon { scale: 1.06; }
+  .hs-link:hover svg { translate: 3px 0; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  /* The progress bar fills step by step once; on opening, steps and messages arrive in turn and the done line draws down. */
+  html[data-signed-in] .hs-segment.bg-success-600 { transform-origin: left center; animation: hs-fill 520ms var(--ease-soft) both; animation-delay: calc(200ms + var(--i, 0) * 140ms); }
+  .hs-report.is-open .hs-step { animation: checkpoint-in 320ms var(--ease-soft) both; animation-delay: calc(120ms + var(--i, 0) * 80ms); }
+  .hs-report.is-open .report-progress-step.is-done:not(:last-child)::before { transform-origin: top; animation: hs-draw 420ms var(--ease-soft) both; animation-delay: calc(200ms + var(--i, 0) * 80ms); }
+  .hs-report.is-open .report-progress-step.is-done .report-progress-dot svg { animation: checkpoint-done 260ms var(--ease-soft) both; animation-delay: calc(160ms + var(--i, 0) * 80ms); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hs-report, .hs-report-head, .hs-report-icon, .hs-report-panel, .hs-link svg { transition: none; }
+  .hs-report:hover { translate: none; }
+}
+@keyframes hs-fill { from { transform: scaleX(0); } }
+@keyframes hs-draw { from { transform: scaleY(0); } }
 
 /* --- Parcels: the one-time collection code -------------------------------------- */
 .parcel-code {

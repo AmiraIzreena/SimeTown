@@ -74,6 +74,7 @@ export async function accessOverview(db: Db, actor: Actor, now: Date) {
     `SELECT
        (SELECT count(*)::int FROM access_incidents WHERE township_id = $1 AND created_at > $2::timestamptz - interval '30 days') AS incidents_30d,
        (SELECT count(*)::int FROM access_incidents WHERE township_id = $1 AND created_at > $2::timestamptz - interval '30 days' AND NOT (routing ? 'manual') AND routing ? 'partyId') AS auto_routed_30d,
+       (SELECT count(*)::int FROM access_incidents WHERE township_id = $1 AND created_at > $2::timestamptz - interval '30 days' AND NOT (routing ? 'manual') AND routing ? 'fallback') AS fallback_30d,
        (SELECT count(*)::int FROM access_dispatches d JOIN access_incidents i ON i.id = d.incident_id WHERE i.township_id = $1 AND d.status = 'PENDING' AND d.attempts > 0) AS dispatch_retrying,
        (SELECT count(*)::int FROM access_dispatches d JOIN access_incidents i ON i.id = d.incident_id WHERE i.township_id = $1 AND d.status = 'FAILED') AS dispatch_failed`,
     [townshipId, now],

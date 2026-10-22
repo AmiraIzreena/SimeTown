@@ -8,9 +8,10 @@ import { createRouter } from '@/server/http/router';
 import { deleteAccessProfile, getAccessProfile, inviteCarer, respondToCarerInvite, saveAccessProfile } from '@/server/modules/akses/service';
 import { decideDraft, runAgentClock, simulateSignal } from '@/server/modules/banjir/agent';
 import { recordLevel } from '@/server/modules/banjir/service';
+import { listCampaigns } from '@/server/modules/campaigns/service';
 import { setSponsorTier } from '@/server/modules/campaigns/tiers';
-import { addPoints, finishActivity, startActivity, trimNearEnds } from '@/server/modules/gerak/tracking';
-import { createLoop } from '@/server/modules/gerak/service';
+import { addPoints, distanceToPathM, finishActivity, startActivity, trimNearEnds } from '@/server/modules/gerak/tracking';
+import { checkIn, createLoop, gerakOverview, listLoopsForStaff, setLoopActive } from '@/server/modules/gerak/service';
 import { claimGuestSession, createMachine, itemText, joinFromScreen, machineScreen, simulateFinish, simulateItem, simulateStart } from '@/server/modules/kitar/machine';
 import { createKiosk } from '@/server/modules/kitar/service';
 import { runJob } from '@/server/modules/admin/service';
@@ -189,6 +190,122 @@ describe('Gerak map tracking (BR24)', () => {
     // The first and last 200 m are not kept.
     const stored = await one<{ route: [number, number][] }>(db, 'SELECT route FROM gerak_activities WHERE id = $1', [a.id]);
     expect(stored!.route.length).toBeLessThan(walk.length);
+  });
+
+  it('counts distance on a loop path even when the loop is not finished, and never the distance off it', async () => {
+    // A straight loop path about 445 m long, well away from the Map Loop. Its checkpoints are at the far end, so it is not finished.
+    const path: [number, number][] = [[P(0, 0.02).lat, P(0, 0.02).lng], [P(0.004, 0.02).lat, P(0.004, 0.02).lng]];
+    const { id: loopId } = await createLoop(db, w.staff, { name: 'Path Loop', description: 'Test', mode: 'WALK', distanceM: 445, checkpoints: ['Far A', 'Far B'] });
+    await db.query('UPDATE gerak_loops SET path = $2::jsonb WHERE id = $1', [loopId, JSON.stringify(path)]);
+    const cps = await db.query<{ id: string }>('SELECT id FROM gerak_checkpoints WHERE loop_id = $1 ORDER BY seq', [loopId]);
+    await db.query('UPDATE gerak_checkpoints SET lat = $2, lng = $3 WHERE id = $1', [cps[0]!.id, P(0.0035, 0.02).lat, P(0.0035, 0.02).lng]);
+    await db.query('UPDATE gerak_checkpoints SET lat = $2, lng = $3 WHERE id = $1', [cps[1]!.id, P(0.0039, 0.02).lat, P(0.0039, 0.02).lng]);
+    // A challenge that counts on-loop distance: 200 m earns 100 points.
+    await makeCampaign(w, { activity: 'GERAK_ON_LOOP', goalMetric: 'QUANTITY', goalTarget: 200, rewardPoints: 100 });
+
+    const resident = await makeResident(w);
+    const a = await startActivity(db, resident, { mode: 'WALK', simulated: false }, T0);
+    const t0 = T0.getTime();
+    // About 222 m north along the path (sent in two batches), then about 222 m east, off it.
+    const along = Array.from({ length: 5 }, (_, i) => ({ ...P(0.0005 * i, 0.02), acc: 8, t: t0 + 40_000 * (i + 1) }));
+    const off = Array.from({ length: 4 }, (_, j) => ({ ...P(0.002, 0.02 + 0.0005 * (j + 1)), acc: 8, t: t0 + 40_000 * (6 + j) }));
+    await addPoints(db, resident, a.id, along.slice(0, 3), new Date(t0 + 40_000 * 3));
+    const progress = await addPoints(db, resident, a.id, [...along.slice(3), ...off], new Date(t0 + 40_000 * 10));
+    expect(progress.ticked).toEqual([]);
+    expect(progress.onLoopM).toBeGreaterThan(200);
+    expect(progress.onLoopM).toBeLessThan(240);
+    expect(progress.validM).toBeGreaterThan(400);
+
+    const result = await finishActivity(db, resident, a.id, new Date(t0 + 40_000 * 11));
+    expect(result.loopsCompleted).toBe(0);
+    expect(result.onLoopM).toBe(progress.onLoopM);
+    expect(result.reward.points).toBe(100); // the on-loop challenge paid, with no finished loop
+    const recorded = await one<{ quantity: number; xp: number }>(db, `SELECT quantity, xp FROM xp_events WHERE user_id = $1 AND activity = 'GERAK_ON_LOOP'`, [resident.id]);
+    expect(recorded).toMatchObject({ quantity: progress.onLoopM, xp: 0 });
+    // "Distance this month" is the on-loop part only, not the stretch off the loop.
+    const overview = await gerakOverview(db, resident, new Date(t0 + 40_000 * 12));
+    expect(overview.monthMetres).toBe(progress.onLoopM);
+    expect(overview.monthLoops).toBe(0);
+  });
+
+  it('counts the set distance of a loop finished by scanning its posters, with no tracked trip', async () => {
+    const resident = await makeResident(w);
+    const codes = await db.query<{ code: string }>(`SELECT cp.code FROM gerak_checkpoints cp JOIN gerak_loops l ON l.id = cp.loop_id WHERE l.name = 'Map Loop' ORDER BY cp.seq`);
+    for (const { code } of codes) await checkIn(db, resident, code, T0);
+    const overview = await gerakOverview(db, resident, at(0.01));
+    expect(overview.monthLoops).toBe(1);
+    expect(overview.monthMetres).toBe(900); // the Map Loop's set distance
+  });
+
+  it('counts distance on the loops once for a kilometre challenge: partial, poster-only and tracked full loops', async () => {
+    // A straight ~445 m loop with a checkpoint at each end, so walking its length finishes it.
+    const path: [number, number][] = [[P(0, 0.04).lat, P(0, 0.04).lng], [P(0.004, 0.04).lat, P(0.004, 0.04).lng]];
+    const { id: loopId } = await createLoop(db, w.staff, { name: 'Ring Loop', description: 'Test', mode: 'WALK', distanceM: 445, checkpoints: ['Ring A', 'Ring B'] });
+    await db.query('UPDATE gerak_loops SET path = $2::jsonb WHERE id = $1', [loopId, JSON.stringify(path)]);
+    const cps = await db.query<{ id: string; code: string }>('SELECT id, code FROM gerak_checkpoints WHERE loop_id = $1 ORDER BY seq', [loopId]);
+    await db.query('UPDATE gerak_checkpoints SET lat = $2, lng = $3 WHERE id = $1', [cps[0]!.id, P(0, 0.04).lat, P(0, 0.04).lng]);
+    await db.query('UPDATE gerak_checkpoints SET lat = $2, lng = $3 WHERE id = $1', [cps[1]!.id, P(0.004, 0.04).lat, P(0.004, 0.04).lng]);
+    // A Green Mobility style challenge: kilometres of loops, a goal too far to pay out here.
+    const campaignId = await makeCampaign(w, { activity: 'GERAK_LOOP', goalMetric: 'QUANTITY', goalTarget: 50_000, rewardPoints: 100 });
+    const progressOf = async (r: Actor) => ((await listCampaigns(db, r, at(0.05))) as { id: string; my_progress: number }[]).find((c) => c.id === campaignId)!.my_progress;
+    const t0 = T0.getTime();
+    const walk = async (r: Actor, steps: number) => {
+      const a = await startActivity(db, r, { mode: 'WALK', simulated: false }, T0);
+      const points = Array.from({ length: steps }, (_, i) => ({ ...P(0.0005 * i, 0.04), acc: 8, t: t0 + 40_000 * (i + 1) }));
+      await addPoints(db, r, a.id, points, new Date(t0 + 40_000 * (steps + 1)));
+      return finishActivity(db, r, a.id, new Date(t0 + 40_000 * (steps + 2)));
+    };
+
+    // Tracked, the whole loop: counted once (its on-loop distance), not again as a finished loop.
+    const full = await makeResident(w);
+    const done = await walk(full, 9);
+    expect(done.loopsCompleted).toBe(1);
+    expect(await progressOf(full)).toBe(done.onLoopM);
+    expect(done.onLoopM).toBeGreaterThan(400);
+    expect(done.onLoopM).toBeLessThan(470);
+
+    // Tracked, half the loop: the part walked on it counts, though the loop is not finished.
+    const half = await makeResident(w);
+    const part = await walk(half, 5);
+    expect(part.loopsCompleted).toBe(0);
+    expect(await progressOf(half)).toBe(part.onLoopM);
+    expect(part.onLoopM).toBeGreaterThan(200);
+
+    // Posters only, no tracking: the loop's set distance.
+    const posters = await makeResident(w);
+    for (const { code } of cps) await checkIn(db, posters, code, T0);
+    expect(await progressOf(posters)).toBe(445);
+  });
+
+  it('hides a loop from residents and shows it again, everywhere at once, by an admin with a reason', async () => {
+    const { id: loopId } = await createLoop(db, w.staff, { name: 'Toggle Loop', description: 'Test', mode: 'WALK', distanceM: 500, checkpoints: ['T1', 'T2'] });
+    const codes = await db.query<{ code: string }>('SELECT code FROM gerak_checkpoints WHERE loop_id = $1 ORDER BY seq', [loopId]);
+    const resident = await makeResident(w);
+    const names = async () => ((await gerakOverview(db, resident, T0)).loops as unknown as { name: string }[]).map((l) => l.name);
+    expect(await names()).toContain('Toggle Loop');
+
+    // Township staff may not; an admin may, and the reason is audited.
+    await expect(setLoopActive(db, w.staff, loopId, { active: false, reason: 'Path flooded' }, T0)).rejects.toMatchObject({ status: 403 });
+    expect(await setLoopActive(db, w.admin, loopId, { active: false, reason: 'Path flooded' }, T0)).toMatchObject({ active: false, changed: true });
+    expect(await names()).not.toContain('Toggle Loop');
+    await expect(checkIn(db, resident, codes[0]!.code, T0)).rejects.toMatchObject({ status: 404 }); // its posters stop working
+    const audit = await one<{ detail: { reason: string } }>(db, `SELECT detail FROM audit_log WHERE action = 'LOOP_HIDDEN' AND entity_id = $1`, [loopId]);
+    expect(audit!.detail.reason).toBe('Path flooded');
+
+    // Shown again: back for residents, and its posters work.
+    await setLoopActive(db, w.admin, loopId, { active: true, reason: 'Path reopened' }, at(0.1));
+    expect(await names()).toContain('Toggle Loop');
+    expect((await checkIn(db, resident, codes[0]!.code, at(0.1))).checkpoint).toBe('T1');
+    const staffView = ((await listLoopsForStaff(db, w.admin)) as unknown as { id: string; lastChange: { action: string; reason: string } }[]).find((l) => l.id === loopId)!;
+    expect(staffView.lastChange).toMatchObject({ action: 'LOOP_SHOWN', reason: 'Path reopened' });
+  });
+
+  it('measures how far a position is from a loop path', () => {
+    const path: [number, number][] = [[3.05, 101.45], [3.05, 101.46]];
+    expect(distanceToPathM({ lat: 3.05, lng: 101.455 }, path)).toBeLessThan(1);
+    expect(distanceToPathM({ lat: 3.0502, lng: 101.455 }, path)).toBeGreaterThan(20);
+    expect(distanceToPathM({ lat: 3.0502, lng: 101.455 }, path)).toBeLessThan(25);
+    expect(distanceToPathM({ lat: 3.05, lng: 101.47 }, path)).toBeGreaterThan(1000); // beyond the end of the path
   });
 
   it('trims the stretch near home from both ends of a route', () => {

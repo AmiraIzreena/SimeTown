@@ -3464,7 +3464,8 @@
                       "JIMAT_READING",
                       "JIMAT_SAVER",
                       "GERAK_TRIP",
-                      "AKSES_UPDATE"
+                      "AKSES_UPDATE",
+                      "GERAK_ON_LOOP"
                     ]
                   },
                   "goalMetric": {
@@ -7628,6 +7629,43 @@
         "summary": "My bookings, open ones first",
         "description": "Signed-in RESIDENT.",
         "operationId": "getHomeServicesBookings",
+        "parameters": [],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/home-services/reports": {
+      "get": {
+        "tags": [
+          "SimeTown Home"
+        ],
+        "summary": "My private reports about home-service visits, open ones first",
+        "description": "Signed-in RESIDENT.",
+        "operationId": "getHomeServicesReports",
         "parameters": [],
         "security": [
           {
@@ -19006,6 +19044,87 @@
         }
       }
     },
+    "/api/v1/admin/gerak/loops/{loopId}/visibility": {
+      "post": {
+        "tags": [
+          "Gerak"
+        ],
+        "summary": "Show a loop to residents again, or hide it (township admin or SDP HQ; a reason is kept in the audit log). Every part of Gerak follows at once",
+        "description": "Signed-in TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "postAdminGerakLoopsLoopIdVisibility",
+        "parameters": [
+          {
+            "name": "loopId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "active": {
+                    "type": "boolean"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 300
+                  }
+                },
+                "required": [
+                  "active",
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
     "/api/v1/admin/gerak/loops/{loopId}/map": {
       "post": {
         "tags": [
@@ -22766,6 +22885,59 @@
         }
       }
     },
+    "/api/v1/admin/banjir/zones/{zoneId}/camera-photo": {
+      "post": {
+        "tags": [
+          "Banjir"
+        ],
+        "summary": "A drain photo (a CCTV stand-in, multipart field \"photo\") read by the camera reader (your model server or the hosted AI) and recorded as the camera signal. The photo is not stored",
+        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "postAdminBanjirZonesZoneIdCameraPhoto",
+        "parameters": [
+          {
+            "name": "zoneId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
     "/api/v1/admin/banjir/drafts/{messageId}": {
       "post": {
         "tags": [
@@ -26476,6 +26648,18 @@
                     "type": "integer",
                     "minimum": 1,
                     "maximum": 60
+                  },
+                  "defaultPartyId": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
                 }
               }

@@ -5,7 +5,9 @@ import { LEGAL } from "../src/shared/legal";
 import type { Actor } from "../src/server/auth/actor";
 import { ACTOR_COLUMNS, toActor } from "../src/server/auth/session";
 import { one, type Db } from "../src/server/db/client";
-import { createParty, updateParty } from "../src/server/modules/akses/config";
+import { createParty, getAccessPolicy, saveAccessPolicy, updateParty } from "../src/server/modules/akses/config";
+import { rerouteWaiting } from "../src/server/modules/akses/incidents";
+import { seedAccessRoutingDemo } from "./seed-access-routing";
 import { reportIssue } from "../src/server/modules/akses/incidents";
 import { createPlace, followPlace, inspectPlace, setPlaceParty, suggestPlace } from "../src/server/modules/akses/places";
 import {
@@ -739,6 +741,18 @@ export async function seedThirdEdition(
     await seedAccessParties(db, township.id, admin, staff);
     log("Akses+: responsible teams for existing places (the lift with a simulated contractor). Legacy blocked places wait in the exception queue.");
   }
+  // The catch-all team: problems no rule can place go to township operations at once instead of waiting, and
+  // anything already waiting is routed now (older demo databases had reports from before the teams existed).
+  if (!(await getAccessPolicy(db, township.id)).defaultPartyId) {
+    const ops = await one<{ id: string }>(db, `SELECT id FROM access_parties WHERE township_id = $1 AND kind = 'TOWNSHIP_OPERATIONS' AND active ORDER BY created_at LIMIT 1`, [township.id]);
+    if (ops) {
+      await saveAccessPolicy(db, admin, { defaultPartyId: ops.id }, now);
+      const sent = await rerouteWaiting(db, township.id, now);
+      log(`Akses+: township operations is the default team${sent ? `; ${sent} waiting report${sent === 1 ? ' was' : 's were'} sent to a team` : ''}.`);
+    }
+  }
+  // Two reports that show the routing paths: one sent to the default team, one that re-routed itself.
+  await seedAccessRoutingDemo(db, { now, log });
 
   // --- Assistant: one saved chat, so the history list has something in it -------------
   if (

@@ -331,10 +331,24 @@ describe('private reports', () => {
     // A note alone still reaches the resident.
     await home.updateServiceReport(db, w.staff, reportId, { status: 'NEW', staffNote: 'We have called the company and will update you tomorrow.' }, T0);
     expect(await one(db, `SELECT 1 FROM notifications WHERE user_id = $1 AND title = 'Update on your home service report'`, [resident.id])).toBeDefined();
+    // It opens this report in Lapor, already expanded.
+    expect(await one(db, `SELECT 1 FROM notifications WHERE user_id = $1 AND link = $2`, [resident.id, `/app/lapor?tab=home&report=${reportId}`])).toBeDefined();
 
     await home.updateServiceReport(db, w.staff, reportId, { status: 'CLOSED', staffNote: 'Spoke to the company; the worker was removed from township jobs.' }, T0);
     await expect(home.updateServiceReport(db, w.staff, reportId, { status: 'REVIEWING' }, T0)).rejects.toMatchObject({ code: 'REPORT_CLOSED' });
     expect((await home.getMyBooking(db, resident, id, T0)).reports[0]).toMatchObject({ status: 'CLOSED' });
+
+    // Lapor lists the resident's own reports with the staff reply; nobody else's.
+    const mine = await home.listMyServiceReports(db, resident);
+    expect(mine).toEqual([expect.objectContaining({ id: reportId, booking_id: id, status: 'CLOSED', worker_name: 'Ahmad Faizal', staff_note: 'Spoke to the company; the worker was removed from township jobs.' })]);
+    // Its history: the note-only update, then closed with a note; never who on the staff did it.
+    expect(mine[0]!.history).toEqual([
+      expect.objectContaining({ to: null, note: 'We have called the company and will update you tomorrow.' }),
+      expect.objectContaining({ to: 'CLOSED', note: 'Spoke to the company; the worker was removed from township jobs.' }),
+    ]);
+    expect(JSON.stringify(mine[0]!.history)).not.toContain(w.staff.id);
+    expect(await home.listMyServiceReports(db, await makeResident(w))).toEqual([]);
+    expect((await call('GET', '/home-services/reports', merchant)).status).toBe(403);
   });
 });
 

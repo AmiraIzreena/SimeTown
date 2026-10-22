@@ -1,4 +1,4 @@
-import type { FloodFaultReason, FloodSensorHealth, FloodSensorKind, FloodSensorSite, FloodSource, FloodStatus } from '@/shared/domain';
+import type { FloodFaultReason, FloodSensorHealth, FloodSensorKind, FloodSensorSite, FloodSource, FloodStatus, Role } from '@/shared/domain';
 
 /** The shapes the Flood dashboard reads from /admin/banjir/*. */
 
@@ -66,12 +66,32 @@ export interface AgentZone {
   };
   sensors: ZoneSensor[];
   event: { id: string; started_at: string; peak_status: FloodStatus; sms: number } | null;
+  trend: FloodTrend | null;
+}
+
+/** The early-warning estimate from the recent trend (server/modules/banjir/trend.ts). Advisory only. */
+export interface FloodTrend {
+  direction: 'RISING' | 'STEADY' | 'FALLING';
+  ratePctPerHour: number;
+  nextLine: 'WARNING' | 'DANGER' | null;
+  minutes: number | null;
+  readings: number;
+  method: 'LINEAR_TREND';
+}
+
+/** What each flood data source is today and where a real device or model connects. */
+export interface Integration {
+  sensors: { simulated: number; real: number };
+  camera: { photoReader: 'HOSTED_AI' | 'MODEL_SERVER' | null; modelServer: boolean; hostedAi: boolean };
+  forecast: { method: 'LINEAR_TREND' };
+  scheduler: 'DEV_CLOCK' | 'SCHEDULED_JOB';
 }
 
 export interface Agent {
   zones: AgentZone[];
   warningPct: number;
   dangerPct: number;
+  integration: Integration;
 }
 
 export interface SensorRow {
@@ -141,10 +161,12 @@ export interface EventRow {
 
 export interface EventReport {
   event: EventRow & { review_note: string | null; reviewer: string | null };
+  /** Residents on the priority list (as on the Priority help tab); help.tasks is how many someone was sent to. */
+  priorityResidents: number;
   durationMin: number | null;
   warningLeadMin: number | null;
-  timeline: { id: number; at: string; step: string; detail: Record<string, unknown>; actor_name: string | null }[];
-  messages: { id: string; level: FloodStatus; kind: string; what: string; todo: string; decision: string; sent_at: string; decided_by_name: string | null }[];
+  timeline: { id: number; at: string; step: string; detail: Record<string, unknown>; actor_name: string | null; actor_role: Role | null }[];
+  messages: { id: string; level: FloodStatus; kind: string; what: string; where_text: string | null; todo: string; decision: string; sent_at: string; decided_by_name: string | null; decided_by_role: Role | null }[];
   checkins: { residents: number; safe: number; need_help: number; within_30: number; ratePct: number | null; within30Pct: number | null };
   help: { tasks: number; reached: number; avg_reach_min: number | null };
   smsSimulated: number;

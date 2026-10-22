@@ -52,6 +52,10 @@ export const homeServiceRoutes = [
     handler: (c) => home.listMyBookings(c.db, c.actor, c.now),
   }),
   route({
+    method: 'GET', path: '/home-services/reports', tag: TAG, summary: 'My private reports about home-service visits, open ones first', auth: 'session', roles: ['RESIDENT'],
+    handler: (c) => home.listMyServiceReports(c.db, c.actor),
+  }),
+  route({
     method: 'GET', path: '/home-services/logbook', tag: TAG, summary: "The home logbook: jobs confirmed at my home, and services due again", auth: 'session', roles: ['RESIDENT'],
     handler: (c) => home.homeLogbook(c.db, c.actor, c.now),
   }),

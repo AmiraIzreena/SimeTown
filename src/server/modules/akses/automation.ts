@@ -1,12 +1,12 @@
 import { PLACE_KIND_LABELS, type PlaceKind } from '@/shared/domain';
 import { one, type Db } from '../../db/client';
 import { notify } from '../notifications';
-import { escalateAccess, type AccessIncident } from './incidents';
+import { escalateAccess, rerouteWaiting, type AccessIncident } from './incidents';
 import { deliverDispatches } from './integrations';
 
 /**
  * The Akses+ clock, run by the scheduler every few minutes (the `access` job).
- * It reminds a responsible party that has not acknowledged or fixed an
+ * It routes any incident still waiting for a team once one can take it; reminds a responsible party that has not acknowledged or fixed an
  * incident in time and escalates when the reminder did not help; asks a person
  * to inspect a claimed fix nobody has confirmed; delivers and retries messages
  * to parties' systems; and reminds inspectors when a place is due. Every
@@ -15,7 +15,9 @@ import { deliverDispatches } from './integrations';
  * resolves an incident, on its own.
  */
 export async function runAccessChecks(db: Db, now: Date, townshipId: string | null = null) {
-  const counts = { reminders: 0, escalations: 0, verificationStalled: 0, inspectionReminders: 0 };
+  // First, the safety net: anything still waiting for a team is routed if a team can now take it.
+  const rerouted = await rerouteWaiting(db, townshipId, now);
+  const counts = { rerouted, reminders: 0, escalations: 0, verificationStalled: 0, inspectionReminders: 0 };
   const candidates = await db.query<{ id: string }>(
     `SELECT id FROM access_incidents
       WHERE ($2::uuid IS NULL OR township_id = $2) AND status <> 'RESOLVED'

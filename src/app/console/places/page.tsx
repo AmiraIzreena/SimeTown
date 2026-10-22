@@ -2,22 +2,23 @@
 
 import { Text } from '@/components/ui/localized-text';
 
-import { Cpu, Footprints, MonitorSmartphone, Plus, Printer, QrCode as QrIcon, Recycle, Route } from 'lucide-react';
-import { useState, type CSSProperties, type FormEvent } from 'react';
+import { Cpu, Eye, EyeOff, Footprints, MapPin, MonitorSmartphone, Plus, Printer, QrCode as QrIcon, Recycle, Route, ShieldCheck, X } from 'lucide-react';
+import { useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, PageHeader, Stat } from '@/components/ui/card';
 import { Modal } from '@/components/ui/dialog';
 import { Async, EmptyState, SkeletonStats } from '@/components/ui/feedback';
-import { Input, Select, Textarea } from '@/components/ui/field';
+import { Checkbox, Input, Select, Textarea } from '@/components/ui/field';
+import { TownshipMap, type MapCheckpoint, type MapLoop } from '@/components/features/township-map';
 import { QrCode } from '@/components/ui/qr';
 import { TabPanel, Tabs } from '@/components/ui/tabs';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
-import { formatKg, formatKm, timeAgo } from '@/lib/format';
+import { formatDateTime, formatKg, formatKm, timeAgo } from '@/lib/format';
 import { useAction, useApi } from '@/lib/hooks';
 import type { Me } from '@/lib/types';
 import { useMinLoading } from '@/lib/use-min-loading';
-import { ADMINS } from '@/shared/domain';
+import { ADMINS, ROLE_LABELS } from '@/shared/domain';
 
 type Tab = 'machines' | 'kiosks' | 'loops' | 'patrol';
 interface Machine {
@@ -49,7 +50,34 @@ interface Loop {
   description: string;
   mode: 'WALK' | 'CYCLE';
   distance_m: number;
-  checkpoints: { id: string; seq: number; name: string; code: string }[];
+  /** Shown to residents on Gerak. A hidden loop cannot be scanned or tracked. */
+  active: boolean;
+  /** The route is drawn on the map, which tracking and distance on the loops need. */
+  mapped: boolean;
+  path: [number, number][];
+  /** The latest show or hide, from the audit log; null when it never changed in the console. */
+  lastChange: { action: 'LOOP_SHOWN' | 'LOOP_HIDDEN'; at: string; by: string | null; role: Me['role'] | null; reason: string | null } | null;
+  checkpoints: { id: string; seq: number; name: string; code: string; located: boolean; lat: number | null; lng: number | null; radius_m: number }[];
+}
+
+/** Which resident feature each kind of place belongs to, so Kitar, Gerak and the guards' rounds are never confused. */
+const MODULES = {
+  KITAR: { name: 'Kitar', what: 'Recycling', icon: Recycle, href: '/app/kitar', tone: 'success' as const },
+  GERAK: { name: 'Gerak', what: 'Walking & cycling', icon: Footprints, href: '/app/gerak', tone: 'brand' as const },
+  GUARDS: { name: 'Guards', what: 'Security rounds', icon: ShieldCheck, href: null, tone: 'neutral' as const },
+};
+type ModuleKey = keyof typeof MODULES;
+const TAB_MODULE: Record<Tab, ModuleKey> = { machines: 'KITAR', kiosks: 'KITAR', loops: 'GERAK', patrol: 'GUARDS' };
+
+/** A short line at the top of each tab: which feature these places belong to, and who uses them. */
+function ModuleNote({ module, children }: { module: ModuleKey; children: ReactNode }) {
+  const m = MODULES[module];
+  return (
+    <p className="mb-5 flex flex-wrap items-center gap-2 rounded-lg border border-ink-100 bg-white/70 px-4 py-3 text-sm text-ink-600">
+      <Badge tone={m.tone}><m.icon className="size-3.5" aria-hidden /><Text>{m.name}</Text></Badge>
+      <span className="min-w-0 flex-1"><Text>{children}</Text></span>
+    </p>
+  );
 }
 /** A poster to print: the QR opens the app with the code filled in. */
 interface Poster {
@@ -64,28 +92,40 @@ export default function PlacesPage() {
   const [poster, setPoster] = useState<Poster | null>(null);
   return (
     <>
-      <PageHeader title="Kiosks, trails & patrol points" description="Kiosk bins and recycling kiosks, walking and cycling loops, and guard patrol points. Each printed code proves someone was there." />
+      <PageHeader title="Kiosks, trails & patrol points" description="Places for three different features: Kitar recycling kiosks and bins, Gerak walking and cycling loops, and the guards’ patrol points. Each printed code proves someone was there." />
       <PlacesSummary onPick={setTab} />
       <Tabs<Tab>
         label="Places"
         value={tab}
         onChange={setTab}
         items={[
-          { key: 'machines', label: 'Kiosk bins' },
-          { key: 'kiosks', label: 'Recycling kiosks' },
-          { key: 'loops', label: 'Walking & cycling loops' },
-          { key: 'patrol', label: 'Patrol points' },
+          { key: 'machines', label: 'Kitar · Kiosk bins' },
+          { key: 'kiosks', label: 'Kitar · Recycling kiosks' },
+          { key: 'loops', label: 'Gerak · Loops' },
+          { key: 'patrol', label: 'Guards · Patrol points' },
         ]}
       />
       <TabPanel>
         {tab === 'machines' ? (
-          <Machines />
+          <>
+            <ModuleNote module={TAB_MODULE.machines}><Text>Smart bins with a scale at each Kitar kiosk. Residents recycle here from the Kitar page; each bin sends the weight by itself.</Text></ModuleNote>
+            <Machines />
+          </>
         ) : tab === 'kiosks' ? (
-          <Kiosks onPoster={setPoster} />
+          <>
+            <ModuleNote module={TAB_MODULE.kiosks}><Text>Where residents bring recycling. A kiosk poster opens the Kitar page. These are not Gerak checkpoints.</Text></ModuleNote>
+            <Kiosks onPoster={setPoster} />
+          </>
         ) : tab === 'loops' ? (
-          <Loops onPoster={setPoster} />
+          <>
+            <ModuleNote module={TAB_MODULE.loops}><Text>The walking and cycling loops residents see on Gerak. A checkpoint poster opens the Gerak page. Changes here change Gerak.</Text></ModuleNote>
+            <Loops onPoster={setPoster} />
+          </>
         ) : (
-          <Patrol onPoster={setPoster} />
+          <>
+            <ModuleNote module={TAB_MODULE.patrol}><Text>Points guards scan on their security rounds. Residents never see these, and they earn no points or XP.</Text></ModuleNote>
+            <Patrol onPoster={setPoster} />
+          </>
         )}
       </TabPanel>
 
@@ -119,13 +159,28 @@ function PlacesSummary({ onPick }: { onPick: (tab: Tab) => void }) {
   const online = m.filter((x) => x.status === 'ONLINE').length;
   const full = m.filter((x) => x.status === 'FULL').length;
   const offline = m.length - online - full;
-  const checkpoints = loops.data!.reduce((sum, l) => sum + l.checkpoints.length, 0);
+  // Only loops residents can use count, so this matches the Gerak page; hidden ones are noted beside it.
+  const live = loops.data!.filter((l) => l.active);
+  const hidden = loops.data!.length - live.length;
+  const checkpoints = live.reduce((sum, l) => sum + l.checkpoints.length, 0);
+  // Grouped by feature, with the feature named above its tiles.
+  const group = (module: ModuleKey, children: ReactNode, span = '') => (
+    <div className={cn('space-y-2', span)}>
+      <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-500">
+        {(() => { const Icon = MODULES[module].icon; return <Icon className="size-3.5" aria-hidden />; })()}
+        <Text>{`${MODULES[module].name} · ${MODULES[module].what}`}</Text>
+      </p>
+      <div className={cn('grid gap-4', span ? 'sm:grid-cols-2' : '')}>{children}</div>
+    </div>
+  );
   return (
-    <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-      <Stat label="Kiosk bins online" value={online} icon={Cpu} tone={full || offline ? 'warning' : 'success'} hint={`of ${m.length} · ${full} full · ${offline} offline`} onClick={() => onPick('machines')} />
-      <Stat label="Recycling kiosks" value={kiosks.data!.length} icon={Recycle} hint={`${formatKg(kiosks.data!.reduce((sum, k) => sum + k.total_g, 0))} collected`} onClick={() => onPick('kiosks')} />
-      <Stat label="Walking & cycling loops" value={loops.data!.length} icon={Footprints} hint={`${checkpoints} checkpoints`} onClick={() => onPick('loops')} />
-      <Stat label="Patrol points" value={points.data!.length} icon={Route} hint="Scanned by guards on their rounds" onClick={() => onPick('patrol')} />
+    <div className="mb-6 grid gap-x-4 gap-y-5 lg:grid-cols-4">
+      {group('KITAR', <>
+        <Stat label="Kiosk bins online" value={online} icon={Cpu} tone={full || offline ? 'warning' : 'success'} hint={`of ${m.length} · ${full} full · ${offline} offline`} onClick={() => onPick('machines')} />
+        <Stat label="Recycling kiosks" value={kiosks.data!.length} icon={Recycle} hint={`${formatKg(kiosks.data!.reduce((sum, k) => sum + k.total_g, 0))} collected`} onClick={() => onPick('kiosks')} />
+      </>, 'lg:col-span-2')}
+      {group('GERAK', <Stat label="Loops live on Gerak" value={live.length} icon={Footprints} hint={hidden ? `${checkpoints} checkpoints · ${hidden} hidden` : `${checkpoints} checkpoints`} onClick={() => onPick('loops')} />)}
+      {group('GUARDS', <Stat label="Patrol points" value={points.data!.length} icon={Route} tone="neutral" hint="Scanned by guards on their rounds" onClick={() => onPick('patrol')} />)}
     </div>
   );
 }
@@ -189,8 +244,189 @@ function Kiosks({ onPoster }: { onPoster: (poster: Poster) => void }) {
   );
 }
 
+/**
+ * The Gerak loops on the same map residents see (Google Maps when it is set up, the built-in map otherwise),
+ * for staff to review. Live loops are drawn as residents see them; hidden ones can be added to preview them
+ * before showing them again. "View on map" on a card highlights and frames that loop.
+ */
+function LoopsMap({ loops, focusId, focusKey, onClear }: { loops: Loop[]; focusId: string | null; focusKey: number; onClear: () => void }) {
+  const [withHidden, setWithHidden] = useState(false);
+  const focused = loops.find((l) => l.id === focusId) ?? null;
+  // A hidden loop appears only when asked for: with the switch, or when its own card asked to view it.
+  const shown = loops.filter((l) => l.active || withHidden || l.id === focusId);
+  const mapLoops: MapLoop[] = shown.filter((l) => l.path.length > 1).map((l) => ({ id: l.id, name: l.name, mode: l.mode, path: l.path }));
+  const mapCheckpoints: MapCheckpoint[] = shown.flatMap((l) =>
+    l.checkpoints.filter((cp) => cp.lat !== null && cp.lng !== null).map((cp) => ({ id: cp.id, loop_id: l.id, name: cp.name, lat: cp.lat!, lng: cp.lng!, radius_m: cp.radius_m })),
+  );
+  const hiddenCount = loops.filter((l) => !l.active).length;
+  return (
+    <Card id="loops-map" className="scroll-mt-24">
+      <CardHeader
+        title="Loops on the map"
+        description="What residents see on Gerak. Use View on map on a loop to check its route and checkpoints before printing posters or showing it again."
+      />
+      <div className="space-y-3 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="flex min-w-0 items-center gap-2 text-sm text-ink-600" role="status">
+            {focused ? (
+              <>
+                <Text>Showing </Text><span className="truncate font-semibold text-ink-900">{focused.name}</span>
+                {!focused.active && <Badge tone="warning"><EyeOff className="size-3.5" aria-hidden /><Text>Hidden from residents</Text></Badge>}
+              </>
+            ) : (
+              <Text>{withHidden ? 'All loops, including hidden ones' : 'Loops live on Gerak'}</Text>
+            )}
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            {hiddenCount > 0 && (
+              <Checkbox label={hiddenCount === 1 ? 'Include the hidden loop' : `Include ${hiddenCount} hidden loops`} checked={withHidden} onChange={(event) => setWithHidden(event.target.checked)} />
+            )}
+            {focused && (
+              <Button variant="secondary" size="sm" onClick={onClear}><X className="size-4" aria-hidden /><Text>Show all loops</Text></Button>
+            )}
+          </div>
+        </div>
+        <TownshipMap loops={mapLoops} checkpoints={mapCheckpoints} focusLoopId={focusId} viewKey={`${focusKey}:${withHidden}`} />
+      </div>
+    </Card>
+  );
+}
+
+/**
+ * Show a loop to residents again, or hide it: says plainly what changes for residents, and asks for a
+ * reason, which is kept in the audit log. Township admins and SDP HQ only (the server checks it too).
+ */
+function LoopVisibilityDialog({ loop, onClose, onDone }: { loop: Loop | null; onClose: () => void; onDone: (loopId: string) => void }) {
+  const [reason, setReason] = useState('');
+  const showing = loop ? !loop.active : false;
+  const save = useAction(
+    () => api.post(`/admin/gerak/loops/${loop!.id}/visibility`, { active: !loop!.active, reason: reason.trim() }),
+    {
+      success: showing ? 'The loop is live on Gerak again.' : 'The loop is hidden from residents.',
+      onSuccess: () => {
+        const id = loop!.id;
+        setReason('');
+        onDone(id);
+      },
+    },
+  );
+  return (
+    <Modal
+      open={loop !== null}
+      onClose={() => { setReason(''); onClose(); }}
+      title={showing ? 'Show this loop to residents?' : 'Hide this loop from residents?'}
+      description={loop?.name}
+      footer={
+        <>
+          <Button variant="secondary" onClick={() => { setReason(''); onClose(); }}><Text>Cancel</Text></Button>
+          <Button variant={showing ? 'primary' : 'danger'} pending={save.pending} disabled={reason.trim().length < 3} onClick={() => void save.run()}>
+            {showing ? <Eye className="size-4" aria-hidden /> : <EyeOff className="size-4" aria-hidden />}
+            <Text>{showing ? 'Show to residents' : 'Hide from residents'}</Text>
+          </Button>
+        </>
+      }
+    >
+      {loop && (
+        <div className="space-y-4 text-[15px] text-ink-700">
+          <ul className="list-disc space-y-1.5 pl-5">
+            {showing ? (
+              <>
+                <li><Text>It appears on the Gerak page and map for every resident at once.</Text></li>
+                <li><Text>Its checkpoint posters can be scanned, and tracked trips count it, including distance on the loop.</Text></li>
+                <li><Text>Print its posters from this page once it is live.</Text></li>
+              </>
+            ) : (
+              <>
+                <li><Text>It disappears from the Gerak page and map for every resident at once.</Text></li>
+                <li><Text>Its posters stop working, and trips no longer count it. What residents already earned stays.</Text></li>
+              </>
+            )}
+          </ul>
+          {showing && !loop.mapped && (
+            <p className="rounded-md bg-warning-50 px-3 py-2 text-sm text-warning-700"><Text>This loop has no drawn route, so only its posters will work until the route is drawn.</Text></p>
+          )}
+          <Textarea label="Reason" hint="Kept in the audit log with your name." value={reason} onChange={(event) => setReason(event.target.value)} rows={3} error={save.fields.reason} />
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+/**
+ * One Gerak loop for staff: whether residents see it, whether its route is drawn on the map (tracking and
+ * distance on the loops need it), and each checkpoint with its poster. A hidden loop shows no posters.
+ */
+function LoopCard({ loop, onPoster, onView, onToggle, focused }: { loop: Loop; onPoster: (poster: Poster) => void; onView: () => void; onToggle?: () => void; focused: boolean }) {
+  const unplaced = loop.checkpoints.filter((cp) => !cp.located).length;
+  const change = loop.lastChange;
+  return (
+    <Card className={cn('flex flex-col p-5 transition-[box-shadow,border-color] duration-200', !loop.active && 'border-dashed bg-ink-25/60', focused && 'border-brand-300 ring-2 ring-brand-500')}>
+      <div className="flex flex-wrap items-center gap-2">
+        {loop.active ? <Badge tone="success"><Text>Live on Gerak</Text></Badge> : <Badge><EyeOff className="size-3.5" aria-hidden /><Text>Hidden</Text></Badge>}
+        <Badge tone="brand"><Text>{loop.mode === 'CYCLE' ? 'Cycling' : 'Walking'}</Text></Badge>
+        <Badge><Text>{formatKm(loop.distance_m)}</Text></Badge>
+        {loop.mapped ? <Badge><MapPin className="size-3.5" aria-hidden /><Text>Route on the map</Text></Badge> : <Badge tone="warning"><Text>Route not drawn</Text></Badge>}
+      </div>
+      <h2 className="mt-3 text-[17px] font-semibold">{loop.name}</h2>
+      <p className="mt-1 text-[15px] text-ink-600">{loop.description}</p>
+      {loop.active && (!loop.mapped || unplaced > 0) && (
+        <p className="mt-3 rounded-md bg-warning-50 px-3 py-2 text-sm text-warning-700">
+          <Text>{!loop.mapped ? 'Without a drawn route, trips cannot tick checkpoints by GPS or count distance on this loop; only posters work.' : unplaced === 1 ? '1 checkpoint has no map location, so GPS cannot tick it.' : `${unplaced} checkpoints have no map location, so GPS cannot tick them.`}</Text>
+        </p>
+      )}
+      <ol className="mt-4 divide-y divide-ink-100 border-t border-ink-100">
+        {loop.checkpoints.map((cp) => (
+          <li key={cp.id} style={{ '--i': cp.seq } as CSSProperties} className="value-line -mx-2 flex items-center justify-between gap-3 rounded-md px-2 py-2.5 text-[15px]">
+            <span className="min-w-0 truncate">
+              <span className="mr-2 text-ink-500 tabular-nums"><Text>{cp.seq}</Text>.</span>
+              {cp.name}
+            </span>
+            {loop.active && (
+              <Button variant="ghost" size="sm" onClick={() => onPoster({ title: cp.name, subtitle: `${loop.name} · checkpoint ${cp.seq} of ${loop.checkpoints.length}`, code: cp.code, path: '/app/gerak?code=' })}>
+                <QrIcon className="size-4" aria-hidden /><Text>Poster</Text></Button>
+            )}
+          </li>
+        ))}
+      </ol>
+      {/* Who last showed or hid it, and why, from the audit log. */}
+      {change ? (
+        <p className="mt-3 text-xs text-ink-500">
+          <Text>{change.action === 'LOOP_SHOWN' ? 'Shown to residents' : 'Hidden'}</Text>
+          <Text>{` ${formatDateTime(change.at)}`}</Text>
+          {change.by && <><Text>{' by '}</Text><span className="font-medium text-ink-700">{change.by}</span>{change.role && <Text>{` (${ROLE_LABELS[change.role]})`}</Text>}</>}
+          {change.reason && <span className="block"><Text>Reason: </Text>“<Text>{change.reason}</Text>”</span>}
+        </p>
+      ) : !loop.active ? (
+        <p className="mt-3 text-xs text-ink-500"><Text>Hidden in a data update, before changes were made here.</Text></p>
+      ) : null}
+      <div className="mt-auto flex flex-wrap gap-2 border-t border-ink-100 pt-4">
+        <Button variant="secondary" size="sm" onClick={onView} disabled={!loop.mapped} title={loop.mapped ? undefined : 'This loop has no drawn route yet.'}>
+          <MapPin className="size-4" aria-hidden /><Text>View on map</Text></Button>
+        {onToggle && (
+          <Button variant={loop.active ? 'ghost' : 'secondary'} size="sm" onClick={onToggle}>
+            {loop.active ? <EyeOff className="size-4" aria-hidden /> : <Eye className="size-4" aria-hidden />}
+            <Text>{loop.active ? 'Hide from residents' : 'Show to residents'}</Text>
+          </Button>
+        )}
+      </div>
+    </Card>
+  );
+}
+
 function Loops({ onPoster }: { onPoster: (poster: Poster) => void }) {
   const loops = useApi<Loop[]>('/admin/gerak/loops');
+  const me = useApi<Me>('/me');
+  // Showing or hiding a loop changes what every resident sees, so it is for township admins and SDP HQ.
+  const canToggle = me.data ? ADMINS.includes(me.data.role) : false;
+  const [focusId, setFocusId] = useState<string | null>(null);
+  const [focusKey, setFocusKey] = useState(0);
+  const [toggling, setToggling] = useState<Loop | null>(null);
+  const viewOnMap = (id: string) => {
+    setFocusId(id);
+    setFocusKey((n) => n + 1);
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    document.getElementById('loops-map')?.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' });
+  };
   const [creating, setCreating] = useState(false);
   const create = useAction((body: Record<string, unknown>) => api.post('/admin/gerak/loops', body), {
     success: 'Loop created. Print a poster for each checkpoint.',
@@ -222,33 +458,41 @@ function Loops({ onPoster }: { onPoster: (poster: Poster) => void }) {
           list.length === 0 ? (
             <EmptyState title="No loops yet" action={<Button onClick={() => setCreating(true)}><Text>New loop</Text></Button>}><Text>Create a walking or cycling loop with two or more checkpoints.</Text></EmptyState>
           ) : (
-            <div className="stagger-in grid gap-4 lg:grid-cols-2">
-              {list.map((loop) => (
-                <Card key={loop.id} className="p-5">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge tone="brand"><Text>{loop.mode === 'CYCLE' ? 'Cycling' : 'Walking'}</Text></Badge>
-                    <Badge><Text>{formatKm(loop.distance_m)}</Text></Badge>
+            <div className="space-y-8">
+              <LoopsMap loops={list} focusId={focusId} focusKey={focusKey} onClear={() => setFocusId(null)} />
+              <div className="stagger-in grid gap-4 lg:grid-cols-2">
+                {list.filter((l) => l.active).map((loop) => (
+                  <LoopCard key={loop.id} loop={loop} onPoster={onPoster} onView={() => viewOnMap(loop.id)} onToggle={canToggle ? () => setToggling(loop) : undefined} focused={focusId === loop.id} />
+                ))}
+              </div>
+              {list.some((l) => !l.active) && (
+                <section aria-labelledby="hidden-loops" className="space-y-3">
+                  <div>
+                    <h2 id="hidden-loops" className="text-base font-semibold text-ink-900"><Text>Hidden from residents</Text></h2>
+                    <p className="text-sm text-ink-500"><Text>Kept for the record. Residents do not see these on Gerak, and their checkpoints cannot be scanned or tracked, so there are no posters to print.</Text></p>
                   </div>
-                  <h2 className="mt-3 text-[17px] font-semibold">{loop.name}</h2>
-                  <p className="mt-1 text-[15px] text-ink-600">{loop.description}</p>
-                  <ol className="mt-4 divide-y divide-ink-100 border-t border-ink-100">
-                    {loop.checkpoints.map((cp) => (
-                      <li key={cp.id} style={{ '--i': cp.seq } as CSSProperties} className="value-line -mx-2 flex items-center justify-between gap-3 rounded-md px-2 py-2.5 text-[15px]">
-                        <span className="min-w-0 truncate">
-                          <span className="mr-2 text-ink-500 tabular-nums"><Text>{cp.seq}</Text>.</span>
-                          {cp.name}
-                        </span>
-                        <Button variant="ghost" size="sm" onClick={() => onPoster({ title: cp.name, subtitle: `${loop.name} · checkpoint ${cp.seq} of ${loop.checkpoints.length}`, code: cp.code, path: '/app/gerak?code=' })}>
-                          <QrIcon className="size-4" aria-hidden /><Text>Poster</Text></Button>
-                      </li>
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    {list.filter((l) => !l.active).map((loop) => (
+                      <LoopCard key={loop.id} loop={loop} onPoster={onPoster} onView={() => viewOnMap(loop.id)} onToggle={canToggle ? () => setToggling(loop) : undefined} focused={focusId === loop.id} />
                     ))}
-                  </ol>
-                </Card>
-              ))}
+                  </div>
+                </section>
+              )}
             </div>
           )
         }
       </Async>
+
+      <LoopVisibilityDialog
+        loop={toggling}
+        onClose={() => setToggling(null)}
+        onDone={(loopId) => {
+          setToggling(null);
+          void loops.mutate();
+          setFocusId(loopId);
+          setFocusKey((n) => n + 1);
+        }}
+      />
 
       <Modal
         open={creating}

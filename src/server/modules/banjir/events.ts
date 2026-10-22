@@ -105,14 +105,15 @@ export async function eventReport(db: Db, actor: Actor, eventId: string, now: Da
   const end = event.ended_at ?? now;
   // Thirty minutes before the first alert shows the signals that led to it.
   const from = new Date(event.started_at.getTime() - 30 * 60_000);
-  const [timeline, messages, checkins, help, sms, signals] = await Promise.all([
+  const [timeline, messages, checkins, help, sms, signals, notified, priority] = await Promise.all([
     db.query(
-      `SELECT l.id, l.at, l.step, l.detail, u.full_name AS actor_name FROM flood_agent_log l LEFT JOIN users u ON u.id = l.actor_user_id
+      `SELECT l.id, l.at, l.step, l.detail, u.full_name AS actor_name, u.role AS actor_role FROM flood_agent_log l LEFT JOIN users u ON u.id = l.actor_user_id
         WHERE l.zone_id = $1 AND l.at BETWEEN $2 AND $3 AND l.step <> 'ASSESSED' ORDER BY l.at, l.id LIMIT 300`,
       [event.zone_id, from, end],
     ),
     db.query(
-      `SELECT m.id, m.level, m.kind, m.what, m.todo, m.decision, m.sent_at, u.full_name AS decided_by_name FROM flood_messages m LEFT JOIN users u ON u.id = m.decided_by
+      `SELECT m.id, m.level, m.kind, m.what, m.where_text, m.todo, m.decision, m.sent_at, u.full_name AS decided_by_name, u.role AS decided_by_role
+         FROM flood_messages m LEFT JOIN users u ON u.id = m.decided_by
         WHERE m.zone_id = $1 AND m.status = 'SENT' AND m.sent_at BETWEEN $2 AND $3 ORDER BY m.sent_at`,
       [event.zone_id, event.started_at, end],
     ),
@@ -129,9 +130,28 @@ export async function eventReport(db: Db, actor: Actor, eventId: string, now: Da
       `SELECT source, count(*)::int AS n, max(level_pct) AS max_pct FROM flood_signals WHERE zone_id = $1 AND created_at BETWEEN $2 AND $3 GROUP BY source ORDER BY source`,
       [event.zone_id, from, end],
     ),
+    // Everyone who actually received a flood alert or update for this zone during the event. Counted from the
+    // notifications themselves, so an event recorded before the count was kept (migration 028) still tallies.
+    one<{ n: number }>(
+      db,
+      `SELECT count(DISTINCT user_id)::int AS n FROM notifications
+        WHERE title IN ('Flood warning in ' || $1, 'Flood danger in ' || $1, 'Flood update for ' || $1) AND created_at BETWEEN $2 AND $3`,
+      [event.zone_name, event.started_at, end],
+    ),
+    // The same priority list the Priority help tab shows: residents who asked for priority help, or who said they need help.
+    one<{ n: number }>(
+      db,
+      `SELECT count(*)::int AS n FROM users u JOIN homes h ON h.id = u.home_id LEFT JOIN access_profiles p ON p.user_id = u.id
+        WHERE h.zone_id = $1 AND u.status = 'ACTIVE'
+          AND (p.priority_help OR EXISTS (SELECT 1 FROM flood_checkins c JOIN flood_alerts a ON a.id = c.alert_id WHERE a.event_id = $2 AND c.user_id = u.id AND c.status = 'NEED_HELP'))`,
+      [event.zone_id, event.id],
+    ),
   ]);
   return {
-    event: { ...event, township_id: undefined },
+    // People warned: the larger of the count kept when the alert went out and the people actually notified.
+    event: { ...event, township_id: undefined, people_warned: Math.max(event.people_warned, notified!.n) },
+    // Priority residents on the list, beside how many a guard or staff member has been sent to (help.tasks) and reached.
+    priorityResidents: priority!.n,
     durationMin: minutesBetween(event.started_at, end),
     warningLeadMin: event.first_danger_at ? minutesBetween(event.first_warning_at, event.first_danger_at) : null,
     timeline,

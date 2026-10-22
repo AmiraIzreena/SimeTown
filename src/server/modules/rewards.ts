@@ -4,6 +4,7 @@ import { earnAllowance, issueFromPool } from './ledger/points';
 import { getAccount } from './ledger/ledger';
 import { giveOfferPoints, offerPointsFor } from './offers/service';
 import { getSettings, startOf, type Settings } from './settings';
+import { isLoopDistanceGoal, LOOP_DISTANCE_ACTIVITIES, loopDistanceSql } from './gerak/distance';
 
 /**
  * The single door between "a resident did something good" and rewards.
@@ -101,6 +102,7 @@ interface LiveCampaign {
   id: string;
   title: string;
   funder: string;
+  activity: string;
   goal_metric: 'COUNT' | 'QUANTITY';
   goal_target: number;
   reward_points: number;
@@ -123,22 +125,30 @@ async function awardCampaigns(
   settings: Settings,
 ): Promise<{ points: number; fundedBy: string }[]> {
   if (settings.issuance_paused) return [];
+  // Gerak kilometre challenges count distance on the loops, from either kind of Gerak record
+  // (gerak/distance.ts), so a record of one kind also checks the kilometre challenges of the other.
+  const loopDistance = (LOOP_DISTANCE_ACTIVITIES as readonly string[]).includes(activity);
   const campaigns = await tx.query<LiveCampaign>(
-    `SELECT c.id, c.title, coalesce(s.name, 'Sime Darby Property') AS funder,
+    `SELECT c.id, c.title, coalesce(s.name, 'Sime Darby Property') AS funder, c.activity,
             c.goal_metric, c.goal_target, c.reward_points, c.per_person_cap, c.starts_at, c.ends_at
        FROM campaigns c LEFT JOIN sponsors s ON s.id = c.sponsor_id
-      WHERE c.township_id = $1 AND c.activity = $2 AND c.status = 'FUNDED' AND c.starts_at <= $3 AND c.ends_at > $3
+      WHERE c.township_id = $1 AND c.status = 'FUNDED' AND c.starts_at <= $3 AND c.ends_at > $3
+        AND (c.activity = $2 OR ($4::boolean AND c.goal_metric = 'QUANTITY' AND c.activity = ANY($5::text[])))
       ORDER BY c.created_at`,
-    [user.townshipId, activity, now],
+    [user.townshipId, activity, now, loopDistance, LOOP_DISTANCE_ACTIVITIES],
   );
   const given: { points: number; fundedBy: string }[] = [];
   for (const c of campaigns) {
+    // $2 is the activity, or the township timezone for a distance-on-the-loops goal.
+    const total = isLoopDistanceGoal(c.activity, c.goal_metric)
+      ? loopDistanceSql('e.user_id = $1', 'e.created_at >= $3 AND e.created_at < $4', '$2::text')
+      : `(SELECT coalesce(${c.goal_metric === 'COUNT' ? 'count(*)' : 'sum(quantity)'}, 0)::int FROM xp_events
+           WHERE user_id = $1 AND activity = $2 AND created_at >= $3 AND created_at < $4)`;
     const progress = await one<{ total: number; awarded: number }>(
       tx,
-      `SELECT (SELECT coalesce(${c.goal_metric === 'COUNT' ? 'count(*)' : 'sum(quantity)'}, 0)::int FROM xp_events
-                WHERE user_id = $1 AND activity = $2 AND created_at >= $3 AND created_at < $4) AS total,
+      `SELECT ${total} AS total,
               (SELECT count(*)::int FROM campaign_awards WHERE campaign_id = $5 AND user_id = $1) AS awarded`,
-      [user.id, activity, c.starts_at, c.ends_at, c.id],
+      [user.id, isLoopDistanceGoal(c.activity, c.goal_metric) ? settings.timezone : c.activity, c.starts_at, c.ends_at, c.id],
     );
     const due = Math.min(Math.floor(progress!.total / c.goal_target), c.per_person_cap);
     const pool = await getAccount(tx, 'FUNDER_POOL', { campaignId: c.id }, true);

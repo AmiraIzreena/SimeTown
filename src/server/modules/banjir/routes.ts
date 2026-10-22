@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { FLOOD_SENSOR_KINDS, FLOOD_SENSOR_SITES, FLOOD_TEST_PICTURES, STAFF } from '@/shared/domain';
 import { route, zId, zText } from '../../http/router';
+import { readForm, readPhoto } from '../../http/uploads';
+import { badRequest } from '../../errors';
 import * as agent from './agent';
 import * as events from './events';
 import { ingestReadings } from './ingest';
@@ -69,6 +71,17 @@ export const banjirRoutes = [
       z.object({ source: z.literal('RAIN'), rainMmHr: z.number().int().min(0).max(300) }),
     ]),
     handler: (c) => agent.simulateSignal(c.db, c.actor, c.params.zoneId!, c.body, c.now),
+  }),
+  route({
+    method: 'POST', path: '/admin/banjir/zones/:zoneId/camera-photo', tag: 'Banjir',
+    summary: 'A drain photo (a CCTV stand-in, multipart field "photo") read by the camera reader (your model server or the hosted AI) and recorded as the camera signal. The photo is not stored',
+    auth: 'session', roles: STAFF,
+    rateLimit: { limit: 30, windowSec: 60, by: 'user' },
+    handler: async (c) => {
+      const photo = await readPhoto(await readForm(c.req));
+      if (!photo) throw badRequest('Choose a photo of the measuring post.');
+      return agent.readCameraPhoto(c.db, c.actor, c.params.zoneId!, photo, c.now);
+    },
   }),
   route({
     method: 'POST', path: '/admin/banjir/drafts/:messageId', tag: 'Banjir', summary: 'One tap: send (optionally edited) or cancel a one-signal draft; a cancel or an edit needs a reason (BR21)', auth: 'session', roles: STAFF,

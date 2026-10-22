@@ -169,6 +169,10 @@ export async function saveAccessPolicy(q: Queryable, actor: Actor, changes: Part
     inspectionDays: { ...before.inspectionDays, ...changes.inspectionDays },
   };
   for (const t of Object.values(next.targets)) if (t.resolve < t.ack) throw ruleViolation('POLICY_INVALID', 'The time to resolve cannot be shorter than the time to acknowledge.');
+  // The default team must be one of this township's active organisations.
+  if (next.defaultPartyId && !(await one(q, 'SELECT 1 FROM access_parties WHERE id = $1 AND township_id = $2 AND active', [next.defaultPartyId, townshipId]))) {
+    throw ruleViolation('POLICY_INVALID', 'The default team must be an active organisation in this township.');
+  }
   await q.query(
     `INSERT INTO access_policies (township_id, policy, updated_by, updated_at) VALUES ($1, $2, $3, $4)
      ON CONFLICT (township_id) DO UPDATE SET policy = EXCLUDED.policy, updated_by = EXCLUDED.updated_by, updated_at = EXCLUDED.updated_at`,

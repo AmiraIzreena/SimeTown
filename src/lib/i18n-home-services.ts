@@ -342,11 +342,26 @@ export const homeServicesMalay: Record<string, string> = {
   'This business still has open bookings. They must finish first.': 'Perniagaan ini masih mempunyai tempahan terbuka. Tempahan itu mesti selesai dahulu.',
   'This shop has a live Shop Offer. It must end first.': 'Kedai ini mempunyai Tawaran Kedai yang aktif. Tawaran itu mesti tamat dahulu.',
   'This business is set up for home services only.': 'Perniagaan ini disediakan untuk perkhidmatan rumah sahaja.',
+
+  // Lapor: the resident's own home service reports
+  'Only the township team sees these reports. The company and the worker never do. To report a visit, open the booking in SimeTown Home.': 'Hanya pasukan perbandaran melihat laporan ini. Syarikat dan pekerja tidak pernah melihatnya. Untuk melaporkan lawatan, buka tempahan dalam SimeTown Home.',
+  "If something goes wrong on a home-service visit, report it from the booking. It will appear here with the township team's replies.": 'Jika berlaku masalah semasa lawatan perkhidmatan rumah, laporkannya daripada tempahan. Laporan itu akan dipaparkan di sini bersama balasan pasukan perbandaran.',
+  'Township team': 'Pasukan perbandaran',
+  'View booking': 'Lihat tempahan',
+  'See progress': 'Lihat kemajuan',
+  'Hide progress': 'Sembunyikan kemajuan',
+  Progress: 'Kemajuan',
+  Updates: 'Kemas kini',
+  'Next step': 'Langkah seterusnya',
+  'No reply from the township team yet.': 'Belum ada balasan daripada pasukan perbandaran.',
+  'Waiting for the township team to pick it up. You will be notified when they do.': 'Menunggu pasukan perbandaran mengambilnya. Anda akan dimaklumkan apabila mereka berbuat demikian.',
+  'The township team is looking into it. You will be notified of each update.': 'Pasukan perbandaran sedang menelitinya. Anda akan dimaklumkan setiap kemas kini.',
 };
 
 /** Templates: the values in braces (names, amounts, counts) stay as they are. */
 export const homeServicesTemplates: readonly (readonly [string, string])[] = [
   ['{0} companies', '{0} syarikat'],
+  ['{0} report', '{0} laporan'],
   ['{0} jobs done in SimeTown', '{0} kerja siap di SimeTown'],
   ['{0} out of 5', '{0} daripada 5'],
   ['{0} reports · {1} completed jobs', '{0} laporan · {1} kerja selesai'],

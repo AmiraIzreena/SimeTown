@@ -39,15 +39,25 @@ interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
   pending?: boolean;
   /** Renders a link that looks like a button. */
   href?: string;
+  /** With `href`: opens the page in a new browser tab, leaving this one where it is. */
+  newTab?: boolean;
   children: ReactNode;
 }
 
-export function Button({ variant = 'primary', size = 'md', pending, href, className, children, disabled, ...rest }: Props) {
+export function Button({ variant = 'primary', size = 'md', pending, href, newTab, className, children, disabled, ...rest }: Props) {
   // A submit button stays off until the page is interactive. Otherwise a fast tap could make the
   // browser submit the form itself, putting its fields (a password, say) in the address bar.
   const notReady = !useHydrated() && rest.type === 'submit';
   // btn / btn-<variant> let signed-in screens add the brand shadow and sheen (globals.css).
   const classes = cn('btn', `btn-${variant}`, base, variants[variant], sizes[size], className);
+  if (href && newTab) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" className={classes}>
+        <Text>{children}</Text>
+        <span className="sr-only"><Text>(opens in a new tab)</Text></span>
+      </a>
+    );
+  }
   if (href) {
     return (
       <Link href={href} className={classes}>

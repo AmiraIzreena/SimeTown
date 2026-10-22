@@ -46,6 +46,7 @@ export const ACTIVITIES = [
   'TAMAN_WATERING',
   'TAMAN_SIGHTING',
   'AKSES_UPDATE',
+  'GERAK_ON_LOOP',
 ] as const;
 export type Activity = (typeof ACTIVITIES)[number];
 
@@ -62,6 +63,7 @@ export const CAMPAIGN_ACTIVITIES = [
   'JIMAT_SAVER',
   'GERAK_TRIP',
   'AKSES_UPDATE',
+  'GERAK_ON_LOOP',
 ] as const satisfies readonly Activity[];
 
 export const POST_TYPES = ['EVENT', 'HELP', 'GIVE', 'LEND'] as const;

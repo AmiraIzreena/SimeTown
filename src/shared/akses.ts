@@ -167,6 +167,12 @@ export interface AccessPolicy {
   photoRequired: AccessCategory[];
   /** Days between routine inspections, by kind of place (risk-based: lifts most often). */
   inspectionDays: Record<PlaceKind, number>;
+  /**
+   * The catch-all team, tried last: a problem no rule can place (nobody recorded for the place, no team of
+   * the right kind, or more than one) goes here at once instead of waiting, marked so the missing ownership
+   * gets fixed. Null: such problems wait in the console for an admin.
+   */
+  defaultPartyId: string | null;
 }
 
 export const DEFAULT_ACCESS_POLICY: AccessPolicy = {
@@ -184,6 +190,7 @@ export const DEFAULT_ACCESS_POLICY: AccessPolicy = {
   misinformation: 2,
   photoRequired: ['OBSTRUCTION', 'PARKING_OBSTRUCTION', 'DAMAGED', 'ROUTE_INACCESSIBLE'],
   inspectionDays: { LIFT: 90, ACCESSIBLE_TOILET: 90, RAMP: 180, STEP_FREE_ROUTE: 180, OKU_PARKING: 365, SEATING: 365 },
+  defaultPartyId: null,
 };
 
 /**

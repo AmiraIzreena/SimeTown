@@ -4,6 +4,7 @@ import { floodInsights } from '../banjir/events';
 import { floatPosition } from '../ledger/finance';
 import { pledgeSummary } from '../offers/service';
 import { getSettings } from '../settings';
+import { loopDistanceSql } from '../gerak/distance';
 
 /** Activities of features in use today. Archived ones (Taman, Jimat) keep their history but are not reported. */
 const INSIGHT_ACTIVITIES = ['JIRAN_EVENT', 'JIRAN_HELP', 'KONGSI_SHARE', 'LAPOR_REPORT', 'GERAK_CHECKIN', 'GERAK_LOOP', 'GERAK_TRIP', 'KITAR_DROPOFF', 'AKSES_UPDATE'];
@@ -35,11 +36,11 @@ export async function insightsOverview(db: Db, actor: Actor, now: Date) {
                 WHERE d.source = 'LIVE' AND ($1::uuid IS NULL OR k.township_id = $1) AND d.created_at >= ${since}) AS recycled_g,
               (SELECT count(*)::int FROM kitar_dropoffs d JOIN kitar_kiosks k ON k.id = d.kiosk_id
                 WHERE d.source = 'LIVE' AND ($1::uuid IS NULL OR k.township_id = $1) AND d.created_at >= ${since}) AS drop_offs,
-              (SELECT coalesce(sum(e.quantity), 0)::int FROM xp_events e JOIN users u ON u.id = e.user_id
-                WHERE e.activity = 'GERAK_LOOP' AND ($1::uuid IS NULL OR u.township_id = $1) AND e.created_at >= ${since}) AS moved_m,
+              -- Distance on the township loops, the same measure as the resident Gerak page (see gerak/distance.ts).
+              ${loopDistanceSql('e.user_id IN (SELECT id FROM users WHERE ($1::uuid IS NULL OR township_id = $1))', `e.created_at >= ${since}`, '$3')} AS moved_m,
               (SELECT count(*)::int FROM xp_events e JOIN users u ON u.id = e.user_id
                 WHERE e.activity = 'GERAK_LOOP' AND ($1::uuid IS NULL OR u.township_id = $1) AND e.created_at >= ${since}) AS loops`,
-      [t, now],
+      [t, now, tz],
     ),
     one(
       db,
@@ -105,7 +106,8 @@ export async function insightsOverview(db: Db, actor: Actor, now: Date) {
     db.query(
       `SELECT d.day::text AS day,
               (SELECT count(*)::int FROM xp_events e JOIN users u ON u.id = e.user_id
-                WHERE ($1::uuid IS NULL OR u.township_id = $1) AND (e.created_at AT TIME ZONE $3)::date = d.day) AS actions,
+                WHERE ($1::uuid IS NULL OR u.township_id = $1) AND (e.created_at AT TIME ZONE $3)::date = d.day
+                  AND e.activity <> 'GERAK_ON_LOOP') AS actions, -- recorded beside its trip, so not an action of its own
               (SELECT count(*)::int FROM sales s JOIN merchants m ON m.id = s.merchant_id
                 WHERE s.status = 'COMPLETED' AND ($1::uuid IS NULL OR m.township_id = $1) AND (s.completed_at AT TIME ZONE $3)::date = d.day) AS sales
          FROM (SELECT generate_series(($2::timestamptz AT TIME ZONE $3)::date - 13, ($2::timestamptz AT TIME ZONE $3)::date, interval '1 day')::date AS day) d

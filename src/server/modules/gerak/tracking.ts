@@ -20,9 +20,15 @@ import { notifyLoopDone } from './service';
  *   - after 10 minutes without moving the activity ends by itself.
  * On Finish, the first and last 200 m (usually near home) are cut from the
  * stored route, and the whole route is deleted after 30 days.
+ *
+ * On-loop distance: a fair-play stretch whose two ends are both within 30 m of a
+ * drawn loop path also counts as distance on the township loops, whether or not
+ * the loop is finished. Distance off the loops never does.
  */
 
 const POOR_FIX_M = 50;
+/** How far from a drawn loop path a position may be and still count as on the loop: phone GPS outdoors is usually within 5–15 m. */
+export const ON_LOOP_M = 30;
 const STILL_LIMIT_MS = 10 * 60_000;
 const NEAR_HOME_M = 200;
 const MAX_ROUTE_POINTS = 5000;
@@ -44,6 +50,28 @@ export function distanceM(a: { lat: number; lng: number }, b: { lat: number; lng
   const dLng = (b.lng - a.lng) * rad;
   const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLng / 2) ** 2;
   return 2 * 6_371_000 * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+/**
+ * The shortest distance in metres from a position to a path of [lat, lng] points. Each segment is
+ * measured on a flat projection around the position, which is exact enough over a township.
+ */
+export function distanceToPathM(p: { lat: number; lng: number }, path: [number, number][]): number {
+  const kx = 111_320 * Math.cos((p.lat * Math.PI) / 180);
+  const ky = 110_574;
+  const xy = ([lat, lng]: [number, number]) => [(lng - p.lng) * kx, (lat - p.lat) * ky] as const;
+  let best = Infinity;
+  for (let i = 1; i < path.length; i++) {
+    const [ax, ay] = xy(path[i - 1]!);
+    const [bx, by] = xy(path[i]!);
+    const dx = bx - ax;
+    const dy = by - ay;
+    const len2 = dx * dx + dy * dy;
+    // The nearest point of segment A–B to the position, which sits at the origin.
+    const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, -(ax * dx + ay * dy) / len2));
+    best = Math.min(best, Math.hypot(ax + t * dx, ay + t * dy));
+  }
+  return best;
 }
 
 /** Drops the stretch within `metres` of the start and of the end, so where someone lives is never stored. */
@@ -73,6 +101,7 @@ interface ActivityRow {
   distance_m: number;
   valid_m: number;
   too_fast_m: number;
+  on_loop_m: number;
   active_s: number;
   route: [number, number][];
   reward: ActionReward | null;
@@ -144,13 +173,19 @@ export async function addPoints(db: Db, actor: Actor, activityId: string, points
         WHERE l.township_id = $1 AND l.active AND cp.lat IS NOT NULL AND cp.lng IS NOT NULL`,
       [a.township_id],
     );
+    const loopPaths = (
+      await tx.query<{ path: [number, number][] }>(`SELECT path FROM gerak_loops WHERE township_id = $1 AND active AND jsonb_array_length(path) > 1`, [a.township_id])
+    ).map((l) => l.path);
+    const onLoop = (p: { lat: number; lng: number }) => loopPaths.some((path) => distanceToPathM(p, path) <= ON_LOOP_M);
     // Live tracking takes fixes up to now; demo playback runs on its own clock, within six hours of Start.
     const earliest = a.started_at.getTime() - 60_000;
     const latest = a.simulated ? a.started_at.getTime() + 6 * 3_600_000 : now.getTime() + 60_000;
 
     let last = a.last_lat !== null && a.last_lng !== null && a.last_point_at ? { lat: a.last_lat, lng: a.last_lng, t: a.last_point_at.getTime() } : null;
     let lastMoved = a.last_moved_at?.getTime() ?? a.started_at.getTime();
-    let { distance_m: distance, valid_m: valid, too_fast_m: tooFast, active_s: activeS, ignored_points: ignored, points_count: count } = a;
+    let { distance_m: distance, valid_m: valid, too_fast_m: tooFast, on_loop_m: onLoopM, active_s: activeS, ignored_points: ignored, points_count: count } = a;
+    // Whether the previous fix was on a loop; the first fix of a batch after a stored one is checked again.
+    let lastOnLoop = last ? onLoop(last) : false;
     const route = [...a.route];
     const ticked: string[] = [];
     let stillTooLong = false;
@@ -165,12 +200,14 @@ export async function addPoints(db: Db, actor: Actor, activityId: string, points
         continue;
       }
       count++;
+      const here = onLoop(p);
       if (last) {
         const d = distanceM(last, p);
         const dt = (p.t - last.t) / 1000;
         distance += d;
         if (d / dt <= maxMs) {
           valid += d;
+          if (here && lastOnLoop) onLoopM += d; // both ends on a loop path: the stretch was walked on the loop
           if (d >= 2) activeS += Math.min(dt, 60);
         } else {
           tooFast += d;
@@ -184,6 +221,7 @@ export async function addPoints(db: Db, actor: Actor, activityId: string, points
         lastMoved = p.t;
       }
       last = { lat: p.lat, lng: p.lng, t: p.t };
+      lastOnLoop = here;
       if (route.length < MAX_ROUTE_POINTS) route.push([Math.round(p.lat * 1e5) / 1e5, Math.round(p.lng * 1e5) / 1e5]);
       for (const cp of checkpoints) {
         if (distanceM(p, cp) <= cp.radius_m + Math.min(p.acc, 25)) {
@@ -198,10 +236,10 @@ export async function addPoints(db: Db, actor: Actor, activityId: string, points
 
     await tx.query(
       `UPDATE gerak_activities SET last_point_at = $2, last_lat = $3, last_lng = $4, last_moved_at = $5, points_count = $6, ignored_points = $7,
-              distance_m = $8, valid_m = $9, too_fast_m = $10, active_s = $11, route = $12::jsonb WHERE id = $1`,
-      [a.id, last ? new Date(last.t) : null, last?.lat ?? null, last?.lng ?? null, new Date(lastMoved), count, ignored, Math.round(distance), Math.round(valid), Math.round(tooFast), Math.round(activeS), JSON.stringify(route)],
+              distance_m = $8, valid_m = $9, too_fast_m = $10, active_s = $11, route = $12::jsonb, on_loop_m = $13 WHERE id = $1`,
+      [a.id, last ? new Date(last.t) : null, last?.lat ?? null, last?.lng ?? null, new Date(lastMoved), count, ignored, Math.round(distance), Math.round(valid), Math.round(tooFast), Math.round(activeS), JSON.stringify(route), Math.round(onLoopM)],
     );
-    const result = { distanceM: Math.round(distance), validM: Math.round(valid), tooFastM: Math.round(tooFast), activeS: Math.round(activeS), ignored, ticked, ended: false as boolean, reward: null as ActionReward | null };
+    const result = { distanceM: Math.round(distance), validM: Math.round(valid), tooFastM: Math.round(tooFast), onLoopM: Math.round(onLoopM), activeS: Math.round(activeS), ignored, ticked, ended: false as boolean, reward: null as ActionReward | null };
     if (stillTooLong) {
       // Ten minutes without moving: the activity ends by itself and is credited as it stood.
       const finished = await finishLocked(tx, (await lockActivity(tx, actor, activityId)), now);
@@ -231,6 +269,9 @@ async function finishLocked(tx: Queryable, a: ActivityRow, now: Date) {
 
   if (a.valid_m >= MIN_TRIP_M) {
     rewards.push(await recordAction(tx, { user, activity: 'GERAK_TRIP', ref: a.id, quantity: a.valid_m, now, offerEligible: true }));
+    // The part of the trip on the township loops, finished or not, for "Distance this month" and on-loop challenges.
+    // It earns no XP or offer points of its own (the trip above already did); only challenges that count it can pay.
+    if (a.on_loop_m > 0) rewards.push(await recordAction(tx, { user, activity: 'GERAK_ON_LOOP', ref: a.id, quantity: a.on_loop_m, now }));
   }
 
   // A loop counts when every one of its checkpoints was passed on this trip, in order (either direction).
@@ -268,6 +309,7 @@ async function finishLocked(tx: Queryable, a: ActivityRow, now: Date) {
     distanceM: a.distance_m,
     validM: a.valid_m,
     tooFastM: a.too_fast_m,
+    onLoopM: a.on_loop_m,
     activeS: a.active_s,
     loopsCompleted: loopsDone.length,
     countedAsTrip: a.valid_m >= MIN_TRIP_M,
@@ -279,7 +321,7 @@ async function finishLocked(tx: Queryable, a: ActivityRow, now: Date) {
 export async function myActivities(db: Db, actor: Actor) {
   const resident = requireVerifiedResident(actor);
   const rows = await db.query<ActivityRow>(
-    `SELECT id, mode, status, simulated, started_at, finished_at, distance_m, valid_m, too_fast_m, active_s, ignored_points, route, reward
+    `SELECT id, mode, status, simulated, started_at, finished_at, distance_m, valid_m, too_fast_m, on_loop_m, active_s, ignored_points, route, reward
        FROM gerak_activities WHERE user_id = $1 AND status <> 'ABANDONED' ORDER BY started_at DESC LIMIT 10`,
     [resident.id],
   );
