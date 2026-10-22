@@ -42,7 +42,7 @@ export function FloodTrend({ trend, className }: { trend: FloodTrendView | null 
         ) : (
           <Text>Estimate: the water level is steady.</Text>
         )}
-        <span className="block text-xs opacity-80"><Text>From the last 30 minutes of sensor readings. An estimate, not an alert.</Text></span>
+        <span className="block text-xs"><Text>From the last 30 minutes of sensor readings. An estimate, not an alert.</Text></span>
       </span>
     </p>
   );

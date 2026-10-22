@@ -3,9 +3,9 @@
 import { Text } from '@/components/ui/localized-text';
 
 import { Accessibility, Bell, BellOff, HeartHandshake, Lock, MapPin, Plus, Trash2, TriangleAlert, UserRound, Volume2 } from 'lucide-react';
-import { useContext, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { AvailabilityBadge, IncidentStatusBadge, PhotoField, VerificationBadge, availabilityHint, categoryLabel, formWith } from '@/components/features/access-bits';
-import { AksesViewContext, AksesWizard, type AksesProfile } from '@/components/features/akses-mode';
+import { AksesWizard, useAksesMode, type AksesProfile } from '@/components/features/akses-mode';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, PageHeader } from '@/components/ui/card';
 import { ConfirmDialog, Modal } from '@/components/ui/dialog';
@@ -83,7 +83,7 @@ export default function AksesPage() {
   const [carerCode, setCarerCode] = useState('');
   const [wizardOpen, setWizardOpen] = useState(false);
   const [wizardStep, setWizardStep] = useState(0);
-  const viewOverride = useContext(AksesViewContext);
+  const akses = useAksesMode();
 
   const p = draft ?? profile.data;
   const edit = (change: Partial<AksesProfile>) => p && setDraft({ ...p, ...change });
@@ -174,7 +174,8 @@ export default function AksesPage() {
   });
 
   const needsConsent = Boolean(p && (p.needs.length > 0 || p.priorityHelp) && !profile.data?.consentAt);
-  const guided = viewOverride ?? Boolean(profile.data?.simpleMode || profile.data?.needs.length);
+  // Simple Mode asks one question at a time; the full form is always the same otherwise.
+  const guided = akses.guided;
 
   return (
     <>

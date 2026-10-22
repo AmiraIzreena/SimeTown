@@ -6,8 +6,8 @@ import {
   Accessibility, ArrowRight, Bike, Bot, CalendarClock, DoorOpen, Droplets, HandHeart, Inbox, Package, PiggyBank, Recycle, Sparkles, Tag, TriangleAlert, Wallet, type LucideIcon,
 } from 'lucide-react';
 import { LocalizedLink as Link } from '@/components/ui/localized-elements';
-import { useContext, useState } from 'react';
-import { AksesViewContext } from '@/components/features/akses-mode';
+import { useState } from 'react';
+import { readFullAppChoice, setFullAppChoice, useAksesMode } from '@/components/features/akses-mode';
 import { CampaignCard, PendingRedemption } from '@/components/features/rewards';
 import { SimpleHome } from '@/components/features/simple-mode';
 import { SponsoredBanner } from '@/components/features/sponsored';
@@ -150,36 +150,38 @@ function TodayCard({ wallet }: { wallet?: WalletOverview }) {
 export default function ResidentHome() {
   const t = useT();
   const me = useApi<Me>('/me');
-  const access = useApi<{ simpleMode: boolean }>('/me/access');
-  const viewOverride = useContext(AksesViewContext);
+  const akses = useAksesMode();
   const wallet = useApi<WalletOverview>('/wallet', { refreshInterval: 5_000 });
   const campaigns = useApi<Campaign[]>('/campaigns');
   const league = useApi<{ streets: { street: string; xp: number; mine: boolean }[] }>('/leagues/streets');
   const tenants = useApi<{ id: string; full_name: string }[]>('/household/requests');
-  const [fullApp, setFullApp] = useState(() => typeof window !== 'undefined' && window.sessionStorage.getItem('kita.fullApp') === '1');
+  const [fullApp, setFullApp] = useState(readFullAppChoice);
   const decideTenant = useAction((id: string, approve: boolean) => api.post(`/household/requests/${id}`, { approve }), {
     onSuccess: () => void tenants.mutate(),
     success: 'Saved.',
   });
   const firstName = me.data?.fullName.split(' ')[0];
 
-  // The top bar's Accessible / Standard view switch decides once used; until then, the saved Simple Mode does.
-  if ((viewOverride ?? access.data?.simpleMode) && !fullApp) {
-    return (
-      <SimpleHome
-        onFullApp={() => {
-          window.sessionStorage.setItem('kita.fullApp', '1');
-          setFullApp(true);
-        }}
-      />
-    );
+  const chooseFullApp = (on: boolean) => {
+    setFullAppChoice(on);
+    setFullApp(on);
+  };
+
+  // Simple Mode (saved in Akses+) shows the four-button home, until the resident asks for the full app this visit.
+  // The top bar's Accessible view switch only changes sizes, so it never turns this on or off.
+  if (akses.simple && !fullApp) {
+    return <SimpleHome onFullApp={() => chooseFullApp(true)} />;
   }
 
   return (
     <div className="space-y-8">
-      <header>
-        <p className="text-sm font-medium text-ink-500"><Text>{me.data?.township ?? ' '}</Text></p>
-        <h1 className="mt-1 text-2xl font-bold sm:text-[28px]">{firstName ? `${t('Welcome')}, ${firstName}` : <Skeleton className="h-8 w-64" />}</h1>
+      <header className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="text-sm font-medium text-ink-500"><Text>{me.data?.township ?? ' '}</Text></p>
+          <h1 className="mt-1 text-2xl font-bold sm:text-[28px]">{firstName ? `${t('Welcome')}, ${firstName}` : <Skeleton className="h-8 w-64" />}</h1>
+        </div>
+        {/* A Simple Mode resident who opened the full app can always get back. */}
+        {akses.simple && <Button variant="secondary" onClick={() => chooseFullApp(false)}><Text>Back to Simple Mode</Text></Button>}
       </header>
 
       {me.data?.residencyStatus === 'PENDING' && (

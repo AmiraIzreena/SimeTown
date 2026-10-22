@@ -21,7 +21,7 @@ import type { NotificationList } from '@/shared/notifications';
 import { ProfileCompletion } from './profile-completion';
 import { reloadTo } from '@/lib/navigate';
 import { AccountLanguage, persistLanguage } from '@/components/ui/language';
-import { AksesViewContext, useAccessibleViewChoice } from '@/components/features/akses-mode';
+import { AksesModesProvider, useAksesMode } from '@/components/features/akses-mode';
 import { SignedInMotion } from '@/lib/use-min-loading';
 import { DEMO_MODE } from '@/lib/demo';
 
@@ -32,11 +32,6 @@ export interface ShellUser {
   role: Role;
   /** Business accounts only: whether it runs a shop, home services, or both. */
   offers?: { retail: boolean; services: boolean };
-}
-
-interface AccessProfile {
-  needs: ('MOBILITY' | 'VISION' | 'HEARING' | 'COGNITIVE' | 'ELDERLY')[];
-  simpleMode: boolean;
 }
 
 const isActive = (pathname: string, item: NavItem, root: string) => (item.href === root ? pathname === root : pathname === item.href || pathname.startsWith(`${item.href}/`));
@@ -90,14 +85,21 @@ async function signOut() {
  * "More" drawer on phones.
  */
 export function Shell({ area, user, children }: { area: Area; user: ShellUser; children: ReactNode }) {
+  return (
+    <AksesModesProvider userId={user.id} enabled={area === 'resident'}>
+      <ShellFrame area={area} user={user}>{children}</ShellFrame>
+    </AksesModesProvider>
+  );
+}
+
+function ShellFrame({ area, user, children }: { area: Area; user: ShellUser; children: ReactNode }) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   const [inboxOpen, setInboxOpen] = useState(false);
   const closeInbox = useCallback(() => setInboxOpen(false), []);
   const inbox = useApi<NotificationList>('/notifications', { refreshInterval: 30_000 });
-  const access = useApi<AccessProfile>(area === 'resident' ? '/me/access' : null);
-  // Remembered per account in this browser, so the switch holds on every page and after a refresh.
-  const [accessibleOverride, setAccessibleOverride] = useAccessibleViewChoice(area === 'resident' ? user.id : undefined);
+  // Accessible view (this top bar's switch) and Simple Mode (saved in Akses+), worked out once for every screen.
+  const modes = useAksesMode();
   // The top bar gains a light shadow once the page scrolls under it.
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
@@ -136,8 +138,7 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
   // Hover text for the avatar: the name stays as typed, the role is translated.
   const whoAmI = `${user.fullName} · ${t(ROLE_LABELS[user.role])}`;
   const motion = pageMotion(pathname);
-  const savedAccessible = Boolean(access.data?.simpleMode || access.data?.needs.length);
-  const accessible = area === 'resident' && (accessibleOverride ?? savedAccessible);
+  const accessible = modes.accessibleView;
 
   const link = (item: NavItem, compact: boolean) => {
     const active = isActive(pathname, item, root);
@@ -165,8 +166,8 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
 
   return (
     <SignedInMotion.Provider value>
-    <AksesViewContext.Provider value={area === 'resident' ? accessibleOverride : null}>
-    <div className={cn('min-h-dvh md:pl-20 lg:pl-64', accessible && 'akses-shell')}>
+    {/* Either mode gives the tablet rail its labels back: names are easier than icons alone. */}
+    <div className={cn('min-h-dvh md:pl-20 lg:pl-64', (accessible || modes.simple) && 'akses-shell')}>
       <AccountLanguage />
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[70] focus:rounded-md focus:bg-white focus:px-4 focus:py-2 focus:shadow-lg"><Text>Skip to content</Text></a>
 
@@ -212,14 +213,15 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
       {/* Top bar */}
       <header data-scrolled={scrolled || undefined} className="app-topbar no-print sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-white/70 bg-white/65 px-4 backdrop-blur-2xl sm:px-6 lg:px-10">
         <Link href={root} aria-label="SimeTown home" className="rounded-md md:hidden">
-          <Logo />
+          {/* Residents have one more control (Accessible view): on narrow phones the mark alone keeps the bell on screen. */}
+          <Logo className={area === 'resident' ? 'max-[479px]:[&>span]:hidden' : undefined} />
         </Link>
         <p className="hidden items-center gap-2 text-sm font-semibold tracking-tight text-brand-900 md:flex"><span aria-hidden className="size-2 rounded-full bg-brand-500 shadow-[0_0_0_4px_rgb(232_111_32_/_0.12)]" />{t(NAV[area].title)}</p>
         <div className="flex items-center gap-1">
         {area === 'resident' && (
           <LocalizedButton
             type="button"
-            onClick={() => setAccessibleOverride(!accessible)}
+            onClick={() => modes.setAccessibleView(!accessible)}
             aria-pressed={accessible}
             className={cn(
               'inline-flex min-h-11 items-center gap-1.5 rounded-md px-3 text-sm font-semibold transition-[background-color,color,scale] duration-200 active:scale-[0.97]',
@@ -265,7 +267,7 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
       </main>
 
       {/* Phone bottom bar */}
-      <LocalizedNav aria-label="Main" className="no-print fixed inset-x-0 bottom-0 z-40 grid auto-cols-fr grid-flow-col border-t border-white/70 bg-white/70 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_rgb(45_20_7_/_0.055)] backdrop-blur-2xl md:hidden">
+      <LocalizedNav aria-label="Main" className="app-bottombar no-print fixed inset-x-0 bottom-0 z-40 grid auto-cols-fr grid-flow-col border-t border-white/70 bg-white/70 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_rgb(45_20_7_/_0.055)] backdrop-blur-2xl md:hidden">
         {primary.map((item) => {
           const active = isActive(pathname, item, root);
           return (
@@ -310,7 +312,6 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
       </Drawer>
 
     </div>
-    </AksesViewContext.Provider>
     </SignedInMotion.Provider>
   );
 }

@@ -291,7 +291,7 @@ export function AccountPanel({ accessible = false }: { accessible?: boolean }) {
 export function ResidentAccountPanel() {
   const akses = useAksesMode();
   return (
-    <AksesPage profile={akses.profile} simple={akses.simple} largeText={akses.largeText} largeTargets={akses.largeTargets}>
+    <AksesPage>
       <AccountPanel accessible={akses.guided} />
     </AksesPage>
   );

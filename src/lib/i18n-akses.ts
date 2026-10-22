@@ -1,5 +1,7 @@
 /** Bahasa Malaysia for Akses+ accessibility management: the resident page, the console, the team's work queue and their server messages. */
 export const aksesMalay: Record<string, string> = {
+  // The full home, for a Simple Mode resident who chose "Full app"
+  'Back to Simple Mode': 'Kembali ke Mod Mudah',
   // Verification and availability, kept separate
   'Pending verification': 'Menunggu pengesahan',
   'Verified accessible': 'Disahkan mesra OKU',

@@ -116,7 +116,7 @@ function LaporScreen() {
   const newReport = <Button size={akses.guided ? 'lg' : 'md'} onClick={() => setOpen(true)}><Plus className="size-4" aria-hidden /><Text>New report</Text></Button>;
 
   return (
-    <AksesPage profile={akses.profile} simple={akses.simple} largeText={akses.largeText} largeTargets={akses.largeTargets}>
+    <AksesPage>
       <PageHeader
         title="Lapor"
         description="Report a hazard or an access barrier in under a minute, then follow it until it is fixed. You earn Impact XP once township staff confirm it."

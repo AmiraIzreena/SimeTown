@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { Languages } from 'lucide-react';
 import { api } from '@/lib/api';
 import { getLanguageRevision, setLang, useLang } from '@/lib/i18n';
+import { isSignedInFrame } from '@/lib/navigate';
 
 let pendingSave: Promise<unknown> = Promise.resolve();
 /** Serialize writes so a quick EN→BM→EN switch cannot leave the account in BM. */
@@ -37,7 +38,8 @@ export function LanguageSwitch({ signedIn = false, variant = 'solid' }: { signed
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const lang = useLang();
   const pathname = usePathname();
-  const signedArea = /^\/(app|console|merchant|sponsor|guard)(\/|$)/.test(pathname);
+  // Every screen in the signed-in frame (the Shell) has the switch in its top bar.
+  const signedArea = isSignedInFrame(pathname);
   // These pages carry the switch in their top bar.
   const hasTopBar = ['/', '/offer', '/shops', '/challenges', '/sponsorship', '/status', '/guest'].includes(pathname);
   useEffect(() => { document.documentElement.lang = lang; }, [lang]);

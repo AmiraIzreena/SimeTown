@@ -7,6 +7,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { DEMO_MODE } from '@/lib/demo';
 import { cn } from '@/lib/cn';
+import { isSignedInFrame } from '@/lib/navigate';
 
 /**
  * The one marker of the demo environment, in place of explanations on every
@@ -31,7 +32,7 @@ export function DemoMarker() {
   if (!DEMO_MODE) return null;
   // Full-screen kiosk views (the machine screen) and printouts stay clean.
   if (/^\/console\/machine\//.test(pathname)) return null;
-  const signedArea = /^\/(app|console|merchant|sponsor|guard)(\/|$)/.test(pathname);
+  const signedArea = isSignedInFrame(pathname);
 
   return (
     <div ref={ref} className={cn('no-print fixed left-3 z-[60] sm:left-4', signedArea ? 'bottom-[5.25rem] lg:bottom-4' : 'bottom-4')}>

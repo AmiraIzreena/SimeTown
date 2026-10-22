@@ -207,7 +207,7 @@ export function KitarScreen() {
   );
 
   return (
-    <AksesPage profile={akses.profile} simple={akses.simple} largeText={akses.largeText} largeTargets={akses.largeTargets}>
+    <AksesPage>
       <PageHeader title="Kitar" description="Recycle at a kiosk. Each bin has a scale that sends the weight by itself, so you never type it. Every drop-off earns Impact XP." action={<ReportProblemButton context="KITAR" subtitle="A bin, its weight, your points or the Kitar page" />} />
       {akses.simple ? (
         <div className="space-y-6">

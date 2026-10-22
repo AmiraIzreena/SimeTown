@@ -169,7 +169,7 @@ export function GerakScreen({ scanned }: { scanned: string }) {
   );
 
   return (
-    <AksesPage profile={akses.profile} simple={akses.simple} largeText={akses.largeText} largeTargets={akses.largeTargets}>
+    <AksesPage>
       <PageHeader title="Gerak" description="Walk, run, cycle or wheel a township loop. Track it on the map and the checkpoints tick themselves, or scan the posters on the way." action={<ReportProblemButton context="GERAK" subtitle="A loop, a checkpoint, the map, your distance or a challenge" />} />
       {akses.simple ? (
         // Simple mode keeps one page, in the original order, as Kitar does.

@@ -40,7 +40,7 @@ export default function BanjirPage() {
   });
   const mine = overview.data?.zones.find((z) => z.id === overview.data?.myZoneId);
   return (
-    <AksesPage profile={akses.profile} simple={akses.simple} largeText={akses.largeText} largeTargets={akses.largeTargets}>
+    <AksesPage>
       <PageHeader
         title="Banjir"
         description="Water levels by zone, from drain sensors and camera readings checked by the Banjir agent. Two signals must agree before the highest alert goes out by itself."

@@ -115,7 +115,7 @@ export default function WalletPage() {
   const [showCode, setShowCode] = useState(false);
 
   return (
-    <AksesPage profile={akses.profile} simple={akses.simple} largeText={akses.largeText} largeTargets={akses.largeTargets}>
+    <AksesPage>
       <PageHeader title="Points & XP" description="Points are worth money at township shops. Impact XP has no money value: it is your record of good actions." />
       <Async state={wallet} skeleton={<WalletSkeleton />}>
         {(w) => (

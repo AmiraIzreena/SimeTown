@@ -137,7 +137,7 @@ export default function TamuPage() {
     : t('Visitor passes and the guardhouse');
 
   return (
-    <AksesPage profile={akses.profile} simple={akses.simple} largeText={akses.largeText} largeTargets={akses.largeTargets}>
+    <AksesPage>
       <PageHeader
         title={t('Tamu')}
         description="Send a visitor a pass by link; they need no app. The guard scans it at the main gate and you are told the moment they arrive."

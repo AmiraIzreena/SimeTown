@@ -350,6 +350,21 @@ alternatives; toasts use live regions; colour is never the only signal; text con
 AA; motion respects the system setting. The flood takeover is an alert dialog that must be
 acknowledged rather than dismissed by accident.
 
+**Accessible view and Simple Mode** (residents only) are two independent modes, worked out once by
+`AksesModesProvider` in the Shell (`src/components/features/akses-mode.tsx`) and read anywhere with
+`useAksesMode()`:
+
+| Mode | Turned on by | What it changes |
+|---|---|---|
+| Accessible view | The top-bar switch, remembered per account in this browser. Before it is used, any saved access need turns it on. | Presentation only: larger text, larger targets, a labelled menu. |
+| Simple Mode | The Simple Mode setting in Akses+, saved on the account. | The experience: the four-button home, forms that ask one question at a time, plain wording (`src/lib/i18n-plain.ts`), calmer solid surfaces. |
+
+The provider marks `<html>` with `data-akses-view` and `data-simple-mode`, so the styles in
+`globals.css` also reach dialogs, the menu drawer, toasts and pop-ups. Text grows through the
+Tailwind type tokens (`--text-sm` and so on); fixed sizes such as `text-[15px]` are mapped one by one,
+and `tests/akses-modes.test.ts` fails if a new fixed size is added without a mapping. Prefer the
+named sizes in new screens.
+
 ## 11. From this prototype to the pilot design
 
 | Pilot piece | What changes here |

@@ -190,60 +190,69 @@
     }
   }
 
-  #main.akses-view {
-    max-width: 96rem;
+  /*
+   * Akses+ display modes (components/features/akses-mode.tsx). The Shell marks <html>, so these reach every
+   * screen and every overlay: dialogs, the menu drawer, toasts, pop-ups and the bars. Text grows through the
+   * type tokens, so each element keeps its place in the hierarchy instead of being forced to one size.
+   * The rules that must beat utility classes (fixed pixel sizes) are unlayered, further down this file.
+   */
+
+  /* Simple Mode: calmer and easier to read, without the large print of Accessible view. */
+  html[data-simple-mode] {
+    --text-xs: 0.875rem;
+    --text-xs--line-height: calc(1.3 / 0.875);
+    --text-sm: 0.9375rem;
+    --text-sm--line-height: calc(1.45 / 0.9375);
+  }
+  html[data-simple-mode] body {
+    line-height: 1.6;
+  }
+  /* No decorative glow behind the page. */
+  html[data-simple-mode] body::before {
+    display: none;
+  }
+
+  /* Accessible view: large print and large targets. When Simple Mode is also on, these sizes win. */
+  html[data-akses-view] {
+    --text-xs: 1rem;
+    --text-xs--line-height: 1.5;
+    --text-sm: 1.125rem;
+    --text-sm--line-height: 1.55;
+    --text-base: 1.25rem;
+    --text-base--line-height: 1.6;
+    --text-lg: 1.375rem;
+    --text-lg--line-height: 1.5;
+    --text-xl: 1.5rem;
+    --text-xl--line-height: 1.45;
+    --text-2xl: 1.75rem;
+    --text-2xl--line-height: 1.35;
+    --text-3xl: 2.125rem;
+    --text-3xl--line-height: 1.25;
+    --text-4xl: 2.5rem;
+    --text-4xl--line-height: 1.2;
+    --text-5xl: 3.25rem;
+  }
+  html[data-akses-view] body {
     font-size: 1.25rem;
-    line-height: 1.7;
+    line-height: 1.6;
   }
-
-  #main.akses-view :is(p, li, dt, dd, label, summary) {
-    font-size: max(1.25rem, 1em) !important;
-    line-height: 1.65;
+  /* Taller buttons, tabs and fields. Padding rather than a fixed height, so larger buttons stay larger. */
+  html[data-akses-view] :is(.btn, [role='tab']) {
+    padding-block: 0.625rem;
   }
-
-  #main.akses-view h1 {
-    font-size: clamp(2.5rem, 4vw, 3.75rem);
-    line-height: 1.15;
-  }
-
-  #main.akses-view h2 {
-    font-size: clamp(1.75rem, 2.5vw, 2.5rem);
-    line-height: 1.2;
-  }
-
-  #main.akses-view h3 {
-    font-size: clamp(1.5rem, 2vw, 2rem);
-    line-height: 1.25;
-  }
-
-  #main.akses-view :is(button, [role='tab'], input, select, textarea, a) {
-    min-height: 4rem;
-    font-size: max(1.25rem, 1em) !important;
-  }
-
-  #main.akses-view .control {
-    min-height: 4.5rem;
-    padding-inline: 1.25rem;
-    font-size: 1.5rem !important;
-  }
-
-  #main.akses-view :is(.card, [class*='rounded-xl']) {
-    padding: clamp(1.25rem, 2.5vw, 2rem);
-  }
-
-  #main.akses-view :is(.text-xs, .text-sm, .text-\[15px\]) {
-    font-size: 1.125rem !important;
-  }
-
-  .akses-large-text :is(p, li, dt, dd, label) {
-    font-size: max(1.125rem, 1em);
-    line-height: 1.65;
-  }
-
-  .akses-large-targets :is(button, [role='tab'], input, select, textarea) {
+  /* Layered on purpose: the one-question-at-a-time dialogs (guided-modal) set their own, larger fields. */
+  html[data-akses-view] .control {
     min-height: 3.5rem;
-    font-size: 1.125rem;
+    padding-inline: 1rem;
+    font-size: 1.25rem;
   }
+
+  /* Either mode: a stronger focus ring that is easy to find. */
+  html:is([data-akses-view], [data-simple-mode]) :focus-visible {
+    outline-width: 3px;
+    outline-offset: 3px;
+  }
+
   /* Shared control surface for inputs, selects and text areas. */
   .control {
     @apply w-full rounded-md border border-ink-200 bg-white px-3.5 text-[15px] text-ink-900 shadow-xs
@@ -469,43 +478,7 @@
     height: min(82dvh, 54rem);
     max-height: 92dvh;
   }
-  dialog.modal.guided-modal > div {
-    height: 100%;
-  }
-  dialog.modal.guided-modal > div > div:first-child {
-    padding: 1.5rem 2rem;
-  }
-  dialog.modal.guided-modal h2 {
-    font-size: 1.75rem;
-  }
-  dialog.modal.guided-modal > div > div:first-child p {
-    font-size: 1.25rem;
-  }
-  dialog.modal.guided-modal > div > div:first-child > button {
-    width: 3.5rem;
-    height: 3.5rem;
-  }
-  dialog.modal.guided-modal > div > div:nth-child(2) {
-    justify-content: center;
-    padding: clamp(2rem, 5vw, 5rem);
-  }
-  dialog.modal.guided-modal label {
-    font-size: clamp(1.5rem, 2vw, 2rem);
-  }
-  dialog.modal.guided-modal .control {
-    min-height: 6rem;
-    padding-inline: 1.5rem;
-    font-size: clamp(1.5rem, 2.2vw, 2.25rem);
-  }
-  dialog.modal.guided-modal > div > div:last-child {
-    gap: 1rem;
-    padding: 1.25rem 2rem;
-  }
-  dialog.modal.guided-modal > div > div:last-child button {
-    min-height: 4.5rem;
-    padding-inline: 2rem;
-    font-size: 1.5rem;
-  }
+  /* The rest of the one-question-at-a-time dialog is unlayered, further down (it must beat utility classes). */
   dialog.drawer {
     @apply m-0 h-dvh max-h-none w-[min(88vw,22rem)] max-w-none border-0 p-0 text-ink-800 shadow-lg;
     background: rgb(255 255 255 / 0.93);
@@ -535,14 +508,6 @@
     dialog.modal.guided-modal {
       height: 88dvh;
       min-height: 78dvh;
-    }
-    dialog.modal.guided-modal .control {
-      min-height: 5rem;
-      font-size: 1.5rem;
-    }
-    dialog.modal.guided-modal > div > div:last-child button {
-      min-height: 3.75rem;
-      font-size: 1.25rem;
     }
     dialog.modal[open] {
       animation: var(--animate-sheet);
@@ -603,6 +568,126 @@
   box-shadow: 0 10px 30px rgb(79 28 8 / 0.06), inset 0 1px 0 rgb(255 255 255 / 0.88);
   backdrop-filter: blur(20px) saturate(140%);
   -webkit-backdrop-filter: blur(20px) saturate(140%);
+}
+
+/*
+ * --- Akses+ display modes: the rules that must beat utility classes ------------------------------
+ * Unlayered for that reason. Fixed pixel sizes (text-[15px] and friends) do not follow the type tokens, so
+ * each one is mapped here to the size its named neighbour gets. Sizes of 24px and up are already large and
+ * stay as they are. See the layered half of these rules near the top of this file.
+ */
+/* Simple Mode: small print is a little larger. */
+html[data-simple-mode] :is(.text-\[9px\], .text-\[10px\], .text-\[11px\], .text-\[12px\]) { font-size: 0.8125rem; }
+html[data-simple-mode] :is(.text-\[13px\], .text-\[14px\]) { font-size: 0.9375rem; }
+/* Simple Mode: solid cards instead of frosted glass, with a clear edge. Easier to read, less to look at. */
+html[data-simple-mode] .glass-surface {
+  border-color: var(--color-ink-200);
+  background-color: #fff;
+  background-image: none;
+  box-shadow: var(--shadow-xs);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+/* Either mode: sentence case is easier to read than spaced-out capitals. */
+html:is([data-akses-view], [data-simple-mode]) .uppercase {
+  text-transform: none;
+  letter-spacing: normal;
+}
+/* Either mode: links inside sentences are underlined, so they are not told apart by colour alone. */
+html:is([data-akses-view], [data-simple-mode]) #main p a:not(.btn) {
+  text-decoration-line: underline;
+  text-underline-offset: 0.2em;
+}
+
+/* Accessible view: every fixed pixel size grows with the rest. */
+html[data-akses-view] :is(.text-\[9px\], .text-\[10px\], .text-\[11px\], .text-\[12px\]) { font-size: 1rem; }
+html[data-akses-view] .text-\[13px\] { font-size: 1.0625rem; }
+html[data-akses-view] .text-\[14px\] { font-size: 1.125rem; }
+html[data-akses-view] :is(.text-\[15px\], .text-\[16px\]) { font-size: 1.25rem; }
+html[data-akses-view] .text-\[17px\] { font-size: 1.375rem; }
+/* The phone bar keeps five names on one line; the bell's unread count stays small enough not to hide the bell. */
+html[data-akses-view] .app-bottombar .text-\[11px\] { font-size: 0.875rem; }
+html[data-akses-view] .app-topbar .text-\[10px\] { font-size: 0.8125rem; }
+/* The top bar keeps one row on phones: its controls stay at 16px (on narrow phones the logo shows its mark only, see shell.tsx). */
+html[data-akses-view] .app-topbar .text-sm { font-size: 1rem; }
+html[data-akses-view] .app-topbar button[aria-pressed] { white-space: nowrap; }
+@media (max-width: 359px) {
+  html[data-akses-view] .app-topbar button[aria-pressed] > svg { display: none; }
+}
+/* Wider pages on large screens, so the larger text keeps a comfortable layout. */
+html[data-akses-view] #main.akses-view { max-width: 96rem; }
+/* Icons in buttons grow with the label; tick boxes and radio buttons are easier to hit. */
+html[data-akses-view] .btn > svg { width: 1.2em; height: 1.2em; }
+html[data-akses-view] input:is([type='checkbox'], [type='radio']) { width: 1.5rem; height: 1.5rem; }
+
+/*
+ * Simple Mode's one-question-at-a-time dialog (AksesWizard and the guided forms): a large question, large answers
+ * and large buttons. Unlayered because the dialog's own utility classes (text-lg titles, min-h-12 buttons) would
+ * otherwise win, which left these sizes unused.
+ */
+dialog.modal.guided-modal > div {
+  height: 100%;
+}
+dialog.modal.guided-modal > div > div:first-child {
+  padding: 1.5rem 2rem;
+}
+dialog.modal.guided-modal h2 {
+  font-size: 1.75rem;
+}
+dialog.modal.guided-modal > div > div:first-child p {
+  font-size: 1.25rem;
+}
+dialog.modal.guided-modal > div > div:first-child > button {
+  width: 3.5rem;
+  height: 3.5rem;
+}
+dialog.modal.guided-modal > div > div:nth-child(2) {
+  padding: clamp(2rem, 5vw, 5rem);
+}
+dialog.modal.guided-modal label {
+  font-size: clamp(1.5rem, 2vw, 2rem);
+}
+dialog.modal.guided-modal input[type='checkbox'] {
+  width: 1.75rem;
+  height: 1.75rem;
+  margin-top: 0.35rem;
+}
+dialog.modal.guided-modal .control {
+  min-height: 6rem;
+  padding-inline: 1.5rem;
+  font-size: clamp(1.5rem, 2.2vw, 2.25rem);
+}
+dialog.modal.guided-modal > div > div:last-child {
+  gap: 1rem;
+  padding: 1.25rem 2rem;
+}
+dialog.modal.guided-modal > div > div:last-child button {
+  min-height: 4.5rem;
+  padding-inline: 2rem;
+  font-size: 1.5rem;
+}
+@media (max-width: 639px) {
+  dialog.modal.guided-modal > div > div:first-child {
+    padding: 1rem 1.25rem;
+  }
+  dialog.modal.guided-modal h2 {
+    font-size: 1.375rem;
+  }
+  dialog.modal.guided-modal > div > div:first-child p {
+    font-size: 1.0625rem;
+  }
+  dialog.modal.guided-modal .control {
+    min-height: 5rem;
+    font-size: 1.5rem;
+  }
+  dialog.modal.guided-modal > div > div:last-child {
+    padding: 1rem 1.25rem;
+  }
+  dialog.modal.guided-modal > div > div:last-child button {
+    min-height: 3.75rem;
+    padding-inline: 1.25rem;
+    font-size: 1.25rem;
+  }
 }
 
 .page-heading > div:first-child {
@@ -807,7 +892,7 @@ html[data-signed-in] .field:focus-within > label { color: var(--color-brand-700)
 @media (prefers-reduced-motion: reduce) { .company-card:hover, .category-tile:hover, .category-tile:active { transform: none; } }
 
 /* --- Map key chips (Gerak tracker map): each line style as a small labelled pill ----------------- */
-.map-key-chip { display: inline-flex; align-items: center; gap: 0.5rem; border-radius: 9999px; background: #fff; padding: 0.25rem 0.75rem; font-size: 0.75rem; font-weight: 500; color: var(--color-ink-700); box-shadow: 0 1px 2px rgb(45 20 7 / 0.05), inset 0 0 0 1px var(--color-ink-100); }
+.map-key-chip { display: inline-flex; align-items: center; gap: 0.5rem; border-radius: 9999px; background: #fff; padding: 0.25rem 0.75rem; font-size: var(--text-xs); font-weight: 500; color: var(--color-ink-700); box-shadow: 0 1px 2px rgb(45 20 7 / 0.05), inset 0 0 0 1px var(--color-ink-100); }
 
 /* --- Gerak loop card: checkpoints drawn as numbered stops joined by a line ---------------------- */
 .gerak-stop { position: relative; }

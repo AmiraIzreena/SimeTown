@@ -50,7 +50,7 @@ export function KomunitiBoard({ initialTab = 'all' }: { initialTab?: KomunitiTab
   const startCreate = () => (current.types.length === 1 ? setCreating(KINDS[current.types[0]!]) : setChoosing(true));
 
   return (
-    <AksesPage profile={akses.profile} simple={akses.simple} largeText={akses.largeText} largeTargets={akses.largeTargets}>
+    <AksesPage>
       <PageHeader
         title="Komuniti"
         description="Connect, share and make an impact. Join events, help a neighbour, give away or lend things. You earn Impact XP when the other person confirms it happened."

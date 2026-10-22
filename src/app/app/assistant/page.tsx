@@ -177,7 +177,7 @@ export default function AssistantPage() {
 
   const s = status.data;
   return (
-    <AksesPage profile={akses.profile} simple={akses.simple} largeText={akses.largeText} largeTargets={akses.largeTargets}>
+    <AksesPage>
       <PageHeader
         title="SimeTown Assistant"
         description="Ask about City of Elmina, Sime Darby Property and your own SimeTown account, in English or Bahasa Malaysia. It acts only after you confirm, and hands over to the township office when unsure."
@@ -255,7 +255,7 @@ export default function AssistantPage() {
                   </details>
                 )}
                 {m.from !== 'me' && (
-                  <LocalizedButton type="button" onClick={() => speak(m.text, lang)} className="mt-1 flex items-center gap-1 text-xs text-ink-500 hover:text-ink-800" aria-label="Read this aloud">
+                  <LocalizedButton type="button" onClick={() => speak(m.text, lang)} className="mt-1 flex items-center gap-1 text-xs text-ink-600 hover:text-ink-900" aria-label="Read this aloud">
                     <Volume2 className="size-3.5" aria-hidden /><Text> Read aloud</Text></LocalizedButton>
                 )}
               </div>
@@ -271,7 +271,7 @@ export default function AssistantPage() {
         <div className="border-t border-ink-100 p-4">
           <div className="mb-3 flex flex-wrap gap-2">
             {SUGGESTIONS.map((q) => (
-              <button key={q} type="button" onClick={() => void ask(translate(lang, q))} className={cn('rounded-full border border-ink-200 bg-white px-3 py-1.5 text-sm text-ink-700 hover:border-brand-500 hover:text-brand-800', akses.guided && 'min-h-16 rounded-xl px-5 text-lg font-semibold')}>
+              <button key={q} type="button" onClick={() => void ask(translate(lang, q))} className={cn('border border-ink-200 bg-white text-ink-700 hover:border-brand-500 hover:text-brand-800', akses.guided ? 'min-h-16 rounded-xl px-5 text-lg font-semibold' : 'rounded-full px-3 py-1.5 text-sm')}>
                 <Text>{q}</Text>
               </button>
             ))}
