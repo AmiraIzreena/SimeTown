@@ -5,7 +5,7 @@ import { one, type Db } from '@/server/db/client';
 import { routes } from '@/server/http/api';
 import { createRouter } from '@/server/http/router';
 import { bookCollection, createCollector, listCollectors } from '@/server/modules/kitar/collections';
-import { describeSchedule, formatSchedule, parseSchedule, weekdayOf, worksOn } from '@/shared/collector-schedule';
+import { BOOK_AHEAD_DAYS, describeSchedule, formatSchedule, openSlots, parseSchedule, weekdayOf, worksOn } from '@/shared/collector-schedule';
 import { T0, freshDb, makeResident, makeWorld, type World } from './helpers';
 
 /**
@@ -46,6 +46,22 @@ describe('The stored schedule', () => {
     expect(describeSchedule(formatSchedule({ days: ['MON', 'WED'], time: 'BOTH' }))).toEqual({ days: ['Mon', 'Wed'], time: 'Both' });
     expect(describeSchedule('Saturday-Sunday')).toEqual({ legacy: 'Saturday-Sunday' });
     expect(worksOn('Saturday-Sunday', '2026-11-03', 'AFTERNOON')).toBe(true);
+  });
+
+  it('lists only the days and times the collector comes, for the booking form', () => {
+    expect(openSlots(formatSchedule({ days: ['TUE', 'SAT'], time: 'MORNING' }), '2026-11-02', 7)).toEqual([
+      { day: '2026-11-03', slot: 'MORNING' },
+      { day: '2026-11-07', slot: 'MORNING' },
+    ]);
+    expect(openSlots(formatSchedule({ days: ['THU'], time: 'BOTH' }), '2026-11-02', 14)).toEqual([
+      { day: '2026-11-05', slot: 'MORNING' }, { day: '2026-11-05', slot: 'AFTERNOON' },
+      { day: '2026-11-12', slot: 'MORNING' }, { day: '2026-11-12', slot: 'AFTERNOON' },
+    ]);
+    // Crosses the month end, and every slot it offers is one booking accepts.
+    const slots = openSlots(formatSchedule({ days: ['MON'], time: 'AFTERNOON' }), '2026-11-25', BOOK_AHEAD_DAYS)!;
+    expect(slots[0]).toEqual({ day: '2026-11-30', slot: 'AFTERNOON' });
+    for (const s of slots) expect(worksOn(formatSchedule({ days: ['MON'], time: 'AFTERNOON' }), s.day, s.slot)).toBe(true);
+    expect(openSlots('Tue and Sat mornings', '2026-11-02', 7)).toBeNull();
   });
 });
 
