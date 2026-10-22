@@ -4,7 +4,7 @@
   "private": true,
   "description": "SimeTown Township Super-App: residents, shops, sponsors and Sime Darby Property on one points ledger.",
   "engines": {
-    "node": ">=22"
+    "node": "^22.23.4 || >=24.22.1"
   },
   "scripts": {
     "dev": "next dev",
