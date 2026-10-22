@@ -128,6 +128,8 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
     const item = items[index]!;
     return item.group !== undefined && index > 0 && item.group !== items[index - 1]!.group ? item.group : index === 0 && item.group ? item.group : null;
   };
+  // The description beside a name, unless it would only repeat it (in BM "Banjir" is already "Flood").
+  const showGloss = (item: (typeof items)[number]) => !!item.gloss && t(item.gloss).toLowerCase() !== t(item.label).toLowerCase();
   const primary = items.filter((item) => item.primary).slice(0, 4);
   const needsMore = items.length > primary.length;
   const initials = user.fullName.split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase();
@@ -155,7 +157,7 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
         <item.icon className={cn('size-5 shrink-0 transition-[translate,color] duration-200 ease-soft', active ? 'text-gold-300' : 'pointer-fine:group-hover:translate-x-0.5')} aria-hidden />
         <span className={cn(compact && 'sr-only lg:not-sr-only')}>
           {t(item.label)}
-          {item.gloss && <span className="ml-1.5 text-xs font-normal text-brand-200/70">{t(item.gloss)}</span>}
+          {showGloss(item) && <span className="ml-1.5 text-xs font-normal text-brand-200/70">{t(item.gloss!)}</span>}
         </span>
       </Link>
     );
@@ -295,7 +297,7 @@ export function Shell({ area, user, children }: { area: Area; user: ShellUser; c
                 <Link href={item.href} aria-current={active ? 'page' : undefined} className={cn('flex min-h-12 items-center gap-3 rounded-md px-3 text-[15px] font-medium transition-colors duration-200', active ? 'bg-brand-50 text-brand-800' : 'text-ink-700 hover:bg-ink-50 active:bg-ink-100')}>
                   <item.icon className="size-5" aria-hidden />
                   {t(item.label)}
-                  {item.gloss && <span className="text-xs font-normal text-ink-500">{t(item.gloss)}</span>}
+                  {showGloss(item) && <span className="text-xs font-normal text-ink-500">{t(item.gloss!)}</span>}
                 </Link>
               </Fragment>
             );

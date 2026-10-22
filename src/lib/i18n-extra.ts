@@ -2995,4 +2995,12 @@ export const extraMalay: Record<string, string> = {
   'Points earned today': 'Mata diperoleh hari ini',
   'Points earned this month': 'Mata diperoleh bulan ini',
   'Pass for': 'Pas untuk',
+  // Resident menu groups and descriptions (components/shell/nav.ts)
+  'Recycle & move': 'Kitar semula & bergerak',
+  'Home & deliveries': 'Rumah & penghantaran',
+  'Help & account': 'Bantuan & akaun',
+  'Your day': 'Hari anda',
+  'Deliveries': 'Penghantaran',
+  'Ask anything': 'Tanya apa sahaja',
+  'Profile & settings': 'Profil & tetapan',
 };

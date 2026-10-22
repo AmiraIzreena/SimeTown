@@ -26,21 +26,23 @@ export interface NavItem {
 export const NAV: Record<Area, { title: string; items: NavItem[] }> = {
   resident: {
     title: 'Resident',
+    // Grouped like the console, and every item has a short description beside it. The order keeps the phone's
+    // bottom bar (the first four primary items: Home, Points & XP, Kitar, Lapor) exactly as before.
     items: [
-      { href: '/app', label: 'Home', icon: Home, primary: true },
-      { href: '/app/wallet', label: 'Points & XP', icon: Wallet, primary: true },
-      { href: '/app/kitar', label: 'Kitar', gloss: 'Recycle', icon: Recycle, primary: true },
-      { href: '/app/gerak', label: 'Gerak', gloss: 'Move', icon: Bike },
-      { href: '/app/lapor', label: 'Lapor', gloss: 'Report', icon: TriangleAlert, primary: true },
-      { href: '/notifications', label: 'Notifications', icon: Inbox },
-      { href: '/app/tamu', label: 'Tamu', gloss: 'Visitors', icon: DoorOpen },
-      { href: '/app/parcels', label: 'Parcels', icon: Package },
-      { href: '/app/komuniti', label: 'Komuniti', gloss: 'Neighbours & sharing', icon: HandHeart },
-      { href: '/app/banjir', label: 'Banjir', gloss: 'Flood', icon: Droplets },
-      { href: '/app/akses', label: 'Akses+', gloss: 'Access', icon: Accessibility },
-      { href: '/app/assistant', label: 'Assistant', icon: Bot },
-      { href: '/app/home-services', label: 'SimeTown Home', gloss: 'Home services', icon: House },
-      { href: '/app/account', label: 'Account', icon: UserRound },
+      { href: '/app', label: 'Home', gloss: 'Your day', icon: Home, primary: true, group: 'Overview' },
+      { href: '/app/wallet', label: 'Points & XP', gloss: 'Rewards', icon: Wallet, primary: true, group: 'Overview' },
+      { href: '/notifications', label: 'Notifications', gloss: 'Updates', icon: Inbox, group: 'Overview' },
+      { href: '/app/kitar', label: 'Kitar', gloss: 'Recycle', icon: Recycle, primary: true, group: 'Recycle & move' },
+      { href: '/app/gerak', label: 'Gerak', gloss: 'Move', icon: Bike, group: 'Recycle & move' },
+      { href: '/app/lapor', label: 'Lapor', gloss: 'Report', icon: TriangleAlert, primary: true, group: 'Around the township' },
+      { href: '/app/komuniti', label: 'Komuniti', gloss: 'Neighbours & sharing', icon: HandHeart, group: 'Around the township' },
+      { href: '/app/banjir', label: 'Banjir', gloss: 'Flood', icon: Droplets, group: 'Around the township' },
+      { href: '/app/akses', label: 'Akses+', gloss: 'Access', icon: Accessibility, group: 'Around the township' },
+      { href: '/app/tamu', label: 'Tamu', gloss: 'Visitors', icon: DoorOpen, group: 'Home & deliveries' },
+      { href: '/app/parcels', label: 'Parcels', gloss: 'Deliveries', icon: Package, group: 'Home & deliveries' },
+      { href: '/app/home-services', label: 'SimeTown Home', gloss: 'Home services', icon: House, group: 'Home & deliveries' },
+      { href: '/app/assistant', label: 'Assistant', gloss: 'Ask anything', icon: Bot, group: 'Help & account' },
+      { href: '/app/account', label: 'Account', gloss: 'Profile & settings', icon: UserRound, group: 'Help & account' },
     ],
   },
   merchant: {
