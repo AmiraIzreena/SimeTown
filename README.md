@@ -360,8 +360,9 @@ Third edition (October 2026):
 
 Not checked:
 
-- The Docker image itself and `docker compose` were not built (no Docker daemon was available).
-- Nothing was deployed. The Cloudflare set-up in the deployment guide is a design, not a tested one.
+- Nothing was deployed. (Since October 2026 the Docker images build, and `docker compose` with
+  PostgreSQL 16 was run locally: all migrations applied, `/api/v1/ready` and `/api/v1/health`
+  answered, and `sharp` loads in the image. CD publishes the images; no host is set up yet.) The Cloudflare set-up in the deployment guide is a design, not a tested one.
 - The hosted AI call was not made (no key). Its request and fallback logic is written and the
   fallback paths are tested; the live call is not.
 - No load test, no penetration test, no browsers other than Chromium, no real phones.

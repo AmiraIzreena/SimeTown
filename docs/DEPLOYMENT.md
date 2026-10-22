@@ -1,8 +1,9 @@
 # Deployment
 
 How to take SimeTown from a laptop to staging and production. **Nothing in this guide has been
-deployed by us**: the production server was run and exercised locally, but the Docker image was not
-built and no cloud account was used. Treat the cloud steps as a design to follow and verify.
+deployed by us**: the Docker images were built and the `docker compose` stack (PostgreSQL 16,
+migrations, app) was run and checked locally, but no cloud account was used. Treat the cloud steps
+as a design to follow and verify.
 
 ## 1. The shape of a deployment
 
@@ -111,6 +112,37 @@ npm start                 # listens on $PORT (3000 if unset)
 3. Start the new app version. The host should wait for `GET /api/v1/ready` (database reachable and
    migrated) before sending traffic, and use `GET /api/v1/health` to restart a stuck process.
 4. Never run `db:seed` in production. It refuses when `APP_ENV=production`.
+
+### Continuous deployment (GitHub Actions)
+
+`.github/workflows/cd.yml` runs after CI passes on a push to `main`, and can also be started by hand
+(*Actions → CD → Run workflow*). It always uses the exact commit CI tested.
+
+**1. Images (always on, no set-up).** Builds and publishes two images to GitHub Container Registry:
+
+| Image | What it is |
+| --- | --- |
+| `ghcr.io/<owner>/kita-plus:sha-<commit>` and `:latest` | The app: pages and API in one Next.js server (`node server.js`) |
+| `ghcr.io/<owner>/kita-plus-tools:sha-<commit>` and `:latest` | Migrations, bootstrap and jobs (`db:migrate`, `job -- settle`, ...) |
+
+The repository is private, so the packages are too. A host pulls them with a GitHub token that has
+`read:packages` (registry `ghcr.io`, user = your GitHub name). Deploy a `sha-` tag when you want to
+know exactly which commit is live; `latest` is the newest build of `main`.
+
+**2. Deploy (off until you turn it on).** Set the repository variable `DEPLOY_ENABLED=true`. The job
+uses the `production` environment (*Settings → Environments*); add required reviewers there if each
+release should be approved by hand. It follows the release order above:
+
+| Name | Kind | Needed | What it does |
+| --- | --- | --- | --- |
+| `APP_URL` | variable | yes | The live address; the job waits for `APP_URL/api/v1/ready` |
+| `DEPLOY_HOOK_URL` | secret | yes | The host's deploy hook. It receives `POST {"image": "ghcr.io/...:sha-..."}`, then pulls and restarts the app |
+| `DATABASE_URL` | secret | no | When set, the job runs `db:migrate` with the tools image first. Leave it unset if the host runs migrations itself (a release command) or the database is not reachable from GitHub |
+| `APP_ENV` | variable | no | Defaults to `production` (use `staging` for a staging environment) |
+| `DB_SSL` | variable | no | Only `disable` for a database without TLS on a private network |
+
+The app's own secrets (`CRON_SECRET`, `LOCKER_CREDENTIAL_SECRET`, `AI_API_KEY`, ...) stay in the
+host's secret store, not in GitHub. Releases run one at a time; a newer one waits for the current one.
 
 ### First set-up of a real township
 
