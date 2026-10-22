@@ -131,7 +131,7 @@ export default function TamuPage() {
 
   const [gateReport, setGateReport] = useState(false);
   const link = issued ? `${window.location.origin}/pass/${issued.token}` : '';
-  const message = issued ? `Salam! Here is your visitor pass for City of Elmina. Show the QR code at the main gate: ${link}` : '';
+  const message = issued ? t(`Salam! Here is your visitor pass for City of Elmina. Show the QR code at the main gate: ${link}`) : '';
   const spokenSummary = overview.data
     ? `${overview.data.waiting.length} ${t('Someone is at the main gate')}. ${overview.data.passes.length} ${t('visitor passes')}. ${overview.data.sos ? t('An SOS is active with the guardhouse.') : ''}`
     : t('Visitor passes and the guardhouse');

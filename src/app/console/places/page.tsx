@@ -168,7 +168,7 @@ function PlacesSummary({ onPick }: { onPick: (tab: Tab) => void }) {
     <div className={cn('space-y-2', span)}>
       <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-500">
         {(() => { const Icon = MODULES[module].icon; return <Icon className="size-3.5" aria-hidden />; })()}
-        <Text>{`${MODULES[module].name} · ${MODULES[module].what}`}</Text>
+        <Text>{MODULES[module].name}</Text> · <Text>{MODULES[module].what}</Text>
       </p>
       <div className={cn('grid gap-4', span ? 'sm:grid-cols-2' : '')}>{children}</div>
     </div>

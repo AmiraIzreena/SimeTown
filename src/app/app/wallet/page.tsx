@@ -257,7 +257,7 @@ export default function WalletPage() {
                               <p className="mt-3 text-sm font-medium text-ink-500"><Text>{offer.merchantName}</Text></p>
                               <p className="text-[17px] font-semibold text-ink-900">{offer.title}</p>
                               <p className="mt-1 text-sm text-ink-600">
-                                <Text>{formatPoints(offer.discountSen)}</Text><Text> offer points for </Text><Text>{formatRM(offer.discountSen)}</Text><Text> off · </Text><Text>{offerTerms(offer)}</Text>
+                                <Text>{formatPoints(offer.discountSen)}</Text><Text> offer points for </Text><Text>{formatRM(offer.discountSen)}</Text><Text> off · </Text><Text>{offerTerms(offer, t)}</Text>
                               </p>
                               <p className="mt-3 text-xs text-ink-500">
                                 <Text>{o.balance >= offer.discountSen ? 'Your offer points cover this. Ask the cashier to use the Shop Offer.' : `You need ${formatPoints(offer.discountSen - o.balance)} more offer points.`}</Text>
@@ -342,7 +342,7 @@ export default function WalletPage() {
                         <Badge tone="success" className="mt-3"><Text>Earned</Text></Badge>
                       ) : (
                         <div className="mt-3">
-                          <Progress value={badge.progress} max={badge.need} label={`Progress to ${badge.label}`} />
+                          <Progress value={badge.progress} max={badge.need} label={`Progress to ${t(badge.label)}`} />
                           <p className="mt-1 text-xs text-ink-500">
                             <Text>{badge.progress}</Text><Text> of </Text><Text>{badge.need}</Text>
                           </p>

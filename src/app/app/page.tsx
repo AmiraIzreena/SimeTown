@@ -229,7 +229,7 @@ export default function ResidentHome() {
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-medium text-ink-500">{t('Impact XP')}</p>
                 <span className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-semibold text-brand-700">
-                  <Sparkles className="size-3.5" aria-hidden /><Text>Level </Text><Text>{w.level.level}</Text> · {w.level.name}
+                  <Sparkles className="size-3.5" aria-hidden /><Text>Level </Text><Text>{w.level.level}</Text> · <Text>{w.level.name}</Text>
                 </span>
               </div>
               <p className="mt-2 font-display text-[44px] font-bold leading-none tracking-tight text-ink-900 tabular-nums">

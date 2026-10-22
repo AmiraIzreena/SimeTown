@@ -140,7 +140,7 @@ export function LineChart({
           <circle className="line-chart-dot" cx={0} cy={0} r={5} fill={color} stroke={dark ? 'rgb(45 20 7)' : '#fff'} strokeWidth={2} style={{ transform: `translate(${cx}px, ${cy}px)` }} />
           {ticks.map((i) => (
             <text key={i} x={x(i)} y={height - 6} textAnchor={i === 0 ? 'start' : i === last ? 'end' : 'middle'} className={cn('text-[11px]', dark ? 'fill-white/55' : 'fill-ink-500')}>
-              {labels?.[i] ?? String(i + 1)}
+              <Text>{labels?.[i] ?? String(i + 1)}</Text>
             </text>
           ))}
         </svg>

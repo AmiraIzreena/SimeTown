@@ -1,7 +1,9 @@
+'use client';
 
 import { Text } from '@/components/ui/localized-text';
 import { LocalizedDiv } from '@/components/ui/localized-elements';
 import { cn } from '@/lib/cn';
+import { useT } from '@/lib/i18n';
 
 /**
  * Small, dependency-free charts. Each has a text alternative for screen
@@ -13,6 +15,7 @@ export function BarChart({ data, series, label }: {
   series: { name: string; className: string }[];
   label: string;
 }) {
+  const t = useT();
   const max = Math.max(1, ...data.flatMap((d) => d.values));
   return (
     <figure>
@@ -20,13 +23,14 @@ export function BarChart({ data, series, label }: {
         {series.map((s) => (
           <span key={s.name} className="inline-flex items-center gap-1.5">
             <span aria-hidden className={cn('size-2.5 rounded-sm', s.className)} />
-            {s.name}
+            <Text>{s.name}</Text>
           </span>
         ))}
       </figcaption>
-      <LocalizedDiv role="img" aria-label={`${label}. ${data.map((d) => `${d.label}: ${d.values.map((v, i) => `${v} ${series[i]!.name}`).join(', ')}`).join('; ')}`} className="flex h-44 items-end gap-1.5 border-b border-ink-200 sm:gap-2.5">
+      {/* The parts are translated one by one: the whole description is not a catalogue sentence. */}
+      <LocalizedDiv role="img" aria-label={`${t(label)}. ${data.map((d) => `${t(d.label)}: ${d.values.map((v, i) => `${v} ${t(series[i]!.name)}`).join(', ')}`).join('; ')}`} className="flex h-44 items-end gap-1.5 border-b border-ink-200 sm:gap-2.5">
         {data.map((d, index) => (
-          <LocalizedDiv key={d.label} className="group flex h-full min-w-0 flex-1 items-end justify-center gap-0.5" title={`${d.label}: ${d.values.join(' / ')}`}>
+          <LocalizedDiv key={d.label} className="group flex h-full min-w-0 flex-1 items-end justify-center gap-0.5" title={`${t(d.label)}: ${d.values.join(' / ')}`}>
             {d.values.map((value, i) => (
               <div key={i} className={cn('w-full max-w-4 origin-bottom animate-grow rounded-t-sm transition-opacity duration-200 group-hover:opacity-80', series[i]!.className)} style={{ height: `${Math.max(value > 0 ? 3 : 0, (value / max) * 100)}%`, animationDelay: `${Math.min(index, 8) * 35}ms` }} />
             ))}

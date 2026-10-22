@@ -15,6 +15,7 @@ import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { formatDate, parseRM } from '@/lib/format';
 import { useAction, useApi } from '@/lib/hooks';
+import { useT } from '@/lib/i18n';
 import { formatPoints, formatRM } from '@/shared/domain';
 
 interface Offer {
@@ -49,6 +50,7 @@ const toMinutes = (hhmm: string) => {
 
 /** Shop Offers (proposal sections 8 and 13): the shop's own discount for points, with a monthly budget it sets. */
 export default function OffersPage() {
+  const t = useT();
   const data = useApi<Data>('/merchant/offers');
   const summary = useApi<Summary>('/merchant/summary');
   const [days, setDays] = useState(127);
@@ -103,7 +105,7 @@ export default function OffersPage() {
           <Card className={cn(live.status === 'ACTIVE' ? 'border-brand-300' : '')}>
             <CardHeader
               title={live.title}
-              description={`${formatPoints(live.discountSen)} offer points for ${formatRM(live.discountSen)} off · ${offerTerms(live)}`}
+              description={`${formatPoints(live.discountSen)} offer points for ${formatRM(live.discountSen)} off · ${offerTerms(live, t)}`}
               action={<Badge tone={live.status === 'PAUSED' ? 'neutral' : live.usable ? 'success' : 'gold'}><Text>{live.status === 'PAUSED' ? 'Paused by you' : live.usable ? 'Live now' : live.reason === 'BUDGET_USED' ? 'Paused: budget used' : 'Outside its hours'}</Text></Badge>}
             />
             <div className="space-y-4 p-5">
@@ -184,7 +186,7 @@ export default function OffersPage() {
                         <span>
                           <span className="font-medium text-ink-900">{o.title}</span>
                           <span className="block text-sm text-ink-500">
-                            <Text>{offerTerms(o)}</Text><Text> · from </Text><Text>{formatDate(o.createdAt)}</Text>
+                            <Text>{offerTerms(o, t)}</Text><Text> · from </Text><Text>{formatDate(o.createdAt)}</Text>
                           </span>
                         </span>
                         <Badge><Text>Ended</Text></Badge>

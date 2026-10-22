@@ -437,7 +437,7 @@ function BookingDetailModal({ id, onClose, onChanged }: { id: string | null; onC
 
   const d = detail.data;
   const link = issued ? `${typeof window === 'undefined' ? '' : window.location.origin}/pass/${issued.token}` : '';
-  const message = issued && d ? t(`Salam! Here is the City of Elmina gate pass for ${d.worker?.name ?? 'your worker'} (${d.merchantName}). Show the QR code at the main gate: ${link}`) : '';
+  const message = issued && d ? t(`Salam! Here is the City of Elmina gate pass for ${d.worker?.name ?? t('your worker')} (${d.merchantName}). Show the QR code at the main gate: ${link}`) : '';
 
   return (
     <>

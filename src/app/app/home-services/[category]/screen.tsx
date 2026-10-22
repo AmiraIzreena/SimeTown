@@ -45,7 +45,8 @@ export function ServiceCategoryScreen({ category }: { category: ServiceCategory 
           </p>
           <h1 className="mt-3 text-[34px] font-bold leading-tight tracking-tight text-white [text-shadow:0_2px_18px_rgb(45_20_7/0.55)] sm:text-[42px]"><Text>{SERVICE_CATEGORY_LABELS[category]}</Text></h1>
           <p className="mt-2 text-[15px] font-medium text-white/90 [text-shadow:0_1px_10px_rgb(45_20_7/0.6)]"><Text>{page.summary}</Text></p>
-          <p className="mt-5 flex flex-wrap items-center gap-2 text-sm">
+          {/* A div, not a p: the count's loading skeleton is a div, which a p cannot contain. */}
+          <div className="mt-5 flex flex-wrap items-center gap-2 text-sm">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 font-semibold ring-1 ring-white/25 backdrop-blur-sm">
               <Briefcase className="size-4" aria-hidden />
               {count === undefined ? <Skeleton className="h-4 w-16 bg-white/30" /> : <Text>{count === 1 ? '1 company' : `${count} companies`}</Text>}
@@ -53,7 +54,7 @@ export function ServiceCategoryScreen({ category }: { category: ServiceCategory 
             <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 font-semibold ring-1 ring-white/25 backdrop-blur-sm">
               <ShieldCheck className="size-4" aria-hidden /><Text>Approved by the township office</Text>
             </span>
-          </p>
+          </div>
         </div>
       </header>
 

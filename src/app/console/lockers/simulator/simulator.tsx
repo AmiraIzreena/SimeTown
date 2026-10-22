@@ -12,6 +12,7 @@ import { api } from '@/lib/api';
 import { formatDateTime } from '@/lib/format';
 import { cn } from '@/lib/cn';
 import { useAction, useApi } from '@/lib/hooks';
+import { useT } from '@/lib/i18n';
 import { COMPARTMENT_STATE_LABELS, PARCEL_STATE_LABELS, type CompartmentState, type ParcelState } from '@/shared/lockers';
 
 interface Compartment {
@@ -58,6 +59,7 @@ const STATE_STYLE: Record<CompartmentState, string> = {
  * would, through the same server logic.
  */
 export function Simulator({ stationId }: { stationId: string }) {
+  const t = useT();
   const view = useApi<View>(stationId ? `/admin/lockers/simulator/${stationId}` : null, { refreshInterval: 1500 });
   const [selected, setSelected] = useState<string | null>(null);
   const [credential, setCredential] = useState('');
@@ -105,7 +107,7 @@ export function Simulator({ stationId }: { stationId: string }) {
                       selected === x.id && 'ring-2 ring-brand-500 ring-offset-2',
                     )}
                   >
-                    <span className="flex w-full items-center justify-between text-sm font-bold text-ink-900">{x.label}{x.door === 'OPEN' ? <DoorOpen className="size-4 text-brand-700" aria-label="Door open" /> : <DoorClosed className="size-4 text-ink-500" aria-label="Door shut" />}</span>
+                    <span className="flex w-full items-center justify-between text-sm font-bold text-ink-900">{x.label}{x.door === 'OPEN' ? <DoorOpen className="size-4 text-brand-700" aria-label={t('Door open')} /> : <DoorClosed className="size-4 text-ink-500" aria-label={t('Door shut')} />}</span>
                     <span className="text-[11px] text-ink-600">{x.size} · <Text>{COMPARTMENT_STATE_LABELS[x.state]}</Text></span>
                     {x.tracking_no && <span className="mt-auto truncate text-[11px] font-medium text-ink-800">{x.tracking_no}</span>}
                     {x.sim_fail_next && <span className="text-[11px] font-semibold text-accent-700"><Text>Will jam</Text></span>}
