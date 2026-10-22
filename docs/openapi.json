@@ -597,6 +597,71 @@
         }
       }
     },
+    "/api/v1/me/email-preferences": {
+      "post": {
+        "tags": [
+          "SimeTown ID"
+        ],
+        "summary": "Switch parcel emails on or off (residents; security alerts are always sent)",
+        "description": "Signed-in user (any role).",
+        "operationId": "postMeEmailPreferences",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "parcels": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "parcels"
+                ]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
     "/api/v1/me/terms": {
       "post": {
         "tags": [
@@ -9850,7 +9915,7 @@
         "tags": [
           "Parcels"
         ],
-        "summary": "Send a parcel back to the courier",
+        "summary": "Send a parcel back to the courier, when the household or the courier asks (with the reason)",
         "description": "Signed-in GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN.",
         "operationId": "postGuardParcelsParcelIdReturn",
         "parameters": [
@@ -9871,8 +9936,380 @@
               "schema": {
                 "$schema": "https://json-schema.org/draft/2020-12/schema",
                 "type": "object",
-                "properties": {},
-                "additionalProperties": false
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 300
+                  }
+                },
+                "required": [
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/guard/parcels/{parcelId}/notes": {
+      "post": {
+        "tags": [
+          "Parcels"
+        ],
+        "summary": "Add a note to a parcel's history, for example after calling the household",
+        "description": "Signed-in GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN.",
+        "operationId": "postGuardParcelsParcelIdNotes",
+        "parameters": [
+          {
+            "name": "parcelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "body": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "body"
+                ]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/guardhouse/parcels": {
+      "get": {
+        "tags": [
+          "Parcels"
+        ],
+        "summary": "The guardhouse register: every parcel held there, searchable and filtered, a page at a time",
+        "description": "Signed-in GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "getAdminGuardhouseParcels",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 60
+            }
+          },
+          {
+            "name": "show",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ALL",
+                "WAITING",
+                "OVERDUE",
+                "CALL_DUE",
+                "RETURN_PENDING",
+                "COLLECTED",
+                "RETURNED"
+              ]
+            }
+          },
+          {
+            "name": "source",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "SHELF",
+                "LOCKER"
+              ]
+            }
+          },
+          {
+            "name": "courier",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 60
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^d{4}-d{2}-d{2}$"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^d{4}-d{2}-d{2}$"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "LONGEST",
+                "NEWEST"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/guardhouse/overview": {
+      "get": {
+        "tags": [
+          "Parcels"
+        ],
+        "summary": "The guardhouse at a glance: held, overdue, calls due, collected, average days held, room",
+        "description": "Signed-in GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "getAdminGuardhouseOverview",
+        "parameters": [],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/guardhouse/parcels/{source}/{parcelId}": {
+      "get": {
+        "tags": [
+          "Parcels"
+        ],
+        "summary": "One parcel's full history at the guardhouse",
+        "description": "Signed-in GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "getAdminGuardhouseParcelsSourceParcelId",
+        "parameters": [
+          {
+            "name": "source",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "parcelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/guardhouse/check": {
+      "post": {
+        "tags": [
+          "Parcels"
+        ],
+        "summary": "Check any code shown at the guardhouse: a shelf collection code or a smart locker pickup code",
+        "description": "Signed-in GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN.",
+        "operationId": "postAdminGuardhouseCheck",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "minLength": 6,
+                    "maxLength": 120
+                  }
+                },
+                "required": [
+                  "code"
+                ]
               }
             }
           }
@@ -10368,7 +10805,7 @@
         "tags": [
           "Smart lockers"
         ],
-        "summary": "Reserve the smallest suitable compartment and unlock it (or list the alternatives when full)",
+        "summary": "Open the household's own door (or say why it cannot be used, and which guardhouse can take the parcel)",
         "description": "Signed-in COURIER.",
         "operationId": "postCourierParcelsParcelIdOpen",
         "parameters": [
@@ -10523,7 +10960,7 @@
         "tags": [
           "Smart lockers"
         ],
-        "summary": "Take the parcel to a staffed counter that accepts deliveries instead",
+        "summary": "Take the parcel to the guardhouse instead (only while it is open)",
         "description": "Signed-in COURIER.",
         "operationId": "postCourierParcelsParcelIdCounter",
         "parameters": [
@@ -10664,12 +11101,99 @@
         }
       }
     },
+    "/api/v1/courier/parcels/{parcelId}/problem": {
+      "post": {
+        "tags": [
+          "Smart lockers"
+        ],
+        "summary": "Say why the parcel could not go into the household's door (frees the door and shows where to take it)",
+        "description": "Signed-in COURIER.",
+        "operationId": "postCourierParcelsParcelIdProblem",
+        "parameters": [
+          {
+            "name": "parcelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "enum": [
+                      "TOO_BIG",
+                      "DOOR_FULL",
+                      "DOOR_DID_NOT_OPEN",
+                      "DOOR_DAMAGED",
+                      "PARCEL_DAMAGED",
+                      "OTHER"
+                    ]
+                  },
+                  "note": {
+                    "type": "string",
+                    "maxLength": 300
+                  }
+                },
+                "required": [
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
     "/api/v1/courier/parcels/{parcelId}/fail": {
       "post": {
         "tags": [
           "Smart lockers"
         ],
-        "summary": "Record that the delivery could not be made (the parcel stays with the courier)",
+        "summary": "Record that the delivery could not be made today (the parcel stays with the courier; the household is told)",
         "description": "Signed-in COURIER.",
         "operationId": "postCourierParcelsParcelIdFail",
         "parameters": [
@@ -10695,6 +11219,20 @@
                     "type": "string",
                     "minLength": 3,
                     "maxLength": 200
+                  },
+                  "problem": {
+                    "type": "string",
+                    "enum": [
+                      "TOO_BIG",
+                      "DOOR_FULL",
+                      "DOOR_DID_NOT_OPEN",
+                      "DOOR_DAMAGED",
+                      "PARCEL_DAMAGED",
+                      "NO_DOOR",
+                      "OTHER_STATION",
+                      "COUNTER_CLOSED",
+                      "OTHER"
+                    ]
                   }
                 },
                 "required": [
@@ -10746,7 +11284,7 @@
         "tags": [
           "Smart lockers"
         ],
-        "summary": "My home's locker parcels with their QR code, PIN and deadline",
+        "summary": "My home's locker parcels with their QR code and PIN, my locker door, the guardhouse and my late collections",
         "description": "Signed-in RESIDENT.",
         "operationId": "getLockersMyParcels",
         "parameters": [],
@@ -10936,7 +11474,7 @@
         "tags": [
           "Smart lockers"
         ],
-        "summary": "Ask for more time, when management has switched extensions on",
+        "summary": "Ask for more time on a parcel with a deadline (doors belong to one home and have none)",
         "description": "Signed-in RESIDENT.",
         "operationId": "postLockersParcelsParcelIdExtend",
         "parameters": [
@@ -11457,6 +11995,15 @@
                     "type": "number",
                     "minimum": -180,
                     "maximum": 180
+                  },
+                  "precincts": {
+                    "maxItems": 30,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 2,
+                      "maxLength": 80
+                    }
                   }
                 },
                 "required": [
@@ -11465,6 +12012,122 @@
                   "layout",
                   "adapter"
                 ]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/lockers/stations/{stationId}/doors": {
+      "get": {
+        "tags": [
+          "Smart lockers"
+        ],
+        "summary": "A station's doors and the home each belongs to",
+        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "getAdminLockersStationsStationIdDoors",
+        "parameters": [
+          {
+            "name": "stationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/lockers/compartments/{compartmentId}/release": {
+      "post": {
+        "tags": [
+          "Smart lockers"
+        ],
+        "summary": "Free an empty door when its household moves out (admins)",
+        "description": "Signed-in TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "postAdminLockersCompartmentsCompartmentIdRelease",
+        "parameters": [
+          {
+            "name": "compartmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
               }
             }
           }
@@ -12125,9 +12788,86 @@
         "tags": [
           "Smart lockers"
         ],
-        "summary": "Mark a parcel to go back to the courier",
-        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "summary": "Mark a parcel to go back to the courier, when the household or the courier asks",
+        "description": "Signed-in GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
         "operationId": "postAdminLockersParcelsParcelIdReturn",
+        "parameters": [
+          {
+            "name": "parcelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 300
+                  }
+                },
+                "required": [
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/lockers/parcels/{parcelId}/keep": {
+      "post": {
+        "tags": [
+          "Smart lockers"
+        ],
+        "summary": "Keep a parcel at the guardhouse instead of sending it back",
+        "description": "Signed-in GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "postAdminLockersParcelsParcelIdKeep",
         "parameters": [
           {
             "name": "parcelId",
@@ -12148,6 +12888,128 @@
                 "type": "object",
                 "properties": {},
                 "additionalProperties": false
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/lockers/parcels/{parcelId}/notes": {
+      "get": {
+        "tags": [
+          "Smart lockers"
+        ],
+        "summary": "Staff and guards' notes on a parcel",
+        "description": "Signed-in GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "getAdminLockersParcelsParcelIdNotes",
+        "parameters": [
+          {
+            "name": "parcelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Smart lockers"
+        ],
+        "summary": "Add a note to a parcel, for example after calling the household",
+        "description": "Signed-in GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "postAdminLockersParcelsParcelIdNotes",
+        "parameters": [
+          {
+            "name": "parcelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "body": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "body"
+                ]
               }
             }
           }
@@ -12349,370 +13211,12 @@
         }
       }
     },
-    "/api/v1/admin/lockers/relocations": {
-      "get": {
-        "tags": [
-          "Smart lockers"
-        ],
-        "summary": "Relocation tasks, open ones first",
-        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
-        "operationId": "getAdminLockersRelocations",
-        "parameters": [],
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The result is in `data`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {}
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/Error"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      }
-    },
-    "/api/v1/admin/lockers/relocations/{taskId}/start": {
-      "post": {
-        "tags": [
-          "Smart lockers"
-        ],
-        "summary": "Start a relocation: choose the storage place and open the parcel's door",
-        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
-        "operationId": "postAdminLockersRelocationsTaskIdStart",
-        "parameters": [
-          {
-            "name": "taskId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$schema": "https://json-schema.org/draft/2020-12/schema",
-                "type": "object",
-                "properties": {
-                  "destinationId": {
-                    "type": "string",
-                    "format": "uuid",
-                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                  },
-                  "idempotencyKey": {
-                    "type": "string",
-                    "minLength": 8,
-                    "maxLength": 80,
-                    "pattern": "^[A-Za-z0-9_-]+$"
-                  }
-                },
-                "required": [
-                  "destinationId",
-                  "idempotencyKey"
-                ]
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The result is in `data`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {}
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error"
-          },
-          "422": {
-            "$ref": "#/components/responses/Error"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      }
-    },
-    "/api/v1/admin/lockers/relocations/{taskId}/verify": {
-      "post": {
-        "tags": [
-          "Smart lockers"
-        ],
-        "summary": "Scan the tracking code of the parcel taken out",
-        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
-        "operationId": "postAdminLockersRelocationsTaskIdVerify",
-        "parameters": [
-          {
-            "name": "taskId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$schema": "https://json-schema.org/draft/2020-12/schema",
-                "type": "object",
-                "properties": {
-                  "trackingNo": {
-                    "type": "string",
-                    "minLength": 6,
-                    "maxLength": 40,
-                    "pattern": "^[A-Za-z0-9-]+$"
-                  }
-                },
-                "required": [
-                  "trackingNo"
-                ]
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The result is in `data`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {}
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error"
-          },
-          "422": {
-            "$ref": "#/components/responses/Error"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      }
-    },
-    "/api/v1/admin/lockers/relocations/{taskId}/complete": {
-      "post": {
-        "tags": [
-          "Smart lockers"
-        ],
-        "summary": "The parcel is in storage and the compartment is shut and empty",
-        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
-        "operationId": "postAdminLockersRelocationsTaskIdComplete",
-        "parameters": [
-          {
-            "name": "taskId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$schema": "https://json-schema.org/draft/2020-12/schema",
-                "type": "object",
-                "properties": {
-                  "emptyConfirmed": {
-                    "default": false,
-                    "type": "boolean"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The result is in `data`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {}
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error"
-          },
-          "422": {
-            "$ref": "#/components/responses/Error"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      }
-    },
-    "/api/v1/admin/lockers/relocations/{taskId}/fail": {
-      "post": {
-        "tags": [
-          "Smart lockers"
-        ],
-        "summary": "The parcel was missing, damaged or could not be moved",
-        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
-        "operationId": "postAdminLockersRelocationsTaskIdFail",
-        "parameters": [
-          {
-            "name": "taskId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$schema": "https://json-schema.org/draft/2020-12/schema",
-                "type": "object",
-                "properties": {
-                  "reason": {
-                    "type": "string",
-                    "enum": [
-                      "MISSING",
-                      "DAMAGED",
-                      "OTHER"
-                    ]
-                  },
-                  "note": {
-                    "type": "string",
-                    "minLength": 3,
-                    "maxLength": 300
-                  }
-                },
-                "required": [
-                  "reason",
-                  "note"
-                ]
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "session": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The result is in `data`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {}
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error"
-          },
-          "422": {
-            "$ref": "#/components/responses/Error"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error"
-          }
-        }
-      }
-    },
     "/api/v1/admin/lockers/overflow": {
       "get": {
         "tags": [
           "Smart lockers"
         ],
-        "summary": "Overflow storage places and how full they are",
+        "summary": "Guardhouses, how full each is, and whether each is open now",
         "description": "Signed-in GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
         "operationId": "getAdminLockersOverflow",
         "parameters": [],
@@ -12747,7 +13251,7 @@
         "tags": [
           "Smart lockers"
         ],
-        "summary": "Register an overflow storage place",
+        "summary": "Add a guardhouse with its opening hours",
         "description": "Signed-in TOWNSHIP_ADMIN, HQ_ADMIN.",
         "operationId": "postAdminLockersOverflow",
         "parameters": [],
@@ -12776,23 +13280,31 @@
                     "minLength": 3,
                     "maxLength": 160
                   },
-                  "hours": {
-                    "type": "string",
-                    "minLength": 3,
-                    "maxLength": 120
-                  },
                   "instructions": {
                     "type": "string",
                     "minLength": 3,
                     "maxLength": 300
                   },
+                  "openFromHour": {
+                    "default": 8,
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 24
+                  },
+                  "openToHour": {
+                    "default": 22,
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 24
+                  },
                   "capacity": {
+                    "default": 100,
                     "type": "integer",
                     "minimum": 1,
                     "maximum": 5000
                   },
                   "acceptsDeliveries": {
-                    "default": false,
+                    "default": true,
                     "type": "boolean"
                   }
                 },
@@ -12800,9 +13312,7 @@
                   "name",
                   "kind",
                   "location",
-                  "hours",
-                  "instructions",
-                  "capacity"
+                  "instructions"
                 ]
               }
             }
@@ -12850,7 +13360,7 @@
         "tags": [
           "Smart lockers"
         ],
-        "summary": "Parcels currently held at storage locations",
+        "summary": "Parcels at the counters: days waited, overdue, calls due and notes",
         "description": "Signed-in GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
         "operationId": "getAdminLockersStorageParcels",
         "parameters": [],
@@ -12887,7 +13397,7 @@
         "tags": [
           "Smart lockers"
         ],
-        "summary": "Courier parcels committed for delivery to a storage counter",
+        "summary": "Parcels a courier is bringing to a counter, and why",
         "description": "Signed-in GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
         "operationId": "getAdminLockersStorageDeliveries",
         "parameters": [],
@@ -12919,12 +13429,107 @@
         }
       }
     },
+    "/api/v1/admin/lockers/overflow/{locationId}": {
+      "patch": {
+        "tags": [
+          "Smart lockers"
+        ],
+        "summary": "Change a guardhouse's opening hours, room or instructions",
+        "description": "Signed-in TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "patchAdminLockersOverflowLocationId",
+        "parameters": [
+          {
+            "name": "locationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "openFromHour": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 24
+                  },
+                  "openToHour": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 24
+                  },
+                  "capacity": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 5000
+                  },
+                  "instructions": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 300
+                  }
+                },
+                "required": [
+                  "openFromHour",
+                  "openToHour",
+                  "capacity",
+                  "instructions"
+                ]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
     "/api/v1/admin/lockers/overflow/{locationId}/active": {
       "post": {
         "tags": [
           "Smart lockers"
         ],
-        "summary": "Open or close a storage place",
+        "summary": "Stop or resume taking parcels at a guardhouse (not its daily hours)",
         "description": "Signed-in TOWNSHIP_ADMIN, HQ_ADMIN.",
         "operationId": "postAdminLockersOverflowLocationIdActive",
         "parameters": [
@@ -14322,7 +14927,7 @@
         "tags": [
           "Smart lockers"
         ],
-        "summary": "The township's collection deadlines, reminders and extension settings",
+        "summary": "The township's reminder timings for doors and the guardhouse",
         "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
         "operationId": "getAdminLockersPolicy",
         "parameters": [],
@@ -14357,7 +14962,7 @@
         "tags": [
           "Smart lockers"
         ],
-        "summary": "Change the collection policy",
+        "summary": "Change the reminder timings (no fees are ever charged)",
         "description": "Signed-in TOWNSHIP_ADMIN, HQ_ADMIN.",
         "operationId": "patchAdminLockersPolicy",
         "parameters": [],
@@ -14430,6 +15035,18 @@
                   "exceptions_need_second_approval": {
                     "default": true,
                     "type": "boolean"
+                  },
+                  "door_reminder_hours": {
+                    "default": 48,
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 720
+                  },
+                  "counter_call_after_days": {
+                    "default": 14,
+                    "type": "integer",
+                    "minimum": 2,
+                    "maximum": 90
                   }
                 },
                 "required": [
@@ -28219,7 +28836,7 @@
         "tags": [
           "System"
         ],
-        "summary": "Run a scheduled job (expire-points, float-check, settle, cleanup, flood-agent, parcel-reminders, lockers, couriers, incidents, access, recycling); bearer token",
+        "summary": "Run a scheduled job (expire-points, float-check, settle, cleanup, flood-agent, parcel-reminders, lockers, couriers, incidents, access, recycling, emails); bearer token",
         "description": "Machine caller with a bearer token.",
         "operationId": "postInternalJobsName",
         "parameters": [

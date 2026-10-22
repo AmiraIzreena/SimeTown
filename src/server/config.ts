@@ -39,6 +39,14 @@ const schema = z
     // How long a sign-in lookup may be served from Redis. 0 turns the cache off.
     SESSION_CACHE_SECONDS: z.coerce.number().int().min(0).max(300).default(60),
     LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
+    // Optional: the mail account SimeTown sends email from (for example Gmail with an App Password). Without it,
+    // emails wait in the outbox and are never sent. Port 465 uses TLS from the start; 587 upgrades with STARTTLS.
+    SMTP_HOST: z.string().min(1).optional(),
+    SMTP_PORT: z.coerce.number().int().min(1).max(65_535).default(465),
+    SMTP_USER: z.string().min(1).optional(),
+    SMTP_PASS: z.string().min(1).optional(),
+    // The address shown as the sender. Defaults to SMTP_USER.
+    SMTP_FROM: z.email().optional(),
   })
   .superRefine((env, ctx) => {
     const hosted = env.APP_ENV !== 'development';
@@ -62,6 +70,9 @@ const schema = z
     // A photo of a drain goes to the model server, so it must not cross the network in clear text.
     if (env.FLOOD_MODEL_URL && !env.FLOOD_MODEL_URL.startsWith('https://') && hosted) {
       ctx.addIssue({ code: 'custom', path: ['FLOOD_MODEL_URL'], message: 'must be https outside development' });
+    }
+    if (env.SMTP_HOST && !(env.SMTP_USER && env.SMTP_PASS)) {
+      ctx.addIssue({ code: 'custom', path: ['SMTP_HOST'], message: 'SMTP_USER and SMTP_PASS are required when SMTP_HOST is set' });
     }
     if (env.AI_PROVIDER !== 'none' && !(env.AI_API_KEY && env.AI_MODEL)) {
       ctx.addIssue({ code: 'custom', path: ['AI_PROVIDER'], message: 'AI_API_KEY and AI_MODEL are required when AI_PROVIDER is set' });

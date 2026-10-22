@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense } from 'react';
+import { Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { PageHeader } from '@/components/ui/card';
 import { Text } from '@/components/ui/localized-text';
@@ -8,13 +8,14 @@ import { SubNav } from '@/components/ui/sub-nav';
 import { Tabs, TabPanel } from '@/components/ui/tabs';
 import Loading from './loading';
 import './parcel-workspace.css';
-import { IncidentBoard } from '@/components/features/incident-board';
-import GuardhouseSummary from '../parcels/summary';
+import { CounterDropOffs } from '@/components/features/counter-parcels';
+import { GuardhouseHandover, GuardhouseOverview, GuardhouseRegister } from '@/components/features/guardhouse-register';
+import { useApi } from '@/lib/hooks';
+import type { Me } from '@/lib/types';
 import { TodayTab } from '../lockers/today';
 import { OverviewTab } from '../lockers/overview';
 import { ParcelsTab } from '../lockers/parcels';
-import { RelocationsTab } from '../lockers/relocations';
-import { CounterTab, DirectCounterDeliveries, StorageLocationsTab } from '../lockers/counter';
+import { StorageLocationsTab } from '../lockers/counter';
 import { SecurityTab } from '../lockers/security';
 import { StationsTab } from '../lockers/stations';
 import { CompaniesTab } from '../lockers/companies';
@@ -25,29 +26,23 @@ import { Deadlines } from '../incidents/deadlines';
 
 const TABS = [
   { key: 'performance', label: 'Performance' }, { key: 'today', label: 'Today' },
-  { key: 'guardhouse', label: 'Guardhouse parcels' }, { key: 'lockers', label: 'Smart lockers' },
+  { key: 'guardhouse', label: 'Guardhouse' }, { key: 'lockers', label: 'Smart lockers' },
   { key: 'manage', label: 'Manage' },
 ] as const;
 type Tab = typeof TABS[number]['key'];
-const GUARDHOUSE = [
-  { key: 'overview', label: 'Overview' }, { key: 'cases', label: 'Cases & reports' },
-] as const;
 const LOCKERS = [
-  { key: 'parcels', label: 'Parcels' }, { key: 'storage', label: 'Parcel storage' },
-  { key: 'access', label: 'Emergency door access' },
-  { key: 'cases', label: 'Cases & reports' },
-] as const;
-const STORAGE_MODES = [
-  { key: 'movement', label: 'Transfer to storage' },
-  { key: 'collection', label: 'Resident collection' },
+  { key: 'parcels', label: 'Parcels' }, { key: 'access', label: 'Door access' },
 ] as const;
 const MANAGE = [
-  { key: 'stations', label: 'Stations' }, { key: 'storage', label: 'Storage locations' }, { key: 'companies', label: 'Courier companies' },
+  { key: 'stations', label: 'Stations' }, { key: 'storage', label: 'Guardhouses' }, { key: 'companies', label: 'Courier companies' },
   { key: 'accounts', label: 'Courier accounts' },
   { key: 'shipments', label: 'Parcel check history' },
   { key: 'policy', label: 'Locker policy' }, { key: 'deadlines', label: 'Case deadlines' },
   { key: 'simulated', label: 'Simulated courier companies' },
 ] as const;
+
+/** Parcel and locker cases are worked in Lapor, with every other report. */
+const CASES = '/console/reports?tab=parcels';
 
 export default function OperationsPage() {
   return <Suspense fallback={<Loading />}><Operations /></Suspense>;
@@ -56,69 +51,52 @@ export default function OperationsPage() {
 function Operations() {
   const search = useSearchParams();
   const router = useRouter();
-  const legacyCases = search.get('tab') === 'cases';
-  const legacyGuardhouseCases = legacyCases && search.get('area') === 'PARCELS';
-  const tab = legacyCases ? (legacyGuardhouseCases ? 'guardhouse' : 'lockers') : TABS.find((item) => item.key === search.get('tab'))?.key ?? 'performance';
-  const guardhouse = legacyGuardhouseCases ? 'cases' : GUARDHOUSE.find((item) => item.key === search.get('view'))?.key ?? 'overview';
-  const requestedLockerView = search.get('view');
-  const legacyStorageView = requestedLockerView === 'move' || requestedLockerView === 'collect';
-  const locker = legacyCases && !legacyGuardhouseCases ? 'cases' : legacyStorageView ? 'storage' : LOCKERS.find((item) => item.key === requestedLockerView)?.key ?? 'parcels';
-  const storageMode = (legacyStorageView ? (requestedLockerView === 'collect' ? 'collection' : 'movement') : STORAGE_MODES.find((item) => item.key === search.get('mode'))?.key) ?? 'movement';
-  const manage = MANAGE.find((item) => item.key === search.get('view'))?.key ?? 'stations';
-  const navigate = (next: Tab, view?: string, task?: string, mode?: string) => {
+  const requestedTab = search.get('tab');
+  const requestedView = search.get('view');
+  // Old addresses: cases moved to Lapor; the locker "parcel counter" and "storage" views are the guardhouse now.
+  const toCases = requestedTab === 'cases' || requestedView === 'cases';
+  const toGuardhouse = requestedTab === 'lockers' && (requestedView === 'storage' || requestedView === 'move' || requestedView === 'collect');
+  useEffect(() => {
+    if (toCases) {
+      const params = new URLSearchParams();
+      for (const key of ['ref', 'disputed', 'overdue']) { const value = search.get(key); if (value) params.set(key, value); }
+      router.replace(`${CASES}${params.size ? `&${params.toString()}` : ''}`);
+    } else if (toGuardhouse) {
+      router.replace('/console/operations?tab=guardhouse');
+    }
+  }, [toCases, toGuardhouse, search, router]);
+
+  const tab: Tab = toGuardhouse ? 'guardhouse' : TABS.find((item) => item.key === requestedTab)?.key ?? 'performance';
+  const locker = LOCKERS.find((item) => item.key === requestedView)?.key ?? 'parcels';
+  const manage = MANAGE.find((item) => item.key === requestedView)?.key ?? 'stations';
+  const navigate = (next: Tab, view?: string) => {
     const params = new URLSearchParams({ tab: next });
     if (view) params.set('view', view);
-    if (task) params.set('task', task);
-    if (mode) params.set('mode', mode);
     router.push('/console/operations?' + params.toString(), { scroll: false });
   };
-  const reference = search.get('ref');
+  if (toCases) return <Loading />;
   return <div className="parcel-workspace">
-    <PageHeader title="Parcels" description="Manage guardhouse parcels, smart lockers and parcel-related cases." />
+    <PageHeader title="Parcels" description="Smart lockers and the guardhouse: today’s work, every parcel held at the guardhouse, and locker performance. Parcel cases are in Lapor." />
     <Tabs<Tab> label="Parcels" value={tab} onChange={(next) => navigate(next)} items={[...TABS]} />
     <TabPanel>
-      <div className="parcel-view" key={`${tab}:${tab === 'lockers' ? `${locker}:${storageMode}` : tab === 'manage' ? manage : guardhouse}`}>
-      {tab === 'today' && <TodayTab allCases
+      <div className="parcel-view" key={`${tab}:${tab === 'lockers' ? locker : tab === 'manage' ? manage : ''}`}>
+      {tab === 'today' && <TodayTab
         onPerformance={() => navigate('performance')}
-        onMove={(id) => navigate('lockers', 'storage', id, 'movement')}
+        onGuardhouse={() => navigate('guardhouse')}
         onParcels={() => navigate('lockers')}
         onStations={() => navigate('manage', 'stations')}
+        casesHref={CASES}
       />}
-      {tab === 'guardhouse' && <>
-        <SubNav label="Guardhouse parcels" value={guardhouse} items={GUARDHOUSE} hrefOf={(view) => `/console/operations?tab=guardhouse&view=${view}`} className="mb-6" />
-        {guardhouse === 'overview' && <GuardhouseSummary />}
-        {guardhouse === 'cases' && <section className="space-y-5">
-          <div><h2 className="font-display text-xl font-bold text-ink-900"><Text>Guardhouse parcel cases</Text></h2>
-            <p className="mt-1 text-sm text-ink-500"><Text>Only reports about parcels logged and handed over at the guardhouse.</Text></p></div>
-          <IncidentBoard key={search.toString()} modules={['PARCELS']}
-            openRef={reference && /^INC-\d+$/.test(reference) ? reference : null}
-            initialDisputed={search.get('disputed') === '1'} initialOverdue={search.get('overdue') === '1'} />
-        </section>}
-      </>}
+      {tab === 'guardhouse' && <GuardhouseTab />}
       {tab === 'performance' && <section className="space-y-5">
         <div><h2 className="font-display text-xl font-bold text-ink-900"><Text>Performance & station details</Text></h2>
-          <p className="mt-1 text-sm text-ink-500"><Text>Locker capacity, collection performance and station activity.</Text></p></div>
+          <p className="mt-1 text-sm text-ink-500"><Text>Every locker bank and the guardhouse: doors in use, waiting times and collections.</Text></p></div>
         <OverviewTab showAlerts={false} />
       </section>}
       {tab === 'lockers' && <>
         <SubNav label="Smart lockers" value={locker} items={LOCKERS} hrefOf={(view) => `/console/operations?tab=lockers&view=${view}`} className="mb-6" />
         {locker === 'parcels' && <ParcelsTab />}
-        {locker === 'storage' && <section>
-          <Tabs label="Parcel storage" value={storageMode} onChange={(mode) => navigate('lockers', 'storage', undefined, mode)} items={[...STORAGE_MODES]} />
-          {storageMode === 'movement' && <div className="space-y-6">
-            <DirectCounterDeliveries />
-            <RelocationsTab taskId={search.get('task')} onClearTask={() => navigate('lockers', 'storage', undefined, 'movement')} />
-          </div>}
-          {storageMode === 'collection' && <CounterTab />}
-        </section>}
         {locker === 'access' && <SecurityTab />}
-        {locker === 'cases' && <section className="space-y-5">
-          <div><h2 className="font-display text-xl font-bold text-ink-900"><Text>Smart locker cases</Text></h2>
-            <p className="mt-1 text-sm text-ink-500"><Text>Only smart-locker and courier-platform cases.</Text></p></div>
-          <IncidentBoard key={search.toString()} modules={['LOCKERS', 'COURIERS']}
-            openRef={reference && /^INC-\d+$/.test(reference) ? reference : null}
-            initialOverdue={search.get('overdue') === '1'} />
-        </section>}
       </>}
       {tab === 'manage' && <div className="min-w-0 space-y-6">
         <SubNav label="Manage" sticky value={manage} items={MANAGE} hrefOf={(view) => `/console/operations?tab=manage&view=${view}`} />
@@ -135,5 +113,18 @@ function Operations() {
       </div>}
       </div>
     </TabPanel>
+  </div>;
+}
+
+/** Everything held at the guardhouse: parcels on their way, handing over, the figures and the register. */
+function GuardhouseTab() {
+  const me = useApi<Me>('/me');
+  // HQ reads every township's guardhouse; handing over happens at the township's own.
+  const canHandOver = me.data ? me.data.role !== 'HQ_ADMIN' : false;
+  return <div className="space-y-6">
+    <GuardhouseOverview />
+    <CounterDropOffs />
+    {canHandOver && <GuardhouseHandover />}
+    <GuardhouseRegister />
   </div>;
 }

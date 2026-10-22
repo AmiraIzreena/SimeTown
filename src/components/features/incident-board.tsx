@@ -240,7 +240,8 @@ export function IncidentBoard({ modules, showLapor = false, openRef, initialArea
 export function CaseSummary({ title, description, area, linkLabel }: { title: string; description?: string; area: Exclude<CaseArea, 'LAPOR'>; linkLabel: string }) {
   const query = `${area.includes(',') ? 'modules' : 'module'}=${area}&status=ACTIVE`;
   const board = useApi<Pick<Board, 'metrics'>>(`/admin/incidents?${query}`, { refreshInterval: 30_000 });
-  const href = area === 'PARCELS' ? '/console/operations?tab=guardhouse&view=cases' : '/console/operations?tab=lockers&view=cases';
+  // Parcel, locker and courier cases are worked in Lapor.
+  const href = '/console/reports?tab=parcels';
   return (
     <Card className="flex flex-wrap items-center justify-between gap-4 p-5">
       <div className="min-w-0 space-y-1">
@@ -308,11 +309,9 @@ function CaseDetail({ modules, id, staff, isAdmin, onClose, onChange }: { module
   const outsideScope = Boolean(i && modules && !modules.includes(i.module));
   useEffect(() => {
     if (outsideScope && i) {
-      const destination = i.module === 'PARCELS'
-        ? '/console/operations?tab=guardhouse&view=cases'
-        : i.module === 'LOCKERS' || i.module === 'COURIERS'
-          ? '/console/operations?tab=lockers&view=cases'
-          : '/console/reports?tab=cases';
+      const destination = i.module === 'PARCELS' || i.module === 'LOCKERS' || i.module === 'COURIERS'
+        ? '/console/reports?tab=parcels'
+        : '/console/reports?tab=cases';
       router.replace(`${destination}&ref=${encodeURIComponent(i.reference)}`);
     }
   }, [outsideScope, i, router]);

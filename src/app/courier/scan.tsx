@@ -12,6 +12,7 @@ import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { useAction } from '@/lib/hooks';
 import { LOCKER_SIZE_INFO, LOCKER_SIZES, type LockerSize } from '@/shared/lockers';
+import type { NoDoor } from './desk';
 
 export interface Check {
   state: 'VERIFIED' | 'NOT_FOUND' | 'UNVERIFIED' | 'PROVIDER_UNAVAILABLE' | 'RECIPIENT_MISMATCH' | 'NOT_ELIGIBLE' | 'ALREADY_DEPOSITED';
@@ -26,10 +27,6 @@ export interface Check {
   sizeFromProvider: boolean;
   fallback: boolean;
   resumeParcelId: string | null;
-}
-interface Alternatives {
-  stations: { id: string; name: string; location: string; free: number }[];
-  counters: { id: string; name: string; location: string; hours: string }[];
 }
 
 const BARCODES = ['code_128', 'code_39', 'code_93', 'codabar', 'ean_13', 'itf', 'qr_code', 'data_matrix', 'pdf417', 'aztec'];
@@ -53,7 +50,7 @@ const EVIDENCE: Record<string, string> = { 'SimeTown delivery code': 'SimeTown d
  */
 export function ScanShipment({ station, onDelivering, onFallback }: {
   station: { id: string; name: string };
-  onDelivering: (parcelId: string, alternatives: Alternatives | null) => void;
+  onDelivering: (parcelId: string, noDoor: NoDoor | null) => void;
   onFallback: (trackingNo: string) => void;
 }) {
   const [code, setCode] = useState('');
@@ -68,8 +65,8 @@ export function ScanShipment({ station, onDelivering, onFallback }: {
     },
   });
   const deliver = useAction(
-    () => api.post<{ kind: 'OPENING' | 'FULL' | 'RESUME'; parcelId: string; alternatives?: Alternatives }>('/courier/shipments/deliver', { stationId: station.id, code: result!.trackingNo, size: size ?? undefined, idempotencyKey: newKey() }),
-    { onSuccess: (r) => onDelivering(r.parcelId, r.kind === 'FULL' ? r.alternatives ?? null : null) },
+    () => api.post<({ kind: 'OPENING' | 'RESUME' } | ({ kind: 'NO_DOOR' } & NoDoor)) & { parcelId: string }>('/courier/shipments/deliver', { stationId: station.id, code: result!.trackingNo, size: size ?? undefined, idempotencyKey: newKey() }),
+    { onSuccess: (r) => onDelivering(r.parcelId, r.kind === 'NO_DOOR' ? { problem: r.problem, otherStation: r.otherStation, counters: r.counters } : null) },
   );
   const run = (text: string) => {
     const clean = text.trim();
@@ -147,7 +144,7 @@ export function ScanShipment({ station, onDelivering, onFallback }: {
                     </div>
                   </fieldset>
                 )}
-                <Button onClick={() => void deliver.run()} pending={deliver.pending} disabled={!size}><DoorOpen className="size-4" aria-hidden /><Text>Open a locker</Text></Button>
+                <Button onClick={() => void deliver.run()} pending={deliver.pending} disabled={!size}><DoorOpen className="size-4" aria-hidden /><Text>Open the door</Text></Button>
               </>
             )}
             {result.resumeParcelId && <Button onClick={() => onDelivering(result.resumeParcelId!, null)}><DoorOpen className="size-4" aria-hidden /><Text>Carry on with this delivery</Text></Button>}

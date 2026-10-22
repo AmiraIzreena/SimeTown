@@ -58,8 +58,15 @@ async function shipment(companyId: string, s: { name: string; address: string; p
   return tracking;
 }
 
+/**
+ * Test shortcut: every home has one door and one parcel in it at a time, but these rules do not depend on which
+ * door, so a busy door is set aside and the home claims another free one with its next parcel.
+ */
+const setAsideBusyDoors = () => db.query(`UPDATE locker_compartments SET home_id = NULL WHERE home_id IS NOT NULL AND state <> 'AVAILABLE'`);
+
 /** Deposits a verified shipment and shuts the door with the parcel inside. */
 async function depositShipment(courier: Actor, tracking: string, at = T0) {
+  await setAsideBusyDoors();
   const d = await deliverShipment(db, courier, { stationId: stationA.id, code: tracking, idempotencyKey: key() }, at);
   if (d.kind !== 'OPENING') throw new Error(`Not opening: ${d.kind}`);
   await simulateClose(db, courier, d.parcelId, true, at);
@@ -74,7 +81,7 @@ const addressOf = async (homeId: string) => {
 beforeAll(async () => {
   db = await freshDb();
   w = await makeWorld(db);
-  stationA = await createStation(db, w.admin, { name: 'Platform A', location: 'Gate', layout: { S: 4, M: 2 }, adapter: 'SIMULATED', hasDoorSensor: true, hasPresenceSensor: true });
+  stationA = await createStation(db, w.admin, { name: 'Platform A', location: 'Gate', layout: { S: 12, M: 4 }, adapter: 'SIMULATED', hasDoorSensor: true, hasPresenceSensor: true });
   stationB = await createStation(db, w.admin, { name: 'Platform B', location: 'Hall', layout: { S: 2 }, adapter: 'SIMULATED', hasDoorSensor: true, hasPresenceSensor: true });
   jnt = (await onboardCompany(db, w.admin, { name: 'J&T Express', code: 'JNT', authMethod: 'COMPANY_MANAGED', providerMode: 'SIMULATED', canConfirmAssignment: true, trackingPattern: 'JTSIM[0-9]{8}' }, T0)).id;
   njv = (await onboardCompany(db, w.admin, { name: 'Ninja Van', code: 'NJV', authMethod: 'COMPANY_MANAGED', providerMode: 'SIMULATED', trackingPattern: 'NVSIM[0-9]{8}' }, T0)).id;
@@ -355,6 +362,7 @@ describe('A label never opens a door by itself', () => {
   it('opens the same reserved door at most a few times, and the same request key opens it once', async () => {
     const tracking = await shipment(jnt, { name: 'Aisyah Rahman', address: await addressOf(aisyahHome), carriedBy: 'JT-1001' });
     const k = key();
+    await setAsideBusyDoors();
     const first = await deliverShipment(db, faizal, { stationId: stationA.id, code: tracking, idempotencyKey: k }, T0);
     if (first.kind !== 'OPENING') throw new Error('expected a door');
     expect((await one<{ n: number }>(db, `SELECT count(*)::int AS n FROM locker_commands WHERE idempotency_key = $1`, [k]))!.n).toBe(1);

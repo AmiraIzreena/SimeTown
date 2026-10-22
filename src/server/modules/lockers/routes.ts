@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { ADMINS, STAFF, type Role } from '@/shared/domain';
-import { LOCKER_SIZES, PARCEL_STATES } from '@/shared/lockers';
+import { COURIER_PROBLEMS, DELIVERY_PROBLEMS, LOCKER_SIZES, PARCEL_STATES } from '@/shared/lockers';
 import { badRequest } from '../../errors';
 import { emptyBody, route, zEmail, zId, zPassword, zPhone, zText } from '../../http/router';
 import * as admin from './admin';
@@ -14,7 +14,7 @@ import * as hardware from './hardware';
 import * as incidents from './incidents';
 import * as overflow from './overflow';
 
-/** Staff who work a parcel counter: township staff and admins, and guards at a guardhouse counter. */
+/** People who work the guardhouse: guards, township staff and admins. */
 const COUNTER: Role[] = ['GUARD', 'TOWNSHIP_STAFF', 'TOWNSHIP_ADMIN', 'HQ_ADMIN'];
 const zKey = z.string().trim().min(8).max(80).regex(/^[A-Za-z0-9_-]+$/, 'Check the request key.');
 const zTracking = z.string().trim().min(6).max(40).regex(/^[A-Za-z0-9-]+$/, 'Letters, numbers and dashes only.');
@@ -33,7 +33,10 @@ const zPolicy = z.object({
   fee_enabled: z.boolean(),
   fee_sen: z.number().int().min(1).max(100_000).nullable(),
   exceptions_need_second_approval: z.boolean().default(true),
+  door_reminder_hours: z.number().int().min(1).max(720).default(48),
+  counter_call_after_days: z.number().int().min(2).max(90).default(14),
 });
+const zHour = z.number().int().min(0).max(24);
 
 export const lockerRoutes = [
   // --- Couriers: signing up -----------------------------------------------------------------
@@ -86,7 +89,7 @@ export const lockerRoutes = [
     },
   }),
   route({
-    method: 'POST', path: '/courier/parcels/:parcelId/open', tag: 'Smart lockers', summary: 'Reserve the smallest suitable compartment and unlock it (or list the alternatives when full)', auth: 'session', roles: ['COURIER'],
+    method: 'POST', path: '/courier/parcels/:parcelId/open', tag: 'Smart lockers', summary: "Open the household's own door (or say why it cannot be used, and which guardhouse can take the parcel)", auth: 'session', roles: ['COURIER'],
     rateLimit: { limit: 60, windowSec: 600, by: 'user' },
     body: z.object({ idempotencyKey: zKey }),
     handler: (c) => delivery.reserveAndOpen(c.db, c.actor, c.params.parcelId!, c.body.idempotencyKey, c.now),
@@ -97,7 +100,7 @@ export const lockerRoutes = [
     handler: (c) => delivery.moveToStation(c.db, c.actor, c.params.parcelId!, c.body.stationId, c.now),
   }),
   route({
-    method: 'POST', path: '/courier/parcels/:parcelId/counter', tag: 'Smart lockers', summary: 'Take the parcel to a staffed counter that accepts deliveries instead', auth: 'session', roles: ['COURIER'],
+    method: 'POST', path: '/courier/parcels/:parcelId/counter', tag: 'Smart lockers', summary: 'Take the parcel to the guardhouse instead (only while it is open)', auth: 'session', roles: ['COURIER'],
     body: z.object({ locationId: zId }),
     handler: (c) => delivery.chooseCounter(c.db, c.actor, c.params.parcelId!, c.body.locationId, c.now),
   }),
@@ -106,14 +109,20 @@ export const lockerRoutes = [
     handler: (c) => delivery.confirmDeposit(c.db, c.actor, c.params.parcelId!, c.now),
   }),
   route({
-    method: 'POST', path: '/courier/parcels/:parcelId/fail', tag: 'Smart lockers', summary: 'Record that the delivery could not be made (the parcel stays with the courier)', auth: 'session', roles: ['COURIER'],
-    body: z.object({ reason: zText(200, 3) }),
-    handler: (c) => delivery.failDelivery(c.db, c.actor, c.params.parcelId!, c.body.reason, c.now),
+    method: 'POST', path: '/courier/parcels/:parcelId/problem', tag: 'Smart lockers', summary: "Say why the parcel could not go into the household's door (frees the door and shows where to take it)", auth: 'session', roles: ['COURIER'],
+    rateLimit: { limit: 60, windowSec: 600, by: 'user' },
+    body: z.object({ reason: z.enum(COURIER_PROBLEMS), note: z.string().trim().max(300).optional() }),
+    handler: (c) => delivery.reportDeliveryProblem(c.db, c.actor, c.params.parcelId!, c.body, c.now),
+  }),
+  route({
+    method: 'POST', path: '/courier/parcels/:parcelId/fail', tag: 'Smart lockers', summary: 'Record that the delivery could not be made today (the parcel stays with the courier; the household is told)', auth: 'session', roles: ['COURIER'],
+    body: z.object({ reason: zText(200, 3), problem: z.enum(DELIVERY_PROBLEMS).optional() }),
+    handler: (c) => delivery.failDelivery(c.db, c.actor, c.params.parcelId!, c.body.reason, c.now, c.body.problem),
   }),
 
   // --- Residents ----------------------------------------------------------------------------
   route({
-    method: 'GET', path: '/lockers/my-parcels', tag: 'Smart lockers', summary: "My home's locker parcels with their QR code, PIN and deadline", auth: 'session', roles: ['RESIDENT'],
+    method: 'GET', path: '/lockers/my-parcels', tag: 'Smart lockers', summary: "My home's locker parcels with their QR code and PIN, my locker door, the guardhouse and my late collections", auth: 'session', roles: ['RESIDENT'],
     handler: (c) => collection.myLockerParcels(c.db, c.actor, c.now),
   }),
   route({
@@ -127,7 +136,7 @@ export const lockerRoutes = [
     handler: (c) => collection.confirmCollected(c.db, c.actor, c.params.parcelId!, c.now),
   }),
   route({
-    method: 'POST', path: '/lockers/parcels/:parcelId/extend', tag: 'Smart lockers', summary: 'Ask for more time, when management has switched extensions on', auth: 'session', roles: ['RESIDENT'],
+    method: 'POST', path: '/lockers/parcels/:parcelId/extend', tag: 'Smart lockers', summary: 'Ask for more time on a parcel with a deadline (doors belong to one home and have none)', auth: 'session', roles: ['RESIDENT'],
     body: z.object({ agreeFee: z.boolean().default(false) }),
     handler: (c) => collection.extendDeadline(c.db, c.actor, c.params.parcelId!, c.body.agreeFee, c.now),
   }),
@@ -173,8 +182,17 @@ export const lockerRoutes = [
       adapter: z.enum(['SIMULATED', 'HTTP_GATEWAY']), gatewayUrl: z.url().optional(),
       hasDoorSensor: z.boolean().default(true), hasPresenceSensor: z.boolean().default(true),
       lat: z.number().min(-90).max(90).optional(), lng: z.number().min(-180).max(180).optional(),
+      precincts: z.array(zText(80, 2)).max(30).optional(),
     }),
     handler: (c) => admin.createStation(c.db, c.actor, c.body),
+  }),
+  route({
+    method: 'GET', path: '/admin/lockers/stations/:stationId/doors', tag: 'Smart lockers', summary: "A station's doors and the home each belongs to", auth: 'session', roles: STAFF,
+    handler: (c) => admin.stationDoors(c.db, c.actor, c.params.stationId!),
+  }),
+  route({
+    method: 'POST', path: '/admin/lockers/compartments/:compartmentId/release', tag: 'Smart lockers', summary: 'Free an empty door when its household moves out (admins)', auth: 'session', roles: ADMINS, body: emptyBody,
+    handler: (c) => admin.releaseDoor(c.db, c.actor, c.params.compartmentId!, c.now),
   }),
   route({
     method: 'POST', path: '/admin/lockers/stations/:stationId/status', tag: 'Smart lockers', summary: 'Put a station online, offline or in maintenance', auth: 'session', roles: STAFF,
@@ -220,8 +238,23 @@ export const lockerRoutes = [
     handler: (c) => delivery.receiveAtCounter(c.db, c.actor, c.params.parcelId!, c.now),
   }),
   route({
-    method: 'POST', path: '/admin/lockers/parcels/:parcelId/return', tag: 'Smart lockers', summary: 'Mark a parcel to go back to the courier', auth: 'session', roles: STAFF, body: emptyBody,
-    handler: (c) => overflow.startReturn(c.db, c.actor, c.params.parcelId!, c.now),
+    method: 'POST', path: '/admin/lockers/parcels/:parcelId/return', tag: 'Smart lockers', summary: 'Mark a parcel to go back to the courier, when the household or the courier asks', auth: 'session', roles: COUNTER,
+    body: z.object({ reason: zText(300, 3) }),
+    handler: (c) => overflow.startReturn(c.db, c.actor, c.params.parcelId!, c.body.reason, c.now),
+  }),
+  route({
+    method: 'POST', path: '/admin/lockers/parcels/:parcelId/keep', tag: 'Smart lockers', summary: 'Keep a parcel at the guardhouse instead of sending it back', auth: 'session', roles: COUNTER, body: emptyBody,
+    handler: (c) => overflow.keepAtCounter(c.db, c.actor, c.params.parcelId!, c.now),
+  }),
+  route({
+    method: 'GET', path: '/admin/lockers/parcels/:parcelId/notes', tag: 'Smart lockers', summary: "Staff and guards' notes on a parcel", auth: 'session', roles: COUNTER,
+    handler: (c) => overflow.parcelNotes(c.db, c.actor, c.params.parcelId!),
+  }),
+  route({
+    method: 'POST', path: '/admin/lockers/parcels/:parcelId/notes', tag: 'Smart lockers', summary: 'Add a note to a parcel, for example after calling the household', auth: 'session', roles: COUNTER,
+    rateLimit: { limit: 60, windowSec: 600, by: 'user' },
+    body: z.object({ body: zText(500, 1) }),
+    handler: (c) => overflow.addParcelNote(c.db, c.actor, c.params.parcelId!, c.body.body, c.now),
   }),
   route({
     method: 'POST', path: '/admin/lockers/parcels/:parcelId/returned', tag: 'Smart lockers', summary: 'The courier has taken the parcel back', auth: 'session', roles: COUNTER, body: emptyBody,
@@ -233,51 +266,33 @@ export const lockerRoutes = [
     handler: (c) => overflow.resolveException(c.db, c.actor, c.params.parcelId!, c.body.outcome, c.body.note, c.body.overflowId, c.now),
   }),
   route({
-    method: 'GET', path: '/admin/lockers/relocations', tag: 'Smart lockers', summary: 'Relocation tasks, open ones first', auth: 'session', roles: STAFF,
-    handler: (c) => overflow.listRelocations(c.db, c.actor),
+    method: 'GET', path: '/admin/lockers/overflow', tag: 'Smart lockers', summary: 'Guardhouses, how full each is, and whether each is open now', auth: 'session', roles: COUNTER,
+    handler: (c) => overflow.listOverflow(c.db, c.actor, c.now),
   }),
   route({
-    method: 'POST', path: '/admin/lockers/relocations/:taskId/start', tag: 'Smart lockers', summary: "Start a relocation: choose the storage place and open the parcel's door", auth: 'session', roles: STAFF,
-    body: z.object({ destinationId: zId, idempotencyKey: zKey }),
-    handler: (c) => overflow.startRelocation(c.db, c.actor, c.params.taskId!, c.body.destinationId, c.body.idempotencyKey, c.now),
+    method: 'GET', path: '/admin/lockers/storage/parcels', tag: 'Smart lockers', summary: 'Parcels at the counters: days waited, overdue, calls due and notes', auth: 'session', roles: COUNTER,
+    handler: (c) => overflow.listStoredParcels(c.db, c.actor, c.now),
   }),
   route({
-    method: 'POST', path: '/admin/lockers/relocations/:taskId/verify', tag: 'Smart lockers', summary: 'Scan the tracking code of the parcel taken out', auth: 'session', roles: STAFF,
-    body: z.object({ trackingNo: zTracking }),
-    handler: (c) => overflow.verifyRelocatedParcel(c.db, c.actor, c.params.taskId!, c.body.trackingNo, c.now),
-  }),
-  route({
-    method: 'POST', path: '/admin/lockers/relocations/:taskId/complete', tag: 'Smart lockers', summary: 'The parcel is in storage and the compartment is shut and empty', auth: 'session', roles: STAFF,
-    body: z.object({ emptyConfirmed: z.boolean().default(false) }),
-    handler: (c) => overflow.completeRelocation(c.db, c.actor, c.params.taskId!, c.body.emptyConfirmed, c.now),
-  }),
-  route({
-    method: 'POST', path: '/admin/lockers/relocations/:taskId/fail', tag: 'Smart lockers', summary: 'The parcel was missing, damaged or could not be moved', auth: 'session', roles: STAFF,
-    body: z.object({ reason: z.enum(['MISSING', 'DAMAGED', 'OTHER']), note: zText(300, 3) }),
-    handler: (c) => overflow.failRelocation(c.db, c.actor, c.params.taskId!, c.body.reason, c.body.note, c.now),
-  }),
-  route({
-    method: 'GET', path: '/admin/lockers/overflow', tag: 'Smart lockers', summary: 'Overflow storage places and how full they are', auth: 'session', roles: COUNTER,
-    handler: (c) => overflow.listOverflow(c.db, c.actor),
-  }),
-  route({
-    method: 'GET', path: '/admin/lockers/storage/parcels', tag: 'Smart lockers', summary: 'Parcels currently held at storage locations', auth: 'session', roles: COUNTER,
-    handler: (c) => overflow.listStoredParcels(c.db, c.actor),
-  }),
-  route({
-    method: 'GET', path: '/admin/lockers/storage/deliveries', tag: 'Smart lockers', summary: 'Courier parcels committed for delivery to a storage counter', auth: 'session', roles: COUNTER,
+    method: 'GET', path: '/admin/lockers/storage/deliveries', tag: 'Smart lockers', summary: 'Parcels a courier is bringing to a counter, and why', auth: 'session', roles: COUNTER,
     handler: (c) => overflow.listCounterDeliveries(c.db, c.actor),
   }),
   route({
-    method: 'POST', path: '/admin/lockers/overflow', tag: 'Smart lockers', summary: 'Register an overflow storage place', auth: 'session', roles: ADMINS,
+    method: 'POST', path: '/admin/lockers/overflow', tag: 'Smart lockers', summary: 'Add a guardhouse with its opening hours', auth: 'session', roles: ADMINS,
     body: z.object({
-      name: zText(80, 2), kind: z.enum(['COUNTER', 'PARCEL_ROOM']), location: zText(160, 3), hours: zText(120, 3), instructions: zText(300, 3),
-      capacity: z.number().int().min(1).max(5000), acceptsDeliveries: z.boolean().default(false),
+      name: zText(80, 2), kind: z.enum(['COUNTER', 'PARCEL_ROOM']), location: zText(160, 3), instructions: zText(300, 3),
+      openFromHour: zHour.default(8), openToHour: zHour.default(22),
+      capacity: z.number().int().min(1).max(5000).default(100), acceptsDeliveries: z.boolean().default(true),
     }),
     handler: (c) => overflow.createOverflow(c.db, c.actor, c.body),
   }),
   route({
-    method: 'POST', path: '/admin/lockers/overflow/:locationId/active', tag: 'Smart lockers', summary: 'Open or close a storage place', auth: 'session', roles: ADMINS,
+    method: 'PATCH', path: '/admin/lockers/overflow/:locationId', tag: 'Smart lockers', summary: "Change a guardhouse's opening hours, room or instructions", auth: 'session', roles: ADMINS,
+    body: z.object({ openFromHour: zHour, openToHour: zHour, capacity: z.number().int().min(1).max(5000), instructions: zText(300, 3) }),
+    handler: (c) => overflow.updateOverflow(c.db, c.actor, c.params.locationId!, c.body),
+  }),
+  route({
+    method: 'POST', path: '/admin/lockers/overflow/:locationId/active', tag: 'Smart lockers', summary: 'Stop or resume taking parcels at a guardhouse (not its daily hours)', auth: 'session', roles: ADMINS,
     body: z.object({ active: z.boolean() }),
     handler: (c) => overflow.setOverflowActive(c.db, c.actor, c.params.locationId!, c.body.active),
   }),
@@ -375,11 +390,11 @@ export const lockerRoutes = [
     handler: (c) => exceptions.requestException(c.db, c.actor, c.params.parcelId!, c.body, c.now),
   }),
   route({
-    method: 'GET', path: '/admin/lockers/policy', tag: 'Smart lockers', summary: "The township's collection deadlines, reminders and extension settings", auth: 'session', roles: STAFF,
+    method: 'GET', path: '/admin/lockers/policy', tag: 'Smart lockers', summary: "The township's reminder timings for doors and the guardhouse", auth: 'session', roles: STAFF,
     handler: (c) => overflow.getTownshipPolicy(c.db, c.actor),
   }),
   route({
-    method: 'PATCH', path: '/admin/lockers/policy', tag: 'Smart lockers', summary: 'Change the collection policy', auth: 'session', roles: ADMINS,
+    method: 'PATCH', path: '/admin/lockers/policy', tag: 'Smart lockers', summary: 'Change the reminder timings (no fees are ever charged)', auth: 'session', roles: ADMINS,
     body: zPolicy,
     handler: (c) => overflow.saveTownshipPolicy(c.db, c.actor, c.body, c.now),
   }),

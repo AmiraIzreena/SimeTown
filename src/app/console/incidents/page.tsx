@@ -9,8 +9,10 @@ export default async function LegacyPage({ searchParams }: {
     if (Array.isArray(value)) value.forEach((entry) => params.append(key, entry));
     else if (value !== undefined) params.set(key, value);
   }
-  params.set('tab', search.area === 'PARCELS' ? 'guardhouse' : 'lockers');
-  params.set('view', 'cases');
+  // Every case is worked in Lapor: parcel, locker and courier cases on their own tab.
+  const area = typeof search.area === 'string' ? search.area : '';
+  params.set('tab', /PARCELS|LOCKERS|COURIERS/.test(area) || !area ? 'parcels' : 'cases');
   params.delete('area');
-  redirect(`/console/operations?${params.toString()}`);
+  params.delete('view');
+  redirect(`/console/reports?${params.toString()}`);
 }

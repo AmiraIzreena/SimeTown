@@ -54,6 +54,7 @@ A wrong or missing value stops the app at start-up with a message naming the var
 | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | not set | optional | recommended with more than one instance |
 | `SESSION_CACHE_SECONDS` | 60 | 60 | 60 (0 turns the cache off) |
 | `LOG_LEVEL` | `info` | `info` | `info` |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | not set (emails wait, unsent) | optional | set to send parcel emails (see [EMAIL_DESIGN.md](EMAIL_DESIGN.md) §7) |
 
 Rules the app enforces by itself outside development: `APP_URL` must be `https://`, the database
 cannot be PGlite, cookies become `Secure` with the `__Host-` prefix, and the database connection
@@ -166,8 +167,9 @@ These jobs keep the programme honest. Each is safe to run twice.
 | `float-check` | daily | Proves the float equals what it owes; pauses points if not |
 | `expire-points` | daily | Expires old points to their funders; sends 60- and 14-day reminders |
 | `cleanup` | daily | Removes expired sessions, old rate-limit rows and stale requests (Redis counters expire by themselves) |
-| `parcel-reminders` | daily | Reminds a household once about a parcel waiting three days or more |
-| `lockers` | every 5 minutes | Settles unanswered locker door commands and unused reservations; flags doors left open; sends locker reminders; marks parcels overdue and opens relocation tasks; tells courier companies about deposits (retried) |
+| `parcel-reminders` | every 5 minutes (or with `lockers`) | Guardhouse shelf parcels: overdue at the collection period, weekly reminders, calls for the guard (the `lockers` job runs this too) |
+| `lockers` | every 5 minutes | Settles unanswered locker door commands and unused reservations; flags doors left open; sends door reminders; marks counter parcels overdue, reminds weekly and asks guards to call; tells courier companies about deposits (retried); sends queued emails |
+| `emails` | optional, every 5 minutes | Sends queued emails on its own (the `lockers` job already does this) |
 | `incidents` | every 5 minutes | Escalates township cases nobody took in time, or that are past their resolution deadline, to the township admins (once per case and round); closes resolved cases once the reopening window has passed |
 | `recycling` | nightly | Booked collections: confirms requests left from before bookings confirmed themselves; day-before reminders; a past collection the gate never scanned and nobody weighed becomes missed (pass cancelled); one scanned but not weighed closes after 2 days with no points; flags homes with 3+ large weights or reward-limit hits, and collectors with 3+ misses, in 30 days (to township staff and SDP HQ) |
 | `couriers` | daily | Pauses company-managed couriers not reconfirmed in 90 days; flags agreements ending within 14 days; ends access when an agreement has ended |

@@ -117,6 +117,8 @@ export async function profile(db: Db, actor: Actor) {
       terms_accepted_at: Date | null;
       has_home: boolean;
       language: 'en' | 'ms';
+      parcel_emails: boolean;
+      email: string | null;
       shop_address_line: string | null;
       shop_postcode: string | null;
       shop_city: string | null;
@@ -124,7 +126,7 @@ export async function profile(db: Db, actor: Actor) {
     }
   >(
     db,
-    `SELECT u.phone, t.name AS township, u.occupancy, u.terms_version, u.terms_accepted_at, u.language, (h.id IS NOT NULL) AS has_home, ${HOME_ADDRESS_COLUMNS},
+    `SELECT u.phone, t.name AS township, u.occupancy, u.terms_version, u.terms_accepted_at, u.language, u.parcel_emails, u.email, (h.id IS NOT NULL) AS has_home, ${HOME_ADDRESS_COLUMNS},
             m.address_line AS shop_address_line, m.postcode AS shop_postcode, m.city AS shop_city, m.state AS shop_state
        FROM users u
        LEFT JOIN homes h ON h.id = u.home_id
@@ -146,6 +148,8 @@ export async function profile(db: Db, actor: Actor) {
     ...actor,
     phone: r.phone,
     language: r.language,
+    // Residents get parcel emails unless they switch them off; security alerts are always sent.
+    emails: actor.role === 'RESIDENT' ? { parcels: r.parcel_emails, address: r.email } : null,
     township: r.township,
     occupancy: r.occupancy,
     home: home && {
@@ -163,6 +167,13 @@ export async function profile(db: Db, actor: Actor) {
     terms: { version: r.terms_version, acceptedAt: r.terms_accepted_at, current: LEGAL.version },
     missing,
   };
+}
+
+/** A resident switches parcel emails on or off. Security alerts about their locker door are always sent. */
+export async function setEmailPreferences(db: Db, actor: Actor, input: { parcels: boolean }) {
+  if (actor.role !== 'RESIDENT') throw forbidden('Only residents receive parcel emails.');
+  await db.query('UPDATE users SET parcel_emails = $2 WHERE id = $1', [actor.id, input.parcels]);
+  return { parcels: input.parcels };
 }
 
 /** English or Bahasa Malaysia, remembered for the person across devices. */

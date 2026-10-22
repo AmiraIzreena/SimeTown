@@ -2,20 +2,21 @@
 
 import { Text } from '@/components/ui/localized-text';
 
-import { Search } from 'lucide-react';
+import { MessageSquareText, Search } from 'lucide-react';
 import { useState, type CSSProperties } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge, Card } from '@/components/ui/card';
-import { Modal } from '@/components/ui/dialog';
+import { ConfirmDialog, Modal } from '@/components/ui/dialog';
+import { ParcelNotes, refreshCounter } from '@/components/features/counter-parcels';
 import { EXCEPTION_LABELS } from './security';
 import { Async, EmptyState, SkeletonList } from '@/components/ui/feedback';
-import { Select, Textarea } from '@/components/ui/field';
+import { Input, Select, Textarea } from '@/components/ui/field';
 import { FilterBar, FilterChips, FilterSummary, SearchField } from '@/components/ui/filter-bar';
 import { api } from '@/lib/api';
 import { formatDateTime } from '@/lib/format';
 import { useAction, useApi } from '@/lib/hooks';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
-import { PARCEL_STATE_LABELS, type ParcelState } from '@/shared/lockers';
+import { DELIVERY_PROBLEM_LABELS, PARCEL_STATE_LABELS, type DeliveryProblem, type ParcelState } from '@/shared/lockers';
 
 interface Row {
   id: string;
@@ -31,28 +32,30 @@ interface Row {
   counter: string | null;
 }
 interface Detail {
-  parcel: Row & { exception_note: string | null; overflow_location_id: string | null };
+  parcel: Row & { exception_note: string | null; overflow_location_id: string | null; delivery_problem: DeliveryProblem | null; delivery_problem_note: string | null; ready_at: string | null; overdue_at: string | null; call_requested_at: string | null };
   events: { from_state: string | null; to_state: ParcelState; actor_kind: string; reason: string; at: string; actor: string | null }[];
   custody: { from_kind: string; from_ref: string | null; to_kind: string; to_ref: string | null; note: string | null; at: string; actor: string | null }[];
   commands: { purpose: string; status: string; error: string | null; created_at: string; acked_at: string | null; compartment: string }[];
+  notes: { id: string; body: string; created_at: string; author: string | null }[];
 }
 
 export const STATE_TONE: Partial<Record<ParcelState, 'success' | 'warning' | 'danger' | 'gold' | 'brand' | 'neutral'>> = {
   READY_FOR_COLLECTION: 'success', COLLECTED: 'neutral', OVERDUE: 'warning', RELOCATION_PENDING: 'danger', RELOCATION_IN_PROGRESS: 'warning', RELOCATED_TO_STORAGE: 'gold',
   DELIVERY_FAILED: 'danger', RETURN_PENDING: 'warning', RETURNED: 'neutral', EXCEPTION: 'danger',
 };
-const CUSTODY: Record<string, string> = { COURIER: 'Courier', LOCKER: 'Locker', STAFF: 'Staff', OVERFLOW: 'Overflow storage', RESIDENT: 'Resident' };
+const CUSTODY: Record<string, string> = { COURIER: 'Courier', LOCKER: 'Locker', STAFF: 'Staff', OVERFLOW: 'Guardhouse', RESIDENT: 'Resident' };
 
 /**
- * The sixteen states, grouped the way staff think about them. A parcel only exists
- * once the courier scans it at our locker; we never see it in transit.
+ * The states, grouped the way staff think about them. A parcel only exists once the courier scans it at our
+ * locker; we never see it in transit. Every home has its own door, so a parcel in a door is never overdue or moved:
+ * the older "overdue in a locker" and "moving to storage" states appear only on records from before.
  */
 const STATE_GROUPS: { key: string; label: string; states: readonly ParcelState[] }[] = [
-  { key: 'ACTION', label: 'Needs action', states: ['EXCEPTION', 'OVERDUE', 'RELOCATION_PENDING'] },
+  { key: 'ACTION', label: 'Needs action', states: ['EXCEPTION'] },
   // One courier visit at the station, usually under a minute. Anything left here is a stuck drop-off.
   { key: 'DROPOFF', label: 'Courier dropping off', states: ['REGISTERED', 'VERIFIED', 'LOCKER_RESERVED', 'DEPOSIT_IN_PROGRESS', 'DEPOSITED'] },
   { key: 'LOCKER', label: 'In the locker', states: ['READY_FOR_COLLECTION', 'COLLECTION_IN_PROGRESS'] },
-  { key: 'COUNTER', label: 'At the counter', states: ['RELOCATION_IN_PROGRESS', 'RELOCATED_TO_STORAGE', 'RETURN_PENDING'] },
+  { key: 'COUNTER', label: 'At the guardhouse', states: ['RELOCATED_TO_STORAGE', 'RETURN_PENDING'] },
   // Out of our hands: collected, taken back by the courier, or refused at the scan.
   { key: 'CLOSED', label: 'Closed', states: ['COLLECTED', 'RETURNED', 'DELIVERY_FAILED'] },
 ];
@@ -128,7 +131,9 @@ function ParcelDetail({ id, onClose, onChanged }: { id: string | null; onClose: 
     success: 'Done. The record is updated.',
     onSuccess: () => {
       onChanged();
+      setConfirmReturn(false);
       void detail.mutate();
+      void refreshCounter();
     },
   });
   const [kind, setKind] = useState<string>('RETRIEVAL');
@@ -141,14 +146,35 @@ function ParcelDetail({ id, onClose, onChanged }: { id: string | null; onClose: 
       void detail.mutate();
     },
   });
+  const [notesOpen, setNotesOpen] = useState(false);
+  const [confirmReturn, setConfirmReturn] = useState(false);
+  const [returnReason, setReturnReason] = useState('');
   const takeOut = useAction(() => api.post(`/lockers/parcels/${id}/simulate-close`, { itemPresent: false }), { success: 'Taken out. The compartment is free again.', onSuccess: () => { onChanged(); void detail.mutate(); } });
   const p = detail.data?.parcel;
-  const inLocker = p && ['READY_FOR_COLLECTION', 'OVERDUE', 'RELOCATION_PENDING', 'DEPOSIT_IN_PROGRESS', 'EXCEPTION'].includes(p.state) && p.compartment;
+  const inLocker = p && ['READY_FOR_COLLECTION', 'DEPOSIT_IN_PROGRESS', 'EXCEPTION'].includes(p.state) && p.compartment;
   return (
     <Modal open={id !== null} onClose={onClose} title={p ? p.tracking_no : ''} description={p ? `${p.company} · ${PARCEL_STATE_LABELS[p.state]}` : undefined} wide>
       {detail.data && p && (
         <div className="space-y-5">
           {p.exception_note && <p className="rounded-md bg-accent-50 p-3 text-sm text-accent-700">{p.exception_note}</p>}
+          {(p.delivery_problem || p.overdue_at || p.call_requested_at) && (
+            <dl className="grid gap-3 rounded-lg bg-ink-25 p-4 text-sm sm:grid-cols-3">
+              {p.delivery_problem && <div className="sm:col-span-3"><dt className="text-xs text-ink-500"><Text>Why it did not go into the home’s door</Text></dt><dd className="mt-0.5 font-medium text-ink-800"><Text>{DELIVERY_PROBLEM_LABELS[p.delivery_problem] ?? p.delivery_problem}</Text>{p.delivery_problem_note && <> · “{p.delivery_problem_note}”</>}</dd></div>}
+              {p.overdue_at && <div><dt className="text-xs text-ink-500"><Text>Overdue since</Text></dt><dd className="mt-0.5 font-medium text-warning-700"><Text>{formatDateTime(p.overdue_at)}</Text></dd></div>}
+              {p.call_requested_at && <div><dt className="text-xs text-ink-500"><Text>Guard asked to call</Text></dt><dd className="mt-0.5 font-medium text-ink-800"><Text>{formatDateTime(p.call_requested_at)}</Text></dd></div>}
+            </dl>
+          )}
+          {(['RELOCATED_TO_STORAGE', 'RETURN_PENDING'].includes(p.state) || detail.data.notes.length > 0) && (
+            <section>
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-sm font-semibold text-ink-900"><Text>Staff notes</Text></h3>
+                <Button size="sm" variant="ghost" onClick={() => setNotesOpen(true)}><MessageSquareText className="size-4" aria-hidden /><Text>Add a note</Text></Button>
+              </div>
+              {detail.data.notes.length === 0
+                ? <p className="text-sm text-ink-500"><Text>No notes yet.</Text></p>
+                : <ol className="space-y-1.5 text-sm">{detail.data.notes.map((n) => <li key={n.id} className="text-ink-700"><span className="tabular-nums text-ink-500"><Text>{formatDateTime(n.created_at)}</Text></span> · {n.body}{n.author && <span className="text-ink-500"> · {n.author}</span>}</li>)}</ol>}
+            </section>
+          )}
           <section>
             <h3 className="mb-2 text-sm font-semibold text-ink-900"><Text>State history</Text></h3>
             <ol className="space-y-1.5 text-sm">
@@ -185,9 +211,12 @@ function ParcelDetail({ id, onClose, onChanged }: { id: string | null; onClose: 
             </section>
           )}
           <div className="flex flex-wrap gap-2 border-t border-ink-100 pt-4">
-            {p.state === 'VERIFIED' && p.overflow_location_id && <Button size="sm" onClick={() => void act.run('receive')} pending={act.pending}><Text>Received from the courier at the counter</Text></Button>}
-            {p.state === 'RELOCATED_TO_STORAGE' && <Button size="sm" variant="secondary" onClick={() => void act.run('return')} pending={act.pending}><Text>Send back to the courier</Text></Button>}
-            {p.state === 'RETURN_PENDING' && <Button size="sm" variant="secondary" onClick={() => void act.run('returned')} pending={act.pending}><Text>The courier has taken it back</Text></Button>}
+            {p.state === 'VERIFIED' && p.overflow_location_id && <Button size="sm" onClick={() => void act.run('receive')} pending={act.pending}><Text>Received from the courier at the guardhouse</Text></Button>}
+            {p.state === 'RELOCATED_TO_STORAGE' && <Button size="sm" variant="secondary" onClick={() => setConfirmReturn(true)}><Text>Send back to the courier</Text></Button>}
+            {p.state === 'RETURN_PENDING' && <>
+              <Button size="sm" variant="secondary" onClick={() => void act.run('keep')} pending={act.pending}><Text>Keep it at the guardhouse</Text></Button>
+              <Button size="sm" variant="secondary" onClick={() => void act.run('returned')} pending={act.pending}><Text>The courier has taken it back</Text></Button>
+            </>}
           </div>
           {inLocker && (
             <div className="space-y-3 rounded-lg border border-ink-200 p-4">
@@ -212,12 +241,12 @@ function ParcelDetail({ id, onClose, onChanged }: { id: string | null; onClose: 
             <div className="space-y-3 rounded-lg border border-ink-200 p-4">
               <p className="text-sm font-semibold text-ink-900"><Text>Settle this exception (admins)</Text></p>
               <Textarea label="What happened" value={note} onChange={(event) => setNote(event.target.value)} maxLength={300} />
-              <Select label="Found and placed in storage at" value={dest} onChange={(event) => setDest(event.target.value)}>
-                <option value=""><Text>Not placed in storage</Text></option>
+              <Select label="Found and placed at the guardhouse" value={dest} onChange={(event) => setDest(event.target.value)}>
+                <option value=""><Text>Not placed at the guardhouse</Text></option>
                 {overflow.data?.filter((o) => o.active).map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
               </Select>
               <div className="flex flex-wrap gap-2">
-                <Button size="sm" disabled={!dest || note.trim().length < 3} onClick={() => void act.run('resolve', { outcome: 'RELOCATED_TO_STORAGE', note, overflowId: dest })}><Text>Placed in storage</Text></Button>
+                <Button size="sm" disabled={!dest || note.trim().length < 3} onClick={() => void act.run('resolve', { outcome: 'RELOCATED_TO_STORAGE', note, overflowId: dest })}><Text>Placed at the guardhouse</Text></Button>
                 <Button size="sm" variant="secondary" disabled={note.trim().length < 3} onClick={() => void act.run('resolve', { outcome: 'RETURN_PENDING', note })}><Text>Return to the courier</Text></Button>
                 <Button size="sm" variant="secondary" disabled={note.trim().length < 3} onClick={() => void act.run('resolve', { outcome: 'COLLECTED', note })}><Text>Already with the household</Text></Button>
               </div>
@@ -225,6 +254,14 @@ function ParcelDetail({ id, onClose, onChanged }: { id: string | null; onClose: 
           )}
         </div>
       )}
+      <ParcelNotes parcel={p && notesOpen ? { id: p.id, tracking_no: p.tracking_no, call_due: Boolean(p.call_requested_at) } : null} onClose={() => { setNotesOpen(false); void detail.mutate(); }} />
+      <ConfirmDialog open={confirmReturn} onClose={() => setConfirmReturn(false)} onConfirm={() => { if (returnReason.trim().length >= 3) void act.run('return', { reason: returnReason.trim() }).then((ok) => ok && setReturnReason('')); }} pending={act.pending}
+        title="Send this parcel back to the courier?" confirmLabel="Mark to go back">
+        <div className="space-y-3">
+          <p className="text-[15px] text-ink-700"><Text>Do this only when the household or the courier asks. Parcels are never sent back just for waiting. The household is told, and can still collect it until the courier takes it.</Text></p>
+          <Input label="Who asked, and why" value={returnReason} onChange={(event) => setReturnReason(event.target.value)} maxLength={300} placeholder="e.g. The household asked: wrong item ordered" error={act.fields.reason} />
+        </div>
+      </ConfirmDialog>
     </Modal>
   );
 }

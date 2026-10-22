@@ -3,10 +3,11 @@
 import { Text } from '@/components/ui/localized-text';
 import { LocalizedAside, LocalizedDiv, LocalizedImg } from '@/components/ui/localized-elements';
 
-import { CheckCircle2, Flag, Package, PackageOpen, RefreshCw, Share2, Undo2, type LucideIcon } from 'lucide-react';
+import { CheckCircle2, Clock, Flag, Package, PackageOpen, RefreshCw, Share2, Undo2, type LucideIcon } from 'lucide-react';
 import { Suspense, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { LockerParcels } from '@/components/features/locker-parcels';
+import { LockerParcels, MyLateCollections } from '@/components/features/locker-parcels';
+import { ParcelAbout } from '@/components/features/parcel-about';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, PageHeader } from '@/components/ui/card';
 import { ReportProblemDialog } from '@/components/features/report-problem';
@@ -32,9 +33,12 @@ interface Parcel {
   collectedAt: string | null;
   collectedBy: string | null;
   problemReported: boolean;
+  days: number;
+  overdue: boolean;
 }
 
-type Tab = 'lockers' | 'guardhouse';
+type Tab = 'lockers' | 'guardhouse' | 'about';
+type Place = Exclude<Tab, 'about'>;
 
 /** A parcel card in the shape it loads into: who it is from and the shelf, then the QR code and the collection code. */
 function GuardhouseSkeleton() {
@@ -67,13 +71,13 @@ function GuardhouseSkeleton() {
 }
 
 /** Lapor → Parcel & gate reports, opened on this tab's own type: locker reports from the lockers tab, guardhouse reports from the guardhouse tab. */
-const reportsHref = (tab: Tab) => '/app/lapor?tab=cases&type=' + (tab === 'guardhouse' ? 'guardhouse' : 'locker');
+const reportsHref = (tab: Place) => '/app/lapor?tab=cases&type=' + (tab === 'guardhouse' ? 'guardhouse' : 'locker');
 
 /** The collection steps for each tab: a short title to scan, and a detail line where it helps. */
-const GUIDE: Record<Tab, { steps: { title: string; detail?: string }[]; tip: { title: string; text: string } }> = {
+const GUIDE: Record<Place, { steps: { title: string; detail?: string }[]; tip: { title: string; text: string } }> = {
   lockers: {
     steps: [
-      { title: 'Go to the locker station', detail: 'Its name and door number are on your parcel.' },
+      { title: 'Go to your locker', detail: 'Your door number is on the parcel. The locker is open 24 hours.' },
       { title: 'Type the PIN or show the QR code', detail: 'At the locker, you can also open your door from this page with the station code.' },
       { title: 'Take your parcel and shut the door' },
     ],
@@ -81,9 +85,9 @@ const GUIDE: Record<Tab, { steps: { title: string; detail?: string }[]; tip: { t
   },
   guardhouse: {
     steps: [
-      { title: 'Go to the guardhouse' },
-      { title: 'Show your code to the guard', detail: 'The collection code or its QR code.' },
-      { title: 'Collect your parcel', detail: 'The guard checks the code and hands it over.' },
+      { title: 'Go to the guardhouse', detail: 'During its opening hours, shown at the top of this tab.' },
+      { title: 'Show your code to the guard', detail: 'The code on the parcel: a collection code, or the pickup QR code for a locker parcel.' },
+      { title: 'Collect your parcel', detail: 'The guard checks the code, and your ID for a locker parcel.' },
     ],
     tip: { title: 'Someone collecting for you?', text: 'Tap Share the code on the parcel and send it to them. The code works only for that parcel.' },
   },
@@ -108,7 +112,7 @@ function GuideNote({ icon: Icon, title, children, tone = 'brand' }: { icon: Luci
  * How to collect, beside the parcels: the steps for this tab as a connected list, one tip, and
  * where to go when a parcel is missing. Fills the space next to a single parcel with something useful.
  */
-function CollectGuide({ tab, onMissing }: { tab: Tab; onMissing: () => void }) {
+function CollectGuide({ tab, onMissing }: { tab: Place; onMissing: () => void }) {
   const guide = GUIDE[tab];
   return (
     <LocalizedAside aria-label="How to collect" className="stagger-in space-y-4 lg:sticky lg:top-24">
@@ -157,10 +161,14 @@ function ParcelsScreen() {
   const parcels = useApi<{ parcels: Parcel[] }>('/parcels', { refreshInterval: 30_000 });
   const lockers = useApi<{ parcels: { state: string }[] }>('/lockers/my-parcels', { refreshInterval: 5_000 });
   const [chosen, setChosen] = useState<Tab | null>(null);
-  const atGuardhouse = parcels.data?.parcels.filter((p) => p.status === 'WAITING').length ?? 0;
-  const inLockers = lockers.data?.parcels.filter((p) => !['COLLECTED', 'RETURNED'].includes(p.state)).length ?? 0;
+  // Locker parcels that could not go into the door are kept at the guardhouse, so they count there.
+  const lockerAtGuardhouse = lockers.data?.parcels.filter((p) => p.state === 'RELOCATED_TO_STORAGE' || p.state === 'RETURN_PENDING').length ?? 0;
+  const atGuardhouse = (parcels.data?.parcels.filter((p) => p.status === 'WAITING').length ?? 0) + lockerAtGuardhouse;
+  const inLockers = lockers.data?.parcels.filter((p) => !['COLLECTED', 'RETURNED', 'RELOCATED_TO_STORAGE', 'RETURN_PENDING'].includes(p.state)).length ?? 0;
   // Until the resident picks a tab, open the one with something waiting.
-  const tab: Tab = chosen ?? (requestedTab === 'guardhouse' || requestedTab === 'lockers' ? requestedTab : inLockers === 0 && atGuardhouse > 0 ? 'guardhouse' : 'lockers');
+  const tab: Tab = chosen ?? (requestedTab === 'guardhouse' || requestedTab === 'lockers' || requestedTab === 'about' ? requestedTab : inLockers === 0 && atGuardhouse > 0 ? 'guardhouse' : 'lockers');
+  // The reports link and the guide follow the place last shown; About has no parcels of its own.
+  const place: Place = tab === 'about' ? 'lockers' : tab;
   useEffect(() => {
     if (parcelId && tab === 'guardhouse' && parcels.data && scrolledTo.current !== parcelId) {
       const target = document.getElementById(`parcel-${parcelId}`);
@@ -190,11 +198,11 @@ function ParcelsScreen() {
     <>
       <PageHeader
         title="Parcels"
-        description="Parcels in the smart lockers and at the guardhouse for your home. Each has a one-time code that works only for that parcel. Someone collecting for you? Share the code with them."
+        description="Parcels for your home: in your own smart locker door, or kept at the guardhouse. Each has a one-time code that works only for that parcel. Someone collecting for you? Share the code with them."
         action={
           <div className="flex flex-wrap gap-2 lg:hidden">
             <Button size="sm" variant="secondary" onClick={() => setMissing(true)}><PackageOpen className="size-4" aria-hidden /><Text>A parcel hasn’t arrived?</Text></Button>
-            <Button size="sm" variant="ghost" href={reportsHref(tab)}><Flag className="size-4" aria-hidden /><Text>My reports</Text></Button>
+            <Button size="sm" variant="ghost" href={reportsHref(place)}><Flag className="size-4" aria-hidden /><Text>My reports</Text></Button>
           </div>
         }
       />
@@ -205,22 +213,25 @@ function ParcelsScreen() {
         items={[
           { key: 'lockers', label: 'Parcel lockers', count: inLockers || undefined },
           { key: 'guardhouse', label: 'Guardhouse', count: atGuardhouse || undefined },
+          { key: 'about', label: 'About' },
         ]}
       />
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_19rem] xl:grid-cols-[minmax(0,1fr)_21rem]">
+      <div className={cn('grid items-start gap-6', tab !== 'about' && 'lg:grid-cols-[minmax(0,1fr)_19rem] xl:grid-cols-[minmax(0,1fr)_21rem]')}>
       <div className="min-w-0">
       <TabPanel>
       {tab === 'lockers' && <LockerParcels />}
+      {tab === 'about' && <div className="max-w-4xl"><ParcelAbout /></div>}
       {tab === 'guardhouse' && <Async state={parcels} skeleton={<GuardhouseSkeleton />}>
         {(data) => {
           const waiting = data.parcels.filter((p) => p.status === 'WAITING');
           const past = data.parcels.filter((p) => p.status !== 'WAITING');
           return (
             <div className="space-y-6">
-              <p className="text-[15px] text-ink-600"><Text>Parcels the guard keeps on a shelf. Show the code to the guard to collect.</Text></p>
-              {waiting.length === 0 ? (
-                <EmptyState icon={Package} title="Nothing at the guardhouse"><Text>When a courier leaves a parcel at the guardhouse, you are told at once and the code appears here.</Text></EmptyState>
-              ) : (
+              <p className="text-[15px] text-ink-600"><Text>Parcels the guard keeps for your home: left at the guardhouse by a courier, or too big for your locker door. Show the code to the guard to collect. They stay until you collect them.</Text></p>
+              <LockerParcels view="guardhouse" />
+              {waiting.length === 0 && lockerAtGuardhouse === 0 ? (
+                <EmptyState icon={Package} title="Nothing at the guardhouse"><Text>When a parcel is left at the guardhouse for your home, you are told at once and the code appears here.</Text></EmptyState>
+              ) : waiting.length > 0 && (
                 <div className="stagger-in grid gap-4 2xl:grid-cols-2">
                   {waiting.map((p) => (
                     <Card key={p.id} id={`parcel-${p.id}`} className={`scroll-mt-20 overflow-hidden ${parcelId === p.id ? 'ring-2 ring-brand-400' : ''}`}>
@@ -228,8 +239,12 @@ function ParcelsScreen() {
                         <div>
                           <p className="font-display text-lg font-bold text-ink-900"><Text>{`From ${p.courier}`}</Text></p>
                           <p className="text-sm text-ink-500"><Text>{`Arrived ${timeAgo(p.loggedAt)}`}</Text>{p.trackingNo && ` · ${p.trackingNo}`}</p>
+                          <p className={cn('mt-1 inline-flex items-center gap-1.5 text-sm font-semibold', p.overdue ? 'text-warning-700' : 'text-ink-700')}><Clock className="size-4" aria-hidden /><Text>{p.days === 0 ? 'Under a day' : p.days === 1 ? '1 day uncollected' : `${p.days} days uncollected`}</Text></p>
                         </div>
-                        <Badge tone="gold"><Text>{`Shelf ${p.shelf}`}</Text></Badge>
+                        <span className="flex flex-wrap items-center gap-1.5">
+                          {p.overdue && <Badge tone="warning"><Text>Overdue</Text></Badge>}
+                          <Badge tone="gold"><Text>{`Shelf ${p.shelf}`}</Text></Badge>
+                        </span>
                       </div>
                       <div className="flex flex-wrap items-center gap-5 p-5">
                         <QrCode value={`KITAPARCEL:${p.code}`} size={132} label="Collection code as a QR code" />
@@ -285,13 +300,14 @@ function ParcelsScreen() {
                   </ul>
                 </Card>
               )}
+              <MyLateCollections />
             </div>
           );
         }}
       </Async>}
       </TabPanel>
       </div>
-      <CollectGuide tab={tab} onMissing={() => setMissing(true)} />
+      {tab !== 'about' && <CollectGuide tab={tab} onMissing={() => setMissing(true)} />}
       </div>
 
       <ReportProblemDialog

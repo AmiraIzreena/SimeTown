@@ -7,7 +7,7 @@ import { audit } from '../audit';
 import { runFloatCheck, runSettlement } from '../ledger/finance';
 import { expirePoints, sendExpiryReminders } from '../ledger/points';
 import { expireOfferPoints } from '../offers/service';
-import { sendParcelReminders } from '../parcels/service';
+import { runShelfRules } from '../parcels/service';
 import { reconcile } from '../lockers/hardware';
 import { notifyProviders } from '../carriers/providers';
 import { revalidateCouriers } from '../carriers/team';
@@ -15,6 +15,7 @@ import { runIncidentChecks } from '../incidents/checks';
 import { runAccessChecks } from '../akses/automation';
 import { runCollectionChecks } from '../kitar/collection-automation';
 import { runExpiry } from '../lockers/overflow';
+import { cleanupEmails, sendQueuedEmails } from '../email/outbox';
 import { retentionCleanup } from '../retention';
 import { runAgentClock } from '../banjir/agent';
 import { getSettings, SETTINGS_COLUMNS, type Settings } from '../settings';
@@ -116,7 +117,7 @@ export async function updateSettings(db: Db, actor: Actor, changes: Partial<Sett
   });
 }
 
-export const JOBS = ['expire-points', 'float-check', 'settle', 'cleanup', 'flood-agent', 'parcel-reminders', 'lockers', 'couriers', 'incidents', 'access', 'recycling'] as const;
+export const JOBS = ['expire-points', 'float-check', 'settle', 'cleanup', 'flood-agent', 'parcel-reminders', 'lockers', 'couriers', 'incidents', 'access', 'recycling', 'emails'] as const;
 export type JobName = (typeof JOBS)[number];
 
 /**
@@ -135,12 +136,15 @@ export async function runJob(db: Db, name: JobName, now: Date): Promise<Record<s
     case 'settle':
       return runSettlement(db, null, now);
     case 'parcel-reminders':
-      // Daily: one reminder for each parcel waiting three days or more.
-      return { remindersSent: await sendParcelReminders(db, now) };
+      // Guardhouse shelf parcels: overdue, weekly reminders and calls (the lockers job runs this too).
+      return runShelfRules(db, now);
     case 'lockers':
-      // Every few minutes: settle unanswered door commands and unused reservations, doors left open, then reminders, overdue parcels,
-      // relocation tasks, and telling courier companies about deposits they have not heard of (retried).
-      return { ...(await reconcile(db, now)), ...(await runExpiry(db, now)), providers: await notifyProviders(db, now) };
+      // Every few minutes: settle unanswered door commands and unused reservations, doors left open, then door reminders, overdue
+      // parcels at the counter (weekly reminders, calls for the guard), and telling courier companies about deposits they have not heard of (retried).
+      return { ...(await reconcile(db, now)), ...(await runExpiry(db, now)), providers: await notifyProviders(db, now), guardhouse: await runShelfRules(db, now), emails: await sendQueuedEmails(db, now) };
+    case 'emails':
+      // Sends queued emails (the lockers job does this too). Nothing is sent until SMTP_* is set.
+      return sendQueuedEmails(db, now);
     case 'incidents':
       // Every 5 minutes: escalate cases nobody took in time or past their deadline (once each), close resolved cases after the dispute window.
       return runIncidentChecks(db, now);
@@ -161,7 +165,7 @@ export async function runJob(db: Db, name: JobName, now: Date): Promise<Record<s
       await db.query(`DELETE FROM rate_limits WHERE window_start < $1::timestamptz - interval '1 day'`, [now]);
       await db.query(`DELETE FROM user_invites WHERE expires_at < $1 OR used_at IS NOT NULL`, [now]);
       const sales = await db.query(`UPDATE sales SET status = 'EXPIRED' WHERE status = 'PENDING' AND expires_at < $1 RETURNING id`, [now]);
-      return { sessionsRemoved: sessions.length, salesExpired: sales.length, ...(await retentionCleanup(db, now)) };
+      return { sessionsRemoved: sessions.length, salesExpired: sales.length, ...(await retentionCleanup(db, now)), ...(await cleanupEmails(db, now)) };
     }
   }
 }

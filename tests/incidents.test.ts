@@ -44,7 +44,14 @@ const caseOf = (reference: string) => one<{ id: string; status: string; owner_id
 const count = async (sql: string, params: unknown[] = []) => (await one<{ n: number }>(db, sql, params))!.n;
 const notifications = (userId: string, like: string) => count(`SELECT count(*)::int AS n FROM notifications WHERE user_id = $1 AND title LIKE $2`, [userId, like]);
 
+/**
+ * Test shortcut: every home has one door and one parcel in it at a time, but these rules do not depend on which
+ * door, so a busy door is set aside and the home claims another free one with its next parcel.
+ */
+const setAsideBusyDoors = () => db.query(`UPDATE locker_compartments SET home_id = NULL WHERE home_id IS NOT NULL AND state <> 'AVAILABLE'`);
+
 async function lockerParcel(resident: Actor, at = T0) {
+  await setAsideBusyDoors();
   const reg = await registerParcel(db, courier, { stationId: station.id, trackingNo: `JT${randomUUID().slice(0, 10).replace(/-/g, '')}`, size: 'S', recipient: { memberCode: resident.memberCode! } }, at);
   const opened = await reserveAndOpen(db, courier, reg.id, key(), at);
   if (opened.kind !== 'OPENING') throw new Error('no door');
@@ -71,7 +78,7 @@ beforeAll(async () => {
   db = await freshDb();
   w = await makeWorld(db);
   other = await makeWorld(db);
-  station = await createStation(db, w.admin, { name: 'Case Locker', location: 'Gate', layout: { S: 12 }, adapter: 'SIMULATED', hasDoorSensor: true, hasPresenceSensor: true });
+  station = await createStation(db, w.admin, { name: 'Case Locker', location: 'Gate', layout: { S: 40 }, adapter: 'SIMULATED', hasDoorSensor: true, hasPresenceSensor: true });
   companyId = (await createCompany(db, w.admin, 'J&T Express')).id;
   const applied = await applyAsCourier(db, { townshipId: w.townshipId, companyId, fullName: 'Faizal', email: 'faizal@cases.test', phone: '+60123456789', password: 'courier-password-1' }, T0);
   await approveCourier(db, w.admin, applied.id, [station.id], T0);

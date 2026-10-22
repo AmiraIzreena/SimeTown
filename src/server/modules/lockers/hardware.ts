@@ -6,9 +6,10 @@ import { log } from '../../logger';
 import { notifyProviders } from '../carriers/providers';
 import { getSettings } from '../settings';
 import {
-  custody, DEVICE, getPolicy, householdOf, issueCredential, staffOf, SYSTEM, tell, transition, spendCredential, type LockerActor, type ParcelRow,
+  custody, DEVICE, guardsOf, householdOf, issueCredential, staffOf, SYSTEM, tell, transition, spendCredential, type LockerActor, type ParcelRow,
 } from './core';
 import { raiseIncident } from './incidents';
+import { emailDoorForced, emailParcelInLocker } from '../email/parcels';
 
 /**
  * The hardware layer. Business logic never talks to a locker directly: it
@@ -34,6 +35,8 @@ export interface StationRow {
   has_door_sensor: boolean;
   has_presence_sensor: boolean;
   status: 'ONLINE' | 'OFFLINE' | 'MAINTENANCE';
+  /** The precincts whose homes have their doors here. Empty: every home in the township. */
+  precincts: string[];
 }
 
 export interface CompartmentRow {
@@ -47,6 +50,8 @@ export interface CompartmentRow {
   fault: string | null;
   sim_fail_next: boolean;
   parcel_id: string | null;
+  /** The home this door belongs to: only its parcels go in, and only its household is told about it. */
+  home_id: string | null;
 }
 
 export interface CommandRow {
@@ -359,7 +364,19 @@ async function handleDoorEvent(
       // A door that opens with no unlock just sent may have been forced.
       const expected = await one(tx, `SELECT 1 FROM locker_commands WHERE compartment_id = $1 AND status = 'ACKED' AND acked_at > $2::timestamptz - interval '10 minutes'`, [comp.id, now]);
       if (!expected) {
-        await tell(tx, await staffOf(tx, station.township_id), { priority: 'URGENT', title: `Door ${comp.label} opened without an unlock`, body: `${station.name}: check the locker.`, link: '/console/lockers' }, `door-forced:${input.eventId}`);
+        await tell(tx, [...(await staffOf(tx, station.township_id)), ...(await guardsOf(tx, station.township_id))], { priority: 'URGENT', title: `Door ${comp.label} opened without an unlock`, body: `${station.name}: check the locker.`, link: '/console/lockers' }, `door-forced:${input.eventId}`);
+        // A private door: its own household is told at once too. Security alerts are sent at any hour.
+        if (comp.home_id) {
+          const household = await householdOf(tx, comp.home_id);
+          const at = now.toLocaleString('en-MY', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', timeZone: (await getSettings(tx)).timezone });
+          await tell(tx, household, {
+            priority: 'URGENT',
+            title: 'Security alert: your locker door was opened without a code',
+            body: `Door ${comp.label} at ${station.name} was opened without a valid code at ${at}. The guard on duty has been told and is checking the locker. If someone in your home opened it, no action is needed.`,
+            link: '/app/parcels?tab=lockers',
+          }, `door-forced-home:${input.eventId}`);
+          await emailDoorForced(tx, household, { door: comp.label, station: station.name, at: now, eventId: input.eventId });
+        }
         await raiseIncident(tx, {
           townshipId: station.township_id, kind: 'DOOR_FORCED', severity: 'HIGH', stationId: station.id, parcelId: comp.parcel_id,
           summary: `${station.name}: door ${comp.label} opened without an unlock${comp.parcel_id ? ' while a parcel was inside' : ''}. It may have been forced.`,
@@ -405,12 +422,13 @@ async function handleDoorEvent(
   });
 }
 
-/** The parcel is in and the door is shut: the household is told and gets its pickup credential. */
+/**
+ * The parcel is in and the door is shut: the household is told and gets its pickup credential. The door is the
+ * home's own, so there is no deadline: the parcel waits until someone from the home collects it.
+ */
 export async function completeDeposit(tx: Queryable, p: ParcelRow, comp: CompartmentRow, station: StationRow, actor: LockerActor, now: Date) {
-  const policy = await getPolicy(tx, station.township_id, station.id);
   await transition(tx, p.id, 'DEPOSITED', actor, `Deposited in door ${comp.label}`, now);
-  const deadline = new Date(now.getTime() + policy.relocate_after_hours * 3_600_000);
-  await transition(tx, p.id, 'READY_FOR_COLLECTION', SYSTEM, 'Ready to collect', now, { ready_at: now, deadline_at: deadline });
+  await transition(tx, p.id, 'READY_FOR_COLLECTION', SYSTEM, 'Ready to collect', now, { ready_at: now, deadline_at: null, delivery_problem: null, delivery_problem_note: null });
   await tx.query(`UPDATE locker_compartments SET state = 'OCCUPIED', item_present = true, door = 'CLOSED', fault = NULL, updated_at = $2 WHERE id = $1`, [comp.id, now]);
   await tx.query(`UPDATE locker_reservations SET status = 'CONSUMED' WHERE parcel_id = $1 AND status = 'ACTIVE'`, [p.id]);
   // The shipment is now deposited, for good: the same label can never open a door again.
@@ -418,13 +436,13 @@ export async function completeDeposit(tx: Queryable, p: ParcelRow, comp: Compart
   await custody(tx, p.id, { kind: 'COURIER', ref: p.courier_user_id }, { kind: 'LOCKER', ref: `${station.name} ${comp.label}` }, actor.id, now);
   await issueCredential(tx, p.id, 'LOCKER', station.id, now);
   const company = await one<{ name: string }>(tx, 'SELECT name FROM courier_companies WHERE id = $1', [p.company_id]);
-  const tz = (await getSettings(tx)).timezone;
-  const by = deadline.toLocaleString('en-MY', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', timeZone: tz });
-  await tell(tx, await householdOf(tx, p.home_id!), {
-    title: `Parcel from ${company!.name} in ${station.name}`,
-    body: `Door ${comp.label}. Collect by ${by}: open Parcels in SimeTown for your QR code and PIN.`,
+  const household = await householdOf(tx, p.home_id!);
+  await tell(tx, household, {
+    title: `Your parcel from ${company!.name} is in your locker`,
+    body: `Door ${comp.label}, ${station.name}. The locker is open 24 hours: open Parcels in SimeTown for your QR code and PIN.`,
     link: `/app/parcels?tab=lockers&parcel=${p.id}`,
   }, `locker-ready:${p.id}`);
+  await emailParcelInLocker(tx, household, { id: p.id, company: company!.name, station: station.name, door: comp.label, trackingNo: p.tracking_no, at: now });
 }
 
 /** The parcel is out and the door is shut: the compartment is free again and the credential is spent. */

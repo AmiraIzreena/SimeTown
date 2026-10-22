@@ -66,8 +66,8 @@ export function SecurityTab() {
   return <div className="space-y-6">
     <div className="flex flex-wrap items-start justify-between gap-4">
       <div className="max-w-3xl">
-        <h2 className="font-display text-xl font-bold text-ink-900"><Text>Emergency door access</Text></h2>
-        <p className="mt-1 text-sm text-ink-500"><Text>Use this only when the normal parcel or storage process cannot be completed. For routine overdue parcels, use Parcel movement.</Text></p>
+        <h2 className="font-display text-xl font-bold text-ink-900"><Text>Door access</Text></h2>
+        <p className="mt-1 text-sm text-ink-500"><Text>The only way for staff to open a door that holds a parcel without the resident’s code: a parcel in the wrong door, a damaged or unsafe parcel, a theft report, or a sensor fault. A second admin approves every opening, and each one is recorded.</Text></p>
       </div>
       <div className="flex flex-wrap gap-2">
         <Button size="sm" variant="secondary" href="/console/operations?tab=lockers&view=parcels"><Text>Request one door opening</Text></Button>
@@ -78,8 +78,8 @@ export function SecurityTab() {
 
     <Card className="flex items-start gap-3 border-brand-200 bg-brand-50/60 p-5">
       <ShieldCheck className="mt-0.5 size-5 shrink-0 text-brand-700" aria-hidden />
-      <div><p className="font-semibold text-ink-900"><Text>Normal work does not need emergency approval</Text></p>
-        <p className="mt-1 text-sm text-ink-600"><Text>Move overdue parcels through Parcel movement. Use a maintenance session only when several occupied doors must be opened because of the same fault or incident.</Text></p></div>
+      <div><p className="font-semibold text-ink-900"><Text>Day-to-day parcels never need door access</Text></p>
+        <p className="mt-1 text-sm text-ink-600"><Text>Parcels in a home’s own door wait there until collected, and parcels that did not fit are kept at the guardhouse. Use one door opening for a single parcel, and a maintenance session only when several doors must be opened for the same fault or incident.</Text></p></div>
     </Card>
 
     <Card className="overflow-hidden">

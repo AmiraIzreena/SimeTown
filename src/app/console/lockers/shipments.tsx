@@ -204,7 +204,7 @@ export function ShipmentsTab() {
                           {r.outcome === 'VERIFIED' ? (
                             <Badge tone="success"><Text>Verified</Text></Badge>
                           ) : r.case_reference ? (
-                            <Button size="sm" variant="secondary" href={`/console/operations?tab=lockers&view=cases&ref=${encodeURIComponent(r.case_reference)}`}>
+                            <Button size="sm" variant="secondary" href={`/console/reports?tab=parcels&ref=${encodeURIComponent(r.case_reference)}`}>
                               <Text>Case created</Text> · {r.case_reference}
                             </Button>
                           ) : (

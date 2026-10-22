@@ -45,12 +45,22 @@ export interface ParcelRow {
   extensions: number;
   failure_reason: string | null;
   exception_note: string | null;
+  /** The last reminder: for a parcel in its door, or a weekly one for a parcel overdue at the counter. */
+  last_reminder_at: Date | null;
+  /** When a parcel at the counter passed its collection period. It is never sent back by itself. */
+  overdue_at: Date | null;
+  /** When the guard was asked to call the household about a parcel still at the counter. */
+  call_requested_at: Date | null;
+  /** Why the parcel went to the counter instead of the home's door (DeliveryProblem). */
+  delivery_problem: string | null;
+  delivery_problem_note: string | null;
 }
 
 /** Columns a transition may also set. Anything else is refused, so a caller cannot slip in an arbitrary update. */
 const PATCHABLE = new Set([
   'compartment_id', 'overflow_location_id', 'resume_state', 'ready_at', 'deadline_at', 'first_reminder_at', 'final_reminder_at',
-  'collected_at', 'relocated_at', 'failure_reason', 'exception_note', 'station_id',
+  'collected_at', 'relocated_at', 'failure_reason', 'exception_note', 'station_id', 'last_reminder_at', 'overdue_at', 'call_requested_at',
+  'delivery_problem', 'delivery_problem_note',
 ]);
 
 /**
@@ -272,19 +282,26 @@ export async function unlockKeypad(tx: Queryable, townshipId: string | null, loc
 // --- Collection policy ----------------------------------------------------------------------
 
 export interface Policy {
+  /** Kept for older records: doors now belong to one home and have no collection deadline. */
   first_reminder_hours: number;
   final_reminder_hours: number;
   relocate_after_hours: number;
+  /** Days a parcel waits at the guardhouse before it is overdue. It is never sent back by itself. */
   overflow_collect_days: number;
   quiet_from_hour: number;
   quiet_to_hour: number;
   extensions_enabled: boolean;
   extension_hours: number;
   max_extensions: number;
+  /** Always off: SimeTown charges no fees. A late-collection charge is a planned feature only. */
   fee_enabled: boolean;
   fee_sen: number | null;
   /** Opening an occupied door outside the normal flow needs a second admin. */
   exceptions_need_second_approval: boolean;
+  /** Hours a parcel may wait in the home's own door before the first reminder; then one a week. */
+  door_reminder_hours: number;
+  /** Days at the guardhouse after which the guard on duty is asked to call the household. */
+  counter_call_after_days: number;
 }
 
 /** Proposed starting values, not a verified township policy. */
@@ -301,7 +318,12 @@ export const DEFAULT_POLICY: Policy = {
   fee_enabled: false,
   fee_sen: null,
   exceptions_need_second_approval: true,
+  door_reminder_hours: 48,
+  counter_call_after_days: 14,
 };
+
+/** Reminders after the first come once a week, so nobody is pestered. */
+export const WEEK_MS = 7 * 86_400_000;
 
 const POLICY_COLUMNS = Object.keys(DEFAULT_POLICY).join(', ');
 
@@ -339,6 +361,12 @@ export async function staffOf(q: Queryable, townshipId: string): Promise<string[
     `SELECT id FROM users WHERE township_id = $1 AND role IN ('TOWNSHIP_STAFF', 'TOWNSHIP_ADMIN') AND status = 'ACTIVE'`,
     [townshipId],
   );
+  return rows.map((r) => r.id);
+}
+
+/** Guards of the township: they hold parcels at the guardhouse. */
+export async function guardsOf(q: Queryable, townshipId: string): Promise<string[]> {
+  const rows = await q.query<{ id: string }>(`SELECT id FROM users WHERE township_id = $1 AND role = 'GUARD' AND status = 'ACTIVE'`, [townshipId]);
   return rows.map((r) => r.id);
 }
 

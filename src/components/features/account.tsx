@@ -2,7 +2,7 @@
 
 import { Text } from '@/components/ui/localized-text';
 
-import { Download, LogOut, MapPin, Trash2 } from 'lucide-react';
+import { Download, LogOut, Mail, MapPin, ShieldAlert, Trash2 } from 'lucide-react';
 import { LocalizedLink as Link } from '@/components/ui/localized-elements';
 import { useState, type FormEvent } from 'react';
 import { AksesPage, AksesWizard, useAksesMode } from '@/components/features/akses-mode';
@@ -11,6 +11,7 @@ import { Badge, Card, CardHeader, PageHeader } from '@/components/ui/card';
 import { Modal } from '@/components/ui/dialog';
 import { Async, Skeleton } from '@/components/ui/feedback';
 import { Input, Select } from '@/components/ui/field';
+import { Switch } from '@/components/ui/switch';
 import { api } from '@/lib/api';
 import { formatDate } from '@/lib/format';
 import { useAction, useApi } from '@/lib/hooks';
@@ -19,6 +20,32 @@ import { formatPhone, ROLE_LABELS } from '@/shared/domain';
 import { reloadTo } from '@/lib/navigate';
 import { AddressPicker } from './address';
 import { ShopAddressFields } from './auth';
+
+/** Parcel emails: on unless the resident switches them off. Security alerts about their locker door always come. */
+function EmailCard({ me, onChanged }: { me: Me; onChanged: () => void }) {
+  const save = useAction((parcels: boolean) => api.post<{ parcels: boolean }>('/me/email-preferences', { parcels }), {
+    success: (r) => (r.parcels ? 'Parcel emails are on.' : 'Parcel emails are off. Security alerts still come by email.'),
+    onSuccess: onChanged,
+  });
+  const emails = me.emails;
+  if (!emails) return null;
+  return (
+    <Card>
+      <CardHeader title="Emails" description="Parcel news in your inbox, in the language you use in SimeTown. Pickup codes are never sent by email." />
+      <div className="space-y-4 p-5">
+        <p className="flex items-center gap-2 text-sm text-ink-600"><Mail className="size-4 shrink-0 text-ink-400" aria-hidden /><span className="min-w-0 break-all">{emails.address ?? <Text>No email address on your account</Text>}</span></p>
+        <Switch
+          label="Parcel emails"
+          hint="When a parcel is in your locker or at the guardhouse, and a weekly reminder while one waits at the guardhouse."
+          checked={emails.parcels}
+          disabled={save.pending}
+          onChange={(on) => void save.run(on)}
+        />
+        <p className="flex items-start gap-2 rounded-lg bg-ink-25 p-3 text-sm text-ink-600"><ShieldAlert className="mt-0.5 size-4 shrink-0 text-ink-400" aria-hidden /><Text>Security alerts, such as your locker door being opened without a code, are always sent.</Text></p>
+      </div>
+    </Card>
+  );
+}
 
 /** A resident's home address. Choosing a different home means it is confirmed again (BR1). */
 function HomeCard({ me, onChanged }: { me: Me; onChanged: () => void }) {
@@ -184,6 +211,7 @@ export function AccountPanel({ accessible = false }: { accessible?: boolean }) {
         </Card>
 
         {me.data?.role === 'RESIDENT' && <HomeCard me={me.data} onChanged={() => void me.mutate()} />}
+        {me.data?.role === 'RESIDENT' && <EmailCard me={me.data} onChanged={() => void me.mutate()} />}
         {me.data?.role === 'MERCHANT' && <ShopAddressCard me={me.data} onChanged={() => void me.mutate()} />}
 
         <Card>

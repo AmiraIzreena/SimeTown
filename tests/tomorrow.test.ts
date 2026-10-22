@@ -3,7 +3,7 @@ import type { Actor } from '@/server/auth/actor';
 import { one, type Db } from '@/server/db/client';
 import { runJob } from '@/server/modules/admin/service';
 import { bookCollection, cancelCollection, completeCollection, confirmCollection, createCollector, recyclingStats } from '@/server/modules/kitar/collections';
-import { checkParcelCode, guardParcels, handOverParcel, logParcel, myParcels, parcelStats, reportParcelProblem } from '@/server/modules/parcels/service';
+import { addShelfNote, checkParcelCode, guardParcels, handOverParcel, logParcel, myParcels, parcelStats, reportParcelProblem, returnParcel } from '@/server/modules/parcels/service';
 import { createReport, getReport, listReports, myLaporReports, reportStats, setMeToo, similarReports, updateReport } from '@/server/modules/reports/service';
 import { myRequests } from '@/server/modules/requests/service';
 import { searchGuide } from '@/shared/recycling-guide';
@@ -138,21 +138,46 @@ describe('Secure parcel collection', () => {
     expect(stats.medianHoursToCollect).toBeCloseTo(2.4, 1);
   });
 
-  it('reminds once after three days, and deletes old parcels with their photos', async () => {
+  it('follows the guardhouse rules: overdue at 7 days, reminded weekly, a call at 14 days, never sent back by itself', async () => {
     const homeId = await makeHome(w, 'Jalan Reminder');
     const owner = await makeResident(w, { homeId });
     const { id } = await logParcel(db, guard, { homeId, courier: 'Ninja Van', shelf: 'A1', photo: { mime: 'image/png', bytes: new Uint8Array([137, 80, 78, 71]) } }, T0);
-    expect(await runJob(db, 'parcel-reminders', at(2))).toMatchObject({ remindersSent: 0 });
-    expect(await runJob(db, 'parcel-reminders', at(3.5))).toMatchObject({ remindersSent: 1 });
-    expect(await runJob(db, 'parcel-reminders', at(4))).toMatchObject({ remindersSent: 0 });
-    expect((await notificationsOf(owner.id)).at(-1)!.title).toBe('Your parcel from Ninja Van is still waiting');
+    const row = () => one<{ status: string; overdue_at: Date | null; last_reminder_at: Date | null; call_requested_at: Date | null }>(db, 'SELECT status, overdue_at, last_reminder_at, call_requested_at FROM parcels WHERE id = $1', [id]);
+    expect(await runJob(db, 'parcel-reminders', at(6.9))).toMatchObject({ overdue: 0, reminders: 0 });
+    expect(await runJob(db, 'parcel-reminders', at(7))).toMatchObject({ overdue: 1, reminders: 1 });
+    expect((await notificationsOf(owner.id)).at(-1)!.title).toBe('Reminder: your parcel from Ninja Van is waiting at the guardhouse');
+    expect(await runJob(db, 'parcel-reminders', at(7.2))).toMatchObject({ reminders: 0 }); // once a week
+    expect(await runJob(db, 'parcel-reminders', at(14))).toMatchObject({ reminders: 1, calls: 1 });
+    expect(await row()).toMatchObject({ status: 'WAITING', overdue_at: at(7), last_reminder_at: at(14), call_requested_at: at(14) });
+    expect((await notificationsOf(guard.id)).map((n) => n.title)).toContain('Please call a household about a parcel');
+    expect((await notificationsOf(w.staff.id)).map((n) => n.title)).toContain('Please call a household about a parcel');
+    // The household sees how long it has waited.
+    expect((await myParcels(db, owner, at(14))).parcels.find((p) => p.id === id)).toMatchObject({ days: 14, overdue: true });
 
-    const code = (await myParcels(db, owner, at(4))).parcels.find((p) => p.id === id)!.code!;
-    await handOverParcel(db, guard, id, { code }, at(4));
+    // A note closes the call; sending back needs a reason; every step is in the history.
+    await expect(addShelfNote(db, guard, id, '  ', at(14.1))).rejects.toMatchObject({ code: 'NOTE_EMPTY' });
+    await addShelfNote(db, guard, id, 'Called: will collect tonight.', at(14.1));
+    await expect(returnParcel(db, guard, id, '', at(14.2))).rejects.toMatchObject({ code: 'REASON_NEEDED' });
+    const code = (await myParcels(db, owner, at(15))).parcels.find((p) => p.id === id)!.code!;
+    expect(await handOverParcel(db, guard, id, { code }, at(15))).toEqual({ ok: true, days: 15 });
+    const history = await db.query<{ kind: string; body: string }>('SELECT kind, body FROM guard_parcel_events WHERE parcel_id = $1 ORDER BY at, id', [id]);
+    expect(history.map((h) => h.kind)).toEqual(['LOGGED', 'OVERDUE', 'REMINDER', 'REMINDER', 'CALL_REQUESTED', 'NOTE', 'COLLECTED']);
+    expect(history.at(-1)!.body).toContain('collected after 15 days, overdue');
+
     const photo = (await one<{ photo_id: string }>(db, 'SELECT photo_id FROM parcels WHERE id = $1', [id]))!.photo_id;
-    await runJob(db, 'cleanup', at(100));
+    await runJob(db, 'cleanup', at(110));
     expect(await one(db, 'SELECT 1 FROM parcels WHERE id = $1', [id])).toBeUndefined();
     expect(await one(db, 'SELECT 1 FROM uploads WHERE id = $1', [photo])).toBeUndefined();
+  });
+
+  it('sends a parcel back only when asked, with the reason recorded and the household told', async () => {
+    const homeId = await makeHome(w, 'Jalan Return');
+    const owner = await makeResident(w, { homeId });
+    const { id } = await logParcel(db, guard, { homeId, courier: 'GDex', shelf: 'D1' }, T0);
+    await returnParcel(db, guard, id, 'The household asked: wrong item ordered', at(1));
+    expect(await one(db, 'SELECT status, returned_reason FROM parcels WHERE id = $1', [id])).toEqual({ status: 'RETURNED', returned_reason: 'The household asked: wrong item ordered' });
+    expect((await notificationsOf(owner.id)).at(-1)!.title).toBe('Parcel from GDex returned to the courier');
+    expect(await one(db, `SELECT 1 FROM guard_parcel_events WHERE parcel_id = $1 AND kind = 'RETURNED' AND body LIKE '%wrong item%'`, [id])).toBeTruthy();
   });
 });
 

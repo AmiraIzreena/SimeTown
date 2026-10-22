@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { LEGAL } from '../src/shared/legal';
+import { LOCKER_SIZE_INFO } from '../src/shared/lockers';
 import type { Actor } from '../src/server/auth/actor';
 import { ACTOR_COLUMNS, toActor } from '../src/server/auth/session';
 import { one, type Db } from '../src/server/db/client';
@@ -7,43 +8,126 @@ import { createStation, simulateClose } from '../src/server/modules/lockers/admi
 import { myLockerParcels, pickupAtStation } from '../src/server/modules/lockers/collection';
 import { DEVICE } from '../src/server/modules/lockers/core';
 import { approveCourier, createCompany } from '../src/server/modules/lockers/couriers';
-import { failDelivery, registerParcel, reserveAndOpen } from '../src/server/modules/lockers/delivery';
-import { completeRelocation, createOverflow, runExpiry, startRelocation, verifyRelocatedParcel } from '../src/server/modules/lockers/overflow';
+import { chooseCounter, failDelivery, receiveAtCounter, registerParcel, reserveAndOpen } from '../src/server/modules/lockers/delivery';
+import { addParcelNote, createOverflow, handOverAtCounter, runExpiry } from '../src/server/modules/lockers/overflow';
+import { addShelfNote, handOverParcel, logParcel, returnParcel, runShelfRules } from '../src/server/modules/parcels/service';
+import { randomCode } from '../src/server/modules/identity/service';
+import { createAccount } from '../src/server/modules/ledger/ledger';
 
 /**
- * Demo data for the smart lockers: courier companies, a demo courier, two
- * simulated stations, two counters, three weeks of deliveries and collections
- * (so the dashboard and forecast have history), and live parcels in every
- * interesting state. Everything is made through the real services. Safe to run
- * again: it does nothing once the courier companies exist. Names and parcels
- * are invented; no courier company's own systems are involved.
+ * Demo data for the smart lockers and the guardhouse: courier companies, demo couriers, a locker bank beside each
+ * precinct's guardhouse with one private door per home, the Main guardhouse, three weeks of deliveries and
+ * collections (so the dashboard and forecast have history), and a showcase of parcels in every state. Everything is made through the real services. Safe to run again: the history is added
+ * once, and the doors are brought into line with the homes every time. Names and parcels are invented; no
+ * courier company's own systems are involved.
  */
 
 const DOMAIN = 'demo.kita.test';
 const DAY = 86_400_000;
+const HOUR = 3_600_000;
 const MIN = 60_000;
+/** Kuala Lumpur is UTC+8 all year. */
+const MYT = 8 * HOUR;
+
+/** One locker bank beside each precinct's guardhouse. */
+const BANKS = [
+  { name: 'Elmina Valley Locker A', location: 'Beside the Elmina Valley main guardhouse', precincts: ['Elmina Valley 1', 'Elmina Valley 2', 'Elmina Valley 3'], lat: 3.17594, lng: 101.51005 },
+  { name: 'Elmina Gardens Locker B', location: 'Beside the Elmina Gardens guardhouse', precincts: ['Elmina Gardens'] },
+  { name: 'Elmina West Locker C', location: 'Beside the Elmina West guardhouse', precincts: ['Elmina West'] },
+];
 
 async function actorByEmail(db: Db, login: string): Promise<Actor | undefined> {
   const row = await one<Parameters<typeof toActor>[0]>(db, `SELECT ${ACTOR_COLUMNS} FROM users u WHERE lower(u.email) = lower($1)`, [`${login}@${DOMAIN}`]);
   return row ? toActor(row) : undefined;
 }
 
+/**
+ * Brings the locker banks into line with the homes: a bank for every precinct that has homes, exactly one door
+ * per home (at least medium), each home holding its door. A home whose parcel already sits in a door keeps that
+ * door. Spare doors that were never used are removed; used ones are taken out of use, so no record is lost.
+ * Couriers who could use the first bank may use a new one too.
+ */
+export async function ensurePrivateDoors(db: Db, now: Date, log: (line: string) => void) {
+  const admin = await actorByEmail(db, 'admin');
+  if (!admin?.townshipId) return;
+  const township = admin.townshipId;
+  let firstStation: string | null = null;
+  for (const bank of BANKS) {
+    const homes = await db.query<{ id: string }>('SELECT id FROM homes WHERE township_id = $1 AND precinct = ANY($2::text[]) ORDER BY precinct, unit_code', [township, bank.precincts]);
+    if (homes.length === 0) continue;
+    let station = await one<{ id: string }>(db, 'SELECT id FROM locker_stations WHERE township_id = $1 AND name = $2', [township, bank.name]);
+    if (!station) {
+      station = await createStation(db, admin, {
+        name: bank.name, location: bank.location, layout: { M: homes.length }, adapter: 'SIMULATED', hasDoorSensor: true, hasPresenceSensor: true,
+        lat: bank.lat, lng: bank.lng, precincts: bank.precincts,
+      });
+      if (firstStation) {
+        // Whoever could use the first bank may use this one too.
+        await db.query(`INSERT INTO courier_station_access (user_id, station_id, granted_by, granted_at) SELECT user_id, $2, $3, $4 FROM courier_station_access WHERE station_id = $1 ON CONFLICT DO NOTHING`, [firstStation, station.id, admin.id, now]);
+        await db.query(`INSERT INTO courier_company_stations (company_id, station_id, granted_by, granted_at) SELECT company_id, $2, $3, $4 FROM courier_company_stations WHERE station_id = $1 ON CONFLICT DO NOTHING`, [firstStation, station.id, admin.id, now]);
+      }
+    } else {
+      await db.query(`UPDATE locker_stations SET precincts = $2, location = $3 WHERE id = $1`, [station.id, bank.precincts, bank.location]);
+    }
+    firstStation ??= station.id;
+
+    // A door holding a parcel goes to that parcel's home, if the home has none yet.
+    await db.query(
+      `UPDATE locker_compartments c SET home_id = p.home_id
+         FROM locker_parcels p
+        WHERE c.station_id = $1 AND c.home_id IS NULL AND p.id = c.parcel_id AND p.home_id IS NOT NULL
+          AND p.home_id = ANY($2::uuid[]) AND NOT EXISTS (SELECT 1 FROM locker_compartments x WHERE x.home_id = p.home_id)`,
+      [station.id, homes.map((h) => h.id)],
+    );
+    // Every other home without a door takes the next free one, adding doors when there are too few.
+    const without = await db.query<{ id: string }>(
+      `SELECT h.id FROM homes h WHERE h.id = ANY($1::uuid[]) AND NOT EXISTS (SELECT 1 FROM locker_compartments c WHERE c.home_id = h.id) ORDER BY h.precinct, h.unit_code`,
+      [homes.map((h) => h.id)],
+    );
+    for (const home of without) {
+      let door = await one<{ id: string }>(db, `SELECT id FROM locker_compartments WHERE station_id = $1 AND home_id IS NULL AND parcel_id IS NULL AND state = 'AVAILABLE' ORDER BY label LIMIT 1`, [station.id]);
+      if (!door) {
+        const last = await one<{ n: number }>(db, `SELECT coalesce(max(substring(label FROM '[0-9]+')::int), 0) AS n FROM locker_compartments WHERE station_id = $1`, [station.id]);
+        const [w, h, d] = LOCKER_SIZE_INFO.M.mm;
+        door = await one<{ id: string }>(db, `INSERT INTO locker_compartments (station_id, label, size, width_mm, height_mm, depth_mm) VALUES ($1, $2, 'M', $3, $4, $5) RETURNING id`, [station.id, `A${String(last!.n + 1).padStart(2, '0')}`, w, h, d]);
+      }
+      await db.query('UPDATE locker_compartments SET home_id = $2 WHERE id = $1', [door!.id, home.id]);
+    }
+    // Spare doors: removed when never used, otherwise taken out of use.
+    await db.query(
+      `DELETE FROM locker_compartments c WHERE c.station_id = $1 AND c.home_id IS NULL AND c.parcel_id IS NULL
+          AND NOT EXISTS (SELECT 1 FROM locker_commands k WHERE k.compartment_id = c.id)
+          AND NOT EXISTS (SELECT 1 FROM locker_reservations r WHERE r.compartment_id = c.id)
+          AND NOT EXISTS (SELECT 1 FROM locker_parcels p WHERE p.compartment_id = c.id)`,
+      [station.id],
+    );
+    await db.query(`UPDATE locker_compartments SET state = 'DISABLED', fault = 'Spare door: not assigned to a home' WHERE station_id = $1 AND home_id IS NULL AND parcel_id IS NULL AND state = 'AVAILABLE'`, [station.id]);
+  }
+  log('Smart lockers: every home has its own locker door.');
+}
+
 export async function seedLockers(db: Db, input: { passwordHash: string; now: Date; log: (line: string) => void }) {
   const { now, log } = input;
-  if (await one(db, 'SELECT 1 FROM courier_companies LIMIT 1')) return log('Smart lockers: demo data already there.');
-  const people = await Promise.all(['aisyah', 'daniel', 'priya', 'hafiz', 'meiling', 'siti', 'arjun', 'karyan', 'zainab', 'staff', 'admin'].map((l) => actorByEmail(db, l)));
-  if (people.some((p) => !p)) return log('Smart lockers: demo accounts missing; skipped.');
+  if (await one(db, 'SELECT 1 FROM courier_companies LIMIT 1')) {
+    // An existing database: bring the doors into line, and add the showcase once.
+    await ensurePrivateDoors(db, now, log);
+    return seedParcelShowcase(db, input);
+  }
+  const people = await Promise.all(['aisyah', 'daniel', 'priya', 'hafiz', 'meiling', 'siti', 'arjun', 'karyan', 'zainab', 'staff', 'admin', 'guard'].map((l) => actorByEmail(db, l)));
+  if (people.slice(0, 11).some((p) => !p)) return log('Smart lockers: demo accounts missing; skipped.');
   type Eleven = [Actor, Actor, Actor, Actor, Actor, Actor, Actor, Actor, Actor, Actor, Actor];
-  const [aisyah, daniel, priya, hafiz, meiling, siti, arjun, karyan, zainab, staff, admin] = people as Eleven;
+  const [aisyah, daniel, priya, hafiz, meiling, siti, arjun, karyan, zainab, , admin] = people as Eleven;
   const residents = [aisyah, daniel, priya, hafiz, meiling, siti, arjun, karyan, zainab];
 
-  // --- Companies, stations, counters ----------------------------------------------------------
+  // --- Companies, locker banks, the guardhouse ------------------------------------------------
   const companies: Record<string, string> = {};
   for (const name of ['J&T Express', 'Shopee Express', 'Pos Laju', 'Ninja Van', 'DHL']) companies[name] = (await createCompany(db, admin, name)).id;
-  const a = await createStation(db, admin, { name: 'Elmina Valley Locker A', location: 'Beside the Elmina Valley main guardhouse', layout: { S: 10, M: 8, L: 4, XL: 2 }, adapter: 'SIMULATED', hasDoorSensor: true, hasPresenceSensor: true, lat: 3.17594, lng: 101.51005 });
-  const b = await createStation(db, admin, { name: 'Elmina Gardens Locker B', location: 'Elmina Gardens community hall entrance', layout: { S: 6, M: 4, L: 2 }, adapter: 'SIMULATED', hasDoorSensor: true, hasPresenceSensor: true });
-  const counter = await createOverflow(db, admin, { name: 'Township office parcel counter', kind: 'COUNTER', location: 'Township management office, ground floor', hours: 'Mon to Sat, 9am to 6pm', instructions: 'Show your pickup code and your IC or passport.', capacity: 60, acceptsDeliveries: true });
-  await createOverflow(db, admin, { name: 'Main guardhouse counter', kind: 'COUNTER', location: 'Elmina Valley main guardhouse', hours: 'Every day, 24 hours', instructions: 'Show your pickup code and your IC or passport to the guard on duty.', capacity: 30, acceptsDeliveries: false });
+  await ensurePrivateDoors(db, now, () => undefined);
+  const stations = await db.query<{ id: string; name: string; precincts: string[] }>('SELECT id, name, precincts FROM locker_stations WHERE township_id = $1 ORDER BY name', [admin.townshipId]);
+  await createOverflow(db, admin, {
+    name: 'Main guardhouse', kind: 'COUNTER', location: 'Elmina Valley main guardhouse', openFromHour: 8, openToHour: 22,
+    instructions: 'Show your pickup code and your IC or passport to the guard on duty.', capacity: 100, acceptsDeliveries: true,
+  });
 
   // --- Couriers ---------------------------------------------------------------------------------
   const courierUser = async (login: string, name: string, company: string) => {
@@ -57,67 +141,224 @@ export async function seedLockers(db: Db, input: { passwordHash: string; now: Da
     return user!.id;
   };
   const courierId = await courierUser('courier', 'Faizal Rahman', 'J&T Express');
-  await approveCourier(db, admin, courierId, [a.id, b.id], new Date(now.getTime() - 29 * DAY));
+  await approveCourier(db, admin, courierId, stations.map((s) => s.id), new Date(now.getTime() - 29 * DAY));
   await courierUser('courier2', 'Ahmad Zaki', 'Ninja Van'); // still waiting for approval
   const courier = (await actorByEmail(db, 'courier'))!;
 
-  // --- Three weeks of history --------------------------------------------------------------------
-  const deliver = async (resident: Actor, station: { id: string }, at: Date, size: 'S' | 'M' | 'L' = 'S') => {
-    const reg = await registerParcel(db, courier, { stationId: station.id, trackingNo: `JT${randomUUID().replace(/-/g, '').slice(0, 10).toUpperCase()}`, size, recipient: { memberCode: resident.memberCode! } }, at);
-    const opened = await reserveAndOpen(db, courier, reg.id, randomUUID(), at);
-    if (opened.kind !== 'OPENING') return null;
-    await simulateClose(db, courier, reg.id, true, new Date(at.getTime() + 2 * MIN));
-    return reg.id;
+  // Each resident's own bank: the one serving their precinct.
+  const stationOf = async (resident: Actor) => {
+    const home = await one<{ precinct: string | null }>(db, 'SELECT precinct FROM homes WHERE id = $1', [resident.homeId]);
+    return stations.find((s) => home?.precinct && s.precincts.includes(home.precinct)) ?? stations[0]!;
   };
-  const collect = async (resident: Actor, station: { id: string }, parcelId: string, at: Date) => {
-    const pin = (await myLockerParcels(db, resident, at)).parcels.find((p) => p.id === parcelId)?.pin;
+  const startOfToday = Math.floor((now.getTime() + MYT) / DAY) * DAY - MYT;
+  const tracking = () => `JT${randomUUID().replace(/-/g, '').slice(0, 10).toUpperCase()}`;
+
+  /** A parcel into the resident's own door, shut with it inside. */
+  const deliver = async (resident: Actor, when: Date, size: 'S' | 'M' = 'S') => {
+    const station = await stationOf(resident);
+    const reg = await registerParcel(db, courier, { stationId: station.id, trackingNo: tracking(), size, recipient: { memberCode: resident.memberCode! } }, when);
+    if (!reg.verified) return null;
+    const opened = await reserveAndOpen(db, courier, reg.id, randomUUID(), when);
+    if (opened.kind !== 'OPENING') {
+      // The home's door was in use: the courier keeps it for the next round, as on a real day.
+      await failDelivery(db, courier, reg.id, 'The home’s door already held a parcel', when, 'DOOR_FULL');
+      return null;
+    }
+    await simulateClose(db, courier, reg.id, true, new Date(when.getTime() + 2 * MIN));
+    return { id: reg.id, station };
+  };
+  const collect = async (resident: Actor, delivered: { id: string; station: { id: string } }, when: Date) => {
+    const pin = (await myLockerParcels(db, resident, when)).parcels.find((p) => p.id === delivered.id)?.pin;
     if (!pin) return;
-    await pickupAtStation(db, station.id, pin, DEVICE, randomUUID(), at);
-    await simulateClose(db, resident, parcelId, false, new Date(at.getTime() + MIN));
+    await pickupAtStation(db, delivered.station.id, pin, DEVICE, randomUUID(), when);
+    await simulateClose(db, resident, delivered.id, false, new Date(when.getTime() + MIN));
   };
+  // --- Three weeks of history --------------------------------------------------------------------
   let seed = 7;
   const random = () => ((seed = (seed * 9301 + 49297) % 233280) / 233280);
   for (let day = 21; day >= 2; day--) {
-    const dayStart = new Date(Math.floor(now.getTime() / DAY) * DAY - day * DAY + 2 * 3_600_000); // 10am in Kuala Lumpur
-    const weekend = [0, 6].includes(new Date(dayStart.getTime() + 8 * 3_600_000).getUTCDay());
+    const weekend = [0, 6].includes(new Date(startOfToday - day * DAY + MYT).getUTCDay());
     const count = (weekend ? 2 : 4) + Math.floor(random() * 3);
     for (let i = 0; i < count; i++) {
       const resident = residents[Math.floor(random() * residents.length)]!;
-      const station = random() < 0.7 ? a : b;
-      const at = new Date(dayStart.getTime() + i * 47 * MIN);
-      const id = await deliver(resident, station, at, random() < 0.75 ? 'S' : 'M');
-      if (id) await collect(resident, station, id, new Date(at.getTime() + (3 + random() * 20) * 3_600_000));
+      const when = new Date(startOfToday - day * DAY + 10 * HOUR + i * 47 * MIN);
+      const delivered = await deliver(resident, when, random() < 0.75 ? 'S' : 'M');
+      if (delivered) await collect(resident, delivered, new Date(when.getTime() + (3 + random() * 20) * HOUR));
     }
   }
 
-  // --- Live parcels in every interesting state ----------------------------------------------------
-  // Hafiz: not collected in time, so moved to the township office counter two days ago.
-  const late = await deliver(hafiz, a, new Date(now.getTime() - 4.5 * DAY), 'M');
-  if (late) {
-    const due = new Date(now.getTime() - 2.4 * DAY);
-    await runExpiry(db, due);
-    const task = await one<{ id: string }>(db, `SELECT id FROM relocation_tasks WHERE parcel_id = $1 AND status = 'OPEN'`, [late]);
-    if (task) {
-      await startRelocation(db, staff, task.id, counter.id, randomUUID(), due);
-      const tracking = (await one<{ tracking_no: string }>(db, 'SELECT tracking_no FROM locker_parcels WHERE id = $1', [late]))!.tracking_no;
-      await verifyRelocatedParcel(db, staff, task.id, tracking, due);
-      await simulateClose(db, staff, late, false, due);
-      await completeRelocation(db, staff, task.id, false, due);
-    }
-  }
-  // Priya: past its deadline: a relocation task waits for staff.
-  await deliver(priya, a, new Date(now.getTime() - 50 * 3_600_000), 'S');
-  // Daniel: overdue, reminded.
-  await deliver(daniel, a, new Date(now.getTime() - 30 * 3_600_000), 'S');
-  // Mei Ling and Zainab: ready to collect.
-  await deliver(meiling, b, new Date(now.getTime() - 5 * 3_600_000), 'S');
-  await deliver(zainab, a, new Date(now.getTime() - 3 * 3_600_000), 'L');
-  // Aisyah: just arrived.
-  await deliver(aisyah, a, new Date(now.getTime() - 40 * MIN), 'S');
-  await runExpiry(db, now);
-  // A delivery the courier could not make.
-  const failed = await registerParcel(db, courier, { stationId: b.id, trackingNo: `JT${randomUUID().replace(/-/g, '').slice(0, 10).toUpperCase()}`, size: 'XL', recipient: { memberCode: siti.memberCode! } }, new Date(now.getTime() - 6 * 3_600_000));
-  if (failed.verified) await failDelivery(db, courier, failed.id, 'Too big for this station; taken back for doorstep delivery', new Date(now.getTime() - 6 * 3_600_000));
-
-  log(`Smart lockers: 5 courier companies, 2 simulated stations, 2 counters, a courier (courier@${DOMAIN}) and three weeks of parcels.`);
+  log(`Smart lockers: 5 courier companies, ${stations.length} locker banks with a private door for every home, the Main guardhouse, a courier (courier@${DOMAIN}) and three weeks of parcels.`);
+  await seedParcelShowcase(db, input);
 }
+
+// --- The showcase: every state the parcel rules produce, added once (also to an existing database) ----------
+
+/**
+ * Parcels in every state the guardhouse and locker rules produce, so each screen has something real to show:
+ * locker parcels in doors and at the guardhouse (overdue, a call due, a note, collected late, kept for the next
+ * round), parcels a courier left with the guard (overdue, a call due, a note, collected late, sent back on request,
+ * waiting), and Elmina West's Locker C in use. Made through the real services, with a Pos Laju courier whose
+ * company is not connected to SimeTown (so no shipment check is needed). Added once: it is skipped when its
+ * parcels are already there.
+ */
+async function seedParcelShowcase(db: Db, input: { passwordHash: string; now: Date; log: (line: string) => void }) {
+  const { now, log } = input;
+  if (await one(db, `SELECT 1 FROM locker_parcels WHERE tracking_no LIKE 'PLSHOW%' UNION ALL SELECT 1 FROM parcels WHERE tracking_no LIKE 'SHOW%' LIMIT 1`)) {
+    return log('Parcels: showcase already there.');
+  }
+  const admin = await actorByEmail(db, 'admin');
+  const staff = await actorByEmail(db, 'staff');
+  if (!admin?.townshipId || !staff) return log('Parcels: demo accounts missing; showcase skipped.');
+  const guard = (await actorByEmail(db, 'guard')) ?? staff;
+  const people = await Promise.all(['aisyah', 'daniel', 'priya', 'hafiz', 'meiling', 'siti', 'arjun', 'karyan', 'zainab'].map((l) => actorByEmail(db, l)));
+  if (people.some((p) => !p)) return log('Parcels: demo residents missing; showcase skipped.');
+  type Nine = [Actor, Actor, Actor, Actor, Actor, Actor, Actor, Actor, Actor];
+  const [aisyah, daniel, priya, hafiz, meiling, siti, arjun, karyan, zainab] = people as Nine;
+
+  // Elmina West: two verified households, so Locker C has residents.
+  const westResident = async (login: string, name: string, unit: string) => {
+    const existing = await actorByEmail(db, login);
+    if (existing) return existing;
+    const home = await one<{ id: string }>(db, 'SELECT id FROM homes WHERE township_id = $1 AND unit_code = $2', [admin.townshipId, unit]);
+    if (!home) return undefined;
+    const row = await one<Parameters<typeof toActor>[0]>(
+      db,
+      `INSERT INTO users AS u (email, password_hash, full_name, role, phone, township_id, home_id, occupancy, residency_status, member_code, terms_version, terms_accepted_at)
+       VALUES ($1, $2, $3, 'RESIDENT', $4, $5, $6, 'OWNER', 'VERIFIED', $7, $8, $9) RETURNING ${ACTOR_COLUMNS}`,
+      [`${login}@${DOMAIN}`, input.passwordHash, name, `+60123${String(100000 + Math.floor(Math.random() * 899999)).slice(0, 6)}`, admin.townshipId, home.id, randomCode(8), LEGAL.version, now],
+    );
+    const actor = toActor(row!);
+    await createAccount(db, 'WALLET', { userId: actor.id });
+    return actor;
+  };
+  const izzah = await westResident('izzah', 'Nurul Izzah Kamal', 'HM-A-01-01');
+  const rajesh = await westResident('rajesh', 'Rajesh Pillai', 'HM-A-02-02');
+  await ensurePrivateDoors(db, now, () => undefined);
+
+  // The guardhouse and a Pos Laju courier who may use every locker bank.
+  let counter = await one<{ id: string }>(db, `SELECT id FROM overflow_locations WHERE township_id = $1 AND active ORDER BY name LIMIT 1`, [admin.townshipId]);
+  counter ??= await createOverflow(db, admin, {
+    name: 'Main guardhouse', kind: 'COUNTER', location: 'Elmina Valley main guardhouse', openFromHour: 8, openToHour: 22,
+    instructions: 'Show your pickup code and your IC or passport to the guard on duty.', capacity: 100, acceptsDeliveries: true,
+  });
+  const stations = await db.query<{ id: string; precincts: string[] }>('SELECT id, precincts FROM locker_stations WHERE township_id = $1 ORDER BY name', [admin.townshipId]);
+  let posLaju = await one<{ id: string }>(db, `SELECT id FROM courier_companies WHERE name = 'Pos Laju'`);
+  posLaju ??= await createCompany(db, admin, 'Pos Laju');
+  let courier = await actorByEmail(db, 'poslaju');
+  if (!courier) {
+    const user = await one<{ id: string }>(
+      db,
+      `INSERT INTO users (email, password_hash, full_name, phone, role, township_id, terms_version, terms_accepted_at)
+       VALUES ($1, $2, 'Rahim Osman', '+60123450099', 'COURIER', $3, $4, $5) RETURNING id`,
+      [`poslaju@${DOMAIN}`, input.passwordHash, admin.townshipId, LEGAL.version, now],
+    );
+    await db.query('INSERT INTO courier_accounts (user_id, company_id, township_id, applied_at) VALUES ($1, $2, $3, $4)', [user!.id, posLaju.id, admin.townshipId, new Date(now.getTime() - 40 * DAY)]);
+    await approveCourier(db, admin, user!.id, stations.map((s) => s.id), new Date(now.getTime() - 40 * DAY));
+    courier = (await actorByEmail(db, 'poslaju'))!;
+  }
+
+  const startOfToday = Math.floor((now.getTime() + MYT) / DAY) * DAY - MYT;
+  const at = (daysAgo: number, hour: number, minute = 0) => {
+    let t = startOfToday - daysAgo * DAY + hour * HOUR + minute * MIN;
+    if (t > now.getTime() - 5 * MIN) t -= DAY;
+    return new Date(t);
+  };
+  let serial = 0;
+  const tracking = () => `PLSHOW${String(++serial).padStart(4, '0')}`;
+  const stationOf = async (resident: Actor) => {
+    const home = await one<{ precinct: string | null }>(db, 'SELECT precinct FROM homes WHERE id = $1', [resident.homeId]);
+    return stations.find((s) => home?.precinct && s.precincts.includes(home.precinct)) ?? stations[0]!;
+  };
+  const doorFree = async (resident: Actor) => Boolean(await one(db, `SELECT 1 FROM locker_compartments WHERE home_id = $1 AND state = 'AVAILABLE' AND parcel_id IS NULL`, [resident.homeId]));
+  /** A parcel into the resident's own door, when the door is free. */
+  const deliver = async (resident: Actor, when: Date, size: 'S' | 'M' = 'M') => {
+    if (!(await doorFree(resident))) return null;
+    const station = await stationOf(resident);
+    const reg = await registerParcel(db, courier!, { stationId: station.id, trackingNo: tracking(), size, recipient: { memberCode: resident.memberCode! } }, when);
+    if (!reg.verified) return null;
+    const opened = await reserveAndOpen(db, courier!, reg.id, randomUUID(), when);
+    if (opened.kind !== 'OPENING') return null;
+    await simulateClose(db, courier!, reg.id, true, new Date(when.getTime() + 2 * MIN));
+    return { id: reg.id, station };
+  };
+  const collect = async (resident: Actor, delivered: { id: string; station: { id: string } }, when: Date) => {
+    const pin = (await myLockerParcels(db, resident, when)).parcels.find((p) => p.id === delivered.id)?.pin;
+    if (!pin) return;
+    await pickupAtStation(db, delivered.station.id, pin, DEVICE, randomUUID(), when);
+    await simulateClose(db, resident, delivered.id, false, new Date(when.getTime() + MIN));
+  };
+  /** A box too big for the home's door: the courier hands it to the guard at the guardhouse. */
+  const toGuardhouse = async (resident: Actor, when: Date) => {
+    const station = await stationOf(resident);
+    const reg = await registerParcel(db, courier!, { stationId: station.id, trackingNo: tracking(), size: 'XL', recipient: { memberCode: resident.memberCode! } }, when);
+    if (!reg.verified) return null;
+    const opened = await reserveAndOpen(db, courier!, reg.id, randomUUID(), when);
+    if (opened.kind !== 'NO_DOOR') return null;
+    await chooseCounter(db, courier!, reg.id, counter!.id, when);
+    await receiveAtCounter(db, guard, reg.id, new Date(when.getTime() + 10 * MIN));
+    return reg.id;
+  };
+
+  // Locker C in use over the last two weeks, so its figures are real.
+  for (const [i, resident] of [izzah, rajesh, izzah, rajesh, izzah].entries()) {
+    if (!resident) continue;
+    const when = at(14 - i * 3, 11);
+    const delivered = await deliver(resident, when);
+    if (delivered) await collect(resident, delivered, new Date(when.getTime() + (6 + i * 4) * HOUR));
+  }
+
+  // Locker parcels kept at the guardhouse.
+  const lateOne = await toGuardhouse(aisyah, at(40, 12)); // collected late last month: in her late-collections record
+  if (lateOne) {
+    await runExpiry(db, at(33, 14));
+    const pin = (await myLockerParcels(db, aisyah, at(31, 18))).parcels.find((p) => p.id === lateOne)?.pin;
+    if (pin) await handOverAtCounter(db, guard, counter.id, pin, true, at(31, 18));
+  }
+  await toGuardhouse(hafiz, at(15, 12)); // over two weeks: overdue, reminded weekly, and a call is due
+  await runExpiry(db, at(8, 10));
+  const daniels = await toGuardhouse(daniel, at(9, 14)); // nine days: overdue, with a note
+  await runExpiry(db, at(2, 10));
+  if (daniels) await addParcelNote(db, staff, daniels, 'Called the household: they will collect it this weekend.', at(1, 15));
+  if (rajesh) await toGuardhouse(rajesh, at(3, 16)); // from Locker C, three days at the guardhouse
+
+  // Locker parcels in homes' own doors.
+  await deliver(arjun, at(3, 10)); // three days: a gentle reminder
+  await runExpiry(db, at(1, 12));
+  if (izzah) await deliver(izzah, new Date(now.getTime() - 6 * HOUR));
+  await deliver(meiling, new Date(now.getTime() - 5 * HOUR));
+  await deliver(zainab, new Date(now.getTime() - 3 * HOUR));
+  await deliver(aisyah, new Date(now.getTime() - 40 * MIN));
+  await toGuardhouse(aisyah, at(0, 11)); // too big for her door, at the guardhouse today
+  // A box too big for Siti's door arrived after the guardhouse closed: the courier keeps it for the next round.
+  const lateNight = at(1, 22, 40);
+  const big = await registerParcel(db, courier, { stationId: (await stationOf(siti)).id, trackingNo: tracking(), size: 'XL', recipient: { memberCode: siti.memberCode! } }, lateNight);
+  if (big.verified) {
+    await reserveAndOpen(db, courier, big.id, randomUUID(), lateNight);
+    await failDelivery(db, courier, big.id, 'Too big for the home’s door, and the guardhouse was closed', lateNight, 'COUNTER_CLOSED');
+  }
+
+  // Parcels couriers left straight with the guard, with their histories.
+  const shelf = async (resident: Actor, courierName: string, place: string, trackingNo: string, when: Date) =>
+    (await logParcel(db, guard, { homeId: resident.homeId!, courier: courierName, shelf: place, trackingNo }, when)).id;
+  const codeOf = async (id: string) => (await one<{ code: string }>(db, 'SELECT code FROM parcels WHERE id = $1', [id]))!.code;
+  const hafizShelf = await shelf(hafiz, 'DHL', 'A3', 'SHOW0001', at(25, 10)); // collected after 11 days, overdue
+  await runShelfRules(db, at(18, 10));
+  await handOverParcel(db, guard, hafizShelf, { code: await codeOf(hafizShelf) }, at(14, 11));
+  const sitiShelf = await shelf(siti, 'GDex', 'D1', 'SHOW0002', at(12, 14)); // overdue, then sent back on request
+  await runShelfRules(db, at(5, 10));
+  await returnParcel(db, guard, sitiShelf, 'The household asked: wrong item ordered, and the seller arranged a pickup', at(3, 16));
+  await shelf(priya, 'Shopee Express', 'C2', 'SHOW0003', at(16, 15)); // over two weeks: a call is due
+  const karyanShelf = await shelf(karyan, 'Pos Laju', 'B1', 'SHOW0004', at(9, 11)); // overdue, with a note
+  await runShelfRules(db, at(2, 10));
+  await addShelfNote(db, guard, karyanShelf, 'Called: will collect on Saturday.', at(1, 16));
+  const zainabShelf = await shelf(zainab, 'City-Link', 'A2', 'SHOW0005', at(5, 12)); // collected the same day
+  await handOverParcel(db, guard, zainabShelf, { code: await codeOf(zainabShelf), collectedBy: 'Yusof (husband)' }, at(5, 18));
+  await shelf(arjun, 'Ninja Van', 'A1', 'SHOW0006', at(2, 17));
+  await shelf(meiling, 'Lalamove', 'B2', 'SHOW0007', at(0, 9));
+  if (izzah) await shelf(izzah, 'Shopee Express', 'C4', 'SHOW0008', at(1, 10));
+
+  await runExpiry(db, now);
+  await runShelfRules(db, now);
+  log('Parcels: showcase added (Locker C in use, guardhouse parcels with their histories: overdue, calls due, notes, late collections, a return on request).');
+}
+

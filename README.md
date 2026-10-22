@@ -37,7 +37,7 @@ password yourself, set `SEED_DEMO_PASSWORD` in `.env` (10+ characters) before ru
 | Shop | `kafe@demo.kita.test`, `kedai@demo.kita.test` | Counter with Shop Offers, offers page, sales, weekly statements |
 | Home service company | `plumber@demo.kita.test`, `aircon@demo.kita.test` | Booking inbox, accept with a visit time, assign a registered worker, services and workers |
 | Shop and home services | `kemas@demo.kita.test` | Both menus on one business account: the counter and offers, and bookings |
-| Guard | `guard@demo.kita.test` | The main gate: scan passes, walk-ins, SOS calls, patrol round, flood tasks; parcel shelf and the locker parcel counter |
+| Guard | `guard@demo.kita.test` | The main gate: scan passes, walk-ins, SOS calls, patrol round, flood tasks; the guardhouse: parcels left with the guard and smart locker parcels kept there, in one register |
 | Courier | `courier@demo.kita.test` | Faizal, J&T Express (simulated): managed by J&T, delivers to the smart lockers. Also `hairul@` (J&T) and `nurul@` (Ninja Van) |
 | Courier (suspended) | `courier2@demo.kita.test` | Ahmad Zaki: suspended by Ninja Van, so he cannot deliver |
 | Courier company manager | `jnt-manager@demo.kita.test` | Kavitha, J&T Express: adds, suspends and reconfirms J&T's couriers (`ninjavan-manager@` for Ninja Van) |
@@ -141,19 +141,47 @@ Open two browser windows (one normal, one private) so you can be the resident an
 
 ### Smart parcel lockers
 
+Every home has **its own private locker door** in the bank serving its precinct: *Elmina Valley
+Locker A* (Elmina Valley 1–3), *Elmina Gardens Locker B* and *Elmina West Locker C*. A parcel that
+cannot go into the door waits at the **Main guardhouse** (open 8:00 am – 10:00 pm), with the parcels
+couriers leave straight with the guard. Every guardhouse parcel follows the same rules: overdue after
+7 days, a reminder once a week, the guard asked to call at 14 days. Nothing is ever moved out of a door,
+nothing is sent back by itself, and no fees are charged. Parcel cases are worked in *Lapor*.
+
 18. **Deliver.** As the courier, open *Deliver*, choose *Elmina Valley Locker A*, type a tracking
-    number, pick a size and give Aisyah's delivery code (her wallet → *Show my code*). The smallest
-    free door opens; tap *Shut the door with the parcel inside* (a simulated station). Aisyah is told.
-19. **Collect.** As Aisyah, *Parcels* shows the QR code, the PIN and the time left. Type the PIN on
-    the station's keypad in the console's simulator, or enter the station code in the app and tap
-    *Open my door*, then *Take it and shut the door*.
-20. **Overdue and relocation.** As staff, *Smart lockers → Relocations* has Priya's overdue parcel.
-    Start it (choose the township office counter), scan its tracking number, shut the empty door and
-    complete it: her code changes and she is told where to go. Hand it over under *Counter* after
-    checking the code and ID. *Parcels* shows every state change and the custody chain.
-21. **Full station and hardware faults.** In the simulator, jam a door or take the station offline,
-    then try a delivery: nothing is confirmed and the courier is told what to do. The *Overview*,
-    *Forecast* and *Policy* tabs show capacity, tomorrow's demand and the deadlines.
+    number, pick a size and give Aisyah's delivery code (her wallet → *Show my code*). Her home's own
+    door opens; tap *Shut the door with the parcel inside* (a simulated station). Aisyah is told.
+19. **Collect.** As Aisyah, *Parcels* shows her door, whether the guardhouse is open now, the QR code
+    and the PIN. Type the PIN on the station's keypad in the console's simulator, or enter the station
+    code in the app and tap *Open my door*, then *Take it and shut the door*. The *Guardhouse* tab
+    shows everything waiting for her there (days uncollected, overdue, *My late collections*), and the
+    *About* tab explains doors, the guardhouse, reminders and late collections.
+20. **The door cannot take it.** Deliver a second parcel for Aisyah while her door is full, or an M
+    parcel too big for a door: the courier is told why and shown the guardhouse (or, after 10 pm, keeps
+    it for the next round). *It will not go into this door* lets the courier choose a reason, or write
+    their own. As the guard (`guard@`), *Parcels*: confirm courier drop-offs, log parcels left with
+    you, hand any parcel over with one code check, and work the **guardhouse register** (search,
+    filters, each parcel's history). Hafiz's and Priya's parcels have waited over 14 days, so a call
+    is due: open one and add a note. Siti's shelf parcel was sent back on request, with the reason in
+    its history. Aisyah's *My late collections* lists the parcel she collected after 9 days.
+21. **Staff and admins.** *Parcels → Today* lists what needs action now (calls, couriers bringing
+    parcels, overdue parcels, doors to check); *Guardhouse* is the same register as the guard's, with
+    the figures on top; *Performance* covers all three locker banks (Locker C is used by Nurul Izzah
+    and Rajesh in Elmina West) and the guardhouse. Parcel cases are under *Lapor → Parcel & locker
+    cases*. Under *Manage*: *Stations → Doors* shows which home has which door (admins free the door of
+    a home that moved out), *Guardhouses* sets opening hours and room, and *Locker policy* sets the
+    reminder timings, with planned features shown as *Planned · not active*. In the simulator, jam a door or take the
+    station offline, then try a delivery: nothing is confirmed and the courier is told what to do.
+
+### Parcel emails (optional)
+
+The four parcel emails (in your locker, at the counter, the weekly overdue reminder, and a door opened
+without a code) are queued with their notifications and sent by the `lockers` job. To send them for
+real, add the mail account to `.env` (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`; see
+[docs/EMAIL_DESIGN.md](docs/EMAIL_DESIGN.md) §7 for Gmail App Passwords) and restart. Demo accounts
+use `@demo.kita.test` addresses, which are never sent to: to try it, register a resident with your
+own email, have staff confirm the home, and deliver a parcel to them. Residents switch parcel
+emails off under *Account › Emails*.
 
 ### The courier platform (simulated courier companies)
 
@@ -237,9 +265,9 @@ reports under *Parcels → My reports*. The courier companies' support channels 
 | People | Jiran | Events with places, help board, XP when the organiser or asker confirms |
 | People | Lapor | Report with photo, suggested type and urgency, staff queue, access-barrier type; live progress (checked, assigned with a target date, fixed with a photo), late flags, “Me too” instead of duplicate reports, time-to-fix figures |
 | People | My requests | One list of everything a household is waiting on: reports, parcels and collections, each with its next step; the Assistant can read it |
-| People | Parcels | Guard logs parcels with shelf and photo; the household gets a one-time code (and QR) the guard never sees; handover only against the code; “Not me?” queries; reminders after three days; 90-day deletion |
+| People | Parcels | Guard logs parcels with shelf and photo; the household gets a one-time code (and QR) the guard never sees; handover only against the code; “Not me?” queries; the guardhouse rules (overdue at 7 days, weekly reminders, a call at 14 days, never sent back by itself); a register with each parcel's history; 90-day deletion |
 | People | Courier platform | Courier companies approved once per township; their own managers or their own sign-in (OpenID Connect) add and suspend couriers; the label's barcode checked with the (simulated) company; households matched automatically and shown masked; a shipment deposited once, ever; signed, expiring, single-use unlocks; incidents, staff exceptions with a second approver, a risk register |
-| People | Smart lockers | Multi-courier delivery with approval per station, recipient verification without revealing residents, smallest-fitting door allocated atomically, one-time pickup PIN or QR (never stored), reminders outside quiet hours, staffed relocation with a custody chain, overflow counters, live capacity, a plain forecast, an interactive simulator and a signed hardware gateway contract |
+| People | Smart lockers | Multi-courier delivery with approval per station, recipient verification without revealing residents, one private door per home claimed atomically with its first parcel, one-time pickup PIN or QR (never stored), gentle weekly reminders outside quiet hours, a guardhouse parcel counter with opening hours, overdue tracking, guard calls and notes, no fees, live capacity, a plain forecast, an interactive simulator and a signed hardware gateway contract |
 | People | Gerak | Live map tracking with checkpoints that tick themselves, speed bands, near-home trimming, 30-day route deletion; QR checkpoints as the backup; demo playback |
 | Planet | Kitar | Smart machine: rotating screen code, SimeTown QR or guest, camera + barcode + weight agreement, signed records, guest claim codes; kiosk drop-off with a photo check as the backup; “Can I recycle this?” guide in English and Malay; collections booked with partner collectors, with the gate pass made on confirmation; material accepted by month and why machines turned items away |
 | Planet | Kongsi | Give away and lend, XP on confirmed handover |

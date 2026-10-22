@@ -3,7 +3,7 @@
 import { Text } from '@/components/ui/localized-text';
 import { LocalizedDiv } from '@/components/ui/localized-elements';
 
-import { AlertTriangle, Archive, Clock, LockKeyhole, MonitorPlay, PackageX, Truck } from 'lucide-react';
+import { AlertTriangle, Archive, Clock, Home, LockKeyhole, MonitorPlay, PackageX, Store } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, Stat } from '@/components/ui/card';
 import { BarChart } from '@/components/ui/charts';
@@ -30,8 +30,10 @@ export interface StationSummary {
   reserved: number;
   faulty: number;
   disabled: number;
-  overdue: number;
-  relocations: number;
+  /** Parcels in their home's door long enough to have had a reminder. Never moved, never overdue. */
+  waiting_long: number;
+  /** Doors that belong to a home. */
+  assigned: number;
   failed_30d: number;
   avg_collect_hours: number | null;
   free_by_size: Record<string, number> | null;
@@ -42,7 +44,7 @@ export interface StationSummary {
 }
 export interface Overview {
   stations: StationSummary[];
-  overflow: { id: string; name: string; capacity: number; held: number; active: boolean }[];
+  overflow: { id: string; name: string; capacity: number; held: number; active: boolean; overdue: number; calls_due: number }[];
   trend: { day: string; arrivals: number; collections: number }[];
   alerts: { level: 'danger' | 'warning'; text: string }[];
 }
@@ -61,19 +63,24 @@ const SEGMENTS = [
   { key: 'disabled', label: 'Disabled', className: 'bg-ink-300' },
 ] as const;
 
+interface GuardhouseFigures { held: number; overdue: number; callsDue: number; capacity: number; collected30d: number; averageDaysHeld: number | null; bySource: { shelf: number; locker: number }; guardhouse: string | null }
+
 export function OverviewTab({ showAlerts = true }: { showAlerts?: boolean }) {
   const data = useApi<Overview>('/admin/lockers', { refreshInterval: 10_000 });
+  // The guardhouse holds parcels left by couriers and locker parcels that could not go into a door: both count.
+  const guardhouse = useApi<GuardhouseFigures>('/admin/guardhouse/overview', { refreshInterval: 20_000 });
   const unlock = useAction((id: string) => api.post(`/admin/lockers/stations/${id}/keypad-unlock`), { success: 'Keypad unlocked.', onSuccess: () => void data.mutate() });
   return (
     <Async state={data} skeleton={<SkeletonStats count={4} />}>
       {(o) => {
-        const sum = (k: 'total' | 'available' | 'occupied' | 'overdue' | 'relocations' | 'failed_30d') => o.stations.reduce((a, s) => a + s[k], 0);
+        const sum = (k: 'total' | 'available' | 'occupied' | 'waiting_long' | 'assigned' | 'failed_30d') => o.stations.reduce((a, s) => a + s[k], 0);
+        const g = guardhouse.data;
         return (
           <div className="space-y-6">
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <Stat label="Compartments available" value={sum('available')} icon={Archive} hint={`${sum('occupied')} occupied of ${sum('total')}`} />
-              <Stat label="Overdue parcels" value={sum('overdue')} icon={Clock} tone="neutral" hint="Past the first reminder" />
-              <Stat label="Moves to storage" value={sum('relocations')} icon={Truck} tone={sum('relocations') ? 'danger' : 'brand'} hint="Waiting or in progress" />
+              <Stat label="Doors given to homes" value={sum('assigned')} icon={Home} hint={`${sum('total')} doors in all · ${sum('occupied')} holding a parcel`} />
+              <Stat label="Waiting 2+ days in a door" value={sum('waiting_long')} icon={Clock} tone="neutral" hint="Reminded weekly; never moved" />
+              <Stat label="At the guardhouse" value={g?.held ?? 0} icon={Store} tone={g?.overdue ? 'danger' : 'brand'} hint={g ? (g.overdue ? `${g.overdue} overdue · ${g.callsDue} to call` : 'None overdue') : '–'} />
               <Stat label="Failed delivery attempts, 30 days" value={sum('failed_30d')} icon={PackageX} tone="gold" hint="Not delivered, or door did not open" />
             </div>
             {showAlerts && o.alerts.length > 0 && (
@@ -111,7 +118,7 @@ export function OverviewTab({ showAlerts = true }: { showAlerts?: boolean }) {
                       ))}
                     </ul>
                     <div className="grid gap-2 text-sm sm:grid-cols-2">
-                      <p className="text-ink-600"><Text>{`Overdue: ${s.overdue} · to relocate: ${s.relocations}`}</Text></p>
+                      <p className="text-ink-600"><Text>{`Doors given to homes: ${s.assigned} of ${s.total}`}</Text>{s.waiting_long > 0 && <> · <Text>{`${s.waiting_long} waiting 2+ days`}</Text></>}</p>
                       <p className="text-ink-600"><Text>{s.avg_collect_hours != null ? `Collected after ${s.avg_collect_hours} h on average` : 'No collections in 30 days'}</Text></p>
                       <p className="text-ink-600 sm:col-span-2"><Text>Free by size: </Text>{LOCKER_SIZES.map((z) => `${z} ${s.free_by_size?.[z] ?? 0}`).join(' · ')}</p>
                     </div>
@@ -143,16 +150,22 @@ export function OverviewTab({ showAlerts = true }: { showAlerts?: boolean }) {
                 </div>
               </Card>
               <Card>
-                <CardHeader title="Overflow storage" />
-                <ul className="divide-y divide-ink-100">
-                  {o.overflow.map((f) => (
-                    <li key={f.id} className="px-5 py-3">
-                      <p className="flex items-center justify-between gap-2 text-[15px] font-semibold text-ink-900">{f.name}<span className="tabular-nums text-ink-600">{f.held} / {f.capacity}</span></p>
-                      <div className="occupancy-bar mt-2"><span className={f.held >= f.capacity ? 'bg-accent-600' : 'bg-gold-500'} style={{ width: `${Math.min(100, (f.held / f.capacity) * 100)}%` }} /></div>
-                    </li>
-                  ))}
-                  {o.overflow.length === 0 && <li className="px-5 py-3 text-sm text-ink-500"><Text>None registered yet.</Text></li>}
-                </ul>
+                <CardHeader title="Guardhouse" description="Parcels left with the guard, and locker parcels that could not go into a home’s door." />
+                {g ? (
+                  <div className="space-y-4 p-5">
+                    <div>
+                      <p className="flex items-center justify-between gap-2 text-[15px] font-semibold text-ink-900">{g.guardhouse ?? <Text>Guardhouse</Text>}<span className="tabular-nums text-ink-600">{g.held} / {g.capacity}</span></p>
+                      <div className="occupancy-bar mt-2"><span className={g.capacity && g.held >= g.capacity ? 'bg-accent-600' : 'bg-gold-500'} style={{ width: `${g.capacity ? Math.min(100, (g.held / g.capacity) * 100) : 0}%` }} /></div>
+                    </div>
+                    <dl className="grid grid-cols-2 gap-3 text-sm">
+                      <div><dt className="text-xs text-ink-500"><Text>Left by couriers</Text></dt><dd className="font-semibold tabular-nums text-ink-900">{g.bySource.shelf}</dd></div>
+                      <div><dt className="text-xs text-ink-500"><Text>From smart lockers</Text></dt><dd className="font-semibold tabular-nums text-ink-900">{g.bySource.locker}</dd></div>
+                      <div><dt className="text-xs text-ink-500"><Text>Overdue</Text></dt><dd className={cn('font-semibold tabular-nums', g.overdue ? 'text-warning-700' : 'text-ink-900')}>{g.overdue}</dd></div>
+                      <div><dt className="text-xs text-ink-500"><Text>Calls to make</Text></dt><dd className={cn('font-semibold tabular-nums', g.callsDue ? 'text-accent-700' : 'text-ink-900')}>{g.callsDue}</dd></div>
+                      <div className="col-span-2"><dt className="text-xs text-ink-500"><Text>Collected, 30 days</Text></dt><dd className="font-semibold text-ink-900"><span className="tabular-nums">{g.collected30d}</span>{g.averageDaysHeld != null && <span className="font-normal text-ink-600"> · <Text>{`after ${g.averageDaysHeld} days on average`}</Text></span>}</dd></div>
+                    </dl>
+                  </div>
+                ) : <p className="px-5 py-3 text-sm text-ink-500"><Text>No guardhouse set up yet.</Text></p>}
               </Card>
             </div>
           </div>

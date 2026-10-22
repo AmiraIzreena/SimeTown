@@ -40,21 +40,38 @@ export default function ReportQueuePage() {
 function LaporWorkspace() {
   const search = useSearchParams();
   const router = useRouter();
-  const tab = search.get('tab') === 'cases' || search.has('ref') ? 'cases' : search.get('tab') === 'attention' ? 'attention' : 'reports';
+  const asked = search.get('tab');
+  // Parcel, locker and courier cases moved here from the Parcels page, so every report is tracked in one place.
+  const tab = asked === 'parcels' ? 'parcels' : asked === 'cases' || search.has('ref') ? 'cases' : asked === 'attention' ? 'attention' : 'reports';
   const reference = search.get('ref');
   // Loaded here so the tab shows how many problems need attention from any tab.
   const attention = useApi<Attention>('/report-issues/attention');
   return <>
-    <PageHeader title="Lapor" description="Manage community reports and non-parcel cases." />
+    <PageHeader title="Lapor" description="Community reports, gate and community cases, and parcel, locker and courier cases, in one place." />
     <Tabs label="Lapor" value={tab} onChange={(value) => router.push(`/console/reports?tab=${value}`, { scroll: false })} items={[
       { key: 'attention', label: 'Needs attention', count: attention.data?.items.length },
-      { key: 'reports', label: 'Community reports' }, { key: 'cases', label: 'Gate & community cases' },
+      { key: 'reports', label: 'Community reports' }, { key: 'cases', label: 'Gate & community cases' }, { key: 'parcels', label: 'Parcel & locker cases' },
     ]} />
     <TabPanel>
       {tab === 'attention' ? <NeedsAttention data={attention.data} error={attention.error} isLoading={attention.isLoading} reload={() => void attention.mutate()} />
-        : tab === 'reports' ? <CommunityReports onChanged={() => void attention.mutate()} /> : <IncidentBoard key={search.toString()} modules={COMMUNITY_MODULES} openRef={reference && /^INC-\d+$/.test(reference) ? reference : null} />}
+        : tab === 'reports' ? <CommunityReports onChanged={() => void attention.mutate()} />
+        : tab === 'parcels' ? <ParcelCases />
+        : <IncidentBoard key={search.toString()} modules={COMMUNITY_MODULES} openRef={reference && /^INC-\d+$/.test(reference) ? reference : null} />}
     </TabPanel>
   </>;
+}
+
+/** Cases about guardhouse parcels, smart lockers and the courier platform. */
+function ParcelCases() {
+  const search = useSearchParams();
+  const reference = search.get('ref');
+  return <section className="space-y-5">
+    <div><h2 className="font-display text-xl font-bold text-ink-900"><Text>Parcel & locker cases</Text></h2>
+      <p className="mt-1 text-sm text-ink-500"><Text>Reports about guardhouse parcels, smart lockers and couriers: disputed handovers, doors that would not open, doors opened without a code, and courier problems.</Text></p></div>
+    <IncidentBoard key={search.toString()} modules={['PARCELS', 'LOCKERS', 'COURIERS']}
+      openRef={reference && /^INC-\d+$/.test(reference) ? reference : null}
+      initialDisputed={search.get('disputed') === '1'} initialOverdue={search.get('overdue') === '1'} />
+  </section>;
 }
 
 const isStatus = (value: string | null): value is ReportStatus => (REPORT_STATUSES as readonly string[]).includes(value ?? '');

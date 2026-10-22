@@ -191,7 +191,8 @@ export function auditTranslations(ROOT = process.cwd()): Finding[] {
           const last = node.arguments[node.arguments.length - 1];
           if (last && (ts.isStringLiteral(last) || ts.isNoSubstitutionTemplateLiteral(last)) && node.arguments.length >= (node.expression.name.text === 'regex' || node.expression.name.text === 'min' || node.expression.name.text === 'max' || node.expression.name.text === 'length' ? 2 : 1)) msg(last);
         }
-        if (callee === 'notify' || callee.endsWith('.notify')) {
+        // notify(q, users, {title, body}); the lockers' tell(q, users, {title, body}) has the same shape.
+        if (callee === 'notify' || callee.endsWith('.notify') || callee === 'tell') {
           const obj = node.arguments[2];
           if (obj && ts.isObjectLiteralExpression(obj)) for (const p of obj.properties) if (ts.isPropertyAssignment(p) && ['title', 'body'].includes(p.name.getText())) msg(p.initializer);
         }

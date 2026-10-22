@@ -430,8 +430,49 @@ Two modules, one database, no extra services:
  lockers/delivery ──► lockers/hardware ──► station adapter ──► controller (simulated, or a gateway)
       │                    signed, expiring, single-use unlock authorisation
       ▼
- lockers/collection ── PIN / QR for the household ── lockers/overflow ── staffed counter
+ lockers/collection ── PIN / QR for the household ── lockers/overflow ── the guardhouse (with parcels/service: parcels left with the guard)
 ```
+
+- **One private door per home** (`lockers/delivery.ts → homeDoor`, migration 034): every home has
+  its own door, size M or larger, in the locker bank whose `locker_stations.precincts` include the
+  home's precinct (a bank with no precincts serves every home). A home claims the smallest free door
+  that fits with its first parcel (`locker_compartments.home_id`, unique; the row is locked with
+  `SKIP LOCKED`), keeps it while it lives there, and an admin frees it when it moves out
+  (`admin.ts → releaseDoor`). A door holds one parcel at a time, so every deposit and collection is
+  still proved by the door and presence sensors. When the door cannot take a parcel (too big,
+  already holding one, out of use, at another bank, no free door), `reserveAndOpen` returns
+  `NO_DOOR` with the reason and the guardhouse; the courier can also report a reason
+  themselves (`reportDeliveryProblem`). There is no shared or spare storage.
+- **The guardhouse** (`overflow_locations`, one per guardhouse; the demo has *Main guardhouse*)
+  keeps opening hours (`open_from_hour`, `open_to_hour`, township time) and room for at least 100
+  parcels. Couriers bring parcels only while it is open; the guard receives them
+  (`receiveAtCounter`) and the household is told why. Nothing is ever moved out of a door, so the
+  old "move to storage" workflow is gone: migration 034 cancelled its open tasks and put any parcel
+  still in a door back to *Ready to collect*.
+- **Waiting** (`overflow.ts → runExpiry`, the `lockers` job every few minutes): a door parcel gets a
+  gentle reminder after `door_reminder_hours` (48), then weekly (`last_reminder_at`). A counter
+  parcel becomes overdue at `overflow_collect_days` (7, `overdue_at`), is reminded weekly, and at
+  `counter_call_after_days` (14, `call_requested_at`) guards and staff are asked to call; a note
+  (`locker_parcel_notes`) closes the call. Guardhouse parcels are never returned automatically, and no
+  fees are charged (`saveTownshipPolicy` keeps fees and extensions off).
+- **One guardhouse, one set of rules** (migration 036): parcels a courier leaves with the guard
+  (`parcels`) follow the same timings (`parcels/service.ts → runShelfRules`, run by the
+  `parcel-reminders` and `lockers` jobs) and keep their history in `guard_parcel_events`. The
+  **guardhouse register** (`parcels/guardhouse.ts`) is one query over both sources (a `UNION ALL`
+  with the last action of each), filtered, sorted and paged in the database, with an overview and each
+  parcel's history; `checkGuardhouseCode` takes either kind of code. Sending back always needs a reason.
+- **Email** (`src/server/modules/email/`, migration 035): the four parcel emails are queued with
+  their notifications in `email_outbox` and sent by the `lockers` job through nodemailer, only when
+  `SMTP_*` is set; see [EMAIL_DESIGN.md](EMAIL_DESIGN.md).
+- **Planned, not built**: door alerts that open the door's record; a one-tap "Called: no answer"
+  for guards; a monthly late-collection report for HQ; a late-collection storage charge. Admins see
+  them as *Planned · not active* under *Manage → Locker policy*.
+- **Who sees it**: residents on *Parcels* (*Parcel lockers*: their own door; *Guardhouse*: whether
+  it is open now, everything waiting there with days uncollected, *My late collections*; *About*);
+  guards on *Parcels* and staff and admins on *Parcels → Guardhouse*, through the same components
+  (`components/features/guardhouse-register.tsx`); *Today* lists what needs action; *Performance*
+  covers every bank and the guardhouse; admins set doors, guardhouses and reminder timings under
+  *Manage*. Parcel, locker and courier cases are worked in *Lapor → Parcel & locker cases*.
 
 - **Who may deliver** (`lockers/couriers.ts → requireCourierAt`): an active courier of a company
   approved in the station's township (`courier_company_townships`), within its agreement, at a
@@ -456,7 +497,7 @@ Two modules, one database, no extra services:
   | EXPECTED | `REGISTERED`, `VERIFIED` |
   | RESERVED | `LOCKER_RESERVED` |
   | DEPOSITING | `DEPOSIT_IN_PROGRESS` |
-  | DEPOSITED | `DEPOSITED`, `READY_FOR_COLLECTION`, `OVERDUE`, `RELOCATION_*`, `RELOCATED_TO_STORAGE`, `COLLECTION_IN_PROGRESS`, `RETURN_PENDING` |
+  | DEPOSITED | `DEPOSITED`, `READY_FOR_COLLECTION`, `RELOCATED_TO_STORAGE` (at the guardhouse), `COLLECTION_IN_PROGRESS`, `RETURN_PENDING` (`OVERDUE` and `RELOCATION_*` appear only on records from before private doors) |
   | COLLECTED | `COLLECTED` |
   | CANCELLED | `DELIVERY_FAILED`, `RETURNED` |
   | EXCEPTION | `EXCEPTION` |

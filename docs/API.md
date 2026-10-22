@@ -23,6 +23,7 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | GET | `/me` | Any signed-in user | The signed-in account, with any required details still missing |
 | PATCH | `/me` | Any signed-in user | Update name and phone (both required) |
 | POST | `/me/language` | Any signed-in user | Choose English or Bahasa Malaysia |
+| POST | `/me/email-preferences` | Any signed-in user | Switch parcel emails on or off (residents; security alerts are always sent) |
 | POST | `/me/terms` | Any signed-in user | Accept the Terms of Use and Privacy Notice now in force |
 | POST | `/me/home` | RESIDENT | Set or change my address (a new home is confirmed again) |
 | POST | `/me/password` | Any signed-in user | Change password (signs out other devices) |
@@ -216,7 +217,12 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | POST | `/guard/parcels` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN | Log a parcel (multipart form; optional photo). The household gets its code |
 | POST | `/guard/parcels/check` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN | Check the code a resident shows: which parcel and shelf |
 | POST | `/guard/parcels/:parcelId/collect` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN | Hand a parcel over against its code (the code then stops working) |
-| POST | `/guard/parcels/:parcelId/return` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN | Send a parcel back to the courier |
+| POST | `/guard/parcels/:parcelId/return` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN | Send a parcel back to the courier, when the household or the courier asks (with the reason) |
+| POST | `/guard/parcels/:parcelId/notes` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN | Add a note to a parcel's history, for example after calling the household |
+| GET | `/admin/guardhouse/parcels` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | The guardhouse register: every parcel held there, searchable and filtered, a page at a time |
+| GET | `/admin/guardhouse/overview` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | The guardhouse at a glance: held, overdue, calls due, collected, average days held, room |
+| GET | `/admin/guardhouse/parcels/:source/:parcelId` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | One parcel's full history at the guardhouse |
+| POST | `/admin/guardhouse/check` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN | Check any code shown at the guardhouse: a shelf collection code or a smart locker pickup code |
 | GET | `/admin/parcels/stats` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Waiting, time to collect, same-day share and handovers queried (the parcel test) |
 
 ## Smart lockers
@@ -230,15 +236,16 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | GET | `/courier/parcels` | COURIER | The courier's recent deliveries |
 | POST | `/courier/parcels` | COURIER | Register a parcel at a station and verify the recipient (no resident details are returned) |
 | GET | `/courier/parcels/:parcelId` | COURIER | Where a delivery stands, with its door command |
-| POST | `/courier/parcels/:parcelId/open` | COURIER | Reserve the smallest suitable compartment and unlock it (or list the alternatives when full) |
+| POST | `/courier/parcels/:parcelId/open` | COURIER | Open the household's own door (or say why it cannot be used, and which guardhouse can take the parcel) |
 | POST | `/courier/parcels/:parcelId/station` | COURIER | Choose another station you may use |
-| POST | `/courier/parcels/:parcelId/counter` | COURIER | Take the parcel to a staffed counter that accepts deliveries instead |
+| POST | `/courier/parcels/:parcelId/counter` | COURIER | Take the parcel to the guardhouse instead (only while it is open) |
 | POST | `/courier/parcels/:parcelId/confirm` | COURIER | Stations without sensors: confirm the parcel is in and the door is shut |
-| POST | `/courier/parcels/:parcelId/fail` | COURIER | Record that the delivery could not be made (the parcel stays with the courier) |
-| GET | `/lockers/my-parcels` | RESIDENT | My home's locker parcels with their QR code, PIN and deadline |
+| POST | `/courier/parcels/:parcelId/problem` | COURIER | Say why the parcel could not go into the household's door (frees the door and shows where to take it) |
+| POST | `/courier/parcels/:parcelId/fail` | COURIER | Record that the delivery could not be made today (the parcel stays with the courier; the household is told) |
+| GET | `/lockers/my-parcels` | RESIDENT | My home's locker parcels with their QR code and PIN, my locker door, the guardhouse and my late collections |
 | POST | `/lockers/parcels/:parcelId/open` | RESIDENT | Open my parcel's door from the app, at the station (its code from the QR poster) |
 | POST | `/lockers/parcels/:parcelId/confirm` | RESIDENT | Stations without sensors: confirm I have the parcel and the door is shut |
-| POST | `/lockers/parcels/:parcelId/extend` | RESIDENT | Ask for more time, when management has switched extensions on |
+| POST | `/lockers/parcels/:parcelId/extend` | RESIDENT | Ask for more time on a parcel with a deadline (doors belong to one home and have none) |
 | POST | `/lockers/parcels/:parcelId/new-code` | RESIDENT | Replace my pickup PIN and QR code (the old one stops working at once) |
 | POST | `/lockers/parcels/:parcelId/keypad-help` | RESIDENT | Ask staff to unlock my parcel's station keypad after it locked itself (once per lockout) |
 | POST | `/lockers/parcels/:parcelId/report` | RESIDENT | Report a problem with a parcel from the lockers: not collected by us, damaged, wrong contents, not ours |
@@ -246,6 +253,8 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | GET | `/admin/lockers` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Every station by compartment state, overflow storage, the 14-day trend and alerts |
 | GET | `/admin/lockers/forecast` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Tomorrow's expected demand per station, with the method and recommendations |
 | POST | `/admin/lockers/stations` | TOWNSHIP_ADMIN, HQ_ADMIN | Add a station and its compartments (a gateway station’s device secret is shown once) |
+| GET | `/admin/lockers/stations/:stationId/doors` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | A station's doors and the home each belongs to |
+| POST | `/admin/lockers/compartments/:compartmentId/release` | TOWNSHIP_ADMIN, HQ_ADMIN | Free an empty door when its household moves out (admins) |
 | POST | `/admin/lockers/stations/:stationId/status` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Put a station online, offline or in maintenance |
 | POST | `/admin/lockers/stations/:stationId/keypad-unlock` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Unlock a station keypad that locked itself after too many wrong pickup codes |
 | POST | `/admin/lockers/stations/:stationId/secret` | TOWNSHIP_ADMIN, HQ_ADMIN | Issue a new device secret (the old one stops working) |
@@ -255,19 +264,18 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | GET | `/admin/lockers/parcels` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Locker parcels by state, station or tracking number |
 | GET | `/admin/lockers/parcels/:parcelId` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | One parcel's state history, custody chain and door commands |
 | POST | `/admin/lockers/parcels/:parcelId/receive` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Receive a parcel a courier brought to the counter because the lockers were full |
-| POST | `/admin/lockers/parcels/:parcelId/return` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Mark a parcel to go back to the courier |
+| POST | `/admin/lockers/parcels/:parcelId/return` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Mark a parcel to go back to the courier, when the household or the courier asks |
+| POST | `/admin/lockers/parcels/:parcelId/keep` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Keep a parcel at the guardhouse instead of sending it back |
+| GET | `/admin/lockers/parcels/:parcelId/notes` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Staff and guards' notes on a parcel |
+| POST | `/admin/lockers/parcels/:parcelId/notes` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Add a note to a parcel, for example after calling the household |
 | POST | `/admin/lockers/parcels/:parcelId/returned` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | The courier has taken the parcel back |
 | POST | `/admin/lockers/parcels/:parcelId/resolve` | TOWNSHIP_ADMIN, HQ_ADMIN | Settle a parcel held as an exception |
-| GET | `/admin/lockers/relocations` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Relocation tasks, open ones first |
-| POST | `/admin/lockers/relocations/:taskId/start` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Start a relocation: choose the storage place and open the parcel's door |
-| POST | `/admin/lockers/relocations/:taskId/verify` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Scan the tracking code of the parcel taken out |
-| POST | `/admin/lockers/relocations/:taskId/complete` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | The parcel is in storage and the compartment is shut and empty |
-| POST | `/admin/lockers/relocations/:taskId/fail` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | The parcel was missing, damaged or could not be moved |
-| GET | `/admin/lockers/overflow` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Overflow storage places and how full they are |
-| GET | `/admin/lockers/storage/parcels` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Parcels currently held at storage locations |
-| GET | `/admin/lockers/storage/deliveries` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Courier parcels committed for delivery to a storage counter |
-| POST | `/admin/lockers/overflow` | TOWNSHIP_ADMIN, HQ_ADMIN | Register an overflow storage place |
-| POST | `/admin/lockers/overflow/:locationId/active` | TOWNSHIP_ADMIN, HQ_ADMIN | Open or close a storage place |
+| GET | `/admin/lockers/overflow` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Guardhouses, how full each is, and whether each is open now |
+| GET | `/admin/lockers/storage/parcels` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Parcels at the counters: days waited, overdue, calls due and notes |
+| GET | `/admin/lockers/storage/deliveries` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Parcels a courier is bringing to a counter, and why |
+| POST | `/admin/lockers/overflow` | TOWNSHIP_ADMIN, HQ_ADMIN | Add a guardhouse with its opening hours |
+| PATCH | `/admin/lockers/overflow/:locationId` | TOWNSHIP_ADMIN, HQ_ADMIN | Change a guardhouse's opening hours, room or instructions |
+| POST | `/admin/lockers/overflow/:locationId/active` | TOWNSHIP_ADMIN, HQ_ADMIN | Stop or resume taking parcels at a guardhouse (not its daily hours) |
 | POST | `/admin/lockers/overflow/:locationId/check` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Check the pickup code a resident shows at the counter |
 | POST | `/admin/lockers/overflow/:locationId/handover` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Hand the parcel over after checking the code and ID |
 | GET | `/admin/lockers/couriers` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Courier applications and accounts with their stations |
@@ -287,8 +295,8 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | POST | `/admin/lockers/access-sessions/:sessionId/items/:itemId/complete` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Scan and confirm the parcel removed during a session |
 | POST | `/admin/lockers/exceptions/:requestId/decision` | TOWNSHIP_ADMIN, HQ_ADMIN | A second admin approves (the door opens) or rejects a request |
 | POST | `/admin/lockers/parcels/:parcelId/exception` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Ask to open an occupied door (wrong door, wrong household, damage, suspected theft, fault) |
-| GET | `/admin/lockers/policy` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | The township's collection deadlines, reminders and extension settings |
-| PATCH | `/admin/lockers/policy` | TOWNSHIP_ADMIN, HQ_ADMIN | Change the collection policy |
+| GET | `/admin/lockers/policy` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | The township's reminder timings for doors and the guardhouse |
+| PATCH | `/admin/lockers/policy` | TOWNSHIP_ADMIN, HQ_ADMIN | Change the reminder timings (no fees are ever charged) |
 | GET | `/admin/lockers/simulator/:stationId` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | A simulated station's compartments, doors and sensors |
 | POST | `/admin/lockers/simulator/:stationId` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Simulated stations only: a door, sensor, fault, connectivity or keypad event |
 | POST | `/devices/lockers/events` | Signed device (own HMAC key) | Station gateway: command acknowledgements, door events, heartbeats and keypad pickups (HMAC-signed) |
@@ -537,7 +545,7 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 
 | Method | Path | Who | What it does |
 | --- | --- | --- | --- |
-| POST | `/internal/jobs/:name` | Bearer token (cron) | Run a scheduled job (expire-points, float-check, settle, cleanup, flood-agent, parcel-reminders, lockers, couriers, incidents, access, recycling); bearer token |
+| POST | `/internal/jobs/:name` | Bearer token (cron) | Run a scheduled job (expire-points, float-check, settle, cleanup, flood-agent, parcel-reminders, lockers, couriers, incidents, access, recycling, emails); bearer token |
 | GET | `/health` | Public | Liveness: the process is up |
 | GET | `/ready` | Public | Readiness: the database answers and the schema is migrated |
 | GET | `/openapi.json` | Public | This API as an OpenAPI 3.1 document |

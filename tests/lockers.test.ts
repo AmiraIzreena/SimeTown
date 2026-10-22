@@ -3,31 +3,40 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { Actor } from '@/server/auth/actor';
 import { ACTOR_COLUMNS, toActor } from '@/server/auth/session';
 import { one, type Db } from '@/server/db/client';
-import { createStation, lockerForecast, lockerOverview, simulateClose, simulatorEvent, unlockStationKeypad } from '@/server/modules/lockers/admin';
+import { createStation, lockerForecast, lockerOverview, releaseDoor, simulateClose, simulatorEvent, stationDoors, unlockStationKeypad } from '@/server/modules/lockers/admin';
 import { completeSessionItem, decideAccessSession, listAccessSessions, openSessionItem, requestAccessSession } from '@/server/modules/lockers/access-sessions';
 import { askToUnlockKeypad, extendDeadline, myLockerParcels, openFromApp, pickupAtStation, renewPickupCode } from '@/server/modules/lockers/collection';
-import { DEVICE, transition } from '@/server/modules/lockers/core';
+import { DEFAULT_POLICY, DEVICE, transition } from '@/server/modules/lockers/core';
 import { applyAsCourier, approveCourier, createCompany, revokeCourier } from '@/server/modules/lockers/couriers';
-import { chooseCounter, failDelivery, moveToStation, receiveAtCounter, registerParcel, reserveAndOpen } from '@/server/modules/lockers/delivery';
+import { chooseCounter, failDelivery, moveToStation, receiveAtCounter, registerParcel, reportDeliveryProblem, reserveAndOpen } from '@/server/modules/lockers/delivery';
 import { deviceMessageText, reconcile, sign, type DeviceMessage } from '@/server/modules/lockers/hardware';
 import {
-  checkCounterCode, completeRelocation, createOverflow, failRelocation, handOverAtCounter, listCounterDeliveries, listOverflow, listRelocations, listStoredParcels, runExpiry, saveTownshipPolicy, setOverflowActive, startRelocation, verifyRelocatedParcel,
+  addParcelNote, checkCounterCode, completeReturn, createOverflow, getTownshipPolicy, handOverAtCounter, keepAtCounter, listCounterDeliveries, listOverflow, listStoredParcels,
+  parcelNotes, runExpiry, saveTownshipPolicy, setOverflowActive, startReturn, updateOverflow,
 } from '@/server/modules/lockers/overflow';
+import { checkGuardhouseCode, guardhouseOverview, guardhouseParcel, guardhouseRegister } from '@/server/modules/parcels/guardhouse';
+import { logParcel, myParcels, runShelfRules } from '@/server/modules/parcels/service';
 import { routes } from '@/server/http/api';
 import { createRouter } from '@/server/http/router';
-import { T0, at, freshDb, makeResident, makeWorld, type World } from './helpers';
+import { T0, at, freshDb, makeHome, makeResident, makeWorld, type World } from './helpers';
 
-/** Smart parcel lockers: the brief's four scenarios, and the rules that keep doors and codes safe. */
+/**
+ * Smart parcel lockers: every home has its own door in the locker bank serving its precinct; a parcel that cannot
+ * go into it waits at the guardhouse, which keeps opening hours. Nothing is ever sent back by
+ * itself and no fees are charged. Plus the rules that keep doors and codes safe.
+ */
 
 let db: Db;
 let w: World;
 let companyId: string;
 let courier: Actor;
+let guard: Actor;
 let stationA: { id: string; code: string };
 let stationB: { id: string; code: string };
 let counterId: string;
 const H = 3_600_000;
 const key = () => randomUUID();
+const hours = (h: number, from = T0) => new Date(from.getTime() + h * H);
 
 async function makeCourier(stations: string[], approve = true): Promise<Actor> {
   const email = `courier-${randomUUID().slice(0, 8)}@kita.test`;
@@ -36,35 +45,74 @@ async function makeCourier(stations: string[], approve = true): Promise<Actor> {
   return toActor((await one<Parameters<typeof toActor>[0]>(db, `SELECT ${ACTOR_COLUMNS} FROM users u WHERE u.id = $1`, [id]))!);
 }
 
+const tracking = () => `JT${randomUUID().slice(0, 10).replace(/-/g, '')}`.toUpperCase();
+const register = (resident: Actor, station = stationA, now = T0, size: 'S' | 'M' | 'L' = 'S', by = courier) =>
+  registerParcel(db, by, { stationId: station.id, trackingNo: tracking(), size, recipient: { memberCode: resident.memberCode! } }, now);
+
+/** A parcel into the home's own door, shut with the parcel inside. */
 async function deposit(resident: Actor, station = stationA, now = T0, size: 'S' | 'M' = 'S') {
-  const reg = await registerParcel(db, courier, { stationId: station.id, trackingNo: `JT${randomUUID().slice(0, 10).replace(/-/g, '')}`, size, recipient: { memberCode: resident.memberCode! } }, now);
+  const reg = await register(resident, station, now, size);
   const opened = await reserveAndOpen(db, courier, reg.id, key(), now);
-  if (opened.kind !== 'OPENING') throw new Error('No compartment');
+  if (opened.kind !== 'OPENING') throw new Error(`No door: ${opened.problem}`);
   await simulateClose(db, courier, reg.id, true, now);
   return { id: reg.id, compartment: opened.compartment };
 }
 
-const parcel = (id: string) => one<{ state: string; compartment_id: string | null; overflow_location_id: string | null; tracking_no: string }>(db, 'SELECT state, compartment_id, overflow_location_id, tracking_no FROM locker_parcels WHERE id = $1', [id]);
-const pinOf = async (resident: Actor, id: string) => (await myLockerParcels(db, resident, T0)).parcels.find((p) => p.id === id)!;
+/** The household collects from the door with the app, at the station. */
+async function collect(resident: Actor, parcelId: string, station = stationA, now = T0) {
+  await openFromApp(db, resident, parcelId, station.code, key(), now);
+  await simulateClose(db, resident, parcelId, false, now);
+}
+
+/** A second parcel while the home's door is full: the courier takes it to the counter and the guard receives it. */
+async function toCounter(resident: Actor, location = counterId, now = T0) {
+  const door = await one<{ state: string }>(db, 'SELECT state FROM locker_compartments WHERE home_id = $1', [resident.homeId]);
+  if (!door || door.state === 'AVAILABLE') await deposit(resident, stationA, now);
+  const reg = await register(resident, stationA, now);
+  const result = await reserveAndOpen(db, courier, reg.id, key(), now);
+  if (result.kind !== 'NO_DOOR') throw new Error('Expected the door to be full');
+  await chooseCounter(db, courier, reg.id, location, now);
+  await receiveAtCounter(db, guard, reg.id, now);
+  return reg.id;
+}
+
+const parcel = (id: string) => one<{
+  state: string; compartment_id: string | null; overflow_location_id: string | null; tracking_no: string; deadline_at: Date | null;
+  delivery_problem: string | null; last_reminder_at: Date | null; overdue_at: Date | null; call_requested_at: Date | null;
+}>(db, 'SELECT state, compartment_id, overflow_location_id, tracking_no, deadline_at, delivery_problem, last_reminder_at, overdue_at, call_requested_at FROM locker_parcels WHERE id = $1', [id]);
+const doorOf = (homeId: string) => one<{ id: string; label: string; size: string; state: string; parcel_id: string | null; fault: string | null; station_id: string }>(
+  db, 'SELECT id, label, size, state, parcel_id, fault, station_id FROM locker_compartments WHERE home_id = $1', [homeId],
+);
+const lastTitle = async (userId: string) => (await one<{ title: string }>(db, 'SELECT title FROM notifications WHERE user_id = $1 ORDER BY id DESC LIMIT 1', [userId]))?.title;
+const titlesOf = async (userId: string) => (await db.query<{ title: string }>('SELECT title FROM notifications WHERE user_id = $1 ORDER BY id', [userId])).map((n) => n.title);
+const pinOf = async (resident: Actor, id: string, now = T0) => (await myLockerParcels(db, resident, now)).parcels.find((p) => p.id === id)!;
 
 beforeAll(async () => {
   db = await freshDb();
   w = await makeWorld(db);
   companyId = (await createCompany(db, w.hq, 'J&T Express')).id;
-  stationA = await createStation(db, w.admin, { name: 'Locker A', location: 'Main gate', layout: { S: 3, M: 1 }, adapter: 'SIMULATED', hasDoorSensor: true, hasPresenceSensor: true });
-  stationB = await createStation(db, w.admin, { name: 'Locker B', location: 'Community hall', layout: { S: 2 }, adapter: 'SIMULATED', hasDoorSensor: true, hasPresenceSensor: true });
-  counterId = (await createOverflow(db, w.admin, { name: 'Township office counter', kind: 'COUNTER', location: 'Township office', hours: 'Mon to Sat, 9am to 6pm', instructions: 'Bring your pickup code and ID.', capacity: 50, acceptsDeliveries: true })).id;
+  // No precincts set: in these tests each bank serves every home.
+  stationA = await createStation(db, w.admin, { name: 'Locker A', location: 'Beside the main guardhouse', layout: { S: 40, M: 4 }, adapter: 'SIMULATED', hasDoorSensor: true, hasPresenceSensor: true });
+  stationB = await createStation(db, w.admin, { name: 'Locker B', location: 'Community hall', layout: { S: 6 }, adapter: 'SIMULATED', hasDoorSensor: true, hasPresenceSensor: true });
+  counterId = (await createOverflow(db, w.admin, {
+    name: 'Main guardhouse', kind: 'COUNTER', location: 'Main guardhouse, Elmina', openFromHour: 8, openToHour: 22, instructions: 'Show your pickup code and your IC.', capacity: 100, acceptsDeliveries: true,
+  })).id;
   courier = await makeCourier([stationA.id, stationB.id]);
+  guard = toActor((await one<Parameters<typeof toActor>[0]>(
+    db, `INSERT INTO users AS u (email, full_name, role, township_id) VALUES ($1, 'Guard Rahman', 'GUARD', $2) RETURNING ${ACTOR_COLUMNS}`, [`guard-${randomUUID().slice(0, 8)}@kita.test`, w.townshipId],
+  ))!);
 });
 afterAll(() => db.close());
 
-describe('Scenario A: a successful delivery and collection', () => {
-  it('assigns a door, confirms the deposit only when shut with the parcel inside, and frees it after collection', async () => {
+describe('Scenario A: a delivery into the home’s own door', () => {
+  it('gives the home its own door with its first parcel, confirms only when shut with the parcel inside, and keeps the door for the home', async () => {
     const resident = await makeResident(w);
     const reg = await registerParcel(db, courier, { stationId: stationA.id, trackingNo: 'JT0001112223', size: 'S', recipient: { memberCode: resident.memberCode! } }, T0);
     expect(reg).toMatchObject({ verified: true, state: 'VERIFIED' });
     const opened = await reserveAndOpen(db, courier, reg.id, key(), T0);
     expect(opened).toMatchObject({ kind: 'OPENING', size: 'S', command: { status: 'ACKED' } });
+    if (opened.kind !== 'OPENING') throw new Error('expected a door');
+    expect(await doorOf(resident.homeId!)).toMatchObject({ label: opened.compartment, station_id: stationA.id });
     expect((await parcel(reg.id))!.state).toBe('DEPOSIT_IN_PROGRESS');
 
     // Closing the door on an empty compartment is not a delivery.
@@ -72,26 +120,32 @@ describe('Scenario A: a successful delivery and collection', () => {
     expect((await parcel(reg.id))!.state).toBe('LOCKER_RESERVED');
     await reserveAndOpen(db, courier, reg.id, key(), T0);
     await simulateClose(db, courier, reg.id, true, T0);
-    expect((await parcel(reg.id))!.state).toBe('READY_FOR_COLLECTION');
+    expect((await parcel(reg.id))!).toMatchObject({ state: 'READY_FOR_COLLECTION', deadline_at: null }); // a home's own door has no deadline
 
     const mine = await pinOf(resident, reg.id);
     expect(mine.pin).toMatch(/^\d{6}$/);
     expect(mine.qr).toMatch(/^SIMELOCKER:/);
     expect((await one<{ n: number }>(db, `SELECT count(*)::int AS n FROM pickup_credentials WHERE parcel_id = $1 AND pin_lookup LIKE '%' || $2 || '%'`, [reg.id, mine.pin]))!.n).toBe(0); // never stored
-    expect((await one<{ title: string }>(db, 'SELECT title FROM notifications WHERE user_id = $1 ORDER BY id DESC LIMIT 1', [resident.id]))!.title).toBe('Parcel from J&T Express in Locker A');
+    expect(await lastTitle(resident.id)).toBe('Your parcel from J&T Express is in your locker');
+    expect((await myLockerParcels(db, resident, T0)).door).toMatchObject({ label: opened.compartment, station: 'Locker A' });
 
     // Collect with the PIN at the keypad: only this door opens, and only shutting it empty completes it.
     const pickup = await pickupAtStation(db, stationA.id, mine.pin!, DEVICE, key(), at(0.1));
-    expect(pickup.compartment).toBe(opened.kind === 'OPENING' ? opened.compartment : '');
+    expect(pickup.compartment).toBe(opened.compartment);
     await simulateClose(db, resident, reg.id, true, at(0.1));
     expect((await parcel(reg.id))!.state).toBe('READY_FOR_COLLECTION'); // still inside
     await pickupAtStation(db, stationA.id, mine.qr!, DEVICE, key(), at(0.11));
     await simulateClose(db, resident, reg.id, false, at(0.12));
     expect((await parcel(reg.id))!.state).toBe('COLLECTED');
-    const comp = await one<{ state: string; parcel_id: string | null }>(db, `SELECT c.state, c.parcel_id FROM locker_compartments c WHERE c.station_id = $1 AND c.label = $2`, [stationA.id, pickup.compartment]);
-    expect(comp).toEqual({ state: 'AVAILABLE', parcel_id: null });
+    // The door is empty again, and still the home's.
+    expect(await doorOf(resident.homeId!)).toMatchObject({ label: opened.compartment, state: 'AVAILABLE', parcel_id: null });
     // The credential is spent.
     await expect(pickupAtStation(db, stationA.id, mine.pin!, DEVICE, key(), at(0.2))).rejects.toMatchObject({ code: 'PICKUP_CODE' });
+
+    // The home's next parcel, even for someone else in the home, goes into the same door.
+    const housemate = await makeResident(w, { homeId: resident.homeId! });
+    const next = await deposit(housemate, stationA, at(0.3));
+    expect(next.compartment).toBe(opened.compartment);
   });
 
   it('opens from the app only at the right station, and never from the wrong one', async () => {
@@ -150,126 +204,310 @@ describe('Controlled maintenance access', () => {
   });
 });
 
-describe('Scenario B: an uncollected parcel is relocated under custody', () => {
-  it('reminds, makes a task at the deadline, relocates only after a verified scan and an empty door, and reissues the code', async () => {
+describe('Scenario B: the parcel cannot go into the home’s door', () => {
+  it('a door that already holds a parcel: the courier is told why, the guard receives it at the counter, and the household learns why', async () => {
     const resident = await makeResident(w);
-    const { id } = await deposit(resident, stationA, T0);
-    const oldPin = (await pinOf(resident, id)).pin!;
+    await deposit(resident);
+    const reg = await register(resident);
+    const result = await reserveAndOpen(db, courier, reg.id, key(), T0);
+    expect(result).toMatchObject({ kind: 'NO_DOOR', problem: 'DOOR_FULL' });
+    if (result.kind !== 'NO_DOOR') throw new Error('expected NO_DOOR');
+    expect(result.counters).toContainEqual(expect.objectContaining({ id: counterId, name: 'Main guardhouse', open: true }));
+    expect((await parcel(reg.id))!).toMatchObject({ state: 'VERIFIED', compartment_id: null, delivery_problem: 'DOOR_FULL' }); // nothing moved by itself
 
-    expect(await runExpiry(db, new Date(T0.getTime() + 2 * H))).toMatchObject({ overdue: 0, firstReminders: 0 });
-    // Monday 4am UTC is noon in Kuala Lumpur, outside quiet hours.
-    expect(await runExpiry(db, new Date(T0.getTime() + 24.5 * H))).toMatchObject({ overdue: 1, firstReminders: 1 });
-    expect(await runExpiry(db, new Date(T0.getTime() + 24.6 * H))).toMatchObject({ firstReminders: 0 }); // once only
-    // 36.5 hours later it is 00:30 in Kuala Lumpur: the last reminder waits for the end of quiet hours (08:00).
-    expect(await runExpiry(db, new Date(T0.getTime() + 36.5 * H))).toMatchObject({ finalReminders: 0 });
-    expect(await runExpiry(db, new Date(T0.getTime() + 44.5 * H))).toMatchObject({ finalReminders: 1 });
-    expect((await parcel(id))!.state).toBe('OVERDUE');
-    expect(await runExpiry(db, new Date(T0.getTime() + 48.5 * H))).toMatchObject({ relocationTasks: 1 });
-    expect((await parcel(id))!.state).toBe('RELOCATION_PENDING');
-    // Expiry never opened the door.
-    expect((await one<{ n: number }>(db, `SELECT count(*)::int AS n FROM locker_commands WHERE parcel_id = $1 AND purpose = 'RELOCATE'`, [id]))!.n).toBe(0);
+    // After 10pm the counter is closed: the courier keeps the parcel for the next round.
+    await expect(chooseCounter(db, courier, reg.id, counterId, hours(11))).rejects.toMatchObject({ code: 'COUNTER_CLOSED' });
+    expect(await listOverflow(db, w.staff, hours(11))).toContainEqual(expect.objectContaining({ id: counterId, open: false, hours: 'Open daily, 8:00 am – 10:00 pm' }));
 
-    const task = (await one<{ id: string }>(db, `SELECT id FROM relocation_tasks WHERE parcel_id = $1 AND status = 'OPEN'`, [id]))!;
-    const now = new Date(T0.getTime() + 50 * H);
-    // A resident without staff rights cannot start it (route roles) and a guard has no relocation route; staff can.
-    await startRelocation(db, w.staff, task.id, counterId, key(), now);
-    expect((await parcel(id))!.state).toBe('RELOCATION_IN_PROGRESS');
-    await expect(verifyRelocatedParcel(db, w.staff, task.id, 'WRONG123456', now)).rejects.toMatchObject({ code: 'TRACKING_MISMATCH' });
-    await expect(completeRelocation(db, w.staff, task.id, false, now)).rejects.toMatchObject({ code: 'NOT_VERIFIED' });
-    await verifyRelocatedParcel(db, w.staff, task.id, (await parcel(id))!.tracking_no, now);
-    await expect(completeRelocation(db, w.staff, task.id, false, now)).rejects.toMatchObject({ code: 'NOT_EMPTY_YET' });
-    await simulateClose(db, w.staff, id, false, now);
-    await completeRelocation(db, w.staff, task.id, false, now);
+    // During opening hours it goes to the counter; it is delivered only when the guard receives it.
+    await chooseCounter(db, courier, reg.id, counterId, T0);
+    expect((await parcel(reg.id))!.state).toBe('VERIFIED');
+    expect(await listCounterDeliveries(db, guard)).toContainEqual(expect.objectContaining({ id: reg.id, location_id: counterId, reason: 'The door already has something inside' }));
+    expect(await listOverflow(db, guard, T0)).toContainEqual(expect.objectContaining({ id: counterId, incoming: 1, open: true }));
+    await receiveAtCounter(db, guard, reg.id, T0);
+    expect((await parcel(reg.id))!).toMatchObject({ state: 'RELOCATED_TO_STORAGE', overflow_location_id: counterId });
+    expect((await listCounterDeliveries(db, guard)).some((row) => row.id === reg.id)).toBe(false);
 
-    const moved = (await parcel(id))!;
-    expect(moved).toMatchObject({ state: 'RELOCATED_TO_STORAGE', compartment_id: null, overflow_location_id: counterId });
-    const completedTask = (await listRelocations(db, w.staff)).find((row) => row.id === task.id)!;
-    expect(completedTask).toMatchObject({ status: 'DONE', station_id: stationA.id, destination: 'Township office counter' });
-    expect(completedTask.compartment).toBeTruthy();
-    expect(await listStoredParcels(db, w.staff)).toContainEqual(expect.objectContaining({
-      id, state: 'RELOCATED_TO_STORAGE', location_id: counterId, location: 'Township office counter', recipient: resident.fullName,
-    }));
-    await expect(pickupAtStation(db, stationA.id, oldPin, DEVICE, key(), now)).rejects.toMatchObject({ code: 'PICKUP_CODE' });
-    const newCode = (await myLockerParcels(db, resident, now)).parcels.find((p) => p.id === id)!;
-    expect(newCode.counter?.name).toBe('Township office counter');
-    expect(newCode.pin).not.toBe(oldPin);
-    const checked = await checkCounterCode(db, w.staff, counterId, newCode.pin!, now);
-    expect(checked.recipient).toBe(resident.fullName);
-    await expect(handOverAtCounter(db, w.staff, counterId, newCode.pin!, false, now)).rejects.toMatchObject({ code: 'ID_NOT_CHECKED' });
-    await handOverAtCounter(db, w.staff, counterId, newCode.pin!, true, now);
-    expect((await parcel(id))!.state).toBe('COLLECTED');
-    expect((await listStoredParcels(db, w.staff)).some((row) => row.id === id)).toBe(false);
-    const chain = await db.query<{ from_kind: string; to_kind: string }>('SELECT from_kind, to_kind FROM custody_transfers WHERE parcel_id = $1 ORDER BY id', [id]);
-    expect(chain.map((c) => `${c.from_kind}>${c.to_kind}`)).toEqual(['COURIER>LOCKER', 'LOCKER>STAFF', 'STAFF>OVERFLOW', 'OVERFLOW>RESIDENT']);
+    const told = await one<{ title: string; body: string }>(db, 'SELECT title, body FROM notifications WHERE user_id = $1 ORDER BY id DESC LIMIT 1', [resident.id]);
+    expect(told!.title).toBe('Your parcel is at Main guardhouse');
+    expect(told!.body).toContain('Your locker door already had a parcel in it.');
+    expect(told!.body).toContain('open 8:00 am to 10:00 pm');
+    const mine = await pinOf(resident, reg.id);
+    expect(mine).toMatchObject({ compartment: null, counter: { name: 'Main guardhouse', open: true }, reason: 'Your locker door already had a parcel in it.', days: 0, overdue: false });
+    // A counter with parcels waiting cannot be closed for good.
+    await expect(setOverflowActive(db, w.admin, counterId, false)).rejects.toMatchObject({ code: 'STORAGE_IN_USE' });
   });
 
-  it('holds a missing parcel as an exception and keeps the compartment out of use', async () => {
+  it('a parcel too big for the door: after hours the courier keeps it, and the household hears it comes on the next round', async () => {
     const resident = await makeResident(w);
-    const { id } = await deposit(resident, stationB, T0);
-    await runExpiry(db, new Date(T0.getTime() + 49 * H));
-    const task = (await one<{ id: string }>(db, `SELECT id FROM relocation_tasks WHERE parcel_id = $1`, [id]))!;
-    await startRelocation(db, w.staff, task.id, counterId, key(), new Date(T0.getTime() + 50 * H));
-    await failRelocation(db, w.staff, task.id, 'MISSING', 'Compartment was empty when opened', new Date(T0.getTime() + 50 * H));
-    expect((await parcel(id))!.state).toBe('EXCEPTION');
-    const comp = await one<{ state: string }>(db, `SELECT state FROM locker_compartments WHERE id = (SELECT compartment_id FROM locker_parcels WHERE id = $1)`, [id]);
-    expect(comp!.state).toBe('FAULTY');
-    const incident = await one<{ reference: string; module: string; kind: string; priority: string; status: string; parcel_id: string; details: { relocationTaskId: string; reason: string; reportedBy: string } }>(
-      db, `SELECT reference, module, kind, priority, status, parcel_id, details FROM incidents WHERE dedupe_key = $1`, [`relocation:${task.id}`],
-    );
-    expect(incident).toMatchObject({ module: 'LOCKERS', kind: 'RELOCATION_PROBLEM', priority: 'HIGH', status: 'OPEN', parcel_id: id });
-    expect(incident!.details).toMatchObject({ relocationTaskId: task.id, reason: 'MISSING', reportedBy: w.staff.id });
-    expect((await listRelocations(db, w.staff)).find((row) => row.id === task.id)).toMatchObject({ case_reference: incident!.reference });
-    await simulatorEvent(db, w.staff, stationB.id, { type: 'FAULT', compartmentId: (await one<{ compartment_id: string }>(db, 'SELECT compartment_id FROM locker_parcels WHERE id = $1', [id]))!.compartment_id, on: false }, T0).catch(() => undefined);
+    const first = await deposit(resident); // the home's door is size S
+    await collect(resident, first.id);
+    const big = await register(resident, stationA, hours(11), 'M');
+    expect(await reserveAndOpen(db, courier, big.id, key(), hours(11))).toMatchObject({ kind: 'NO_DOOR', problem: 'TOO_BIG' });
+    await failDelivery(db, courier, big.id, 'Parcel counter closed; bringing it on the next round', hours(11), 'COUNTER_CLOSED');
+    expect((await parcel(big.id))!).toMatchObject({ state: 'DELIVERY_FAILED', delivery_problem: 'COUNTER_CLOSED' });
+    const told = await one<{ title: string; body: string }>(db, 'SELECT title, body FROM notifications WHERE user_id = $1 ORDER BY id DESC LIMIT 1', [resident.id]);
+    expect(told!.title).toBe('Your J&T Express parcel was not delivered today');
+    expect(told!.body).toContain('The guardhouse was closed.');
+  });
+
+  it('a home whose door is at another locker bank is pointed there', async () => {
+    const resident = await makeResident(w);
+    const first = await deposit(resident, stationA);
+    await collect(resident, first.id);
+    const reg = await register(resident, stationB);
+    const result = await reserveAndOpen(db, courier, reg.id, key(), T0);
+    expect(result).toMatchObject({ kind: 'NO_DOOR', problem: 'OTHER_STATION', otherStation: { id: stationA.id, name: 'Locker A', allowed: true } });
+    await moveToStation(db, courier, reg.id, stationA.id, T0);
+    expect(await reserveAndOpen(db, courier, reg.id, key(), T0)).toMatchObject({ kind: 'OPENING', compartment: first.compartment });
+  });
+
+  it('a bank gives doors only to the homes of its own precincts', async () => {
+    const west = await createStation(db, w.admin, { name: 'Elmina West Locker C', location: 'Elmina West guardhouse', layout: { M: 2 }, adapter: 'SIMULATED', hasDoorSensor: true, hasPresenceSensor: true, precincts: ['Elmina West'] });
+    const c = await makeCourier([west.id, stationA.id]);
+    const elsewhere = await makeResident(w); // Precinct 1
+    const reg = await register(elsewhere, west, T0, 'S', c);
+    expect(await reserveAndOpen(db, c, reg.id, key(), T0)).toMatchObject({ kind: 'NO_DOOR', problem: 'OTHER_STATION', otherStation: { allowed: true } });
+    expect(await doorOf(elsewhere.homeId!)).toBeUndefined();
+    const local = await makeResident(w, { homeId: await makeHome(w, 'Jalan Elmina Barat', 'Elmina West') });
+    const ok = await register(local, west, T0, 'S', c);
+    expect(await reserveAndOpen(db, c, ok.id, key(), T0)).toMatchObject({ kind: 'OPENING', size: 'M' });
+    expect((await stationDoors(db, w.staff, west.id)).homes).toEqual({ total: 1, withDoor: 1, withoutDoor: 0 });
+  });
+
+  it('the courier says what went wrong: a damaged door is taken out of use and staff are told; "other" needs words', async () => {
+    const resident = await makeResident(w);
+    const reg = await register(resident);
+    const opened = await reserveAndOpen(db, courier, reg.id, key(), T0);
+    if (opened.kind !== 'OPENING') throw new Error('expected a door');
+    await expect(reportDeliveryProblem(db, courier, reg.id, { reason: 'OTHER', note: '  ' }, T0)).rejects.toMatchObject({ code: 'NOTE_NEEDED' });
+    const reported = await reportDeliveryProblem(db, courier, reg.id, { reason: 'DOOR_DAMAGED', note: 'Hinge is broken' }, T0);
+    expect(reported.problem).toBe('DOOR_DAMAGED');
+    expect(reported.counters).toContainEqual(expect.objectContaining({ id: counterId }));
+    expect((await parcel(reg.id))!).toMatchObject({ state: 'VERIFIED', compartment_id: null, delivery_problem: 'DOOR_DAMAGED' });
+    const door = (await doorOf(resident.homeId!))!;
+    expect(door).toMatchObject({ label: opened.compartment, state: 'FAULTY', parcel_id: null });
+    expect(door.fault).toContain('Hinge is broken');
+    expect(await titlesOf(w.staff.id)).toContain(`Check door ${opened.compartment} at Locker A`);
+    // The door stays out of use until staff look at it.
+    expect(await reserveAndOpen(db, courier, reg.id, key(), T0)).toMatchObject({ kind: 'NO_DOOR', problem: 'DOOR_DAMAGED' });
+    // Another courier cannot report on this parcel.
+    await expect(reportDeliveryProblem(db, await makeCourier([stationA.id]), reg.id, { reason: 'TOO_BIG' }, T0)).rejects.toMatchObject({ status: 404 });
+  });
+
+  it('a bank with no free door tells staff; an admin frees the door of a home that moved out', async () => {
+    const tiny = await createStation(db, w.admin, { name: 'Locker T', location: 'Phase 9', layout: { S: 1 }, adapter: 'SIMULATED', hasDoorSensor: true, hasPresenceSensor: true });
+    const c = await makeCourier([tiny.id]);
+    const movedOut = await makeResident(w);
+    const newcomer = await makeResident(w);
+    const first = await register(movedOut, tiny, T0, 'S', c);
+    await reserveAndOpen(db, c, first.id, key(), T0);
+    await simulateClose(db, c, first.id, true, T0);
+    const second = await register(newcomer, tiny, T0, 'S', c);
+    expect(await reserveAndOpen(db, c, second.id, key(), T0)).toMatchObject({ kind: 'NO_DOOR', problem: 'NO_DOOR' });
+    expect(await titlesOf(w.staff.id)).toContain('Locker T has no free door for a new home');
+
+    const doors = await stationDoors(db, w.staff, tiny.id);
+    expect(doors.doors).toEqual([expect.objectContaining({ label: 'A01', state: 'OCCUPIED', trackingNo: expect.any(String), house: expect.any(String) })]);
+    const doorId = doors.doors[0]!.id;
+    await expect(releaseDoor(db, w.staff, doorId, T0)).rejects.toMatchObject({ status: 403 });
+    await expect(releaseDoor(db, w.admin, doorId, T0)).rejects.toMatchObject({ code: 'COMPARTMENT_IN_USE' });
+    await collect(movedOut, first.id, tiny);
+    await releaseDoor(db, w.admin, doorId, T0);
+    expect(await doorOf(movedOut.homeId!)).toBeUndefined();
+    await expect(releaseDoor(db, w.admin, doorId, T0)).rejects.toMatchObject({ code: 'DOOR_FREE' });
+    expect(await reserveAndOpen(db, c, second.id, key(), T0)).toMatchObject({ kind: 'OPENING', compartment: 'A01' });
   });
 });
 
-describe('Scenario C: the station is full', () => {
-  it('offers only approved alternatives, never reroutes by itself, and records a failed delivery honestly', async () => {
-    const full = await createStation(db, w.admin, { name: 'Locker C', location: 'Shops', layout: { S: 1 }, adapter: 'SIMULATED', hasDoorSensor: true, hasPresenceSensor: true });
-    const c2 = await makeCourier([full.id, stationB.id]);
-    const r1 = await makeResident(w);
-    const r2 = await makeResident(w);
-    const first = await registerParcel(db, c2, { stationId: full.id, trackingNo: 'NV1000000001', size: 'S', recipient: { memberCode: r1.memberCode! } }, T0);
-    const second = await registerParcel(db, c2, { stationId: full.id, trackingNo: 'NV1000000002', size: 'S', recipient: { memberCode: r2.memberCode! } }, T0);
-    // Two couriers' requests for the last door: only one gets it.
-    const [a, b] = await Promise.all([reserveAndOpen(db, c2, first.id, key(), T0), reserveAndOpen(db, c2, second.id, key(), T0)]);
-    expect([a.kind, b.kind].sort()).toEqual(['FULL', 'OPENING']);
-    const waiting = a.kind === 'FULL' ? first.id : second.id;
-    const result = a.kind === 'FULL' ? a : b;
-    if (result.kind !== 'FULL') throw new Error('expected FULL');
-    expect(result.alternatives.stations.map((s) => s.name)).toEqual(['Locker B']);
-    expect(result.alternatives.counters.map((s) => s.name)).toEqual(['Township office counter']);
-    expect((await parcel(waiting))!.state).toBe('VERIFIED'); // not delivered, not moved
-    // A station this courier has no access to cannot be chosen.
-    await expect(moveToStation(db, c2, waiting, stationA.id, T0)).rejects.toMatchObject({ status: 403 });
-    // The courier takes it to the counter; it is delivered only when staff receive it.
-    await chooseCounter(db, c2, waiting, counterId, T0);
-    expect((await parcel(waiting))!.state).toBe('VERIFIED');
-    expect(await listCounterDeliveries(db, w.staff)).toContainEqual(expect.objectContaining({ id: waiting, location_id: counterId }));
-    expect(await listOverflow(db, w.staff)).toContainEqual(expect.objectContaining({ id: counterId, incoming: 1 }));
-    await receiveAtCounter(db, w.staff, waiting, T0);
-    expect((await parcel(waiting))!.state).toBe('RELOCATED_TO_STORAGE');
-    expect((await listCounterDeliveries(db, w.staff)).some((row) => row.id === waiting)).toBe(false);
-    expect(await listStoredParcels(db, w.staff)).toContainEqual(expect.objectContaining({ id: waiting, location_id: counterId }));
-    await expect(setOverflowActive(db, w.admin, counterId, false)).rejects.toMatchObject({ code: 'STORAGE_IN_USE' });
+describe('Scenario C: parcels that wait', () => {
+  it('a parcel in the home’s own door is never overdue: a gentle reminder after two days, then once a week, never in quiet hours', async () => {
+    const resident = await makeResident(w);
+    const readyAt = hours(12); // midnight in Kuala Lumpur
+    const { id } = await deposit(resident, stationA, readyAt);
+    await runExpiry(db, hours(47, readyAt));
+    expect((await parcel(id))!.last_reminder_at).toBeNull();
+    // Two days later it is 00:30 in Kuala Lumpur: the reminder waits for the end of quiet hours (08:00).
+    await runExpiry(db, hours(48.5, readyAt));
+    expect((await parcel(id))!.last_reminder_at).toBeNull();
+    await runExpiry(db, hours(56.5, readyAt));
+    expect((await parcel(id))!.last_reminder_at).toEqual(hours(56.5, readyAt));
+    const told = await one<{ title: string; body: string }>(db, 'SELECT title, body FROM notifications WHERE user_id = $1 ORDER BY id DESC LIMIT 1', [resident.id]);
+    expect(told).toMatchObject({ title: 'A parcel is waiting in your locker' });
+    expect(told!.body).toContain('for 2 days');
+    // Once only, then a week later.
+    await runExpiry(db, hours(60, readyAt));
+    await runExpiry(db, hours(56.5 + 7 * 24 - 1, readyAt));
+    expect((await parcel(id))!.last_reminder_at).toEqual(hours(56.5, readyAt));
+    await runExpiry(db, hours(56.5 + 7 * 24, readyAt));
+    expect((await parcel(id))!).toMatchObject({ state: 'READY_FOR_COLLECTION', last_reminder_at: hours(56.5 + 7 * 24, readyAt), overdue_at: null, deadline_at: null });
+    // Expiry never opened the door.
+    expect((await one<{ n: number }>(db, `SELECT count(*)::int AS n FROM locker_commands WHERE parcel_id = $1 AND purpose <> 'DEPOSIT'`, [id]))!.n).toBe(0);
+  });
 
-    const third = await registerParcel(db, c2, { stationId: full.id, trackingNo: 'NV1000000003', size: 'S', recipient: { memberCode: r1.memberCode! } }, T0);
-    await failDelivery(db, c2, third.id, 'Lockers full; taken back for redelivery', T0);
-    expect((await parcel(third.id))!.state).toBe('DELIVERY_FAILED');
+  it('a parcel at the counter is overdue after 7 days, reminded weekly, and the guard asked to call at 14 days; it is never sent back by itself', async () => {
+    const resident = await makeResident(w);
+    await db.query('UPDATE users SET phone = $2 WHERE id = $1', [resident.id, '+60123334444']);
+    const id = await toCounter(resident);
+
+    await runExpiry(db, at(6.9));
+    expect((await parcel(id))!.overdue_at).toBeNull();
+    await runExpiry(db, at(7));
+    expect((await parcel(id))!).toMatchObject({ state: 'RELOCATED_TO_STORAGE', overdue_at: at(7), last_reminder_at: at(7) });
+    const reminder = await one<{ title: string; body: string }>(db, 'SELECT title, body FROM notifications WHERE user_id = $1 ORDER BY id DESC LIMIT 1', [resident.id]);
+    expect(reminder!.title).toBe('Reminder: your parcel is waiting at the guardhouse');
+    expect(reminder!.body).toContain('for 7 days');
+    await runExpiry(db, at(7.1));
+    await runExpiry(db, at(13.9));
+    expect((await parcel(id))!).toMatchObject({ last_reminder_at: at(7), call_requested_at: null });
+
+    await runExpiry(db, at(14));
+    expect((await parcel(id))!).toMatchObject({ state: 'RELOCATED_TO_STORAGE', last_reminder_at: at(14), call_requested_at: at(14) });
+    expect(await titlesOf(guard.id)).toContain('Please call a household about a parcel');
+    expect(await titlesOf(w.staff.id)).toContain('Please call a household about a parcel');
+    expect(await listStoredParcels(db, guard, at(14))).toContainEqual(expect.objectContaining({
+      id, days: 14, overdue: true, call_due: true, phone: '+60123334444', reason: 'The door already has something inside', recipient: resident.fullName,
+    }));
+    const callsDue = (await lockerOverview(db, w.staff, at(14))).overflow.find((o) => o.id === counterId)!.calls_due;
+    expect(callsDue).toBeGreaterThanOrEqual(1);
+
+    // The guard calls and notes it: the call is done, and the number is hidden again.
+    await expect(addParcelNote(db, guard, id, '   ', at(14.1))).rejects.toMatchObject({ code: 'NOTE_EMPTY' });
+    await addParcelNote(db, guard, id, 'Called the household: collecting tomorrow evening.', at(14.1));
+    expect(await listStoredParcels(db, guard, at(14.1))).toContainEqual(expect.objectContaining({ id, call_due: false, phone: null, notes: 1, last_note: 'Called the household: collecting tomorrow evening.' }));
+    expect(await parcelNotes(db, w.staff, id)).toEqual([expect.objectContaining({ body: 'Called the household: collecting tomorrow evening.', author: 'Guard Rahman', author_role: 'GUARD' })]);
+    expect((await lockerOverview(db, w.staff, at(14.1))).overflow.find((o) => o.id === counterId)!.calls_due).toBe(callsDue - 1);
+    // The household sees how long it has waited.
+    expect(await pinOf(resident, id, at(14.1))).toMatchObject({ days: 14, overdue: true });
+
+    // Collected at the counter: the code and ID are checked, and the days it waited stay in its record.
+    const code = (await pinOf(resident, id, at(15))).pin!;
+    expect(await checkCounterCode(db, guard, counterId, code, at(15))).toMatchObject({ recipient: resident.fullName, days: 15, overdue: true });
+    await expect(handOverAtCounter(db, guard, counterId, code, false, at(15))).rejects.toMatchObject({ code: 'ID_NOT_CHECKED' });
+    expect(await handOverAtCounter(db, guard, counterId, code, true, at(15))).toEqual({ ok: true, days: 15 });
+    expect((await parcel(id))!.state).toBe('COLLECTED');
+    expect(await one(db, `SELECT 1 FROM parcel_events WHERE parcel_id = $1 AND reason LIKE '%collected after 15 days, overdue%'`, [id])).toBeTruthy();
+    expect((await myLockerParcels(db, resident, at(15))).lateCollections).toContainEqual(expect.objectContaining({ id, days: 15, counter: 'Main guardhouse' }));
+    expect((await listStoredParcels(db, guard, at(15))).some((row) => row.id === id)).toBe(false);
+    const chain = await db.query<{ from_kind: string; to_kind: string }>('SELECT from_kind, to_kind FROM custody_transfers WHERE parcel_id = $1 ORDER BY id', [id]);
+    expect(chain.map((c) => `${c.from_kind}>${c.to_kind}`)).toEqual(['COURIER>OVERFLOW', 'OVERFLOW>RESIDENT']);
+    // It was never on its way back to the courier.
+    expect(await one(db, `SELECT 1 FROM parcel_events WHERE parcel_id = $1 AND to_state = 'RETURN_PENDING'`, [id])).toBeUndefined();
+  });
+
+  it('staff send a parcel back only when asked, and can keep it at the counter before the courier comes', async () => {
+    const resident = await makeResident(w);
+    const id = await toCounter(resident);
+    await expect(startReturn(db, w.staff, id, ' ', T0)).rejects.toMatchObject({ code: 'REASON_NEEDED' });
+    await startReturn(db, w.staff, id, 'The household asked: wrong item ordered', T0);
+    expect((await parcel(id))!.state).toBe('RETURN_PENDING');
+    expect(await lastTitle(resident.id)).toBe('Your parcel is going back to the courier');
+    await keepAtCounter(db, w.staff, id, T0);
+    expect((await parcel(id))!.state).toBe('RELOCATED_TO_STORAGE');
+    await expect(keepAtCounter(db, w.staff, id, T0)).rejects.toMatchObject({ code: 'PARCEL_STATE' });
+    await startReturn(db, guard, id, 'The courier asked to take it back', T0);
+    await completeReturn(db, w.staff, id, T0);
+    expect((await parcel(id))!.state).toBe('RETURNED');
+    expect(await lastTitle(resident.id)).toBe('Parcel returned to the courier');
+  });
+
+  it('keeps opening hours and room: staff and guards hear when a counter is full, and a full counter is not offered', async () => {
+    await expect(createOverflow(db, w.admin, { name: 'Backwards counter', kind: 'COUNTER', location: 'Gate', openFromHour: 22, openToHour: 8, instructions: 'Bring your code.', capacity: 5, acceptsDeliveries: true }))
+      .rejects.toMatchObject({ code: 'HOURS' });
+    const small = (await createOverflow(db, w.admin, { name: 'Small counter', kind: 'COUNTER', location: 'Block B', openFromHour: 9, openToHour: 17, instructions: 'Bring your code and IC.', capacity: 2, acceptsDeliveries: true })).id;
+    expect(await listOverflow(db, w.staff, T0)).toContainEqual(expect.objectContaining({ id: small, hours: 'Open daily, 9:00 am – 5:00 pm', open: true }));
+    expect(await listOverflow(db, w.staff, hours(6))).toContainEqual(expect.objectContaining({ id: small, open: false })); // 6pm
+    await updateOverflow(db, w.admin, small, { openFromHour: 8, openToHour: 22, capacity: 2, instructions: 'Bring your code and IC.' });
+    expect(await listOverflow(db, w.staff, hours(6))).toContainEqual(expect.objectContaining({ id: small, open: true }));
+
+    await toCounter(await makeResident(w), small);
+    expect((await titlesOf(guard.id)).filter((t) => t.includes('Small counter'))).toEqual([]);
+    await toCounter(await makeResident(w), small);
+    expect(await titlesOf(guard.id)).toContain('Small counter is full');
+    expect(await titlesOf(w.staff.id)).toContain('Small counter is full');
+    await expect(updateOverflow(db, w.admin, small, { openFromHour: 8, openToHour: 22, capacity: 1, instructions: 'Bring your code and IC.' })).rejects.toMatchObject({ code: 'CAPACITY_TOO_LOW' });
+
+    const resident = await makeResident(w);
+    await deposit(resident);
+    const reg = await register(resident);
+    const result = await reserveAndOpen(db, courier, reg.id, key(), T0);
+    if (result.kind !== 'NO_DOOR') throw new Error('expected NO_DOOR');
+    expect(result.counters.map((o) => o.id)).not.toContain(small);
+    await expect(chooseCounter(db, courier, reg.id, small, T0)).rejects.toMatchObject({ code: 'OVERFLOW_FULL' });
+  });
+});
+
+describe('The guardhouse register', () => {
+  it('lists parcels left with the guard and locker parcels together, searchable and filtered, each with its history', async () => {
+    const shelfOwner = await makeResident(w);
+    const shelf = await logParcel(db, guard, { homeId: shelfOwner.homeId!, courier: 'Register Express', shelf: 'Z9', trackingNo: 'REGTEST0001' }, T0);
+    const lockerOwner = await makeResident(w);
+    const lockerId = await toCounter(lockerOwner);
+    const lockerTracking = (await parcel(lockerId))!.tracking_no;
+
+    const one_ = await guardhouseRegister(db, w.staff, { q: 'regtest0001', show: 'ALL' }, T0);
+    expect(one_).toMatchObject({ total: 1, page: 1, pageSize: 20 });
+    expect(one_.items[0]).toMatchObject({ source: 'SHELF', id: shelf.id, courier: 'Register Express', place: 'Z9', status: 'WAITING', days: 0, overdue: false, callDue: false });
+    expect(one_.items[0]!.lastAction).toMatchObject({ text: 'Logged at the guardhouse on shelf Z9' });
+    expect((await guardhouseRegister(db, w.staff, { courier: 'Register Express', show: 'ALL' }, T0)).items.map((r) => r.id)).toEqual([shelf.id]);
+    const locker = await guardhouseRegister(db, w.staff, { q: lockerTracking, source: 'LOCKER', show: 'WAITING' }, T0);
+    expect(locker.items).toEqual([expect.objectContaining({ source: 'LOCKER', id: lockerId, place: 'Main guardhouse', recipient: lockerOwner.fullName, reason: 'Your locker door already had a parcel in it.' })]);
+    expect((await guardhouseRegister(db, w.staff, { q: lockerTracking, source: 'SHELF', show: 'ALL' }, T0)).total).toBe(0);
+    // Searching a household member's name finds their parcel.
+    expect((await guardhouseRegister(db, w.staff, { q: shelfOwner.fullName, show: 'ALL' }, T0)).items.map((r) => r.id)).toContain(shelf.id);
+    // Arrival dates are township days.
+    expect((await guardhouseRegister(db, w.staff, { q: 'REGTEST0001', from: '2026-11-03', show: 'ALL' }, T0)).total).toBe(0);
+    expect((await guardhouseRegister(db, w.staff, { q: 'REGTEST0001', from: '2026-11-02', to: '2026-11-02', show: 'ALL' }, T0)).total).toBe(1);
+
+    // Both kinds follow the same rules: overdue after 7 days.
+    await runShelfRules(db, at(7));
+    await runExpiry(db, at(7));
+    const overdue = await guardhouseRegister(db, w.staff, { show: 'OVERDUE' }, at(7));
+    expect(overdue.items.map((r) => r.id)).toEqual(expect.arrayContaining([shelf.id, lockerId]));
+    expect((await guardhouseOverview(db, w.staff, at(7))).overdue).toBeGreaterThanOrEqual(2);
+    const history = await guardhouseParcel(db, w.staff, 'SHELF', shelf.id, at(7));
+    expect(history).toMatchObject({ days: 7, overdue: true });
+    expect(history.history.map((h) => h.kind)).toEqual(['LOGGED', 'OVERDUE', 'REMINDER']);
+
+    // One code check for either kind of code.
+    const shelfCode = (await myParcels(db, shelfOwner, at(7))).parcels.find((p) => p.id === shelf.id)!.code!;
+    expect((await checkGuardhouseCode(db, guard, `KITAPARCEL:${shelfCode}`, at(7))).matches).toEqual([expect.objectContaining({ source: 'SHELF', id: shelf.id, days: 7 })]);
+    const pin = (await pinOf(lockerOwner, lockerId, at(7))).pin!;
+    expect((await checkGuardhouseCode(db, guard, pin, at(7))).matches).toContainEqual(expect.objectContaining({ source: 'LOCKER', parcelId: lockerId, overdue: true }));
+    await expect(checkGuardhouseCode(db, guard, 'SIMELOCKER:nothing-here', at(7))).rejects.toMatchObject({ code: 'PICKUP_CODE' });
+
+    // Another township sees none of it.
+    const outsider = await makeWorld(db);
+    expect((await guardhouseRegister(db, outsider.staff, { q: 'REGTEST0001', show: 'ALL' }, at(7))).total).toBe(0);
+    await expect(guardhouseParcel(db, outsider.staff, 'SHELF', shelf.id, at(7))).rejects.toMatchObject({ status: 404 });
   });
 });
 
 describe('Scenario D: hardware failure', () => {
   it('a jammed door frees the reservation, flags the door and never confirms a delivery', async () => {
     const resident = await makeResident(w);
-    const comp = await one<{ id: string }>(db, `SELECT id FROM locker_compartments WHERE station_id = $1 AND size = 'M'`, [stationA.id]);
-    await simulatorEvent(db, w.staff, stationA.id, { type: 'FAIL_NEXT', compartmentId: comp!.id, on: true }, T0);
+    const comp = (await one<{ id: string }>(db, `SELECT id FROM locker_compartments WHERE station_id = $1 AND size = 'M' AND home_id IS NULL AND state = 'AVAILABLE' ORDER BY label LIMIT 1`, [stationA.id]))!;
+    await db.query('UPDATE locker_compartments SET home_id = $2 WHERE id = $1', [comp.id, resident.homeId]); // the home's door, set up in advance
+    await simulatorEvent(db, w.staff, stationA.id, { type: 'FAIL_NEXT', compartmentId: comp.id, on: true }, T0);
     const reg = await registerParcel(db, courier, { stationId: stationA.id, trackingNo: 'JTJAM0000001', size: 'M', recipient: { memberCode: resident.memberCode! } }, T0);
     const opened = await reserveAndOpen(db, courier, reg.id, key(), T0);
     expect(opened).toMatchObject({ kind: 'OPENING', command: { status: 'FAILED' } });
     expect((await parcel(reg.id))!).toMatchObject({ state: 'VERIFIED', compartment_id: null });
-    expect((await one<{ state: string }>(db, 'SELECT state FROM locker_compartments WHERE id = $1', [comp!.id]))!.state).toBe('FAULTY');
+    expect((await one<{ state: string }>(db, 'SELECT state FROM locker_compartments WHERE id = $1', [comp.id]))!.state).toBe('FAULTY');
     expect((await myLockerParcels(db, resident, T0)).parcels).toHaveLength(0);
+  });
+
+  it('a door opened without an unlock alerts staff, the guards and the household at once', async () => {
+    const resident = await makeResident(w);
+    await deposit(resident);
+    const door = (await doorOf(resident.homeId!))!;
+    const later = new Date(T0.getTime() + 20 * 60_000);
+    expect(await simulatorEvent(db, w.staff, stationA.id, { type: 'DOOR', compartmentId: door.id, door: 'OPEN', itemPresent: true }, later)).toMatchObject({ outcome: 'UNEXPECTED_OPEN' });
+    const alert = await one<{ title: string; priority: string }>(db, 'SELECT title, priority FROM notifications WHERE user_id = $1 ORDER BY id DESC LIMIT 1', [resident.id]);
+    expect(alert).toEqual({ title: 'Security alert: your locker door was opened without a code', priority: 'URGENT' });
+    expect(await titlesOf(guard.id)).toContain(`Door ${door.label} opened without an unlock`);
+    expect(await titlesOf(w.staff.id)).toContain(`Door ${door.label} opened without an unlock`);
+    await simulatorEvent(db, w.staff, stationA.id, { type: 'DOOR', compartmentId: door.id, door: 'CLOSED', itemPresent: true }, later);
   });
 
   it('an offline station is refused, and a gateway that never answers times out and is reconciled', async () => {
@@ -358,14 +596,14 @@ describe('Security and integrity', () => {
     await expect(askToUnlockKeypad(db, resident, reg.id, min(60 * 31))).rejects.toMatchObject({ code: 'KEYPAD_NOT_LOCKED' });
   });
 
-  it('never locks a staffed counter, where staff check ID anyway', async () => {
-    const counter = await createOverflow(db, w.admin, { name: 'Guardhouse counter', kind: 'COUNTER', location: 'Main gate', hours: 'Daily', instructions: 'Bring your code and ID.', capacity: 10, acceptsDeliveries: false });
+  it('never locks a staffed counter, where the guard checks ID anyway', async () => {
+    const counter = await createOverflow(db, w.admin, { name: 'Guardhouse counter', kind: 'COUNTER', location: 'Main gate', openFromHour: 0, openToHour: 24, instructions: 'Bring your code and ID.', capacity: 10, acceptsDeliveries: false });
     for (const m of [0, 20, 40, 60]) {
       for (let i = 0; i < 10; i++) {
-        await expect(checkCounterCode(db, w.staff, counter.id, String(300000 + m * 100 + i), new Date(T0.getTime() + m * 60_000))).rejects.toMatchObject({ code: 'PICKUP_CODE' });
+        await expect(checkCounterCode(db, guard, counter.id, String(300000 + m * 100 + i), new Date(T0.getTime() + m * 60_000))).rejects.toMatchObject({ code: 'PICKUP_CODE' });
       }
     }
-    await expect(checkCounterCode(db, w.staff, counter.id, '399999', new Date(T0.getTime() + 80 * 60_000))).rejects.toMatchObject({ code: 'PICKUP_CODE' });
+    await expect(checkCounterCode(db, guard, counter.id, '399999', new Date(T0.getTime() + 80 * 60_000))).rejects.toMatchObject({ code: 'PICKUP_CODE' });
   });
 
   it('gives the household a new code on request, and the old one stops working at once', async () => {
@@ -379,7 +617,7 @@ describe('Security and integrity', () => {
     const after = (await myLockerParcels(db, resident, at(2))).parcels.find((p) => p.id === id)!;
     expect(after.qr).not.toBe(before.qr);
     await expect(pickupAtStation(db, stationA.id, before.qr!, DEVICE, key(), at(2))).rejects.toMatchObject({ code: 'PICKUP_CODE' });
-    expect((await one<{ title: string }>(db, 'SELECT title FROM notifications WHERE user_id = $1 ORDER BY id DESC LIMIT 1', [housemate.id]))!.title).toBe('New pickup code');
+    expect(await lastTitle(housemate.id)).toBe('New pickup code');
     expect(await one(db, `SELECT 1 FROM notifications WHERE user_id = $1 AND title = 'New pickup code'`, [resident.id])).toBeUndefined();
     // Not while the door is open.
     await pickupAtStation(db, stationA.id, after.pin!, DEVICE, key(), at(2));
@@ -394,6 +632,9 @@ describe('Security and integrity', () => {
     await expect(db.tx((tx) => transition(tx, id, 'COLLECTED', DEVICE, 'skip', T0))).rejects.toMatchObject({ code: 'PARCEL_STATE' });
     const stranger = await makeResident(w);
     await expect(simulateClose(db, stranger, id, false, T0)).rejects.toMatchObject({ status: 404 });
+    // Staff notes stay inside the township.
+    const outsider = await makeWorld(db);
+    await expect(addParcelNote(db, outsider.staff, id, 'Not my township', T0)).rejects.toMatchObject({ status: 403 });
   });
 
   it('accepts only signed, fresh, unreplayed station messages', async () => {
@@ -410,33 +651,33 @@ describe('Security and integrity', () => {
   });
 });
 
-describe('Policy, extensions, dashboard and forecast', () => {
-  it('extends only when management allows it, with a disclosed fee that is agreed but never charged', async () => {
+describe('Policy, dashboard and forecast', () => {
+  it('charges no fees and sets no deadline on a home’s own door; only admins change the reminder timings', async () => {
     const resident = await makeResident(w);
     const { id } = await deposit(resident, stationA);
-    await expect(extendDeadline(db, resident, id, false, T0)).rejects.toMatchObject({ code: 'NO_EXTENSIONS' });
-    await saveTownshipPolicy(db, w.admin, {
-      first_reminder_hours: 24, final_reminder_hours: 36, relocate_after_hours: 48, overflow_collect_days: 7, quiet_from_hour: 22, quiet_to_hour: 8,
-      extensions_enabled: true, extension_hours: 24, max_extensions: 1, fee_enabled: true, fee_sen: 200, exceptions_need_second_approval: true,
-    }, T0);
-    await expect(extendDeadline(db, resident, id, false, T0)).rejects.toMatchObject({ code: 'FEE_NOT_AGREED' });
-    const extended = await extendDeadline(db, resident, id, true, T0);
-    expect(extended.deadlineAt.getTime() - T0.getTime()).toBe(72 * H);
-    await expect(extendDeadline(db, resident, id, true, T0)).rejects.toMatchObject({ code: 'EXTENSION_USED' });
-    // Collection is never blocked by the fee.
-    const mine = await pinOf(resident, id);
-    await pickupAtStation(db, stationA.id, mine.pin!, DEVICE, key(), T0);
+    await expect(extendDeadline(db, resident, id, true, T0)).rejects.toMatchObject({ code: 'NO_DEADLINE' });
+    await expect(saveTownshipPolicy(db, w.staff, DEFAULT_POLICY, T0)).rejects.toMatchObject({ status: 403 });
+    await expect(saveTownshipPolicy(db, w.admin, { ...DEFAULT_POLICY, counter_call_after_days: 7 }, T0)).rejects.toMatchObject({ code: 'POLICY_ORDER' });
+    // Fees and extensions stay off whatever is sent.
+    await saveTownshipPolicy(db, w.admin, { ...DEFAULT_POLICY, fee_enabled: true, fee_sen: 200, extensions_enabled: true, door_reminder_hours: 72 }, T0);
+    expect(await getTownshipPolicy(db, w.admin)).toMatchObject({ fee_enabled: false, fee_sen: null, extensions_enabled: false, door_reminder_hours: 72, counter_call_after_days: 14 });
+    expect((await myLockerParcels(db, resident, T0)).policy).toEqual({ overdueAfterDays: 7, doorReminderHours: 72, callAfterDays: 14 });
+    await saveTownshipPolicy(db, w.admin, DEFAULT_POLICY, T0);
+    // Collection is never blocked.
+    await pickupAtStation(db, stationA.id, (await pinOf(resident, id)).pin!, DEVICE, key(), T0);
   });
 
   it('counts the dashboard from the compartments themselves, and explains its forecast', async () => {
     const overview = await lockerOverview(db, w.staff, T0);
     for (const s of overview.stations) {
-      const real = await one<{ total: number; occupied: number; available: number }>(
+      const real = await one<{ total: number; occupied: number; available: number; assigned: number }>(
         db,
-        `SELECT count(*)::int AS total, count(*) FILTER (WHERE state = 'OCCUPIED')::int AS occupied, count(*) FILTER (WHERE state = 'AVAILABLE')::int AS available FROM locker_compartments WHERE station_id = $1`,
+        `SELECT count(*)::int AS total, count(*) FILTER (WHERE state = 'OCCUPIED')::int AS occupied, count(*) FILTER (WHERE state = 'AVAILABLE')::int AS available,
+                count(*) FILTER (WHERE home_id IS NOT NULL)::int AS assigned
+           FROM locker_compartments WHERE station_id = $1`,
         [s.id],
       );
-      expect({ total: s.total, occupied: s.occupied, available: s.available }).toEqual(real);
+      expect({ total: s.total, occupied: s.occupied, available: s.available, assigned: s.assigned }).toEqual(real);
       expect(s.available + s.occupied + s.reserved + s.faulty + s.disabled).toBe(s.total);
     }
     const forecast = await lockerForecast(db, w.staff, T0);

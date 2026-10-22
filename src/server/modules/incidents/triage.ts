@@ -109,7 +109,7 @@ async function lockerEvidence(q: Queryable, p: LockerParcel) {
     [p.id, p.home_id],
   );
   const counter = await one<{ to_ref: string | null; at: Date }>(q, `SELECT to_ref, at FROM custody_transfers WHERE parcel_id = $1 AND from_kind = 'OVERFLOW' AND to_kind = 'RESIDENT' ORDER BY at DESC LIMIT 1`, [p.id]);
-  if (counter) lines.push(`It was handed over at the parcel counter on ${time(counter.at)}, after staff checked the pickup code and ID.`);
+  if (counter) lines.push(`It was handed over at the guardhouse on ${time(counter.at)}, after staff checked the pickup code and ID.`);
   else if (how?.requested_by && how.same_home) lines.push(`The door was opened from the SimeTown app by ${how.name?.split(' ')[0] ?? 'someone'} in your home on ${time(how.acked_at)}.`);
   else if (how?.requested_by) {
     lines.push(`The door was opened on ${time(how.acked_at)} by someone outside your home.`);

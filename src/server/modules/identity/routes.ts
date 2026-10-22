@@ -85,6 +85,11 @@ export const identityRoutes = [
     handler: (c) => identity.setLanguage(c.db, c.actor, c.body.language),
   }),
   route({
+    method: 'POST', path: '/me/email-preferences', tag: 'SimeTown ID', summary: 'Switch parcel emails on or off (residents; security alerts are always sent)', auth: 'session',
+    body: z.object({ parcels: z.boolean() }),
+    handler: (c) => identity.setEmailPreferences(c.db, c.actor, c.body),
+  }),
+  route({
     method: 'POST', path: '/me/terms', tag: 'SimeTown ID', summary: 'Accept the Terms of Use and Privacy Notice now in force', auth: 'session',
     body: z.object({ version: zText(40) }),
     handler: (c) => identity.acceptTerms(c.db, c.actor, c.body.version, c.now),

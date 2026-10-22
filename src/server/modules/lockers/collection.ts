@@ -1,9 +1,10 @@
-import { IN_LOCKER, type ParcelState } from '@/shared/lockers';
+import { counterHoursText, counterStatus, daysBetween, DELIVERY_PROBLEM_FOR_RESIDENT, DELIVERY_PROBLEMS, IN_LOCKER, type DeliveryProblem, type ParcelState } from '@/shared/lockers';
 import { one, type Db, type Queryable } from '../../db/client';
 import { requireVerifiedResident, type Actor } from '../../auth/actor';
 import { conflict, notFound, ruleViolation } from '../../errors';
 import { completeCollection, createUnlock, dispatch, type CompartmentRow, type StationRow } from './hardware';
 import { reportProblem } from '../incidents/triage';
+import { getSettings } from '../settings';
 import { getPolicy, householdOf, issueCredential, staffOf, pinFor, qrFor, recordEvent, resolveCredential, tell, transition, userActor, type LockerActor, type ParcelRow } from './core';
 
 /**
@@ -24,14 +25,17 @@ const MAX_CODES_PER_DAY = 5;
 
 export async function myLockerParcels(db: Db, actor: Actor, now: Date) {
   const resident = requireVerifiedResident(actor);
+  const tz = (await getSettings(db)).timezone;
   const rows = await db.query<ParcelRow & {
     company: string; station: string; station_code: string; station_location: string; compartment: string | null; adapter: string; has_sensors: boolean;
-    overflow_name: string | null; overflow_location: string | null; overflow_hours: string | null; overflow_instructions: string | null; credential_id: string | null;
+    overflow_name: string | null; overflow_location: string | null; overflow_instructions: string | null; credential_id: string | null;
+    overflow_from: number | null; overflow_to: number | null;
     keypad_locked: boolean; help_asked: boolean; reported: boolean; referred: boolean;
   }>(
     `SELECT p.*, co.name AS company, s.name AS station, s.code AS station_code, s.location AS station_location, c.label AS compartment, s.adapter,
             (s.has_door_sensor AND s.has_presence_sensor) AS has_sensors,
-            o.name AS overflow_name, o.location AS overflow_location, o.hours AS overflow_hours, o.instructions AS overflow_instructions,
+            o.name AS overflow_name, o.location AS overflow_location, o.instructions AS overflow_instructions,
+            o.open_from_hour AS overflow_from, o.open_to_hour AS overflow_to,
             (SELECT k.id FROM pickup_credentials k WHERE k.parcel_id = p.id AND k.status = 'ACTIVE') AS credential_id,
             EXISTS (SELECT 1 FROM incidents i WHERE i.parcel_id = p.id AND i.home_id = p.home_id AND i.user_id IS NOT NULL AND i.status IN ('OPEN', 'ASSIGNED', 'INVESTIGATING', 'AWAITING_EXTERNAL_PARTY', 'REOPENED')) AS reported,
             EXISTS (SELECT 1 FROM courier_referrals r WHERE r.locker_parcel_id = p.id) AS referred,
@@ -45,10 +49,44 @@ export async function myLockerParcels(db: Db, actor: Actor, now: Date) {
     [resident.homeId, LIVE_STATES, now, actor.id],
   );
   const policy = await getPolicy(db, resident.townshipId, null);
+  // The home's own door, the township's guardhouse (with whether it is open now), and the record of late collections.
+  const [door, counters, late] = await Promise.all([
+    one<{ label: string; size: string; station: string; station_location: string; station_code: string }>(
+      db,
+      `SELECT c.label, c.size, s.name AS station, s.location AS station_location, s.code AS station_code
+         FROM locker_compartments c JOIN locker_stations s ON s.id = c.station_id WHERE c.home_id = $1`,
+      [resident.homeId],
+    ),
+    db.query<{ id: string; name: string; location: string; instructions: string; open_from_hour: number; open_to_hour: number }>(
+      `SELECT id, name, location, instructions, open_from_hour, open_to_hour FROM overflow_locations WHERE township_id = $1 AND active ORDER BY name`,
+      [resident.townshipId],
+    ),
+    db.query<{ id: string; company: string; tracking_no: string; ready_at: Date; collected_at: Date; counter: string | null }>(
+      // Every parcel collected late from the guardhouse: smart locker parcels kept there, and parcels a courier left
+      // straight with the guard (those records are deleted after 90 days, with their photos).
+      `SELECT * FROM (
+         SELECT p.id, co.name AS company, p.tracking_no, p.ready_at, p.collected_at, o.name AS counter
+           FROM locker_parcels p JOIN courier_companies co ON co.id = p.company_id LEFT JOIN overflow_locations o ON o.id = p.overflow_location_id
+          WHERE p.home_id = $1 AND p.state = 'COLLECTED' AND p.overdue_at IS NOT NULL AND p.collected_at > $2::timestamptz - interval '365 days'
+         UNION ALL
+         SELECT g.id, g.courier, coalesce(g.tracking_no, ''), g.logged_at, g.collected_at, NULL
+           FROM parcels g WHERE g.home_id = $1 AND g.status = 'COLLECTED' AND g.overdue_at IS NOT NULL AND g.collected_at > $2::timestamptz - interval '365 days'
+       ) x ORDER BY x.collected_at DESC LIMIT 20`,
+      [resident.homeId, now],
+    ),
+  ]);
   return {
-    policy: { extensionsEnabled: policy.extensions_enabled, extensionHours: policy.extension_hours, maxExtensions: policy.max_extensions, feeEnabled: policy.fee_enabled, feeSen: policy.fee_sen },
+    timeZone: tz,
+    policy: { overdueAfterDays: policy.overflow_collect_days, doorReminderHours: policy.door_reminder_hours, callAfterDays: policy.counter_call_after_days },
+    door: door ? { label: door.label, size: door.size, station: door.station, location: door.station_location, code: door.station_code } : null,
+    counters: counters.map((o) => {
+      const status = counterStatus(o.open_from_hour, o.open_to_hour, now, tz);
+      return { id: o.id, name: o.name, location: o.location, instructions: o.instructions, openFromHour: o.open_from_hour, openToHour: o.open_to_hour, hours: counterHoursText(o.open_from_hour, o.open_to_hour), open: status.open };
+    }),
+    lateCollections: late.map((l) => ({ id: l.id, company: l.company, trackingNo: l.tracking_no, collectedAt: l.collected_at, days: daysBetween(l.ready_at, l.collected_at), counter: l.counter })),
     parcels: rows.map((p) => {
       const atCounter = p.state === 'RELOCATED_TO_STORAGE' || p.state === 'RETURN_PENDING';
+      const problem = p.delivery_problem && (DELIVERY_PROBLEMS as readonly string[]).includes(p.delivery_problem) ? (p.delivery_problem as DeliveryProblem) : null;
       return {
         id: p.id,
         company: p.company,
@@ -57,8 +95,19 @@ export async function myLockerParcels(db: Db, actor: Actor, now: Date) {
         state: p.state,
         station: { name: p.station, code: p.station_code, location: p.station_location },
         compartment: atCounter ? null : p.compartment,
-        counter: atCounter && p.overflow_name ? { name: p.overflow_name, location: p.overflow_location, hours: p.overflow_hours, instructions: p.overflow_instructions } : null,
+        counter: atCounter && p.overflow_name && p.overflow_from != null && p.overflow_to != null
+          ? {
+            name: p.overflow_name, location: p.overflow_location, instructions: p.overflow_instructions,
+            hours: counterHoursText(p.overflow_from, p.overflow_to), openFromHour: p.overflow_from, openToHour: p.overflow_to,
+            open: counterStatus(p.overflow_from, p.overflow_to, now, tz).open,
+          }
+          : null,
+        // Why it went to the counter, in plain words.
+        reason: atCounter && problem ? DELIVERY_PROBLEM_FOR_RESIDENT[problem] : null,
         readyAt: p.ready_at,
+        // How long it has waited: counted every day until it is collected, and kept in its record.
+        days: p.ready_at ? daysBetween(p.ready_at, p.collected_at ?? now) : 0,
+        overdue: Boolean(p.overdue_at),
         deadlineAt: p.deadline_at,
         collectedAt: p.collected_at,
         // The credential shows only while it can still be used.
@@ -74,8 +123,6 @@ export async function myLockerParcels(db: Db, actor: Actor, now: Date) {
         canReportLive: ['READY_FOR_COLLECTION', 'OVERDUE', 'RELOCATION_PENDING', 'COLLECTION_IN_PROGRESS'].includes(p.state),
         reported: p.reported,
         referred: p.referred,
-        canExtend: policy.extensions_enabled && p.extensions < policy.max_extensions && (p.state === 'READY_FOR_COLLECTION' || p.state === 'OVERDUE'),
-        extensions: p.extensions,
       };
     }),
   };
@@ -155,9 +202,9 @@ export async function confirmCollected(db: Db, actor: Actor, parcelId: string, n
 }
 
 /**
- * More time to collect, only when management has switched extensions on. A
- * fee, if one is set, must be agreed first; it is recorded, never charged here,
- * and never stops the parcel being collected.
+ * More time to collect. Kept for older records only: a home's own door has no
+ * deadline, a parcel at the counter is never sent back by itself, and
+ * extensions and fees stay switched off.
  */
 export async function extendDeadline(db: Db, actor: Actor, parcelId: string, agreeFee: boolean, now: Date) {
   const resident = requireVerifiedResident(actor);
@@ -165,6 +212,7 @@ export async function extendDeadline(db: Db, actor: Actor, parcelId: string, agr
     const p = await one<ParcelRow>(tx, 'SELECT * FROM locker_parcels WHERE id = $1 AND home_id = $2 FOR UPDATE', [parcelId, resident.homeId]);
     if (!p) throw notFound('Parcel');
     const policy = await getPolicy(tx, p.township_id, p.station_id);
+    if (!p.deadline_at) throw ruleViolation('NO_DEADLINE', 'A parcel in your own locker door has no deadline: collect it whenever suits you.');
     if (!policy.extensions_enabled) throw ruleViolation('NO_EXTENSIONS', 'More time is not offered at this station.');
     if (p.extensions >= policy.max_extensions) throw ruleViolation('EXTENSION_USED', 'This parcel has already had its extra time.');
     if (p.state !== 'READY_FOR_COLLECTION' && p.state !== 'OVERDUE') throw conflict('PARCEL_STATE', 'Extra time is only for a parcel still in its locker.');

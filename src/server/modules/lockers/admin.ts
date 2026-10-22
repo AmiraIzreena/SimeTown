@@ -1,16 +1,17 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { LOCKER_SIZE_INFO, LOCKER_SIZES, type LockerSize, type ParcelState } from '@/shared/lockers';
-import { ADMINS } from '@/shared/domain';
+import { ADMINS, shortAddress, type HomeAddress } from '@/shared/domain';
 import { one, type Db, type Queryable } from '../../db/client';
 import { assertTownshipAccess, type Actor } from '../../auth/actor';
 import { conflict, forbidden, notFound, ruleViolation } from '../../errors';
 import { audit } from '../audit';
 import { randomCode } from '../identity/service';
 import { getSettings } from '../settings';
-import { resolveTownship } from '../townships';
+import { HOME_ADDRESS_COLUMNS, resolveTownship } from '../townships';
 import { createUnlock, dispatch, handleDoor, replayCommand, type CompartmentRow, type StationRow } from './hardware';
 import { pickupAtStation } from './collection';
 import { unlockKeypad, userActor, type ParcelRow } from './core';
+import { parcelNotes } from './overflow';
 
 /**
  * Property management: stations and compartments, the live capacity
@@ -29,6 +30,8 @@ export interface StationInput {
   hasPresenceSensor: boolean;
   lat?: number;
   lng?: number;
+  /** The precincts whose homes get their own door here. Empty: every home in the township. */
+  precincts?: string[];
 }
 
 /** A new station with its compartments. A gateway station's device secret is shown once, here. */
@@ -42,9 +45,10 @@ export async function createStation(db: Db, actor: Actor, input: StationInput) {
     const secret = randomBytes(32).toString('hex');
     const station = await one<{ id: string; code: string }>(
       tx,
-      `INSERT INTO locker_stations (township_id, name, code, location, lat, lng, adapter, gateway_url, device_secret, has_door_sensor, has_presence_sensor)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id, code`,
-      [townshipId, input.name.trim(), `L${randomCode(7)}`, input.location.trim(), input.lat ?? null, input.lng ?? null, input.adapter, input.gatewayUrl ?? null, secret, input.hasDoorSensor, input.hasPresenceSensor],
+      `INSERT INTO locker_stations (township_id, name, code, location, lat, lng, adapter, gateway_url, device_secret, has_door_sensor, has_presence_sensor, precincts)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id, code`,
+      [townshipId, input.name.trim(), `L${randomCode(7)}`, input.location.trim(), input.lat ?? null, input.lng ?? null, input.adapter, input.gatewayUrl ?? null, secret, input.hasDoorSensor, input.hasPresenceSensor,
+        [...new Set((input.precincts ?? []).map((p) => p.trim()).filter(Boolean))]],
     );
     let n = 0;
     for (const size of LOCKER_SIZES) {
@@ -101,7 +105,7 @@ export async function setCompartment(db: Db, actor: Actor, compartmentId: string
     assertTownshipAccess(actor, c.township_id);
     let next: CompartmentRow['state'] = c.state;
     if (action === 'DISABLE') {
-      if (c.parcel_id) throw conflict('COMPARTMENT_IN_USE', 'A parcel is in this compartment. Relocate it first.');
+      if (c.parcel_id) throw conflict('COMPARTMENT_IN_USE', 'A parcel is in this door. The household collects it first, or ask for staff access under Emergency door access.');
       next = 'DISABLED';
     } else if (action === 'ENABLE') {
       if (c.state !== 'DISABLED') throw conflict('COMPARTMENT_STATE', 'This compartment is not disabled.');
@@ -117,7 +121,7 @@ export async function setCompartment(db: Db, actor: Actor, compartmentId: string
 
 /**
  * Opens an empty compartment for maintenance. Admins only, never one holding a
- * parcel (that is what the relocation workflow is for), and always logged.
+ * parcel (that needs an approved staff access request), and always logged.
  */
 export async function maintenanceUnlock(db: Db, actor: Actor, compartmentId: string, reason: string, idempotencyKey: string, now: Date) {
   if (!ADMINS.includes(actor.role)) throw forbidden('Only an admin can open a compartment for maintenance.');
@@ -125,13 +129,54 @@ export async function maintenanceUnlock(db: Db, actor: Actor, compartmentId: str
     const c = await one<CompartmentRow & { township_id: string }>(tx, 'SELECT c.*, s.township_id FROM locker_compartments c JOIN locker_stations s ON s.id = c.station_id WHERE c.id = $1 FOR UPDATE OF c', [compartmentId]);
     if (!c) throw notFound('Compartment');
     assertTownshipAccess(actor, c.township_id);
-    if (c.parcel_id) throw conflict('COMPARTMENT_IN_USE', 'A parcel is in this compartment. Use the relocation workflow.');
+    if (c.parcel_id) throw conflict('COMPARTMENT_IN_USE', 'A parcel is in this door. Ask for staff access under Emergency door access instead.');
     const command = await createUnlock(tx, { stationId: c.station_id, compartmentId: c.id, parcelId: null, purpose: 'MAINTENANCE', requestedBy: actor.id, idempotencyKey }, now);
     await audit(tx, actor.id, 'MAINTENANCE_UNLOCK', 'locker_compartment', c.id, { reason });
     return command.id;
   });
   const command = await dispatch(db, commandId, now);
   return { status: command.status, error: command.error };
+}
+
+// --- Private doors ----------------------------------------------------------------------------
+
+/** A station's doors and the home each belongs to. A home claims a free door with its first parcel. */
+export async function stationDoors(db: Db, actor: Actor, stationId: string) {
+  const s = await loadStation(db, actor, stationId);
+  // Named apart: a home's address also has a "state" column (Selangor, Johor…).
+  const rows = await db.query<HomeAddress & { id: string; label: string; size: string; door_state: string; fault: string | null; home_id: string | null; tracking_no: string | null }>(
+    `SELECT c.id, c.label, c.size, c.state AS door_state, c.fault, c.home_id, p.tracking_no, ${HOME_ADDRESS_COLUMNS}
+       FROM locker_compartments c LEFT JOIN homes h ON h.id = c.home_id LEFT JOIN locker_parcels p ON p.id = c.parcel_id
+      WHERE c.station_id = $1 ORDER BY c.label`,
+    [s.id],
+  );
+  const homes = await one<{ total: number; with_door: number }>(
+    db,
+    `SELECT count(*)::int AS total,
+            count(*) FILTER (WHERE EXISTS (SELECT 1 FROM locker_compartments c WHERE c.home_id = h.id))::int AS with_door
+       FROM homes h WHERE h.township_id = $1 AND (cardinality($2::text[]) = 0 OR h.precinct = ANY($2::text[]))`,
+    [s.township_id, s.precincts ?? []],
+  );
+  return {
+    station: { id: s.id, name: s.name, precincts: s.precincts ?? [] },
+    homes: { total: homes!.total, withDoor: homes!.with_door, withoutDoor: homes!.total - homes!.with_door },
+    doors: rows.map((r) => ({ id: r.id, label: r.label, size: r.size, state: r.door_state, fault: r.fault, trackingNo: r.tracking_no, house: r.home_id ? shortAddress(r) : null })),
+  };
+}
+
+/** Admins free a door when its household moves out. The next home to need one claims it with its first parcel. */
+export async function releaseDoor(db: Db, actor: Actor, compartmentId: string, now: Date) {
+  if (!ADMINS.includes(actor.role)) throw forbidden('Only an admin can release a door.');
+  return db.tx(async (tx) => {
+    const c = await one<CompartmentRow & { township_id: string }>(tx, 'SELECT c.*, s.township_id FROM locker_compartments c JOIN locker_stations s ON s.id = c.station_id WHERE c.id = $1 FOR UPDATE OF c', [compartmentId]);
+    if (!c) throw notFound('Door');
+    assertTownshipAccess(actor, c.township_id);
+    if (!c.home_id) throw conflict('DOOR_FREE', 'This door does not belong to a home.');
+    if (c.parcel_id) throw conflict('COMPARTMENT_IN_USE', 'A parcel is in this door. The household collects it first.');
+    await tx.query('UPDATE locker_compartments SET home_id = NULL, updated_at = $2 WHERE id = $1', [c.id, now]);
+    await audit(tx, actor.id, 'LOCKER_DOOR_RELEASED', 'locker_compartment', c.id, { home: c.home_id });
+    return { ok: true };
+  });
 }
 
 // --- The capacity dashboard -------------------------------------------------------------------
@@ -147,7 +192,7 @@ export async function lockerOverview(db: Db, actor: Actor, now: Date) {
     db.query<{
       id: string; name: string; code: string; location: string; status: string; adapter: string; last_seen_at: Date | null;
       total: number; available: number; occupied: number; reserved: number; faulty: number; disabled: number;
-      overdue: number; relocations: number; failed_30d: number; avg_collect_hours: number | null; free_by_size: Record<string, number> | null;
+      waiting_long: number; assigned: number; failed_30d: number; avg_collect_hours: number | null; free_by_size: Record<string, number> | null;
       keypad_locked_at: Date | null; keypad_help: number; wrong_codes_today: number;
     }>(
       `SELECT s.id, s.name, s.code, s.location, s.status, s.adapter, s.last_seen_at,
@@ -157,8 +202,8 @@ export async function lockerOverview(db: Db, actor: Actor, now: Date) {
               count(c.id) FILTER (WHERE c.state = 'RESERVED')::int AS reserved,
               count(c.id) FILTER (WHERE c.state = 'FAULTY')::int AS faulty,
               count(c.id) FILTER (WHERE c.state = 'DISABLED')::int AS disabled,
-              (SELECT count(*)::int FROM locker_parcels p WHERE p.station_id = s.id AND p.state IN ('OVERDUE', 'RELOCATION_PENDING')) AS overdue,
-              (SELECT count(*)::int FROM relocation_tasks r JOIN locker_parcels p ON p.id = r.parcel_id WHERE p.station_id = s.id AND r.status IN ('OPEN', 'IN_PROGRESS')) AS relocations,
+              (SELECT count(*)::int FROM locker_parcels p WHERE p.station_id = s.id AND p.compartment_id IS NOT NULL AND p.state = 'READY_FOR_COLLECTION' AND p.last_reminder_at IS NOT NULL) AS waiting_long,
+              count(c.id) FILTER (WHERE c.home_id IS NOT NULL)::int AS assigned,
               ((SELECT count(*) FROM locker_parcels p WHERE p.station_id = s.id AND p.state = 'DELIVERY_FAILED' AND p.state_changed_at > $2::timestamptz - interval '30 days')
                 + (SELECT count(*) FROM locker_commands k WHERE k.station_id = s.id AND k.purpose = 'DEPOSIT' AND k.status IN ('FAILED', 'TIMED_OUT') AND k.created_at > $2::timestamptz - interval '30 days'))::int AS failed_30d,
               (SELECT round(avg(extract(epoch FROM p.collected_at - p.ready_at) / 3600)::numeric, 1)::float FROM locker_parcels p
@@ -172,8 +217,11 @@ export async function lockerOverview(db: Db, actor: Actor, now: Date) {
         GROUP BY s.id ORDER BY s.name`,
       [t, now],
     ),
-    db.query<{ id: string; name: string; capacity: number; held: number; active: boolean }>(
-      `SELECT o.id, o.name, o.capacity, o.active, (SELECT count(*)::int FROM locker_parcels p WHERE p.overflow_location_id = o.id AND p.state IN ('RELOCATED_TO_STORAGE', 'RETURN_PENDING')) AS held
+    db.query<{ id: string; name: string; capacity: number; held: number; active: boolean; overdue: number; calls_due: number }>(
+      `SELECT o.id, o.name, o.capacity, o.active, (SELECT count(*)::int FROM locker_parcels p WHERE p.overflow_location_id = o.id AND p.state IN ('RELOCATED_TO_STORAGE', 'RETURN_PENDING')) AS held,
+              (SELECT count(*)::int FROM locker_parcels p WHERE p.overflow_location_id = o.id AND p.state = 'RELOCATED_TO_STORAGE' AND p.overdue_at IS NOT NULL) AS overdue,
+              (SELECT count(*)::int FROM locker_parcels p WHERE p.overflow_location_id = o.id AND p.state = 'RELOCATED_TO_STORAGE' AND p.call_requested_at IS NOT NULL
+                 AND NOT EXISTS (SELECT 1 FROM locker_parcel_notes n WHERE n.parcel_id = p.id AND n.created_at >= p.call_requested_at)) AS calls_due
          FROM overflow_locations o WHERE ($1::uuid IS NULL OR o.township_id = $1) ORDER BY o.name`,
       [t],
     ),
@@ -194,12 +242,16 @@ export async function lockerOverview(db: Db, actor: Actor, now: Date) {
     if (s.keypad_locked_at) {
       alerts.push({ level: 'danger', text: s.keypad_help ? `${s.name}: keypad locked, and ${s.keypad_help} resident${s.keypad_help === 1 ? '' : 's'} asked for it to be unlocked` : `${s.name}: keypad locked after too many wrong codes` });
     }
-    if (usable > 0 && s.available === 0) alerts.push({ level: 'danger', text: `${s.name} is full` });
-    else if (usable > 0 && used / usable >= 0.85) alerts.push({ level: 'warning', text: `${s.name} is ${Math.round((used / usable) * 100)}% full` });
-    if (s.faulty) alerts.push({ level: 'warning', text: `${s.name}: ${s.faulty} faulty compartment${s.faulty === 1 ? '' : 's'}` });
-    if (s.relocations) alerts.push({ level: 'warning', text: `${s.name}: ${s.relocations} parcel${s.relocations === 1 ? '' : 's'} to relocate` });
+    // With private doors a busy bank is normal: what needs someone is a door out of use, or no free door left for a new home.
+    if (usable > 0 && used / usable >= 0.95 && s.assigned >= usable) alerts.push({ level: 'warning', text: `${s.name}: no free door left for a new home` });
+    if (s.faulty) alerts.push({ level: 'warning', text: `${s.name}: ${s.faulty} door${s.faulty === 1 ? ' needs' : 's need'} checking` });
   }
-  for (const o of overflow) if (o.active && o.held >= o.capacity) alerts.push({ level: 'danger', text: `${o.name} is full` });
+  for (const o of overflow) {
+    if (!o.active) continue;
+    if (o.held >= o.capacity) alerts.push({ level: 'danger', text: `${o.name} is full` });
+    else if (o.held >= Math.ceil(o.capacity * 0.8)) alerts.push({ level: 'warning', text: `${o.name} is ${Math.round((o.held / o.capacity) * 100)}% full` });
+    if (o.calls_due) alerts.push({ level: 'warning', text: `${o.name}: ${o.calls_due} household${o.calls_due === 1 ? '' : 's'} to call about a parcel` });
+  }
   // Locker and courier cases from the central incident system: the ones that need someone now.
   const cases = (await one<{ active: number; critical: number; untaken: number; late: number; disputes: number }>(
     db,
@@ -270,9 +322,8 @@ export async function lockerForecast(db: Db, actor: Actor, now: Date) {
     const collections = Math.round(s.occupied * p24);
     const projected = Math.max(0, s.occupied + s.reserved + arrivals - collections);
     const recommendations: string[] = [];
-    if (projected > s.usable) recommendations.push(`Likely short of about ${projected - s.usable} compartments tomorrow: open the overflow counter early and relocate overdue parcels first.`);
-    else if (s.usable > 0 && projected / s.usable >= 0.85) recommendations.push('Likely to be nearly full tomorrow: clear overdue parcels in the morning.');
-    if (s.overdue > 0) recommendations.push(`Relocate the ${s.overdue} overdue parcel${s.overdue === 1 ? '' : 's'} to free compartments.`);
+    if (projected > s.usable) recommendations.push(`About ${projected - s.usable} parcels may go to the guardhouse tomorrow, because their homes' doors will be in use: make sure the guardhouse has room.`);
+    else if (s.usable > 0 && projected / s.usable >= 0.85) recommendations.push('Most doors will be in use tomorrow: some parcels may go to the guardhouse.');
     if (s.total - s.usable > 0) recommendations.push(`Repair or re-enable ${s.total - s.usable} compartment${s.total - s.usable === 1 ? '' : 's'} out of use.`);
     out.push({
       stationId: s.id,
@@ -325,7 +376,7 @@ export async function lockerParcelDetail(db: Db, actor: Actor, parcelId: string)
     db.query(`SELECT t.from_kind, t.from_ref, t.to_kind, t.to_ref, t.note, t.at, u.full_name AS actor FROM custody_transfers t LEFT JOIN users u ON u.id = t.actor_id WHERE t.parcel_id = $1 ORDER BY t.id`, [parcelId]),
     db.query(`SELECT k.purpose, k.status, k.error, k.created_at, k.acked_at, c.label AS compartment FROM locker_commands k JOIN locker_compartments c ON c.id = k.compartment_id WHERE k.parcel_id = $1 ORDER BY k.created_at`, [parcelId]),
   ]);
-  return { parcel: p, events, custody, commands };
+  return { parcel: p, events, custody, commands, notes: await parcelNotes(db, actor, parcelId) };
 }
 
 export async function stationCommands(db: Db, actor: Actor, stationId: string) {
@@ -410,8 +461,8 @@ export async function simulatorEvent(db: Db, actor: Actor, stationId: string, e:
 
 /**
  * In the simulator, the person at the door closes it: the courier after
- * putting the parcel in, the resident after taking it out, staff after
- * relocating it. Only the person whose action opened that door may do this.
+ * putting the parcel in, the resident after taking it out, staff after an
+ * approved access. Only the person whose action opened that door may do this.
  */
 export async function simulateClose(db: Db, actor: Actor, parcelId: string, itemPresent: boolean, now: Date) {
   const p = await one<ParcelRow>(db, 'SELECT * FROM locker_parcels WHERE id = $1', [parcelId]);
@@ -420,7 +471,6 @@ export async function simulateClose(db: Db, actor: Actor, parcelId: string, item
   const allowed =
     (p.state === 'DEPOSIT_IN_PROGRESS' && p.courier_user_id === actor.id) ||
     (p.state === 'COLLECTION_IN_PROGRESS' && actor.homeId !== null && actor.homeId === p.home_id) ||
-    (p.state === 'RELOCATION_IN_PROGRESS' && Boolean(await one(db, `SELECT 1 FROM relocation_tasks WHERE parcel_id = $1 AND status = 'IN_PROGRESS' AND assigned_to = $2`, [p.id, actor.id]))) ||
     (p.state === 'EXCEPTION' && Boolean(
       await one(db, `SELECT 1 FROM locker_exception_requests WHERE parcel_id = $1 AND status = 'APPROVED' AND (requested_by = $2 OR decided_by = $2)`, [p.id, actor.id]) ||
       await one(db, `SELECT 1 FROM locker_access_session_items item

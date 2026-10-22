@@ -51,7 +51,7 @@ npm run dev
 | **Lapor → Kitar reports** | **"Needs your answer"**: the township office asked a question. Open it, see your screenshot, reply. A finished one shows the outcome. |
 | **Lapor → Gerak reports** | One being investigated, and one finished that you can **reopen** ("Not fixed? Reopen it"). |
 | **Notifications** | A chip for every category: Parcels, Home services, Community, Points & XP, Reports & requests, **Kitar**, **Gerak**, Township alerts, Account. Search, All / Unread, Mark all as read, Previous / Next. |
-| **Parcels** | Parcel lockers (PIN, QR, deadline, *Open my door* with a station code) and Guardhouse (collection code, *Share the code*). The **How to collect** guide. *My reports* opens the matching Lapor tab. |
+| **Parcels** | Parcel lockers (your own door, *Guardhouse open / closed* with its hours, PIN, QR, days waiting, *Open my door* with a station code, *My late collections*), Guardhouse (collection code, *Share the code*) and **About** (doors, the counter, reminders, late collections). The **How to collect** guide. *My reports* opens the matching Lapor tab. |
 | **Tamu** | Visitor passes; create, renew and cancel one. The SOS button alerts the guard (try it with `guard` signed in elsewhere). |
 | **Komuniti** | Posts, offers to help, sharing. |
 | **Banjir** | The live flood warning, zones, *See safe route*, check-in. |
@@ -87,7 +87,7 @@ Campaigns, grouped results, tier and account.
 |---|---|
 | **Insights** | Hero figures, tiles that open their pages, the monthly impact report. |
 | **Lapor** | **Needs attention** (first tab, with a count): problems that reached 5 residents, and anything urgent, urgent first. Open one to see every resident's report and photo, correct the public title, and set the status, team, date and note **for every report at once**. *Community reports*: status pills, update and assign; a *Shared problem* badge marks reports grouped with others. HQ can change the 5 in **Settings → Safety and privacy**. *Gate & community cases*: **Kitar and Gerak reports** (filter by area), with the **resident's screenshot** in the case. Take a case, ask the resident, resolve it. |
-| **Parcels** | Lockers, guardhouse, storage, couriers, companies. |
+| **Parcels** | *Today* (what needs action now), *Guardhouse* (figures, courier drop-offs, one handover for any code, and the **register**: search, filters, each parcel's history, notes, send back on request), *Smart lockers* (parcels, door access), *Performance* (all three locker banks and the guardhouse). *Manage*: doors per home, guardhouses and their hours, reminder timings. Parcel cases: *Lapor → Parcel & locker cases*. |
 | **Flood dashboard** | Zones, live map, events, **sensors** (nine simulated). |
 | **Campaigns & sponsors** | Needs action / Running / Closed, Sponsors & tiers. |
 | **People** | Resident verification (Grace is waiting), staff and partner access. |

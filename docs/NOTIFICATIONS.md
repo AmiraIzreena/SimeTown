@@ -6,7 +6,7 @@ The signed-in `/notifications` page reuses the existing `notifications` table an
 
 | Source | Events | Destination |
 | --- | --- | --- |
-| Guardhouse and smart lockers | Arrival, collection, reminders, relocation, return, pickup-code changes | `/app/parcels?tab=guardhouse\|lockers&parcel=<id>`; selects the tab and highlights the record when available |
+| Guardhouse and smart lockers | Arrival in the home’s door, a parcel at the guardhouse counter (and why), not delivered today, door and weekly counter reminders, a door opened without a code (urgent), collection, return, pickup-code changes; for guards and staff: calls to make, a counter nearly full, a door to check | `/app/parcels?tab=guardhouse\|lockers&parcel=<id>`; selects the tab and highlights the record when available |
 | Home services | Booking requests, quotes, decisions, cancellations, completion and reviews | Existing resident or merchant booking links |
 | Lapor | Submission received, status updates, target dates | `/app/lapor/<id>`; existing report authorization applies |
 | Incident engine | Assignment, resident updates, questions, escalation and resolution | Existing case reference links |
@@ -16,6 +16,16 @@ The signed-in `/notifications` page reuses the existing `notifications` table an
 | Township/account services | Flood alerts, access requests, approvals and assistant replies | Existing role-specific sections |
 
 No fictitious marketplace orders or announcement system was added. Existing event producers continue to call the same service. New submission receipts and points-earned notices are created in the transaction that records the event.
+
+## Email
+
+Parcel events are also sent by email, in the resident's language and in the shared design
+([EMAIL_DESIGN.md](EMAIL_DESIGN.md)): a parcel in the home's door, a parcel at the guardhouse counter
+(and why), a parcel left with the guard, the weekly reminder for an overdue guardhouse parcel, and a door opened without a code.
+Each email is queued in the same transaction as its notification (`email_outbox`, migration 035),
+once per event and person, and sent by the `lockers` job. Pickup codes are never put in an email.
+Residents can switch parcel emails off in *Account › Emails*; security alerts are always sent.
+Nothing is sent until `SMTP_*` is configured.
 
 ## Persistence and API
 

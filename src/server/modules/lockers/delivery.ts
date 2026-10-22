@@ -1,23 +1,30 @@
-import { LOCKER_SIZES, sizeFor, type LockerSize } from '@/shared/lockers';
+import {
+  counterHoursText, counterOpenAt, counterStatus, DELIVERY_PROBLEM_FOR_RESIDENT, DELIVERY_PROBLEM_LABELS, DELIVERY_PROBLEMS, formatHour, LOCKER_SIZES, sizeFor,
+  type CourierProblem, type DeliveryProblem, type LockerSize,
+} from '@/shared/lockers';
 import { one, type Db, type Queryable } from '../../db/client';
 import type { Actor } from '../../auth/actor';
 import { AppError, conflict, notFound, ruleViolation } from '../../errors';
 import { nameWords } from '../carriers/matching';
 import { notifyProviders } from '../carriers/providers';
 import { courierContext, logScan, refusal, shipmentRow, verifyShipment } from '../carriers/verification';
+import { getSettings } from '../settings';
 import { completeDeposit, createUnlock, dispatch, RESERVATION_MS, type CompartmentRow, type StationRow } from './hardware';
-import { custody, getPolicy, householdOf, issueCredential, recordEvent, staffOf, tell, transition, userActor, type ParcelRow } from './core';
+import { custody, getPolicy, guardsOf, householdOf, issueCredential, recordEvent, staffOf, SYSTEM, tell, transition, userActor, type ParcelRow } from './core';
 import { courierAccountOf, COURIER_STATIONS_SQL, requireCourierAt, type CourierAccount } from './couriers';
 import { raiseIncident } from './incidents';
+import { emailParcelAtCounter } from '../email/parcels';
 
 /**
  * Delivering to a locker. The courier scans the label: the courier company's
  * system (simulated in the demo) confirms the shipment and SimeTown matches it
  * to a household, without showing the courier who lives there. Where the
  * company is not connected, the resident's own delivery code is the fallback.
- * Only then does the engine reserve the smallest suitable working compartment,
- * the door is unlocked through the station's adapter, and the deposit is
- * complete only when the station reports the door shut with the parcel inside.
+ * Only then does the engine reserve the household's own door (every home has
+ * one, in the locker bank serving its precinct), the door is unlocked through
+ * the station's adapter, and the deposit is complete only when the station
+ * reports the door shut with the parcel inside. A parcel that cannot go into
+ * the home's door goes to the guardhouse instead.
  * Each shipment can be deposited once, ever.
  */
 
@@ -137,7 +144,7 @@ export async function registerParcel(db: Db, actor: Actor, input: ParcelInput, n
       const station = await loadStation(tx, input.stationId);
       if (station.status !== 'ONLINE') throw ruleViolation('STATION_OFFLINE', 'This station is not working right now. Try another station or record the delivery as not made.');
       const size = input.size ?? (input.dimensionsMm ? sizeFor(input.dimensionsMm) : null);
-      if (!size) throw ruleViolation('TOO_BIG', 'This parcel is too big for any locker. Deliver it to the door or the parcel counter instead.');
+      if (!size) throw ruleViolation('TOO_BIG', 'This parcel is too big for any locker. Take it to the guardhouse instead.');
       const shipment = await shipmentRow(tx, account.company_id, station.township_id, tracking, now, true);
       if (shipment.deposited_at) throw new AppError(409, 'ALREADY_DEPOSITED', 'This shipment has already been delivered to a locker. Nothing was opened, and the attempt was recorded.');
       if (await one(tx, `SELECT 1 FROM locker_parcels WHERE company_id = $1 AND upper(tracking_no) = $2 AND state NOT IN ('COLLECTED', 'RETURNED', 'DELIVERY_FAILED')`, [account.company_id, tracking])) {
@@ -214,29 +221,97 @@ async function assertMayOpenAgain(tx: Queryable, parcelId: string, idempotencyKe
 
 const SIZE_RANK = (s: string) => LOCKER_SIZES.indexOf(s as LockerSize);
 
-/** Where else this parcel could go when the station has no suitable door. */
-async function alternatives(tx: Queryable, actor: Actor, p: ParcelRow) {
-  const stations = await tx.query<{ id: string; name: string; location: string; free: number }>(
-    `SELECT s.id, s.name, s.location,
-            (SELECT count(*)::int FROM locker_compartments c WHERE c.station_id = s.id AND c.state = 'AVAILABLE' AND array_position(ARRAY['S','M','L','XL'], c.size) >= array_position(ARRAY['S','M','L','XL'], $3)) AS free
-       FROM locker_stations s
-      WHERE s.id IN (${COURIER_STATIONS_SQL}) AND s.id <> $2 AND s.township_id = $4 AND s.status = 'ONLINE'`,
-    [actor.id, p.station_id, p.size, p.township_id],
-  );
-  const counters = await tx.query<{ id: string; name: string; location: string; hours: string }>(
-    `SELECT o.id, o.name, o.location, o.hours FROM overflow_locations o
+/** A guardhouse a courier can take the parcel to, with whether it is open right now. */
+export interface CounterOption {
+  id: string;
+  name: string;
+  location: string;
+  hours: string;
+  open: boolean;
+  status: string;
+}
+
+/** Counters that take couriers' parcels and still have room, open ones first. */
+export async function countersFor(tx: Queryable, townshipId: string, now: Date): Promise<CounterOption[]> {
+  const rows = await tx.query<{ id: string; name: string; location: string; hours: string; open_from_hour: number; open_to_hour: number }>(
+    `SELECT o.id, o.name, o.location, o.hours, o.open_from_hour, o.open_to_hour FROM overflow_locations o
       WHERE o.township_id = $1 AND o.active AND o.accepts_deliveries
-        AND (SELECT count(*) FROM locker_parcels q WHERE q.overflow_location_id = o.id AND q.state IN ('RELOCATED_TO_STORAGE', 'RETURN_PENDING')) < o.capacity`,
-    [p.township_id],
+        AND (SELECT count(*) FROM locker_parcels q WHERE q.overflow_location_id = o.id AND q.state IN ('VERIFIED', 'RELOCATED_TO_STORAGE', 'RETURN_PENDING')) < o.capacity
+      ORDER BY o.name`,
+    [townshipId],
   );
-  return { stations: stations.filter((s) => s.free > 0), counters };
+  const tz = (await getSettings(tx)).timezone;
+  return rows
+    .map((o) => {
+      const status = counterStatus(o.open_from_hour, o.open_to_hour, now, tz);
+      return { id: o.id, name: o.name, location: o.location, hours: counterHoursText(o.open_from_hour, o.open_to_hour), open: status.open, status: status.text };
+    })
+    .sort((a, b) => Number(b.open) - Number(a.open));
+}
+
+type DoorFinding =
+  | { kind: 'DOOR'; comp: CompartmentRow }
+  | { kind: 'PROBLEM'; problem: DeliveryProblem; otherStation?: { id: string; name: string; location: string; allowed: boolean } };
+
+/**
+ * The home's own door at this locker bank. A home that has none yet claims the smallest free, unclaimed door that
+ * fits, at the bank serving its precinct, and keeps it: nobody has to map homes to doors by hand. Two couriers can
+ * never claim the same door (the row is locked), and a home can never hold two (a unique index).
+ */
+async function homeDoor(tx: Queryable, actor: Actor, p: ParcelRow, station: StationRow & { precincts: string[] }, now: Date): Promise<DoorFinding> {
+  const own = await one<CompartmentRow>(tx, 'SELECT * FROM locker_compartments WHERE home_id = $1 FOR UPDATE', [p.home_id]);
+  if (own && own.station_id !== station.id) {
+    const where = (await one<{ id: string; name: string; location: string }>(tx, 'SELECT id, name, location FROM locker_stations WHERE id = $1', [own.station_id]))!;
+    const allowed = Boolean(await one(tx, `SELECT 1 FROM locker_stations s WHERE s.id = $2 AND s.id IN (${COURIER_STATIONS_SQL})`, [actor.id, where.id]));
+    return { kind: 'PROBLEM', problem: 'OTHER_STATION', otherStation: { ...where, allowed } };
+  }
+  if (own) {
+    if (own.state === 'OCCUPIED' || own.state === 'RESERVED') return { kind: 'PROBLEM', problem: 'DOOR_FULL' };
+    if (own.state !== 'AVAILABLE') return { kind: 'PROBLEM', problem: 'DOOR_DAMAGED' };
+    if (SIZE_RANK(own.size) < SIZE_RANK(p.size)) return { kind: 'PROBLEM', problem: 'TOO_BIG' };
+    return { kind: 'DOOR', comp: own };
+  }
+  // No door yet: only at the bank that serves the home's precinct (a bank with no precincts set serves every home).
+  const home = await one<{ precinct: string | null }>(tx, 'SELECT precinct FROM homes WHERE id = $1', [p.home_id]);
+  const serves = station.precincts.length === 0 || (home?.precinct != null && station.precincts.includes(home.precinct));
+  if (!serves) {
+    const right = await one<{ id: string; name: string; location: string }>(
+      tx,
+      `SELECT id, name, location FROM locker_stations
+        WHERE township_id = $1 AND ($2 = ANY(precincts) OR cardinality(precincts) = 0)
+        ORDER BY ($2 = ANY(precincts)) DESC, name LIMIT 1`,
+      [p.township_id, home?.precinct ?? ''],
+    );
+    if (!right) return { kind: 'PROBLEM', problem: 'NO_DOOR' };
+    const allowed = Boolean(await one(tx, `SELECT 1 FROM locker_stations s WHERE s.id = $2 AND s.id IN (${COURIER_STATIONS_SQL})`, [actor.id, right.id]));
+    return { kind: 'PROBLEM', problem: 'OTHER_STATION', otherStation: { ...right, allowed } };
+  }
+  const free = await one<CompartmentRow>(
+    tx,
+    `SELECT * FROM locker_compartments
+      WHERE station_id = $1 AND home_id IS NULL AND state = 'AVAILABLE' AND array_position(ARRAY['S','M','L','XL'], size) >= $2
+      ORDER BY array_position(ARRAY['S','M','L','XL'], size), label
+      LIMIT 1 FOR UPDATE SKIP LOCKED`,
+    [station.id, SIZE_RANK(p.size) + 1],
+  );
+  if (!free) {
+    await tell(tx, await staffOf(tx, station.township_id), {
+      title: `${station.name} has no free door for a new home`,
+      body: 'A home without a locker door had a parcel. Release doors of homes that moved out, or add doors.',
+      link: '/console/operations?tab=manage&view=stations',
+    }, `no-free-door:${station.id}:${now.toISOString().slice(0, 13)}`);
+    return { kind: 'PROBLEM', problem: 'NO_DOOR' };
+  }
+  await tx.query('UPDATE locker_compartments SET home_id = $2, updated_at = $3 WHERE id = $1', [free.id, p.home_id, now]);
+  await recordEvent(tx, p.id, p.state, p.state, SYSTEM, `Door ${free.label} at ${station.name} now belongs to this home`, now);
+  return { kind: 'DOOR', comp: { ...free, home_id: p.home_id } };
 }
 
 /**
- * Reserves the smallest working compartment that fits, locks it in the
- * database (two couriers can never get the same door), and asks the station to
- * unlock it. When nothing fits, the courier sees the approved alternatives and
- * staff are told the station is full; nothing is rerouted on its own.
+ * Opens the home's own door for the courier: reserved in the database (two couriers can never get the same
+ * door), then unlocked through the station. When the parcel cannot go into it (too big, the door already holds a
+ * parcel, the door is out of use, or the home's door is at another bank), the courier is told why and where to
+ * take it instead: the guardhouse while it is open. Nothing is rerouted on its own.
  */
 export async function reserveAndOpen(db: Db, actor: Actor, parcelId: string, idempotencyKey: string, now: Date) {
   const result = await db.tx(async (tx) => {
@@ -252,32 +327,23 @@ export async function reserveAndOpen(db: Db, actor: Actor, parcelId: string, ide
     }
     // A deposited parcel is never reopened through the courier's flow: only staff, through an approved exception.
     if (p.state !== 'VERIFIED') throw conflict('PARCEL_STATE', 'This parcel is not waiting for a locker.');
-    if (station.status !== 'ONLINE') throw ruleViolation('STATION_OFFLINE', 'This station is not working right now. Choose another station below or record the delivery as not made.');
+    if (station.status !== 'ONLINE') throw ruleViolation('STATION_OFFLINE', 'This station is not working right now. Take the parcel to the guardhouse, or record the delivery as not made.');
+    if (!p.home_id) throw conflict('PARCEL_STATE', 'This parcel has no verified household.');
     await assertMayOpenAgain(tx, p.id, idempotencyKey);
-    const comp = await one<CompartmentRow>(
-      tx,
-      `SELECT * FROM locker_compartments
-        WHERE station_id = $1 AND state = 'AVAILABLE' AND array_position(ARRAY['S','M','L','XL'], size) >= $2
-        ORDER BY array_position(ARRAY['S','M','L','XL'], size), label
-        LIMIT 1 FOR UPDATE SKIP LOCKED`,
-      [station.id, SIZE_RANK(p.size) + 1],
-    );
-    if (!comp) {
-      await tell(tx, await staffOf(tx, station.township_id), {
-        title: `${station.name} has no ${p.size} compartment free`,
-        body: 'A courier could not deposit a parcel. Check overdue parcels and relocation tasks.',
-        link: '/console/lockers',
-      }, `station-full:${station.id}:${now.toISOString().slice(0, 13)}`);
-      await recordEvent(tx, p.id, p.state, p.state, userActor(actor.id), `No ${p.size} compartment free at ${station.name}`, now);
-      return { kind: 'FULL' as const, alternatives: await alternatives(tx, actor, p) };
+    const found = await homeDoor(tx, actor, p, station, now);
+    if (found.kind === 'PROBLEM') {
+      await tx.query('UPDATE locker_parcels SET delivery_problem = $2, delivery_problem_note = NULL WHERE id = $1', [p.id, found.problem]);
+      await recordEvent(tx, p.id, p.state, p.state, userActor(actor.id), `Not into the home’s door: ${DELIVERY_PROBLEM_LABELS[found.problem].toLowerCase()}`, now);
+      return { kind: 'NO_DOOR' as const, problem: found.problem, otherStation: found.otherStation ?? null, counters: await countersFor(tx, p.township_id, now) };
     }
+    const comp = found.comp;
     await tx.query(`UPDATE locker_compartments SET state = 'RESERVED', parcel_id = $2, updated_at = $3 WHERE id = $1`, [comp.id, p.id, now]);
     await tx.query(`INSERT INTO locker_reservations (compartment_id, parcel_id, expires_at, created_at) VALUES ($1, $2, $3, $4)`, [comp.id, p.id, new Date(now.getTime() + RESERVATION_MS), now]);
     await transition(tx, p.id, 'LOCKER_RESERVED', userActor(actor.id), `Door ${comp.label} reserved`, now, { compartment_id: comp.id });
     const command = await createUnlock(tx, { stationId: station.id, compartmentId: comp.id, parcelId: p.id, purpose: 'DEPOSIT', requestedBy: actor.id, idempotencyKey }, now);
     return { kind: 'OPENING' as const, command, compartment: comp.label, size: comp.size };
   });
-  if (result.kind === 'FULL') return result;
+  if (result.kind === 'NO_DOOR') return result;
   const command = await dispatch(db, result.command.id, now);
   return { kind: 'OPENING' as const, compartment: result.compartment, size: result.size, command: { id: command.id, status: command.status, error: command.error } };
 }
@@ -296,39 +362,121 @@ export async function moveToStation(db: Db, actor: Actor, parcelId: string, stat
   });
 }
 
-/** The courier takes the parcel to a staffed counter that accepts deliveries; staff receive it there. */
+/**
+ * The courier takes the parcel to the guardhouse; the guard or staff receive it there. Only while the
+ * counter is open: after hours the courier keeps the parcel and brings it on the next round.
+ */
 export async function chooseCounter(db: Db, actor: Actor, parcelId: string, locationId: string, now: Date) {
   return db.tx(async (tx) => {
     const p = await ownParcel(tx, actor, parcelId, now);
     if (p.state !== 'VERIFIED') throw conflict('PARCEL_STATE', 'Only a parcel waiting for a locker can go to the counter.');
-    const loc = await one<{ id: string; name: string; capacity: number }>(tx, 'SELECT id, name, capacity FROM overflow_locations WHERE id = $1 AND township_id = $2 AND active AND accepts_deliveries FOR UPDATE', [locationId, p.township_id]);
+    const loc = await one<{ id: string; name: string; capacity: number; open_from_hour: number; open_to_hour: number }>(
+      tx, 'SELECT id, name, capacity, open_from_hour, open_to_hour FROM overflow_locations WHERE id = $1 AND township_id = $2 AND active AND accepts_deliveries FOR UPDATE', [locationId, p.township_id],
+    );
     if (!loc) throw notFound('Counter');
+    const tz = (await getSettings(tx)).timezone;
+    if (!counterOpenAt(loc.open_from_hour, loc.open_to_hour, now, tz)) {
+      throw conflict('COUNTER_CLOSED', `${loc.name} is closed now. It opens at ${formatHour(loc.open_from_hour)}. Keep the parcel and bring it on your next round.`);
+    }
     const committed = await one<{ count: number }>(tx,
-      `SELECT ((SELECT count(*)::int FROM locker_parcels q WHERE q.overflow_location_id = $1 AND q.state IN ('VERIFIED', 'RELOCATED_TO_STORAGE', 'RETURN_PENDING')) +
-               (SELECT count(*)::int FROM relocation_tasks r WHERE r.destination_id = $1 AND r.status = 'IN_PROGRESS')) AS count`, [loc.id]);
-    if (committed!.count >= loc.capacity) throw conflict('OVERFLOW_FULL', `${loc.name} is full. Choose another location.`);
+      `SELECT count(*)::int AS count FROM locker_parcels q WHERE q.overflow_location_id = $1 AND q.state IN ('VERIFIED', 'RELOCATED_TO_STORAGE', 'RETURN_PENDING')`, [loc.id]);
+    if (committed!.count >= loc.capacity) throw conflict('OVERFLOW_FULL', `${loc.name} is full. Keep the parcel and record the delivery as not made.`);
     await tx.query('UPDATE locker_parcels SET overflow_location_id = $2 WHERE id = $1', [p.id, locationId]);
     await recordEvent(tx, p.id, p.state, p.state, userActor(actor.id), `Courier is taking it to ${loc.name}`, now);
     return { ok: true, counter: loc.name };
   });
 }
 
-/** Staff at a counter receive a parcel from a courier. Only now is it delivered. */
+/**
+ * The courier says why the parcel could not go into the home's door, picked from a short list or in their own
+ * words. The reserved door is freed (or taken out of use when the courier found it damaged or not empty, and
+ * staff are told), and the courier is shown where to take the parcel.
+ */
+export async function reportDeliveryProblem(db: Db, actor: Actor, parcelId: string, input: { reason: CourierProblem; note?: string }, now: Date) {
+  const note = input.note?.trim() || null;
+  if (input.reason === 'OTHER' && !note) throw ruleViolation('NOTE_NEEDED', 'Say what happened.', { fields: { note: 'Say what happened.' } });
+  return db.tx(async (tx) => {
+    const p = await ownParcel(tx, actor, parcelId, now);
+    if (!['VERIFIED', 'LOCKER_RESERVED', 'DEPOSIT_IN_PROGRESS'].includes(p.state)) throw conflict('PARCEL_STATE', 'This parcel is already in a locker.');
+    const words = `${DELIVERY_PROBLEM_LABELS[input.reason]}${note ? `: ${note}` : ''}`;
+    if (p.compartment_id) {
+      const comp = (await one<CompartmentRow & { station_name: string }>(
+        tx, 'SELECT c.*, s.name AS station_name FROM locker_compartments c JOIN locker_stations s ON s.id = c.station_id WHERE c.id = $1 FOR UPDATE OF c', [p.compartment_id],
+      ))!;
+      // A door the courier found damaged, or with something already inside, is kept out of use until staff look.
+      const inspect = input.reason === 'DOOR_DAMAGED' || input.reason === 'DOOR_FULL';
+      await tx.query(`UPDATE locker_reservations SET status = 'RELEASED', released_reason = $2 WHERE parcel_id = $1 AND status = 'ACTIVE'`, [p.id, words.slice(0, 200)]);
+      await tx.query(
+        `UPDATE locker_compartments SET state = $3, parcel_id = NULL, fault = $4, updated_at = $5 WHERE id = $1 AND parcel_id = $2`,
+        [comp.id, p.id, inspect ? 'FAULTY' : 'AVAILABLE', inspect ? `Courier: ${words}`.slice(0, 200) : null, now],
+      );
+      if (p.state !== 'VERIFIED') await transition(tx, p.id, 'VERIFIED', userActor(actor.id), `Door ${comp.label} not used: ${words}`, now, { compartment_id: null });
+      if (inspect) {
+        await tell(tx, await staffOf(tx, p.township_id), {
+          title: `Check door ${comp.label} at ${comp.station_name}`, body: `A courier reported: ${words}.`, link: '/console/operations?tab=manage&view=stations',
+        }, `door-check:${comp.id}:${now.toISOString().slice(0, 13)}`);
+      }
+    } else {
+      await recordEvent(tx, p.id, p.state, p.state, userActor(actor.id), `Not into the home’s door: ${words}`, now);
+    }
+    await tx.query('UPDATE locker_parcels SET delivery_problem = $2, delivery_problem_note = $3 WHERE id = $1', [p.id, input.reason, note]);
+    return { problem: input.reason, counters: await countersFor(tx, p.township_id, now) };
+  });
+}
+
+/** Staff at a counter receive a parcel from a courier. Only now is it delivered, and the household is told why it is there. */
 export async function receiveAtCounter(db: Db, actor: Actor, parcelId: string, now: Date) {
   return db.tx(async (tx) => {
     const p = await one<ParcelRow>(tx, 'SELECT * FROM locker_parcels WHERE id = $1 FOR UPDATE', [parcelId]);
     if (!p || (actor.role !== 'HQ_ADMIN' && p.township_id !== actor.townshipId)) throw notFound('Parcel');
     if (p.state !== 'VERIFIED' || !p.overflow_location_id) throw conflict('PARCEL_STATE', 'This parcel is not on its way to the counter.');
-    const loc = await one<{ id: string; name: string; location: string; hours: string }>(tx, 'SELECT id, name, location, hours FROM overflow_locations WHERE id = $1 AND active FOR UPDATE', [p.overflow_location_id]);
-    if (!loc) throw conflict('STORAGE_CLOSED', 'This storage location is closed. Reopen it before receiving the parcel.');
+    const loc = await one<{ id: string; name: string; location: string; open_from_hour: number; open_to_hour: number; instructions: string }>(
+      tx, 'SELECT id, name, location, open_from_hour, open_to_hour, instructions FROM overflow_locations WHERE id = $1 AND active FOR UPDATE', [p.overflow_location_id],
+    );
+    if (!loc) throw conflict('STORAGE_CLOSED', 'This guardhouse no longer takes parcels. Reopen it under Manage before receiving the parcel.');
     const policy = await getPolicy(tx, p.township_id, null);
     const deadline = new Date(now.getTime() + policy.overflow_collect_days * 86_400_000);
     await transition(tx, p.id, 'RELOCATED_TO_STORAGE', userActor(actor.id), `Received from the courier at ${loc.name}`, now, { relocated_at: now, ready_at: now, deadline_at: deadline });
-    await custody(tx, p.id, { kind: 'COURIER', ref: p.courier_user_id }, { kind: 'OVERFLOW', ref: loc.name }, actor.id, now, 'Lockers full; handed to staff');
+    await custody(tx, p.id, { kind: 'COURIER', ref: p.courier_user_id }, { kind: 'OVERFLOW', ref: loc.name }, actor.id, now, 'Could not go into the home’s door; handed to the guard');
     await issueCredential(tx, p.id, 'OVERFLOW', loc.id, now);
-    await tell(tx, await householdOf(tx, p.home_id!), { title: `Parcel waiting at ${loc.name}`, body: `${loc.location}. Open ${loc.hours}. Show your pickup code from Parcels in SimeTown.`, link: `/app/parcels?tab=lockers&parcel=${p.id}` }, `counter-ready:${p.id}`);
+    const reason = p.delivery_problem && (DELIVERY_PROBLEMS as readonly string[]).includes(p.delivery_problem) ? DELIVERY_PROBLEM_FOR_RESIDENT[p.delivery_problem as DeliveryProblem] : null;
+    const why = reason ? `${reason} ` : '';
+    const household = await householdOf(tx, p.home_id!);
+    await tell(tx, household, {
+      title: `Your parcel is at ${loc.name}`,
+      // Written out in full, so each form has its own Malay template.
+      body: loc.open_from_hour <= 0 && loc.open_to_hour >= 24
+        ? `${why}Collect it at ${loc.location}, open 24 hours. ${loc.instructions}`
+        : `${why}Collect it at ${loc.location}, open ${formatHour(loc.open_from_hour)} to ${formatHour(loc.open_to_hour)}. ${loc.instructions}`,
+      link: `/app/parcels?tab=guardhouse&parcel=${p.id}`,
+    }, `counter-ready:${p.id}`);
+    const company = await one<{ name: string }>(tx, 'SELECT name FROM courier_companies WHERE id = $1', [p.company_id]);
+    await emailParcelAtCounter(tx, household, {
+      id: p.id, company: company?.name ?? 'the courier', counter: loc.name, location: loc.location, openFrom: loc.open_from_hour, openTo: loc.open_to_hour,
+      instructions: loc.instructions, reason, overdueAfterDays: policy.overflow_collect_days, at: now,
+    });
+    await warnIfNearlyFull(tx, loc.id, now);
     return { ok: true };
   });
+}
+
+/** One message to staff and guards the day the guardhouse reaches 80% of its room. */
+export async function warnIfNearlyFull(tx: Queryable, locationId: string, now: Date) {
+  const o = await one<{ name: string; township_id: string; capacity: number; held: number }>(
+    tx,
+    `SELECT o.name, o.township_id, o.capacity,
+            (SELECT count(*)::int FROM locker_parcels p WHERE p.overflow_location_id = o.id AND p.state IN ('RELOCATED_TO_STORAGE', 'RETURN_PENDING')) AS held
+       FROM overflow_locations o WHERE o.id = $1`,
+    [locationId],
+  );
+  if (!o || o.held < Math.ceil(o.capacity * 0.8)) return;
+  const people = [...(await staffOf(tx, o.township_id)), ...(await guardsOf(tx, o.township_id))];
+  await tell(tx, people, {
+    priority: o.held >= o.capacity ? 'URGENT' : 'NORMAL',
+    title: o.held >= o.capacity ? `${o.name} is full` : `${o.name} is nearly full`,
+    body: `${o.held} of ${o.capacity} places are in use. Call the households with the oldest parcels.`,
+    link: '/console/operations?tab=guardhouse',
+  }, `counter-full:${locationId}:${o.held >= o.capacity ? 'full' : 'nearly'}:${now.toISOString().slice(0, 10)}`);
 }
 
 /** For stations without door or presence sensors: the courier confirms the parcel is in and the door is shut. */
@@ -350,8 +498,11 @@ async function confirmDepositTx(db: Db, actor: Actor, parcelId: string, now: Dat
   });
 }
 
-/** The courier records that the delivery could not be made. The parcel goes back with them. */
-export async function failDelivery(db: Db, actor: Actor, parcelId: string, reason: string, now: Date) {
+/**
+ * The courier records that the delivery could not be made today: the parcel stays with them, for their next
+ * round (for example, the guardhouse was closed). The household is told it is coming later, and why.
+ */
+export async function failDelivery(db: Db, actor: Actor, parcelId: string, reason: string, now: Date, problem?: DeliveryProblem) {
   return db.tx(async (tx) => {
     const p = await ownParcel(tx, actor, parcelId, now);
     if (!['REGISTERED', 'VERIFIED', 'LOCKER_RESERVED'].includes(p.state)) throw conflict('PARCEL_STATE', 'This parcel is already in a locker.');
@@ -359,7 +510,19 @@ export async function failDelivery(db: Db, actor: Actor, parcelId: string, reaso
       await tx.query(`UPDATE locker_reservations SET status = 'RELEASED', released_reason = 'Delivery not made' WHERE parcel_id = $1 AND status = 'ACTIVE'`, [p.id]);
       await tx.query(`UPDATE locker_compartments SET state = 'AVAILABLE', parcel_id = NULL, updated_at = $2 WHERE id = $1 AND parcel_id = $3`, [p.compartment_id, now, p.id]);
     }
-    await transition(tx, p.id, 'DELIVERY_FAILED', userActor(actor.id), `Delivery not made: ${reason}`, now, { failure_reason: reason, compartment_id: null });
+    await transition(tx, p.id, 'DELIVERY_FAILED', userActor(actor.id), `Delivery not made: ${reason}`, now, {
+      failure_reason: reason, compartment_id: null, ...(problem ? { delivery_problem: problem } : {}),
+    });
+    if (p.home_id) {
+      const known = (problem ?? p.delivery_problem) as DeliveryProblem | null;
+      const why = known && (DELIVERY_PROBLEMS as readonly string[]).includes(known) ? `${DELIVERY_PROBLEM_FOR_RESIDENT[known]} ` : '';
+      const company = await one<{ name: string }>(tx, 'SELECT name FROM courier_companies WHERE id = $1', [p.company_id]);
+      await tell(tx, await householdOf(tx, p.home_id), {
+        title: `Your ${company?.name ?? 'courier'} parcel was not delivered today`,
+        body: `${why}The courier kept it and will bring it on their next round. Tracking ${p.tracking_no}.`,
+        link: '/app/parcels?tab=lockers',
+      }, `not-delivered:${p.id}`);
+    }
     return { ok: true };
   });
 }

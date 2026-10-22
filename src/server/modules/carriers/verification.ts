@@ -53,8 +53,8 @@ const MESSAGES: Record<string, string> = {
   'NOT_ELIGIBLE:NOT_LOCKER_ELIGIBLE': 'Your courier company does not allow this shipment in a locker (for example, it needs a signature).',
   'NOT_ELIGIBLE:ASSIGNED_TO_ANOTHER_COURIER': 'Your courier company says another courier is carrying this shipment. Nothing was opened.',
   'NOT_ELIGIBLE:IN_PROGRESS': 'Another courier is already delivering this shipment. Nothing was opened.',
-  'NOT_ELIGIBLE:ASSURANCE_TOO_LOW': 'This township needs your courier company to confirm who carries each shipment, and it cannot. Take it to the parcel counter.',
-  'NOT_ELIGIBLE:TOO_BIG': 'This parcel is too big for any locker. Deliver it to the door or the parcel counter.',
+  'NOT_ELIGIBLE:ASSURANCE_TOO_LOW': 'This township needs your courier company to confirm who carries each shipment, and it cannot. Take it to the guardhouse.',
+  'NOT_ELIGIBLE:TOO_BIG': 'This parcel is too big for any locker. Take it to the guardhouse.',
   ALREADY_DEPOSITED: 'This shipment has already been delivered to a locker. Nothing was opened, and the attempt was recorded.',
 };
 const messageFor = (state: VerificationState, reason: string | null) => MESSAGES[`${state}:${reason}`] ?? MESSAGES[state]!;
