@@ -2,10 +2,11 @@
 
 import { Text } from '@/components/ui/localized-text';
 
-import { Cctv, CloudRain, Radio, TrendingUp, type LucideIcon } from 'lucide-react';
+import { Cctv, CloudRain, FlaskConical, MessageSquareOff, Radio, TrendingUp, type LucideIcon } from 'lucide-react';
+import { LocalizedDiv } from '@/components/ui/localized-elements';
 import { useState } from 'react';
-import { SimulatedNote } from '@/components/features/preview';
 import { Badge, Card, CardHeader, PageHeader } from '@/components/ui/card';
+import { ConsoleFloodWalkthrough } from '@/components/features/banjir-walkthroughs';
 import { Async, EmptyState } from '@/components/ui/feedback';
 import { TabPanel, Tabs } from '@/components/ui/tabs';
 import { useApi } from '@/lib/hooks';
@@ -124,6 +125,45 @@ function IntegrationPanel({ integration: i }: { integration: Integration }) {
 }
 
 /**
+ * Shown while any sensor is simulated, whatever the demo setting: so staff, admins and HQ never take a reading
+ * here for a real one. Gold, like other "take note" bars: it asks for attention without the alarm of red.
+ */
+function SimulationBanner({ integration }: { integration: Integration }) {
+  const { simulated, real } = integration.sensors;
+  if (simulated === 0) return null;
+  const items: { icon: LucideIcon; label: string; text: string }[] = [
+    { icon: Radio, label: 'Sensors', text: 'Simulated. Their readings are signed and go through the real ingestion endpoint.' },
+    { icon: Cctv, label: 'CCTV', text: 'Test pictures, or photos you upload.' },
+    { icon: CloudRain, label: 'Rain', text: 'Entered by hand.' },
+    { icon: MessageSquareOff, label: 'SMS', text: 'Recorded, not sent.' },
+  ];
+  return (
+    <LocalizedDiv role="region" aria-label="Simulation mode" className="sim-banner relative overflow-hidden rounded-2xl border border-gold-300 p-4 sm:p-5">
+      <div className="flex flex-wrap items-start gap-3">
+        <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-950 text-gold-300"><FlaskConical className="size-5" /></span>
+        <div className="min-w-0 flex-1">
+          <p className="flex flex-wrap items-center gap-2">
+            <span className="rounded bg-brand-950 px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.12em] text-gold-300"><Text>Simulation</Text></span>
+            <span className="text-[15px] font-semibold text-brand-950">
+              <Text>{real === 0 ? 'No real flood sensors are connected yet. Every reading here is simulated.' : `${simulated} of ${simulated + real} sensors are simulated. Their readings are not real.`}</Text>
+            </span>
+          </p>
+          <p className="mt-1 text-sm text-brand-900/80"><Text>The agent’s rules, drafts, timers and messages run for real, so every step can be tried safely.</Text></p>
+        </div>
+      </div>
+      <ul className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+        {items.map((i) => (
+          <li key={i.label} className="flex items-start gap-2.5 rounded-xl bg-white/70 px-3 py-2.5 text-sm ring-1 ring-gold-300/60">
+            <i.icon className="mt-0.5 size-4 shrink-0 text-gold-700" aria-hidden />
+            <span><span className="block font-semibold text-brand-950"><Text>{i.label}</Text></span><span className="text-ink-600"><Text>{i.text}</Text></span></span>
+          </li>
+        ))}
+      </ul>
+    </LocalizedDiv>
+  );
+}
+
+/**
  * The Flood dashboard (proposal Appendix E.3): five tabs over one live picture of
  * every zone. The agent's rules, drafts, timers and messages run as normal; in
  * the prototype the sensors are simulated, but their readings are signed and
@@ -144,9 +184,9 @@ export default function FloodDashboardPage() {
 
   return (
     <>
-      <PageHeader title="Flood dashboard" description="Numbers and fixed rules decide the flood level; the AI only reads pictures and fills in the message. Two signals of different types must agree before an alert goes out by itself." />
+      <PageHeader action={<ConsoleFloodWalkthrough />} title="Flood dashboard" description="Numbers and fixed rules decide the flood level; the AI only reads pictures and fills in the message. Two signals of different types must agree before an alert goes out by itself." />
       <div className="space-y-6">
-        <SimulatedNote><Text>Test mode: the sensors are simulated, CCTV readings come from test pictures or uploaded photos, and rain readings are entered by hand. Sensor readings are still signed and go through the real ingestion endpoint; the agent’s rules, drafts, timers and messages run as normal. SMS is recorded, not sent.</Text></SimulatedNote>
+        {agent.data && <SimulationBanner integration={agent.data.integration} />}
         <Tabs<TabKey>
           label="Flood dashboard"
           value={tab}

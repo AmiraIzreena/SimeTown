@@ -128,6 +128,114 @@ export const walkthroughsMalay: Record<string, string> = {
   'Resident collection · A07': 'Pengambilan oleh penduduk · A07',
   'Lapor · Parcel & locker cases': 'Lapor · Kes bungkusan & lokar',
   'Too big for door A02 · No. 1, Jalan Metafasa': 'Terlalu besar untuk pintu A02 · No. 1, Jalan Metafasa',
+
+  // Banjir: residents.
+  'How Banjir works': 'Cara Banjir berfungsi',
+  'How flood alerts reach you, and what to do.': 'Cara amaran banjir sampai kepada anda, dan apa yang perlu dilakukan.',
+  'Sensors watch the drains in your zone': 'Sensor memantau longkang di zon anda',
+  'Drain sensors and cameras measure the water in each zone. The Banjir page shows your zone’s level, its safe route and its assembly point, updated every few seconds.':
+    'Sensor longkang dan kamera mengukur paras air di setiap zon. Halaman Banjir menunjukkan paras air zon anda, laluan selamat dan tempat berkumpulnya, dikemas kini setiap beberapa saat.',
+  'Your zone · Elmina Valley 1 & 2': 'Zon anda · Elmina Valley 1 & 2',
+  'Dashed lines: warning and danger': 'Garis putus-putus: amaran dan bahaya',
+  'Two signals must agree': 'Dua isyarat mesti sepakat',
+  'An alert goes out by itself only when two different kinds of signal agree, such as the drain sensor and the camera. With only one signal, the duty officer checks first.':
+    'Amaran dihantar dengan sendiri hanya apabila dua jenis isyarat yang berbeza sepakat, seperti sensor longkang dan kamera. Jika hanya satu isyarat, pegawai bertugas menyemak dahulu.',
+  'Drain sensor': 'Sensor longkang',
+  'Camera reading': 'Bacaan kamera',
+  'Water on the road': 'Air di atas jalan',
+  'Warning sent': 'Amaran dihantar',
+  'Two signals agreed': 'Dua isyarat sepakat',
+  'A warning appears on every page': 'Amaran muncul di setiap halaman',
+  'A red band shows at the top of the app with your zone and the water level. Tap See safe route to see the way out and where to gather.':
+    'Jalur merah muncul di bahagian atas aplikasi dengan zon anda dan paras air. Ketik Lihat laluan selamat untuk melihat jalan keluar dan tempat berkumpul.',
+  'Water level is at 78%. Get ready to move and check your safe route.': 'Paras air pada 78%. Bersedia untuk berpindah dan semak laluan selamat anda.',
+  'Water level is at 92%. Move to safety now.': 'Paras air pada 92%. Pindah ke tempat selamat sekarang.',
+  'At danger, the alert fills your screen': 'Pada tahap bahaya, amaran memenuhi skrin anda',
+  'A danger alert covers whatever you are doing, with the safe route and where to go. Every message says when the next update comes, at least every 15 minutes.':
+    'Amaran bahaya menutupi apa sahaja yang anda sedang lakukan, dengan laluan selamat dan ke mana hendak pergi. Setiap mesej menyatakan bila kemas kini seterusnya, sekurang-kurangnya setiap 15 minit.',
+  'In 15 minutes': 'Dalam 15 minit',
+  'Tell the team you are safe': 'Beritahu pasukan bahawa anda selamat',
+  'Tap I’m safe, or I need help. If you ask for help, duty staff send a guard to you and can see when you have been reached.':
+    'Ketik Saya selamat, atau Saya perlukan bantuan. Jika anda meminta bantuan, kakitangan bertugas menghantar pengawal kepada anda dan boleh melihat bila anda telah dihubungi.',
+  'Let the team know': 'Maklumkan kepada pasukan',
+  'I’m safe': 'Saya selamat',
+  'You checked in safe': 'Anda telah melaporkan diri selamat',
+  'The township team can see your answer': 'Pasukan perbandaran boleh melihat jawapan anda',
+  'Need extra help? Join the priority list': 'Perlukan bantuan tambahan? Sertai senarai keutamaan',
+  'In Akses+, turn on Priority help list for floods. In a flood warning, staff phone homes on this list first. Only duty staff see it, only during an alert, and only with your consent.':
+    'Dalam Akses+, hidupkan Senarai bantuan keutamaan banjir. Semasa amaran banjir, kakitangan menelefon rumah dalam senarai ini dahulu. Hanya kakitangan bertugas melihatnya, hanya semasa amaran, dan hanya dengan persetujuan anda.',
+  'Staff phone you first': 'Kakitangan menelefon anda dahulu',
+  'Your carer sees alerts and check-ins': 'Penjaga anda melihat amaran dan laporan diri',
+
+  // Banjir: guards.
+  'How flood duty works': 'Cara tugas banjir berfungsi',
+  'What appears on the gate screen during a flood, and what to do.': 'Apa yang muncul pada skrin pintu pagar semasa banjir, dan apa yang perlu dilakukan.',
+  'The flood band tells you first': 'Jalur banjir memberitahu anda dahulu',
+  'When a zone has a flood warning or danger, the red band appears at the top of your screen too, with the zone and the water level.':
+    'Apabila sesuatu zon mempunyai amaran atau bahaya banjir, jalur merah juga muncul di bahagian atas skrin anda, dengan zon dan paras air.',
+  'Your flood task list': 'Senarai tugas banjir anda',
+  'While the alert is on, the gate screen lists what to do: keep the gate lane clear and check the drain grilles. At danger, open the assembly point and direct people along the safe route.':
+    'Semasa amaran berjalan, skrin pintu pagar menyenaraikan apa yang perlu dilakukan: pastikan lorong pintu pagar lapang dan semak jeriji longkang. Pada tahap bahaya, buka tempat berkumpul dan arahkan orang ramai mengikut laluan selamat.',
+  'Open the assembly point': 'Buka tempat berkumpul',
+  'Direct people along the safe route': 'Arahkan orang ramai mengikut laluan selamat',
+  'Keep the gate lane clear': 'Pastikan lorong pintu pagar lapang',
+  'Reach a resident who needs help': 'Dapatkan penduduk yang memerlukan bantuan',
+  'If a resident asked for help or is on the priority list, the duty officer may send you. Their name, address and phone show on the gate screen. Call them or go to them.':
+    'Jika penduduk meminta bantuan atau berada dalam senarai keutamaan, pegawai bertugas mungkin menghantar anda. Nama, alamat dan telefon mereka dipaparkan pada skrin pintu pagar. Telefon atau pergi kepada mereka.',
+  'Reach Zainab Yusof': 'Dapatkan Zainab Yusof',
+  'Elmina Gardens · Asked for help · No. 7, Jalan Frekuensi U16/115': 'Elmina Gardens · Meminta bantuan · No. 7, Jalan Frekuensi U16/115',
+  'The duty officer sees it is done': 'Pegawai bertugas melihat ia selesai',
+  'Tap Reached them once you have got to them. The flood dashboard shows who reached each resident and when.':
+    'Ketik Sudah dihubungi sebaik sahaja anda sampai kepada mereka. Papan pemuka banjir menunjukkan siapa yang menghubungi setiap penduduk dan bila.',
+  'Reached by Azman Shah': 'Dihubungi oleh Azman Shah',
+  'Zainab Yusof · 2 min ago': 'Zainab Yusof · 2 minit lalu',
+
+  // Banjir: the flood dashboard.
+  'How the flood dashboard works': 'Cara papan pemuka banjir berfungsi',
+  'The tabs, the alert rules, and who does what.': 'Tab-tab, peraturan amaran, dan siapa melakukan apa.',
+  'Live map: every zone at a glance': 'Peta langsung: setiap zon sepintas lalu',
+  'Each zone’s water level, status and latest message, live. A zone under an alert stands out, with a link to its place in the agent queue.':
+    'Paras air, status dan mesej terkini setiap zon, secara langsung. Zon yang dalam amaran menonjol, dengan pautan ke tempatnya dalam barisan ejen.',
+  'Warning · Elmina Valley 1 & 2': 'Amaran · Elmina Valley 1 & 2',
+  'Numbers and fixed rules decide': 'Angka dan peraturan tetap yang menentukan',
+  'An alert goes out by itself only when two different kinds of signal agree. Danger needs the drain sensor and the camera. Rain or residents’ reports can support a warning, never danger. The AI only reads pictures.':
+    'Amaran dihantar dengan sendiri hanya apabila dua jenis isyarat yang berbeza sepakat. Bahaya memerlukan sensor longkang dan kamera. Hujan atau laporan penduduk boleh menyokong amaran, tidak sekali-kali bahaya. AI hanya membaca gambar.',
+  'Signals': 'Isyarat',
+  'Camera': 'Kamera',
+  'Warning only': 'Amaran sahaja',
+  'Agent queue: confirm one-signal alerts': 'Barisan ejen: sahkan amaran satu isyarat',
+  'With only one signal, the agent drafts the message and waits for you. Send now, or Cancel with a reason. A warning waits 5 minutes, then admins are told. A danger is sent after 3 minutes if the water is still rising.':
+    'Jika hanya satu isyarat, ejen mendraf mesej dan menunggu anda. Hantar sekarang, atau Batal dengan sebab. Amaran menunggu 5 minit, kemudian pentadbir dimaklumkan. Bahaya dihantar selepas 3 minit jika air masih naik.',
+  'Confirm a warning alert?': 'Sahkan amaran?',
+  'Time left to confirm': 'Masa untuk mengesahkan',
+  'Cancel needs a reason': 'Batal memerlukan sebab',
+  'Every message says the same four things': 'Setiap mesej menyatakan empat perkara yang sama',
+  'What is happening, where, what to do, and when the next update comes. Updates follow at least every 15 minutes until the all clear.':
+    'Apa yang berlaku, di mana, apa yang perlu dilakukan, dan bila kemas kini seterusnya. Kemas kini menyusul sekurang-kurangnya setiap 15 minit sehingga keadaan selamat.',
+  'Official message': 'Mesej rasmi',
+  'What: water is rising in the drains': 'Apa: air naik di dalam longkang',
+  'Where: Jalan Metafasa U16/171': 'Di mana: Jalan Metafasa U16/171',
+  'To do: get ready to move': 'Tindakan: bersedia untuk berpindah',
+  'Next update by 4:45 pm': 'Kemas kini seterusnya sebelum 4:45 petang',
+  'Priority help: send a guard': 'Bantuan keutamaan: hantar pengawal',
+  'During an alert, see residents on the priority help list and anyone who tapped I need help. Choose who goes and tap Send: the task appears on the guard’s gate screen.':
+    'Semasa amaran, lihat penduduk dalam senarai bantuan keutamaan dan sesiapa yang mengetik Saya perlukan bantuan. Pilih siapa yang pergi dan ketik Hantar: tugas itu muncul pada skrin pintu pagar pengawal.',
+  'Zainab Yusof · Asked for help': 'Zainab Yusof · Meminta bantuan',
+  'Priority list · No. 7, Jalan Frekuensi U16/115': 'Senarai keutamaan · No. 7, Jalan Frekuensi U16/115',
+  'Who goes: Azman Shah': 'Siapa pergi: Azman Shah',
+  'Duty staff': 'Kakitangan bertugas',
+  'Sensors: keep them healthy': 'Sensor: pastikan dalam keadaan baik',
+  'A sensor that goes silent, gets stuck or runs low on battery is marked faulty and stops counting, and a ticket opens. Calibrate it on site and log maintenance to close it.':
+    'Sensor yang senyap, tersekat atau kehabisan bateri ditanda rosak dan tidak lagi dikira, dan tiket dibuka. Tentukur di tapak dan rekod penyelenggaraan untuk menutupnya.',
+  'EV12-LAKEEDGE-1 · battery 84%': 'EV12-LAKEEDGE-1 · bateri 84%',
+  'EV12-MAINDRAIN-2 · silent 6 min': 'EV12-MAINDRAIN-2 · senyap 6 minit',
+  'Log maintenance to close': 'Rekod penyelenggaraan untuk menutup',
+  'Events and reports after the all clear': 'Kejadian dan laporan selepas keadaan selamat',
+  'Each flood becomes an event: a timeline, who was warned, how many checked in, and a false-alarm review once the water is back to normal.':
+    'Setiap banjir menjadi satu kejadian: garis masa, siapa yang diberi amaran, berapa ramai melaporkan diri, dan semakan amaran palsu setelah air kembali normal.',
+  'Event report': 'Laporan kejadian',
+  'Warned': 'Diberi amaran',
+  'Lead time': 'Masa awal',
 };
 
 export const walkthroughsTemplates: readonly (readonly [string, string])[] = [

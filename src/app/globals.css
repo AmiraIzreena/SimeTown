@@ -1562,6 +1562,31 @@ html[data-signed-in] { scroll-behavior: smooth; scroll-padding-top: 5.5rem; scro
 .zone-card.is-warning .water-col .water-fill { background: linear-gradient(180deg, #f0735f, var(--color-accent-500)); }
 .zone-card.is-warning .water-col .water-wave path { fill: #f0735f; }
 
+/*
+ * --- Banjir, the resident page (app/banjir/page.tsx): colour by meaning -----------------------------
+ * Deep red is danger and red-orange a warning (as above). A normal zone keeps SimeTown's own brand colours. Green is safety: the all clear,
+ * and the safe route and meeting point, the colour of emergency exits. The estimate is dashed, so it never
+ * reads as an alert: green going down, calm grey steady, gold rising, orange or red only near a line.
+ * The cards are not links, so they do not lift on hover.
+ */
+.banjir-zone:hover { transform: none; }
+.banjir-zone.is-normal { box-shadow: inset 0 3px 0 var(--color-brand-500), 0 1px 2px rgb(45 20 7 / 0.05); }
+.banjir-zone.is-normal:hover { box-shadow: inset 0 3px 0 var(--color-brand-500), 0 14px 32px rgb(79 28 8 / 0.08); }
+.banjir-zone.is-mine { outline: 2px solid var(--color-brand-300); outline-offset: 3px; }
+.zone-safe { transition: transform 200ms var(--ease-soft), box-shadow 200ms var(--ease-soft); }
+@media (hover: hover) and (pointer: fine) {
+  .zone-safe:hover { transform: translateX(2px); box-shadow: 0 6px 16px rgb(20 100 63 / 0.10); }
+}
+
+.flood-trend { border-color: var(--trend-line); background: var(--trend-soft); color: var(--trend-ink); }
+.flood-trend .flood-trend-icon { background: var(--trend-icon-bg); color: var(--trend-icon); }
+.flood-trend .flood-trend-tag { background: var(--trend-icon-bg); color: var(--trend-icon); }
+.flood-trend.is-steady { --trend-line: var(--color-ink-200); --trend-soft: var(--color-ink-25); --trend-ink: var(--color-ink-700); --trend-icon-bg: var(--color-ink-100); --trend-icon: var(--color-ink-600); }
+.flood-trend.is-falling { --trend-line: rgb(26 127 82 / 0.35); --trend-soft: var(--color-success-50); --trend-ink: var(--color-success-700); --trend-icon-bg: rgb(26 127 82 / 0.12); --trend-icon: var(--color-success-700); }
+.flood-trend.is-rising { --trend-line: rgb(198 138 18 / 0.45); --trend-soft: var(--color-gold-50); --trend-ink: var(--color-gold-700); --trend-icon-bg: var(--color-gold-100); --trend-icon: var(--color-gold-700); }
+.flood-trend.is-warning { --trend-line: rgb(168 101 12 / 0.45); --trend-soft: var(--color-warning-50); --trend-ink: var(--color-warning-700); --trend-icon-bg: rgb(168 101 12 / 0.14); --trend-icon: var(--color-warning-700); }
+.flood-trend.is-danger { --trend-line: rgb(217 26 50 / 0.4); --trend-soft: var(--color-accent-50); --trend-ink: var(--color-accent-700); --trend-icon-bg: var(--color-accent-100); --trend-icon: var(--color-accent-700); }
+
 .water-col .water-fill {
   height: var(--level);
   background: linear-gradient(180deg, var(--color-brand-400), var(--color-brand-600));
@@ -1808,6 +1833,14 @@ html[data-signed-in] { scroll-behavior: smooth; scroll-padding-top: 5.5rem; scro
   0%, 100% { box-shadow: 0 0 0 0 rgb(236 203 106 / 0); }
   50% { box-shadow: 0 0 0 5px rgb(236 203 106 / 0.35); }
 }
+/* Water rising in a drain gauge to its level. */
+.walk-rise {
+  transform-origin: bottom center;
+  animation: walk-rise 1.3s var(--ease-soft) 500ms both;
+}
+@keyframes walk-rise {
+  from { transform: scaleY(0.08); }
+}
 /* A parcel sliding into its place. */
 .walk-drop {
   animation: walk-drop 700ms var(--ease-soft) 500ms both;
@@ -1815,6 +1848,9 @@ html[data-signed-in] { scroll-behavior: smooth; scroll-padding-top: 5.5rem; scro
 @keyframes walk-drop {
   from { opacity: 0; transform: translateY(-14px) scale(0.9); }
 }
+
+/* Flood dashboard: the simulation banner (console/banjir/page.tsx). SimeTown gold, so it is noticed but never read as an alert. */
+.sim-banner { background-image: linear-gradient(100deg, var(--color-gold-50) 0%, var(--color-gold-100) 100%); box-shadow: inset 4px 0 0 var(--color-gold-500); }
 
 /* ---------- Sponsorship, Shops and Challenges ---------- */
 .slider-card {

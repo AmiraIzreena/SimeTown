@@ -9,6 +9,7 @@ import { AddressPicker } from '@/components/features/address';
 import { CameraScan } from '@/components/features/camera-scan';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, PageHeader } from '@/components/ui/card';
+import { GuardFloodWalkthrough } from '@/components/features/banjir-walkthroughs';
 import { Async, EmptyState, SkeletonList } from '@/components/ui/feedback';
 import { Input } from '@/components/ui/field';
 import { api, ApiError } from '@/lib/api';
@@ -100,7 +101,7 @@ export function GateScreen({ initialPatrol }: { initialPatrol: string }) {
 
   return (
     <>
-      <PageHeader title={gate.data?.gate ?? 'Main gate'} description="Scan visitor passes, log walk-ins and answer SOS calls. Record a name, vehicle number and house only: never an identity card." />
+      <PageHeader action={<GuardFloodWalkthrough />} title={gate.data?.gate ?? 'Main gate'} description="Scan visitor passes, log walk-ins and answer SOS calls. Record a name, vehicle number and house only: never an identity card." />
       <div className="space-y-6">
         {gate.data?.sos.map((s) => (
           <Card key={s.id} role="alert" className={cn('flex flex-wrap items-center justify-between gap-4 p-5', s.status === 'OPEN' ? 'border-accent-300 bg-accent-50' : 'border-warning-600/30 bg-warning-50')}>
