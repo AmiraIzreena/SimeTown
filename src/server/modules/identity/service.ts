@@ -662,7 +662,7 @@ export async function deleteAccount(db: Db, actor: Actor, password: string, now:
       await tx.query(`UPDATE sales SET status = 'DECLINED' WHERE user_id = $1 AND status = 'PENDING'`, [id]);
       await expireLotsForUser(tx, id, { all: true }, now, 'Account closed');
     }
-    await tx.query(`UPDATE posts SET status = 'REMOVED', title = '[removed]', body = '[removed]', location = NULL WHERE author_id = $1`, [id]);
+    await tx.query(`UPDATE posts SET status = 'REMOVED', title = '[removed]', body = '[removed]', location = NULL, photo_id = NULL WHERE author_id = $1`, [id]);
     await tx.query('DELETE FROM post_responses WHERE user_id = $1', [id]);
     await tx.query(`UPDATE reports SET photo_id = NULL, description = '[removed at the reporter''s request]' WHERE reporter_id = $1`, [id]);
     await tx.query(`UPDATE wildlife_sightings SET photo_id = NULL, note = NULL WHERE user_id = $1`, [id]);

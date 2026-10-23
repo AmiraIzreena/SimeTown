@@ -429,6 +429,100 @@ describe('Jiran and Kongsi', () => {
     expect((await call('GET', '/posts?type=NOPE', { as: author })).status).toBe(400);
   });
 
+  it('takes one optional photo on any kind of post, as a form, and keeps the JSON form working', async () => {
+    const author = await makeResident(w);
+    const postForm = (fields: Record<string, string>, photo?: File) => {
+      const form = new FormData();
+      for (const [key, value] of Object.entries(fields)) form.set(key, value);
+      if (photo) form.set('photo', photo);
+      return form;
+    };
+    const png = () => new File([PNG], 'photo.png', { type: 'image/png' });
+    const event = await call('POST', '/posts/with-photo', {
+      as: author,
+      form: postForm({ type: 'EVENT', title: 'Street potluck', body: 'Bring one dish.', startsAt: new Date(T0.getTime() + 86_400_000).toISOString(), capacity: '20' }, png()),
+    });
+    expect(event.status).toBe(200);
+    const help = await call('POST', '/posts/with-photo', { as: author, form: postForm({ type: 'HELP', title: 'Fix a gate', body: 'The latch is broken.' }, png()) });
+    const give = await call('POST', '/posts/with-photo', { as: author, form: postForm({ type: 'GIVE', title: 'Spare chairs', body: 'Two folding chairs.' }) }); // no photo
+    const feed = (await call('GET', '/posts?mine=true', { as: author })).data.items as { id: string; has_photo: boolean; capacity: number | null }[];
+    const byId = (id: string) => feed.find((p) => p.id === id)!;
+    expect(byId(event.data.id)).toMatchObject({ has_photo: true, capacity: 20 });
+    expect(byId(help.data.id).has_photo).toBe(true);
+    expect(byId(give.data.id).has_photo).toBe(false);
+    expect((await call('GET', `/posts/${give.data.id}/photo`, { as: author })).status).toBe(404);
+
+    // The same rules as the JSON form, with the same field messages.
+    const missing = await call('POST', '/posts/with-photo', { as: author, form: postForm({ type: 'LEND', title: '', body: 'A drill.' }) });
+    expect(missing.error!.code).toBe('VALIDATION_FAILED');
+    expect(missing.error!.details.fields.title).toBeTruthy();
+    expect((await call('POST', '/posts/with-photo', { as: author, form: postForm({ type: 'EVENT', title: 'Badminton', body: 'All levels.' }) })).error!.code).toBe('EVENT_NEEDS_DATE');
+    // A file that only pretends to be an image is refused, and no post is left behind.
+    const count = async () => (await one<{ n: number }>(db, 'SELECT count(*)::int AS n FROM posts WHERE author_id = $1', [author.id]))!.n;
+    const before = await count();
+    const fake = new File(['<script>alert(1)</script>'], 'x.png', { type: 'image/png' });
+    expect((await call('POST', '/posts/with-photo', { as: author, form: postForm({ type: 'LEND', title: 'Ladder', body: 'Three metres.' }, fake) })).status).toBe(400);
+    expect(await count()).toBe(before);
+    // JSON posts still work, without a photo.
+    expect((await call('POST', '/posts', { as: author, body: { type: 'LEND', title: 'Ladder', body: 'Three metres.' } })).status).toBe(200);
+  });
+
+  it('shows a post photo only to whoever may see the post itself', async () => {
+    const other = await makeWorld(db);
+    const author = await makeResident(w);
+    const neighbour = await makeResident(w);
+    const form = new FormData();
+    form.set('type', 'LEND');
+    form.set('title', 'Pressure washer');
+    form.set('body', 'For a weekend.');
+    form.set('photo', new File([PNG], 'washer.png', { type: 'image/png' }));
+    const id = (await call('POST', '/posts/with-photo', { as: author, form })).data.id as string;
+    const status = async (as: Actor) => (await call('GET', `/posts/${id}/photo`, { as })).status;
+
+    const photo = await call('GET', `/posts/${id}/photo`, { as: neighbour });
+    expect(photo.status).toBe(200);
+    expect(photo.headers.get('content-type')).toBe('image/png');
+    expect(photo.headers.get('x-content-type-options')).toBe('nosniff');
+    expect(photo.headers.get('cache-control')).toMatch(/^private/);
+    expect(await status(await makeResident(other))).toBe(404); // another township: as if it did not exist
+    expect(await status(other.admin)).toBe(404);
+    expect(await status(w.staff)).toBe(200);
+    expect(await status(w.hq)).toBe(200);
+
+    expect((await call('POST', `/posts/${id}/close`, { as: author, body: {} })).status).toBe(200);
+    expect(await status(neighbour)).toBe(200); // a closed post stays visible
+
+    expect((await call('POST', `/admin/komuniti/posts/${id}/moderate`, { as: w.staff, body: { action: 'HIDE' } })).status).toBe(200);
+    expect(await status(neighbour)).toBe(404);
+    expect(await status(author)).toBe(200);
+    expect(await status(w.staff)).toBe(200);
+
+    expect((await call('POST', `/admin/komuniti/posts/${id}/moderate`, { as: w.admin, body: { action: 'REMOVE', note: 'Not allowed in Komuniti.' } })).status).toBe(200);
+    expect(await status(neighbour)).toBe(404);
+    expect(await status(author)).toBe(404);
+    expect(await status(w.staff)).toBe(200);
+    expect(await status(w.hq)).toBe(200);
+    expect((await call('GET', `/admin/komuniti/posts/${id}`, { as: w.admin })).data.has_photo).toBe(true);
+  });
+
+  it('checks a suspension before reading the upload, and allows 10 photo posts an hour', async () => {
+    const form = () => {
+      const f = new FormData();
+      f.set('type', 'HELP');
+      f.set('title', 'Help with a box');
+      f.set('body', 'Ten minutes.');
+      return f;
+    };
+    const resident = await makeResident(w);
+    const statuses: number[] = [];
+    for (let i = 0; i < 11; i++) statuses.push((await call('POST', '/posts/with-photo', { as: resident, form: form() })).status);
+    expect(statuses.slice(0, 10).every((s) => s === 200)).toBe(true);
+    expect(statuses[10]).toBe(429);
+
+    const suspended = await makeResident(w);
+    expect((await call('POST', `/admin/komuniti/suspensions/${suspended.id}`, { as: w.admin, body: { days: 7, reason: 'Repeated scam posts.' } })).status).toBe(200);
+    expect((await call('POST', '/posts/with-photo', { as: suspended, form: form() })).error!.code).toBe('KOMUNITI_SUSPENDED');
+  });
 });
 
 describe('Komuniti moderation (township staff, township admins and HQ)', () => {
@@ -642,6 +736,12 @@ describe('insights, jobs and personal data', () => {
     const resident = await makeResident(w);
     await db.query('UPDATE users SET password_hash = $2, email = $3 WHERE id = $1', [resident.id, await hashPassword('leaving-kita-plus-1'), 'leaver@kita.test']);
     await sell(w, shop, resident, 5_000);
+    const photoPost = new FormData();
+    photoPost.set('type', 'GIVE');
+    photoPost.set('title', 'Old bookshelf');
+    photoPost.set('body', 'Free to collect.');
+    photoPost.set('photo', new File([PNG], 'shelf.png', { type: 'image/png' }));
+    const postId = (await call('POST', '/posts/with-photo', { as: resident, form: photoPost })).data.id as string;
 
     const exported = await call('GET', '/me/export', { as: resident });
     expect(exported.status).toBe(200);
@@ -657,6 +757,9 @@ describe('insights, jobs and personal data', () => {
     const row = await one<{ full_name: string; email: string }>(db, 'SELECT full_name, email FROM users WHERE id = $1', [resident.id]);
     expect(row).toMatchObject({ full_name: 'Deleted user' });
     expect(row!.email).not.toContain('leaver');
+    // A post's photo goes with the rest of their uploads.
+    expect(await one(db, 'SELECT photo_id FROM posts WHERE id = $1', [postId])).toMatchObject({ photo_id: null });
+    expect((await one<{ n: number }>(db, 'SELECT count(*)::int AS n FROM uploads WHERE owner_id = $1', [resident.id]))!.n).toBe(0);
     expect(await walletOf(db, resident)).toBe(0); // unused points went back to the shop that funded them
     await expectFloatBalanced(db);
   });

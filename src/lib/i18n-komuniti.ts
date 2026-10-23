@@ -135,6 +135,17 @@ export const komunitiMalay: Record<string, string> = {
   'Post reports dismissed': 'Laporan siaran ditolak',
   'Komuniti suspended': 'Digantung daripada Komuniti',
   'Komuniti suspension lifted': 'Penggantungan Komuniti ditarik balik',
+  // A post's optional photo
+  'Add a photo': 'Tambah foto', // native review
+  'It helps neighbours see what you mean. JPEG, PNG or WebP.': 'Ia membantu jiran memahami maksud anda. JPEG, PNG atau WebP.', // native review
+  'The photo you chose': 'Foto yang anda pilih', // native review
+  'Don’t include faces, car plates or house numbers.': 'Jangan sertakan wajah, nombor plat kereta atau nombor rumah.', // native review
+  'Photo attached to this post': 'Foto yang dilampirkan pada siaran ini', // native review
+  'Has a photo': 'Ada foto', // native review
+  'Create a post with one optional photo (multipart form: the same fields as POST /posts, plus "photo")':
+    'Cipta siaran dengan satu foto pilihan (borang berbilang bahagian: medan yang sama seperti POST /posts, serta "photo")', // native review
+  "A post's photo: its township while open or closed, the author and staff while hidden, staff only once removed":
+    'Foto siaran: perbandarannya semasa dibuka atau ditutup, penyiar dan kakitangan semasa disembunyikan, kakitangan sahaja selepas dibuang', // native review
 };
 
 /** Komuniti messages with names, titles or numbers in them. */

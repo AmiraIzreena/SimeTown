@@ -2,9 +2,10 @@
 
 import { Text } from '@/components/ui/localized-text';
 
-import { AlertTriangle, EyeOff, Flag, Repeat2, ShieldCheck, UserX, Users } from 'lucide-react';
+import { AlertTriangle, Camera, EyeOff, Flag, Repeat2, ShieldCheck, UserX, Users } from 'lucide-react';
 import { useState } from 'react';
 import { KINDS } from '@/components/features/komuniti/model';
+import { PostPhoto } from '@/components/features/komuniti/post-card';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, PageHeader, Stat } from '@/components/ui/card';
 import { Async, EmptyState, ErrorState, SkeletonList } from '@/components/ui/feedback';
@@ -36,6 +37,7 @@ interface ReportedPost {
   body: string;
   status: PostStatus;
   created_at: string;
+  has_photo: boolean;
   township_name: string;
   author_name: string;
   open_reports: number;
@@ -49,6 +51,7 @@ interface AdminPost {
   title: string;
   status: PostStatus;
   created_at: string;
+  has_photo: boolean;
   township_name: string;
   author_name: string;
   responses: number;
@@ -168,6 +171,7 @@ function ReportsQueue({ state, hq, onOpen, onChanged }: { state: ReturnType<type
                   </div>
                   <h2 className="mt-3 text-[17px] font-semibold">{post.title}</h2>
                   <p className="mt-1 line-clamp-3 whitespace-pre-line text-[15px] text-ink-600">{post.body}</p>
+                  {post.has_photo && <PostPhoto postId={post.id} className="mt-3 max-h-48 w-full object-cover sm:w-auto sm:max-w-sm" />}
                   <div className="mt-3 rounded-lg bg-ink-50 p-3 text-sm text-ink-700">
                     <p className="font-semibold"><Text>{post.open_reports === 1 ? '1 report' : `${post.open_reports} reports`}</Text></p>
                     <ul className="mt-1 list-disc pl-5">
@@ -237,7 +241,15 @@ function AllPosts({ posts, filters, onFilter, hq, onOpen }: {
           keyOf={(p) => p.id}
           columns={[
             { header: 'Posted', cell: (p) => <Text>{timeAgo(p.created_at)}</Text> },
-            { header: 'Post', cell: (p) => <span className="font-medium text-ink-900">{p.title}</span> },
+            {
+              header: 'Post',
+              cell: (p) => (
+                <span className="inline-flex items-center gap-1.5 font-medium text-ink-900">
+                  {p.title}
+                  {p.has_photo && <span className="text-ink-500"><Camera className="size-4" aria-hidden /><span className="sr-only"><Text>Has a photo</Text></span></span>}
+                </span>
+              ),
+            },
             { header: 'Kind', desktopOnly: true, cell: (p) => <Text>{KINDS[p.type].label}</Text> },
             { header: 'By', desktopOnly: true, cell: (p) => <>{p.author_name}{hq && <span className="block text-xs text-ink-500">{p.township_name}</span>}</> },
             {

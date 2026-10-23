@@ -57,6 +57,17 @@ export async function storeUpload(q: Queryable, ownerId: string, photo: Photo): 
   return upload!.id;
 }
 
+/** Sends a stored photo back: inline, never sniffed as another type, and cached only by the viewer's own browser. */
+export const photoResponse = (upload: { mime: string; bytes: Uint8Array }) =>
+  new Response(Buffer.from(upload.bytes), {
+    headers: {
+      'Content-Type': upload.mime,
+      'X-Content-Type-Options': 'nosniff',
+      'Content-Disposition': 'inline',
+      'Cache-Control': 'private, max-age=3600',
+    },
+  });
+
 export async function readForm(req: Request): Promise<FormData> {
   const type = req.headers.get('content-type') ?? '';
   if (!type.toLowerCase().startsWith('multipart/form-data')) {

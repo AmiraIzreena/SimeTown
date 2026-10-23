@@ -12,6 +12,8 @@ export interface Post {
   capacity: number | null;
   status: 'OPEN' | 'CLOSED' | 'HIDDEN';
   created_at: string;
+  /** The photo is fetched from /posts/:id/photo, which checks who may see it. */
+  has_photo: boolean;
   author_name: string;
   by_township: boolean;
   is_mine: boolean;

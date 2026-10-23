@@ -1,6 +1,7 @@
 'use client';
 
 import { Text } from '@/components/ui/localized-text';
+import { LocalizedImg } from '@/components/ui/localized-elements';
 
 import { CalendarDays, Flag, MapPin, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -47,6 +48,7 @@ export function PostCard({ post, index, large, onChanged, onLend, onReport }: {
       </div>
       <h3 className={`mt-3 font-semibold ${large ? 'text-xl' : 'text-[17px]'}`}>{post.title}</h3>
       <p className={`mt-1 flex-1 whitespace-pre-line text-ink-600 ${large ? 'text-lg' : 'text-[15px]'}`}>{post.body}</p>
+      {post.has_photo && <PostPhoto postId={post.id} className="mt-3 max-h-72 w-full object-cover" />}
       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-ink-500">
         {post.starts_at && (
           <span className="inline-flex items-center gap-1.5">
@@ -189,4 +191,9 @@ function MyResponse({ post, kind, full, size, onChanged }: { post: Post; kind: P
       <Text>{mine === 'RETURNED' ? 'Borrow again' : kind.respond}</Text>
     </Button>
   );
+}
+
+/** A post's optional photo. The server decides who may see it (township, author, staff), so the same address works everywhere. */
+export function PostPhoto({ postId, className }: { postId: string; className?: string }) {
+  return <LocalizedImg src={`/api/v1/posts/${postId}/photo`} alt="Photo attached to this post" loading="lazy" className={cn('rounded-lg border border-ink-200', className)} />;
 }

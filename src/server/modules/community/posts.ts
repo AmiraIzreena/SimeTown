@@ -1,8 +1,10 @@
 import type { PostType } from '@/shared/domain';
+import type { Photo } from '../../ai/classifier';
 import { one, type Db } from '../../db/client';
-import { requireVerifiedResident, townshipOf, type Actor } from '../../auth/actor';
-import { forbidden, ruleViolation } from '../../errors';
+import { canAccessTownship, requireVerifiedResident, townshipOf, type Actor } from '../../auth/actor';
+import { forbidden, notFound, ruleViolation } from '../../errors';
 import { decodeCursor, toPage, type PageQuery } from '../../http/pagination';
+import { photoResponse, storeUpload } from '../../http/uploads';
 import { resolveTownship } from '../townships';
 import { assertNotSuspended, isStaff, lockPost } from './common';
 
@@ -15,22 +17,49 @@ export interface PostInput {
   location?: string;
   startsAt?: Date;
   capacity?: number;
+  /** One optional photo, already checked and rebuilt by readPhoto. */
+  photo?: Photo;
+}
+
+/** Residents need a confirmed home and no Komuniti suspension; staff may always post. Checked before an upload is read. */
+export async function assertCanPost(db: Db, actor: Actor, now: Date) {
+  if (isStaff(actor)) return;
+  requireVerifiedResident(actor);
+  await assertNotSuspended(db, actor.id, now);
 }
 
 export async function createPost(db: Db, actor: Actor, input: PostInput, now: Date) {
-  if (!isStaff(actor)) {
-    requireVerifiedResident(actor);
-    await assertNotSuspended(db, actor.id, now);
-  }
+  await assertCanPost(db, actor, now);
   if (input.type === 'EVENT' && !input.startsAt) throw ruleViolation('EVENT_NEEDS_DATE', 'An event needs a date and time.');
   const townshipId = await resolveTownship(db, actor);
-  const row = await one<{ id: string }>(
+  return db.tx(async (tx) => {
+    const photoId = input.photo ? await storeUpload(tx, actor.id, input.photo) : null;
+    const row = await one<{ id: string }>(
+      tx,
+      `INSERT INTO posts (township_id, author_id, type, title, body, location, starts_at, capacity, photo_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+      [townshipId, actor.id, input.type, input.title, input.body, input.location ?? null, input.startsAt ?? null, input.capacity ?? null, photoId],
+    );
+    return { id: row!.id };
+  });
+}
+
+/**
+ * A post's photo follows the post itself: OPEN and CLOSED posts are seen by their township,
+ * a HIDDEN one only by its author and staff, a REMOVED one only by staff. Staff see their own
+ * township, HQ every township. Anything else is "not found", whether or not it exists.
+ */
+export async function getPostPhoto(db: Db, actor: Actor, postId: string): Promise<Response> {
+  const post = await one<{ township_id: string; author_id: string; status: string; mime: string | null; bytes: Uint8Array | null }>(
     db,
-    `INSERT INTO posts (township_id, author_id, type, title, body, location, starts_at, capacity)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-    [townshipId, actor.id, input.type, input.title, input.body, input.location ?? null, input.startsAt ?? null, input.capacity ?? null],
+    'SELECT p.township_id, p.author_id, p.status, u.mime, u.bytes FROM posts p LEFT JOIN uploads u ON u.id = p.photo_id WHERE p.id = $1',
+    [postId],
   );
-  return { id: row!.id };
+  const visible = post && canAccessTownship(actor, post.township_id) && (
+    isStaff(actor) || post.status === 'OPEN' || post.status === 'CLOSED' || (post.status === 'HIDDEN' && post.author_id === actor.id)
+  );
+  if (!visible || !post.mime || !post.bytes) throw notFound('Photo');
+  return photoResponse({ mime: post.mime, bytes: post.bytes });
 }
 
 interface PostRow {
@@ -43,7 +72,7 @@ export async function listPosts(db: Db, actor: Actor, filter: { type?: PostType[
   const [after, afterId] = decodeCursor(filter.cursor, 'time');
   const townshipId = isStaff(actor) ? actor.townshipId : townshipOf(actor);
   const rows = await db.query<PostRow>(
-    `SELECT p.id, p.type, p.title, p.body, p.location, p.starts_at, p.capacity, p.status, p.created_at,
+    `SELECT p.id, p.type, p.title, p.body, p.location, p.starts_at, p.capacity, p.status, p.created_at, (p.photo_id IS NOT NULL) AS has_photo,
             split_part(a.full_name, ' ', 1) AS author_name, (a.role <> 'RESIDENT') AS by_township, (p.author_id = $1) AS is_mine,
             (SELECT count(*)::int FROM post_responses r WHERE r.post_id = p.id AND r.status <> 'DECLINED') AS responses,
             (SELECT r.status FROM post_responses r WHERE r.post_id = p.id AND r.user_id = $1) AS my_response,

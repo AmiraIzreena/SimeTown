@@ -90,7 +90,7 @@ export async function overview(db: Db, actor: Actor, filter: { townshipId?: stri
 export async function listReports(db: Db, actor: Actor, filter: { townshipId?: string }) {
   const townshipId = scopeOf(actor, filter.townshipId);
   return db.query(
-    `SELECT p.id, p.type, p.title, p.body, p.status, p.created_at, t.name AS township_name, a.full_name AS author_name,
+    `SELECT p.id, p.type, p.title, p.body, p.status, p.created_at, (p.photo_id IS NOT NULL) AS has_photo, t.name AS township_name, a.full_name AS author_name,
             count(*)::int AS open_reports,
             bool_or(f.category IN ('SCAM', 'UNSAFE')) AS urgent,
             json_agg(json_build_object('category', f.category, 'reason', f.reason, 'created_at', f.created_at) ORDER BY f.created_at) AS reports,
@@ -122,7 +122,7 @@ export async function listPosts(
   const townshipId = scopeOf(actor, filter.townshipId);
   const [after, afterId] = decodeCursor(filter.cursor, 'time');
   const rows = await db.query<AdminPostRow>(
-    `SELECT p.id, p.type, p.title, p.status, p.created_at, t.name AS township_name, a.full_name AS author_name,
+    `SELECT p.id, p.type, p.title, p.status, p.created_at, (p.photo_id IS NOT NULL) AS has_photo, t.name AS township_name, a.full_name AS author_name,
             (SELECT count(*)::int FROM post_responses r WHERE r.post_id = p.id AND r.status <> 'DECLINED') AS responses,
             (SELECT count(*)::int FROM post_flags f WHERE f.post_id = p.id AND f.status = 'OPEN') AS open_reports,
             (SELECT count(*)::int FROM post_responses r WHERE r.post_id = p.id AND p.type = 'LEND' AND r.status = 'CONFIRMED' AND r.due_back < $8::date) AS overdue
@@ -140,7 +140,7 @@ export async function listPosts(
 export async function getPost(db: Db, actor: Actor, postId: string, now: Date) {
   const post = await one<{ township_id: string; author_id: string }>(
     db,
-    `SELECT p.id, p.type, p.title, p.body, p.location, p.starts_at, p.capacity, p.status, p.created_at, p.township_id, t.name AS township_name,
+    `SELECT p.id, p.type, p.title, p.body, p.location, p.starts_at, p.capacity, p.status, p.created_at, (p.photo_id IS NOT NULL) AS has_photo, p.township_id, t.name AS township_name,
             p.author_id, a.full_name AS author_name, (a.role <> 'RESIDENT') AS by_township,
             p.moderated_at, p.moderation_note, m.full_name AS moderated_by_name
        FROM posts p JOIN users a ON a.id = p.author_id JOIN townships t ON t.id = p.township_id LEFT JOIN users m ON m.id = p.moderated_by
