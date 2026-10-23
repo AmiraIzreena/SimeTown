@@ -3,7 +3,7 @@
 import { Text } from '@/components/ui/localized-text';
 import { LocalizedNav } from '@/components/ui/localized-elements';
 
-import { ShieldCheck } from 'lucide-react';
+import { MailCheck, ShieldCheck } from 'lucide-react';
 import { LocalizedLink as Link } from '@/components/ui/localized-elements';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { Logo } from '@/components/shell/logo';
@@ -82,7 +82,62 @@ export function LoginForm({ next }: { next?: string }) {
     <form onSubmit={submit} method="post" className="space-y-4" noValidate>
       <Input label="Email" name="email" type="email" autoComplete="username" required error={login.fields.email} />
       <Input label="Password" name="password" type="password" autoComplete="current-password" required error={login.fields.password} />
+      <p className="-mt-1 text-right text-sm">
+        <Link href="/forgot-password" className="font-semibold text-brand-700 hover:underline"><Text>Forgot your password?</Text></Link>
+      </p>
       <Button type="submit" size="lg" className="w-full" pending={login.pending}><Text>Sign in</Text></Button>
+    </form>
+  );
+}
+
+/** Asks for a reset link. The answer never says whether an account uses the address. */
+export function ForgotPasswordForm() {
+  const [sent, setSent] = useState(false);
+  const request = useAction((body: { email: string }) => api.post('/auth/forgot-password', body), { onSuccess: () => setSent(true) });
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    void request.run({ email: String(new FormData(event.currentTarget).get('email')) });
+  };
+  if (sent) {
+    return (
+      <EmptyState icon={MailCheck} title="Check your email">
+        <Text>If an account uses this email, a link to reset its password is on its way. The link works once and expires in 30 minutes.</Text>
+      </EmptyState>
+    );
+  }
+  return (
+    <form onSubmit={submit} method="post" className="space-y-4" noValidate>
+      <Input label="Email" name="email" type="email" autoComplete="username" required error={request.fields.email} />
+      <Button type="submit" size="lg" className="w-full" pending={request.pending}><Text>Send reset link</Text></Button>
+    </form>
+  );
+}
+
+/** Reset links look like /reset-password#token, so the token stays out of server logs (as with invitations). */
+export function ResetPasswordFromLink() {
+  const hydrated = useHydrated();
+  if (!hydrated) return null;
+  const token = window.location.hash.slice(1);
+  if (!token) {
+    return (
+      <EmptyState icon={ShieldCheck} title="This link is incomplete"><Text>Open the whole link from the email, or ask for a new one from the sign-in page.</Text></EmptyState>
+    );
+  }
+  return <ResetPasswordForm token={token} />;
+}
+
+function ResetPasswordForm({ token }: { token: string }) {
+  const reset = useAction((body: { password: string }) => api.post<SignedIn>('/auth/reset-password', { ...body, token }), {
+    onSuccess: (user) => reloadTo(ROLE_HOME[user.role]),
+  });
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    void reset.run({ password: String(new FormData(event.currentTarget).get('password')) });
+  };
+  return (
+    <form onSubmit={submit} method="post" className="space-y-4" noValidate>
+      <Input label="New password" name="password" type="password" autoComplete="new-password" hint="At least 10 characters." required error={reset.fields.password} />
+      <Button type="submit" size="lg" className="w-full" pending={reset.pending}><Text>Save password and sign in</Text></Button>
     </form>
   );
 }

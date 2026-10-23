@@ -8,6 +8,8 @@ import { ACTOR_COLUMNS, COURIER_SESSION_HOURS, createSession, hashToken, newToke
 import { conflict, forbidden, notFound, ruleViolation, unauthorized } from '../../errors';
 import { decodeCursor, toPage, type PageQuery } from '../../http/pagination';
 import { audit } from '../audit';
+import { emailPasswordReset, emailWelcome } from '../email/account';
+import { sendSoon } from '../email/outbox';
 import { createAccount } from '../ledger/ledger';
 import { expireLotsForUser } from '../ledger/points';
 import { notify } from '../notifications';
@@ -55,7 +57,7 @@ async function addressableHome(q: Queryable, townshipId: string, homeId: string)
  */
 export async function registerResident(db: Db, input: RegisterInput, now: Date): Promise<{ token: string; actor: Actor }> {
   const passwordHash = await hashPassword(input.password);
-  return db.tx(async (tx) => {
+  const result = await db.tx(async (tx) => {
     await assertEmailFree(tx, input.email);
     const home = await addressableHome(tx, input.townshipId, input.homeId);
     const row = await one<Parameters<typeof toActor>[0]>(
@@ -66,8 +68,12 @@ export async function registerResident(db: Db, input: RegisterInput, now: Date):
     );
     await createAccount(tx, 'WALLET', { userId: row!.id });
     await audit(tx, row!.id, 'RESIDENT_REGISTERED', 'user', row!.id, { termsVersion: LEGAL.version });
+    const township = await one<{ name: string }>(tx, 'SELECT name FROM townships WHERE id = $1', [input.townshipId]);
+    await emailWelcome(tx, row!.id, { email: input.email.trim(), township: township!.name, at: now });
     return { token: await createSession(tx, row!.id, now), actor: toActor(row!) };
   });
+  sendSoon(db);
+  return result;
 }
 
 export async function login(db: Db, input: { email: string; password: string }, now: Date): Promise<{ token: string; actor: Actor }> {
@@ -95,6 +101,73 @@ export async function changePassword(db: Db, actor: Actor, input: { current: str
     await sessionsChanged(tx);
     await audit(tx, actor.id, 'PASSWORD_CHANGED', 'user', actor.id);
     return createSession(tx, actor.id, now);
+  });
+}
+
+// --- Forgotten password: a single-use link by email ---------------------------
+
+const RESET_MINUTES = 30;
+/** A second request this soon after the first sends nothing new: the first email is still on its way. */
+const RESET_RESEND_MS = 2 * 60_000;
+
+/**
+ * "Forgot your password?": emails a single-use link to the account that uses this address. The answer is the same
+ * whether or not there is such an account, so the form cannot be used to find out who has one.
+ */
+export async function requestPasswordReset(db: Db, email: string, now: Date): Promise<{ ok: true }> {
+  await db.tx(async (tx) => {
+    const user = await one<{ id: string; email: string }>(
+      tx,
+      `SELECT id, email FROM users WHERE lower(email) = lower($1) AND status = 'ACTIVE' AND password_hash IS NOT NULL FOR UPDATE`,
+      [email.trim()],
+    );
+    if (!user) return;
+    const recent = await one(tx, 'SELECT 1 FROM password_resets WHERE user_id = $1 AND used_at IS NULL AND created_at > $2', [
+      user.id,
+      new Date(now.getTime() - RESET_RESEND_MS),
+    ]);
+    if (recent) return;
+    // Only the newest link works.
+    await tx.query('DELETE FROM password_resets WHERE user_id = $1', [user.id]);
+    const token = newToken();
+    const tokenHash = hashToken(token);
+    await tx.query('INSERT INTO password_resets (token_hash, user_id, created_at, expires_at) VALUES ($1, $2, $3, $4)', [
+      tokenHash,
+      user.id,
+      now,
+      new Date(now.getTime() + RESET_MINUTES * 60_000),
+    ]);
+    await emailPasswordReset(tx, user.id, { id: tokenHash.slice(0, 32), email: user.email, token, minutes: RESET_MINUTES, at: now });
+    await audit(tx, user.id, 'PASSWORD_RESET_EMAILED', 'user', user.id);
+  });
+  sendSoon(db);
+  return { ok: true };
+}
+
+/** Sets a new password from the emailed link, signs out every device, and signs in here. */
+export async function resetPassword(db: Db, input: { token: string; password: string }, now: Date): Promise<{ token: string; actor: Actor }> {
+  const passwordHash = await hashPassword(input.password);
+  return db.tx(async (tx) => {
+    const reset = await one<{ user_id: string }>(
+      tx,
+      'SELECT user_id FROM password_resets WHERE token_hash = $1 AND used_at IS NULL AND expires_at > $2 FOR UPDATE',
+      [hashToken(input.token), now],
+    );
+    if (!reset) throw ruleViolation('RESET_LINK_INVALID', 'This link has expired or was already used. Ask for a new one from the sign-in page.');
+    const row = await one<Parameters<typeof toActor>[0]>(tx, `SELECT ${ACTOR_COLUMNS} FROM users u WHERE u.id = $1 AND u.status = 'ACTIVE'`, [reset.user_id]);
+    if (!row) throw ruleViolation('RESET_LINK_INVALID', 'This account is no longer active.');
+    await tx.query('UPDATE password_resets SET used_at = $2 WHERE token_hash = $1', [hashToken(input.token), now]);
+    await tx.query('DELETE FROM password_resets WHERE user_id = $1 AND used_at IS NULL', [row.id]);
+    await tx.query('UPDATE users SET password_hash = $2, updated_at = $3 WHERE id = $1', [row.id, passwordHash, now]);
+    await tx.query('DELETE FROM sessions WHERE user_id = $1', [row.id]); // signs out every device
+    await sessionsChanged(tx);
+    await notify(tx, [row.id], {
+      priority: 'URGENT',
+      title: 'Your password was changed',
+      body: 'If you did not do this, contact the township office straight away.',
+    });
+    await audit(tx, row.id, 'PASSWORD_RESET', 'user', row.id);
+    return { token: await createSession(tx, row.id, now, row.role === 'COURIER' ? COURIER_SESSION_HOURS : undefined), actor: toActor(row) };
   });
 }
 
