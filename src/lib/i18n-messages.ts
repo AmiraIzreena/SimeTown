@@ -2386,6 +2386,8 @@ export const malay: Record<string, string> = {
   "All reports": "Semua laporan",
   // Lapor → Reports around the township
   "Reports around the township": "Laporan di sekitar perbandaran",
+  "Check first": "Semak dahulu",
+  "See reports": "Lihat laporan",
   "Around the township": "Di sekitar perbandaran",
   "Browse by type": "Lihat mengikut jenis",
   "See the report": "Lihat laporan itu",
