@@ -59,6 +59,8 @@ const ALERT: Record<'WARNING' | 'DANGER', { title: string; action: string }> = {
   WARNING: { title: 'Flood warning', action: 'Get ready to move. Check your safe route now.' },
   DANGER: { title: 'Flood danger', action: 'Move to your meeting point now.' },
 };
+/** A warning raised on one signal, before a second check: amber, so only a confirmed alert is red. */
+const UNCONFIRMED = { title: 'Unconfirmed flood warning', action: 'Only one check so far. Be ready, and check your safe route. It turns red once a second check confirms it.' };
 /** The time now, refreshed every `ms`, so an "overdue" check stays right while the page is left open. */
 function useNow(ms: number) {
   const [now, setNow] = useState(() => Date.now());
@@ -78,8 +80,9 @@ const timeOf = (iso: string) => new Date(iso).toLocaleTimeString('en-MY', { hour
  */
 function ZoneCard({ zone, mine, warningPct, dangerPct, index }: { zone: Zone; mine: boolean; warningPct: number; dangerPct: number; index: number }) {
   const verified = useVerifiedText();
-  const alert = zone.status === 'NORMAL' ? null : ALERT[zone.status];
   const danger = zone.status === 'DANGER';
+  const unconfirmed = zone.status === 'WARNING' && zone.unconfirmed;
+  const alert = zone.status === 'NORMAL' ? null : unconfirmed ? UNCONFIRMED : ALERT[zone.status];
   // The alert holds until two separate checks agree it is safe, so the water can fall below the line first. Say so.
   const line = danger ? dangerPct : warningPct;
   const dropped = alert !== null && zone.level_pct < line;
@@ -91,7 +94,8 @@ function ZoneCard({ zone, mine, warningPct, dangerPct, index }: { zone: Zone; mi
       className={cn(
         'zone-card banjir-zone relative flex flex-col overflow-hidden rounded-3xl border bg-white shadow-sm',
         danger && 'is-danger is-alert border-accent-300',
-        zone.status === 'WARNING' && 'is-warning is-alert border-accent-200',
+        zone.status === 'WARNING' && !unconfirmed && 'is-warning is-alert border-accent-200',
+        unconfirmed && 'is-unconfirmed is-alert border-warning-600/30',
         !alert && 'is-normal border-white/80',
         mine && 'is-mine',
       )}
@@ -120,8 +124,8 @@ function ZoneCard({ zone, mine, warningPct, dangerPct, index }: { zone: Zone; mi
             {mine && <Badge tone="brand"><Text>Your zone</Text></Badge>}
           </div>
           {alert ? (
-            <span className={cn('inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold text-white', danger ? 'bg-accent-700' : 'bg-accent-600')}>
-              <TriangleAlert className="size-3.5" aria-hidden /><Text>{danger ? 'Danger' : 'Warning'}</Text>
+            <span className={cn('inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold text-white', danger ? 'bg-accent-700' : unconfirmed ? 'bg-warning-600' : 'bg-accent-600')}>
+              <TriangleAlert className="size-3.5" aria-hidden /><Text>{danger ? 'Danger' : unconfirmed ? 'Unconfirmed warning' : 'Warning'}</Text>
             </span>
           ) : <Badge tone="brand"><Text>Normal</Text></Badge>}
         </div>
@@ -131,7 +135,7 @@ function ZoneCard({ zone, mine, warningPct, dangerPct, index }: { zone: Zone; mi
           <div className="flex min-w-0 flex-1 flex-col justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-ink-500"><Text>Water level</Text></p>
-              <p className={cn('font-display text-5xl font-bold tabular-nums leading-none', danger ? 'text-accent-700' : alert ? 'text-accent-600' : 'text-brand-700')}>
+              <p className={cn('font-display text-5xl font-bold tabular-nums leading-none', danger ? 'text-accent-700' : unconfirmed ? 'text-warning-700' : alert ? 'text-accent-600' : 'text-brand-700')}>
                 <CountUp value={zone.level_pct} format={(n) => `${n}%`} />
               </p>
             </div>
@@ -149,8 +153,8 @@ function ZoneCard({ zone, mine, warningPct, dangerPct, index }: { zone: Zone; mi
         <ZoneHistory zoneId={zone.id} warningPct={warningPct} dangerPct={dangerPct} />
 
         {zone.what && (
-          <div className={cn('zone-message mt-5 rounded-2xl border-l-4 p-4 text-sm', allClear ? 'border-success-600 bg-success-50' : danger ? 'border-accent-700 bg-accent-100/70' : alert ? 'border-accent-600 bg-accent-50' : 'border-warning-600 bg-warning-50')}>
-            <p className={cn('flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide', allClear ? 'text-success-700' : alert ? 'text-accent-700' : 'text-warning-700')}>
+          <div className={cn('zone-message mt-5 rounded-2xl border-l-4 p-4 text-sm', allClear ? 'border-success-600 bg-success-50' : danger ? 'border-accent-700 bg-accent-100/70' : alert && !unconfirmed ? 'border-accent-600 bg-accent-50' : 'border-warning-600 bg-warning-50')}>
+            <p className={cn('flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide', allClear ? 'text-success-700' : alert && !unconfirmed ? 'text-accent-700' : 'text-warning-700')}>
               {allClear ? <CheckCircle2 className="size-3.5" aria-hidden /> : <Megaphone className="size-3.5" aria-hidden />}
               <Text>{allClear ? 'All clear · ' : 'Official message · '}</Text><Text>{zone.sent_at ? formatDateTime(zone.sent_at) : ''}</Text>
             </p>
@@ -240,7 +244,8 @@ export default function BanjirPage() {
                 .sort((a, b) => Number(b.id === o.myZoneId) - Number(a.id === o.myZoneId))
                 .map((zone) => {
                   const isMine = zone.id === o.myZoneId;
-                  const statusText = zone.status === 'DANGER' ? 'Flood danger in your area. Leave by the safe route.' : zone.status === 'WARNING' ? 'Flood warning in your area.' : 'Your area is safe right now.';
+                  const unconfirmed = zone.status === 'WARNING' && zone.unconfirmed;
+                  const statusText = zone.status === 'DANGER' ? 'Flood danger in your area. Leave by the safe route.' : unconfirmed ? 'Unconfirmed flood warning in your area. Be ready to move.' : zone.status === 'WARNING' ? 'Flood warning in your area.' : 'Your area is safe right now.';
                   const checkinText = o.myCheckin === 'SAFE' ? 'You checked in safe.' : o.myCheckin === 'NEED_HELP' ? 'You asked for help. The team has been told.' : 'Let the township team know how you are.';
                   const spoken = `${isMine ? t(statusText) : `${zone.name}: ${t(zone.status)}`}. ${t('Safe route')}: ${zone.safe_route}. ${t('Assembly point')}: ${zone.assembly_point}.`;
                   return (
@@ -248,9 +253,9 @@ export default function BanjirPage() {
                       <div className="flex flex-wrap items-center gap-3">
                         <h2 className="text-2xl font-bold">{zone.name}</h2>
                         {isMine && <Badge tone="brand"><Text>Your zone</Text></Badge>}
-                        <FloodBadge status={zone.status} />
+                        {unconfirmed ? <Badge tone="warning"><Text>Unconfirmed warning</Text></Badge> : <FloodBadge status={zone.status} />}
                       </div>
-                      <p className="text-xl font-semibold text-ink-900"><Text>{isMine ? statusText : zone.status === 'DANGER' ? 'Flood danger' : zone.status === 'WARNING' ? 'Flood warning' : 'Normal'}</Text></p>
+                      <p className="text-xl font-semibold text-ink-900"><Text>{isMine ? statusText : zone.status === 'DANGER' ? 'Flood danger' : unconfirmed ? 'Unconfirmed flood warning' : zone.status === 'WARNING' ? 'Flood warning' : 'Normal'}</Text></p>
                       <p className="font-display text-4xl font-bold tabular-nums text-ink-900"><CountUp value={zone.level_pct} format={(n) => `${n}%`} /></p>
                       {zone.rising_fast && <p className="text-xl font-semibold text-accent-700"><Text>The water is rising fast. Get ready to move.</Text></p>}
                       {isMine && <p className="text-base text-ink-600">{verified(zone)}</p>}

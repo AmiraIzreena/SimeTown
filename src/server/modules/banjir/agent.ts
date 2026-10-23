@@ -279,7 +279,12 @@ export async function sendLevel(
   let eventId: string | null = null;
   if (input.level !== 'NORMAL') {
     eventId = await eventForAlert(tx, zone.id, input.level, input.levelPct, now);
-    await tx.query('INSERT INTO flood_alerts (zone_id, level, started_at, next_update_at, event_id) VALUES ($1, $2, $3, $4, $5)', [zone.id, input.level, now, next, eventId]);
+    // A warning on one person's word (one signal confirmed, or a level set by hand) waits for a second check; see secondCheck.
+    const confirmed = input.level === 'DANGER' || input.decision === 'TWO_SIGNALS' || input.decision === 'ESCALATED';
+    await tx.query(
+      'INSERT INTO flood_alerts (zone_id, level, started_at, next_update_at, event_id, raised_by, confirmed_at, confirmed_how) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+      [zone.id, input.level, now, next, eventId, input.actorId, confirmed ? now : null, confirmed ? 'SIGNALS' : null],
+    );
   } else {
     await closeEvent(tx, zone.id, now);
   }
@@ -370,6 +375,14 @@ export async function evaluateZone(tx: Queryable, zoneId: string, now: Date): Pr
     if (draft) await tx.query(`UPDATE flood_messages SET status = 'CANCELLED' WHERE id = $1`, [draft.id]);
     await sendLevel(tx, zone, { level: 'NORMAL', levelPct: a.levelPct, decision: 'TWO_SIGNALS', signals, actorId: null }, now);
     return a;
+  }
+  if (zone.status === 'WARNING' && RANK[a.agreed] >= RANK.WARNING) {
+    // A second, independent signal now backs a warning raised on one: it is confirmed.
+    const confirmed = await tx.query(
+      `UPDATE flood_alerts SET confirmed_at = $2, confirmed_how = 'SIGNALS' WHERE zone_id = $1 AND ended_at IS NULL AND confirmed_at IS NULL RETURNING id`,
+      [zoneId, now],
+    );
+    if (confirmed.length) await log(tx, zoneId, now, 'SECOND_CHECK', { how: 'SIGNALS', signals });
   }
   if (a.agreed !== 'NORMAL' && RANK[a.agreed] < RANK[zone.status] && RANK[a.single] < RANK[zone.status]) {
     // Both water-level sources now agree on a lower level: step down openly.
@@ -511,6 +524,26 @@ export async function decideDraft(db: Db, actor: Actor, messageId: string, input
   });
 }
 
+/** A second staff member backs a warning raised on one signal, so residents see it as confirmed. Never the person who raised it. */
+export async function secondCheck(db: Db, actor: Actor, zoneId: string, now: Date) {
+  return db.tx(async (tx) => {
+    const zone = await lockZone(tx, zoneId);
+    assertTownshipAccess(actor, zone.township_id);
+    const alert = await one<{ id: string; level: FloodStatus; raised_by: string | null; confirmed_at: Date | null }>(
+      tx,
+      'SELECT id, level, raised_by, confirmed_at FROM flood_alerts WHERE zone_id = $1 AND ended_at IS NULL FOR UPDATE',
+      [zoneId],
+    );
+    if (!alert) throw conflict('NO_OPEN_ALERT', 'There is no flood alert open in this zone.');
+    if (alert.confirmed_at) throw conflict('ALREADY_CONFIRMED', 'This alert has already had its second check.');
+    if (alert.raised_by === actor.id) throw ruleViolation('SECOND_PERSON_NEEDED', 'You raised this warning. A different staff member must do the second check.');
+    await tx.query(`UPDATE flood_alerts SET confirmed_at = $2, confirmed_by = $3, confirmed_how = 'STAFF' WHERE id = $1`, [alert.id, now, actor.id]);
+    await log(tx, zone.id, now, 'SECOND_CHECK', { how: 'STAFF', level: alert.level }, actor.id);
+    await audit(tx, actor.id, 'FLOOD_SECOND_CHECK', 'flood_zone', zone.id, { level: alert.level });
+    return { status: 'CONFIRMED' };
+  });
+}
+
 /**
  * Deadlines and the 15-minute rhythm. Called by the `flood-agent` job and each
  * time the duty officer's screen refreshes.
@@ -595,8 +628,13 @@ export async function agentOverview(db: Db, actor: Actor, now: Date) {
   await runAgentClock(db, now, actor.townshipId);
   const s = await getSettings(db);
   const zones = await db.query<ZoneRow & { updated_at: Date }>(
-    `SELECT id, name, township_id, status, level_pct, safe_route, assembly_point, updated_at FROM flood_zones WHERE ($1::uuid IS NULL OR township_id = $1) ORDER BY name`,
-    [actor.townshipId],
+    `SELECT z.id, z.name, z.township_id, z.status, z.level_pct, z.safe_route, z.assembly_point, z.updated_at,
+            (a.id IS NOT NULL AND a.confirmed_at IS NULL) AS unconfirmed, coalesce(a.raised_by = $2, false) AS raised_by_me, r.full_name AS raised_by_name
+       FROM flood_zones z
+       LEFT JOIN flood_alerts a ON a.zone_id = z.id AND a.ended_at IS NULL
+       LEFT JOIN users r ON r.id = a.raised_by
+      WHERE ($1::uuid IS NULL OR z.township_id = $1) ORDER BY z.name`,
+    [actor.townshipId, actor.id],
   );
   const result = [];
   for (const zone of zones) {

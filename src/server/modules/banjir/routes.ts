@@ -88,6 +88,10 @@ export const banjirRoutes = [
     body: z.object({ action: z.enum(['SEND', 'CANCEL']), what: zText(300, 10).optional(), todo: zText(300, 10).optional(), reason: zText(300, 3).optional() }),
     handler: (c) => agent.decideDraft(c.db, c.actor, c.params.messageId!, c.body, c.now),
   }),
+  route({
+    method: 'POST', path: '/admin/banjir/zones/:zoneId/second-check', tag: 'Banjir', summary: 'A second staff member confirms a warning raised on one signal, so residents see it as confirmed (never the person who raised it)', auth: 'session', roles: STAFF,
+    handler: (c) => agent.secondCheck(c.db, c.actor, c.params.zoneId!, c.now),
+  }),
 
   // --- Sensors (Appendix E.3) ---------------------------------------------------------------
   route({
