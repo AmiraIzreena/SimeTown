@@ -165,7 +165,7 @@ export function OverviewTab({ showAlerts = true }: { showAlerts?: boolean }) {
                       <div className="col-span-2"><dt className="text-xs text-ink-500"><Text>Collected, 30 days</Text></dt><dd className="font-semibold text-ink-900"><span className="tabular-nums">{g.collected30d}</span>{g.averageDaysHeld != null && <span className="font-normal text-ink-600"> · <Text>{`after ${g.averageDaysHeld} days on average`}</Text></span>}</dd></div>
                     </dl>
                   </div>
-                ) : <p className="px-5 py-3 text-sm text-ink-500"><Text>No guardhouse set up yet.</Text></p>}
+                ) : <div className="p-5"><EmptyState icon={Store} title="No guardhouse set up yet"><Text>Add one under Manage › Guardhouses.</Text></EmptyState></div>}
               </Card>
             </div>
           </div>

@@ -10,6 +10,7 @@ import { Async, EmptyState, SkeletonList } from '@/components/ui/feedback';
 import { Input } from '@/components/ui/field';
 import { api } from '@/lib/api';
 import { formatDateTime } from '@/lib/format';
+import { commandPurpose } from '@/components/features/door-commands';
 import { cn } from '@/lib/cn';
 import { useAction, useApi } from '@/lib/hooks';
 import { useT } from '@/lib/i18n';
@@ -140,7 +141,7 @@ export function Simulator({ stationId }: { stationId: string }) {
                   <ul className="divide-y divide-ink-100">
                     {view.data.executed.map((k) => (
                       <li key={k.id} className="flex flex-wrap items-center justify-between gap-2 px-5 py-2.5 text-sm">
-                        <span className="text-ink-700"><Text>{`Door ${k.compartment}`}</Text> · {k.purpose} · <span className="tabular-nums text-ink-500"><Text>{formatDateTime(k.executed_at)}</Text></span></span>
+                        <span className="text-ink-700"><Text>{`Door ${k.compartment}`}</Text> · <Text>{commandPurpose(k.purpose).label}</Text> · <span className="tabular-nums text-ink-500"><Text>{formatDateTime(k.executed_at)}</Text></span></span>
                         <Button size="sm" variant="ghost" onClick={() => void send.run({ type: 'REPLAY', commandId: k.id })} disabled={send.pending}><Text>Replay</Text></Button>
                       </li>
                     ))}

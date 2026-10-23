@@ -122,7 +122,9 @@ export function SecurityTab() {
     <Card>
       <CardHeader title="Exceptional door-opening requests" description="For one stuck, misplaced or unsafe parcel. Submit the request from Parcels; a second admin approves it before the door opens." />
       <Async state={exceptions} skeleton={<div className="p-5"><SkeletonList rows={2} /></div>}>
-        {(rows) => rows.length === 0 ? <p className="p-5 text-sm text-ink-500"><Text>No exceptional door-opening requests.</Text></p> : (
+        {(rows) => rows.length === 0 ? (
+          <div className="p-5"><EmptyState icon={ShieldCheck} title="No exceptional door-opening requests"><Text>Request one from a parcel’s record in Parcels when a single parcel is stuck, misplaced or unsafe.</Text></EmptyState></div>
+        ) : (
           <ul className="divide-y divide-ink-100">{rows.map((request) => <li key={request.id} className="flex flex-wrap items-start justify-between gap-3 px-5 py-3">
             <div className="min-w-0 space-y-0.5">
               <p className="flex flex-wrap items-center gap-2 text-[15px] font-semibold text-ink-900"><Text>{EXCEPTION_LABELS[request.kind] ?? request.kind}</Text> <Badge tone={REQUEST_STATUS[request.status].tone}><Text>{REQUEST_STATUS[request.status].label}</Text></Badge></p>

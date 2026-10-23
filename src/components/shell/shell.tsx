@@ -14,6 +14,7 @@ import { useApi } from '@/lib/hooks';
 import { setLang, useLang, useT } from '@/lib/i18n';
 import { ROLE_LABELS, type Role } from '@/shared/domain';
 import { AlertTakeover } from './alert-takeover';
+import { ParcelBar } from './parcel-bar';
 import { Logo } from './logo';
 import { NAV, type Area, type NavItem } from './nav';
 import { NotificationsPreview } from './notification-preview';
@@ -257,6 +258,8 @@ function ShellFrame({ area, user, children }: { area: Area; user: ShellUser; chi
       </header>
 
       {(area === 'resident' || area === 'console' || area === 'guard') && <AlertTakeover href={area === 'resident' ? '/app/banjir' : area === 'guard' ? '/guard' : '/console/banjir'} canCheckIn={area === 'resident'} />}
+      {/* Under the flood band when there is one, in its place when there is not. */}
+      {area === 'resident' && <ParcelBar />}
 
       <main id="main" className={cn('mx-auto w-full max-w-7xl px-4 pb-28 pt-7 sm:px-6 md:pb-14 md:pt-9 lg:px-10 lg:pt-10', accessible && 'akses-view')}>
         <ProfileCompletion accountHref={`${root}/account`} />

@@ -5,6 +5,7 @@ import type { Actor } from '../../auth/actor';
 import { forbidden, notFound, ruleViolation } from '../../errors';
 import { decodeCursor, toPage } from '../../http/pagination';
 import { audit } from '../audit';
+import { COMMAND_WHO_COLUMNS, COMMAND_WHO_JOINS } from '../lockers/core';
 import { resolveTownship } from '../townships';
 import { historyIntact, type IncidentRow } from './engine';
 import { DEFAULT_INCIDENT_POLICY, getIncidentPolicy, type IncidentPolicy } from './policy';
@@ -122,7 +123,9 @@ export async function incidentDetail(db: Db, actor: Actor, idOrRef: string) {
     parcel = p ? {
       kind: 'LOCKER', ...p,
       history: await db.query(`SELECT e.to_state, e.reason, e.at, e.actor_kind, u.full_name AS actor FROM parcel_events e LEFT JOIN users u ON u.id = e.actor_id WHERE e.parcel_id = $1 ORDER BY e.id DESC LIMIT 20`, [i.parcel_id]),
-      doors: await db.query(`SELECT k.purpose, k.status, k.created_at, k.acked_at, k.error, u.full_name AS requested_by FROM locker_commands k LEFT JOIN users u ON u.id = k.requested_by WHERE k.parcel_id = $1 ORDER BY k.created_at DESC LIMIT 10`, [i.parcel_id]),
+      doors: await db.query(`SELECT k.purpose, k.status, k.created_at, k.acked_at, k.error, c.label AS compartment, ${COMMAND_WHO_COLUMNS}
+                               FROM locker_commands k JOIN locker_compartments c ON c.id = k.compartment_id ${COMMAND_WHO_JOINS}
+                              WHERE k.parcel_id = $1 ORDER BY k.created_at DESC LIMIT 10`, [i.parcel_id]),
       custody: await db.query(`SELECT t.from_kind, t.to_kind, t.note, t.at, u.full_name AS actor FROM custody_transfers t LEFT JOIN users u ON u.id = t.actor_id WHERE t.parcel_id = $1 ORDER BY t.id`, [i.parcel_id]),
     } : null;
   } else if (i.guard_parcel_id) {

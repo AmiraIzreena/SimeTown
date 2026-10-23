@@ -10,7 +10,7 @@ import { getSettings } from '../settings';
 import { HOME_ADDRESS_COLUMNS, resolveTownship } from '../townships';
 import { createUnlock, dispatch, handleDoor, replayCommand, type CompartmentRow, type StationRow } from './hardware';
 import { pickupAtStation } from './collection';
-import { unlockKeypad, userActor, type ParcelRow } from './core';
+import { COMMAND_WHO_COLUMNS, COMMAND_WHO_JOINS, unlockKeypad, userActor, type ParcelRow } from './core';
 import { parcelNotes } from './overflow';
 
 /**
@@ -105,7 +105,7 @@ export async function setCompartment(db: Db, actor: Actor, compartmentId: string
     assertTownshipAccess(actor, c.township_id);
     let next: CompartmentRow['state'] = c.state;
     if (action === 'DISABLE') {
-      if (c.parcel_id) throw conflict('COMPARTMENT_IN_USE', 'A parcel is in this door. The household collects it first, or ask for staff access under Emergency door access.');
+      if (c.parcel_id) throw conflict('COMPARTMENT_IN_USE', 'A parcel is in this door. The household collects it first, or ask for staff access under Door access.');
       next = 'DISABLED';
     } else if (action === 'ENABLE') {
       if (c.state !== 'DISABLED') throw conflict('COMPARTMENT_STATE', 'This compartment is not disabled.');
@@ -129,7 +129,7 @@ export async function maintenanceUnlock(db: Db, actor: Actor, compartmentId: str
     const c = await one<CompartmentRow & { township_id: string }>(tx, 'SELECT c.*, s.township_id FROM locker_compartments c JOIN locker_stations s ON s.id = c.station_id WHERE c.id = $1 FOR UPDATE OF c', [compartmentId]);
     if (!c) throw notFound('Compartment');
     assertTownshipAccess(actor, c.township_id);
-    if (c.parcel_id) throw conflict('COMPARTMENT_IN_USE', 'A parcel is in this door. Ask for staff access under Emergency door access instead.');
+    if (c.parcel_id) throw conflict('COMPARTMENT_IN_USE', 'A parcel is in this door. Ask for staff access under Door access instead.');
     const command = await createUnlock(tx, { stationId: c.station_id, compartmentId: c.id, parcelId: null, purpose: 'MAINTENANCE', requestedBy: actor.id, idempotencyKey }, now);
     await audit(tx, actor.id, 'MAINTENANCE_UNLOCK', 'locker_compartment', c.id, { reason });
     return command.id;
@@ -374,20 +374,42 @@ export async function lockerParcelDetail(db: Db, actor: Actor, parcelId: string)
   const [events, custody, commands] = await Promise.all([
     db.query(`SELECT e.from_state, e.to_state, e.actor_kind, e.reason, e.at, u.full_name AS actor FROM parcel_events e LEFT JOIN users u ON u.id = e.actor_id WHERE e.parcel_id = $1 ORDER BY e.id`, [parcelId]),
     db.query(`SELECT t.from_kind, t.from_ref, t.to_kind, t.to_ref, t.note, t.at, u.full_name AS actor FROM custody_transfers t LEFT JOIN users u ON u.id = t.actor_id WHERE t.parcel_id = $1 ORDER BY t.id`, [parcelId]),
-    db.query(`SELECT k.purpose, k.status, k.error, k.created_at, k.acked_at, c.label AS compartment FROM locker_commands k JOIN locker_compartments c ON c.id = k.compartment_id WHERE k.parcel_id = $1 ORDER BY k.created_at`, [parcelId]),
+    db.query(`SELECT k.purpose, k.status, k.error, k.created_at, k.acked_at, c.label AS compartment, ${COMMAND_WHO_COLUMNS}
+                FROM locker_commands k JOIN locker_compartments c ON c.id = k.compartment_id ${COMMAND_WHO_JOINS}
+               WHERE k.parcel_id = $1 ORDER BY k.created_at`, [parcelId]),
   ]);
   return { parcel: p, events, custody, commands, notes: await parcelNotes(db, actor, parcelId) };
 }
 
+/**
+ * A station's last 50 door commands, each with who asked (and as what: a courier and their company, a resident,
+ * staff), the parcel and its home; and its last 50 messages, with the door they were about. Pickup codes in a
+ * message are never returned.
+ */
 export async function stationCommands(db: Db, actor: Actor, stationId: string) {
   await loadStation(db, actor, stationId);
   const [commands, events] = await Promise.all([
-    db.query(`SELECT k.id, k.purpose, k.status, k.error, k.created_at, k.acked_at, c.label AS compartment, u.full_name AS requested_by
-                FROM locker_commands k JOIN locker_compartments c ON c.id = k.compartment_id LEFT JOIN users u ON u.id = k.requested_by
-               WHERE k.station_id = $1 ORDER BY k.created_at DESC LIMIT 50`, [stationId]),
-    db.query(`SELECT type, source, payload, received_at FROM locker_device_events WHERE station_id = $1 ORDER BY id DESC LIMIT 50`, [stationId]),
+    db.query<HomeAddress & { id: string; purpose: string; status: string; error: string | null; created_at: Date; acked_at: Date | null; compartment: string; requested_by: string | null; requester_role: string | null; requester_company: string | null; tracking_no: string | null; home_id: string | null }>(
+      `SELECT k.id, k.purpose, k.status, k.error, k.created_at, k.acked_at, c.label AS compartment,
+              ${COMMAND_WHO_COLUMNS}, p.tracking_no, p.home_id, ${HOME_ADDRESS_COLUMNS}
+         FROM locker_commands k JOIN locker_compartments c ON c.id = k.compartment_id ${COMMAND_WHO_JOINS}
+         LEFT JOIN locker_parcels p ON p.id = k.parcel_id LEFT JOIN homes h ON h.id = p.home_id
+        WHERE k.station_id = $1 ORDER BY k.created_at DESC LIMIT 50`, [stationId]),
+    db.query<{ type: string; source: string; received_at: Date; compartment: string | null; door: string | null; item_present: boolean | null; status: string | null }>(
+      `SELECT e.type, e.source, e.received_at, c.label AS compartment, e.payload->>'door' AS door,
+              (e.payload->>'itemPresent')::boolean AS item_present, e.payload->>'status' AS status
+         FROM locker_device_events e
+         LEFT JOIN locker_compartments c ON c.station_id = e.station_id AND c.id::text = e.payload->>'compartmentId'
+        WHERE e.station_id = $1 ORDER BY e.received_at DESC, e.id DESC LIMIT 50`, [stationId]),
   ]);
-  return { commands, events };
+  return {
+    commands: commands.map((k) => ({
+      id: k.id, purpose: k.purpose, status: k.status, error: k.error, created_at: k.created_at, acked_at: k.acked_at, compartment: k.compartment,
+      requested_by: k.requested_by, requester_role: k.requester_role, requester_company: k.requester_company,
+      tracking_no: k.tracking_no, house: k.home_id ? shortAddress(k) : null,
+    })),
+    events,
+  };
 }
 
 // --- The simulator ----------------------------------------------------------------------------

@@ -15,6 +15,7 @@ import { FilterBar, FilterChips, FilterMenu, FilterSummary, SearchField } from '
 import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { formatDateTime, timeAgo } from '@/lib/format';
+import { DoorCommandList, type DoorCommand } from '@/components/features/door-commands';
 import { useAction, useApi } from '@/lib/hooks';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 import { REPORT_CATEGORY_LABELS, type ReportCategory } from '@/shared/domain';
@@ -477,7 +478,7 @@ function RelatedParcel({ parcel: p }: { parcel: Record<string, unknown> & { kind
     );
   }
   const history = (p.history as { to_state: string; reason: string; at: string; actor: string | null; actor_kind: string }[]) ?? [];
-  const doors = (p.doors as { purpose: string; status: string; created_at: string; requested_by: string | null; error: string | null }[]) ?? [];
+  const doors = (p.doors as DoorCommand[]) ?? [];
   return (
     <div className="space-y-2 rounded-lg border border-ink-200 p-4 text-sm text-ink-700">
       <p className="font-semibold text-ink-900"><Text>The locker parcel</Text></p>
@@ -492,7 +493,7 @@ function RelatedParcel({ parcel: p }: { parcel: Record<string, unknown> & { kind
       {doors.length > 0 && (
         <details className="border-t border-ink-100 pt-3">
           <summary className="cursor-pointer font-semibold text-ink-700"><Text>Door commands</Text> ({doors.length})</summary>
-          <ul className="mt-3 space-y-3 break-words leading-relaxed">{doors.map((k, n) => <li key={n}><Text>{formatDateTime(k.created_at)}</Text> · {k.purpose} · <strong>{k.status}</strong>{k.requested_by ? ` · ${k.requested_by}` : <> · <Text>keypad or system</Text></>}{k.error && <> · <Text>{k.error}</Text></>}</li>)}</ul>
+          <div className="mt-3"><DoorCommandList commands={doors} /></div>
         </details>
       )}
       {history.length > 0 && (

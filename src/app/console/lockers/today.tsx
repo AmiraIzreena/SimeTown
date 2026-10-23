@@ -6,7 +6,7 @@ import { type CSSProperties } from 'react';
 import { Text } from '@/components/ui/localized-text';
 import { Card, CardHeader } from '@/components/ui/card';
 import { CountUp } from '@/components/ui/count-up';
-import { Async, SkeletonList, SkeletonStats } from '@/components/ui/feedback';
+import { Async, EmptyState, SkeletonList, SkeletonStats } from '@/components/ui/feedback';
 import { cn } from '@/lib/cn';
 import { timeAgo } from '@/lib/format';
 import { useApi } from '@/lib/hooks';
@@ -99,7 +99,7 @@ export function TodayTab({ onGuardhouse, onParcels, onStations, onPerformance, c
             <CardHeader title="Locker network" description="Every locker bank and the guardhouse, as of now." />
             <Async state={overview} skeleton={<SkeletonList rows={3} className="p-5" />}>
               {(data) => data.stations.length === 0 ? (
-                <p className="p-5 text-sm text-ink-500 sm:px-6"><Text>No locker stations yet</Text></p>
+                <div className="p-5"><EmptyState icon={Archive} title="No locker stations yet"><Text>Add one under Manage › Stations.</Text></EmptyState></div>
               ) : <>
                 <ul className="ops-queue divide-y divide-ink-100/80">
                   {data.stations.map((s, i) => {

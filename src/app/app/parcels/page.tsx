@@ -10,6 +10,8 @@ import { LockerParcels, MyLateCollections } from '@/components/features/locker-p
 import { ParcelAbout } from '@/components/features/parcel-about';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, PageHeader } from '@/components/ui/card';
+import { ResidentParcelWalkthrough } from '@/components/features/parcel-walkthroughs';
+import { OPEN_GUARDHOUSE_EVENT, PARCEL_TAB_EVENT } from '@/components/shell/parcel-bar';
 import { ReportProblemDialog } from '@/components/features/report-problem';
 import { Async, EmptyState, Skeleton, SkeletonCard, SkeletonList } from '@/components/ui/feedback';
 import { QrCode } from '@/components/ui/qr';
@@ -169,6 +171,20 @@ function ParcelsScreen() {
   const tab: Tab = chosen ?? (requestedTab === 'guardhouse' || requestedTab === 'lockers' || requestedTab === 'about' ? requestedTab : inLockers === 0 && atGuardhouse > 0 ? 'guardhouse' : 'lockers');
   // The reports link and the guide follow the place last shown; About has no parcels of its own.
   const place: Place = tab === 'about' ? 'lockers' : tab;
+  // The parcel bar above the page: it steps aside on the Guardhouse tab, and opens it from any other tab.
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent(PARCEL_TAB_EVENT, { detail: tab }));
+  }, [tab]);
+  useEffect(() => () => { window.dispatchEvent(new CustomEvent(PARCEL_TAB_EVENT, { detail: null })); }, []);
+  useEffect(() => {
+    const open = () => {
+      setChosen('guardhouse');
+      const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      requestAnimationFrame(() => document.getElementById('parcel-tabs')?.scrollIntoView({ block: 'start', behavior: smooth ? 'smooth' : 'auto' }));
+    };
+    window.addEventListener(OPEN_GUARDHOUSE_EVENT, open);
+    return () => window.removeEventListener(OPEN_GUARDHOUSE_EVENT, open);
+  }, []);
   useEffect(() => {
     if (parcelId && tab === 'guardhouse' && parcels.data && scrolledTo.current !== parcelId) {
       const target = document.getElementById(`parcel-${parcelId}`);
@@ -199,13 +215,15 @@ function ParcelsScreen() {
       <PageHeader
         title="Parcels"
         description="Parcels for your home: in your own smart locker door, or kept at the guardhouse. Each has a one-time code that works only for that parcel. Someone collecting for you? Share the code with them."
-        action={
+        action={<>
+          <ResidentParcelWalkthrough />
           <div className="flex flex-wrap gap-2 lg:hidden">
             <Button size="sm" variant="secondary" onClick={() => setMissing(true)}><PackageOpen className="size-4" aria-hidden /><Text>A parcel hasn’t arrived?</Text></Button>
             <Button size="sm" variant="ghost" href={reportsHref(place)}><Flag className="size-4" aria-hidden /><Text>My reports</Text></Button>
           </div>
-        }
+        </>}
       />
+      <div id="parcel-tabs" className="scroll-mt-24">
       <Tabs<Tab>
         label="Where the parcel is"
         value={tab}
@@ -216,6 +234,7 @@ function ParcelsScreen() {
           { key: 'about', label: 'About' },
         ]}
       />
+      </div>
       <div className={cn('grid items-start gap-6', tab !== 'about' && 'lg:grid-cols-[minmax(0,1fr)_19rem] xl:grid-cols-[minmax(0,1fr)_21rem]')}>
       <div className="min-w-0">
       <TabPanel>

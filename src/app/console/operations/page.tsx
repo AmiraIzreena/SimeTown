@@ -3,6 +3,7 @@
 import { Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { PageHeader } from '@/components/ui/card';
+import { ConsoleParcelWalkthrough } from '@/components/features/parcel-walkthroughs';
 import { Text } from '@/components/ui/localized-text';
 import { SubNav } from '@/components/ui/sub-nav';
 import { Tabs, TabPanel } from '@/components/ui/tabs';
@@ -76,7 +77,7 @@ function Operations() {
   };
   if (toCases) return <Loading />;
   return <div className="parcel-workspace">
-    <PageHeader title="Parcels" description="Smart lockers and the guardhouse: today’s work, every parcel held at the guardhouse, and locker performance. Parcel cases are in Lapor." />
+    <PageHeader action={<ConsoleParcelWalkthrough />} title="Parcels" description="Smart lockers and the guardhouse: today’s work, every parcel held at the guardhouse, and locker performance. Parcel cases are in Lapor." />
     <Tabs<Tab> label="Parcels" value={tab} onChange={(next) => navigate(next)} items={[...TABS]} />
     <TabPanel>
       <div className="parcel-view" key={`${tab}:${tab === 'lockers' ? locker : tab === 'manage' ? manage : ''}`}>

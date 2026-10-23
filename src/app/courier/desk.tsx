@@ -10,6 +10,7 @@ import { CameraScan } from '@/components/features/camera-scan';
 import { ReportProblemDialog } from '@/components/features/report-problem';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, PageHeader } from '@/components/ui/card';
+import { CourierParcelWalkthrough } from '@/components/features/parcel-walkthroughs';
 import { Async, EmptyState, SkeletonList } from '@/components/ui/feedback';
 import { Input, Textarea } from '@/components/ui/field';
 import { api } from '@/lib/api';
@@ -82,7 +83,7 @@ export function CourierDesk({ initialStation }: { initialStation: string }) {
 
   return (
     <>
-      <PageHeader title="Deliver to a locker" description="Choose the station and scan the parcel’s label. Your courier company and SimeTown check the shipment and the household, then the locker opens the right door. The delivery counts only once the door is shut with the parcel inside." />
+      <PageHeader action={<CourierParcelWalkthrough />} title="Deliver to a locker" description="Choose the station and scan the parcel’s label. Your courier company and SimeTown check the shipment and the household, then the locker opens the right door. The delivery counts only once the door is shut with the parcel inside." />
       <Async state={home} skeleton={<SkeletonList rows={2} />}>
         {(h) =>
           h.account.kind === 'MANAGER' ? (

@@ -10,6 +10,7 @@ import { CounterDropOffs } from '@/components/features/counter-parcels';
 import { GuardhouseHandover, GuardhouseOverview, GuardhouseRegister, refreshGuardhouse } from '@/components/features/guardhouse-register';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, PageHeader } from '@/components/ui/card';
+import { GuardParcelWalkthrough } from '@/components/features/parcel-walkthroughs';
 import { Input, Select } from '@/components/ui/field';
 import { api } from '@/lib/api';
 import { useAction, useApi } from '@/lib/hooks';
@@ -56,7 +57,7 @@ export function ParcelDesk() {
 
   return (
     <>
-      <PageHeader title="Parcels" description="Everything held at the guardhouse. Log parcels left with you, receive smart locker parcels from couriers, and hand a parcel over only against its code." />
+      <PageHeader action={<GuardParcelWalkthrough />} title="Parcels" description="Everything held at the guardhouse. Log parcels left with you, receive smart locker parcels from couriers, and hand a parcel over only against its code." />
       <div className="space-y-6">
         <GuardhouseOverview />
         <CounterDropOffs />

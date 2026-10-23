@@ -15,7 +15,7 @@ const walk = (dir: string, ext: RegExp): string[] =>
   fs.readdirSync(dir, { withFileTypes: true }).flatMap((d) => (d.isDirectory() ? walk(path.join(dir, d.name), ext) : ext.test(d.name) ? [path.join(dir, d.name)] : []));
 
 // Components that pass their children (strings) through <Text>.
-const TRANSLATING_PARENTS = new Set(['Text', 'Button', 'Badge', 'EmptyState', 'Select', 'ConfirmDialog', 'Modal', 'Drawer', 'Toast', 'Stat', 'CardHeader', 'PageHeader', 'Async', 'PreviewBadge', 'SimulatedNote', 'Tab', 'TabPanel', 'Label']);
+const TRANSLATING_PARENTS = new Set(['Text', 'Button', 'Badge', 'EmptyState', 'Select', 'ConfirmDialog', 'Modal', 'Drawer', 'Toast', 'Stat', 'CardHeader', 'PageHeader', 'Async', 'PreviewBadge', 'SimulatedNote', 'Tab', 'TabPanel', 'Label', 'ScreenTitle', 'ScreenButton']);
 // Props that shared components translate.
 const TRANSLATED_PROPS = new Set(['label', 'hint', 'error', 'title', 'description', 'placeholder', 'aria-label', 'aria-description', 'alt', 'confirmLabel', 'success', 'gloss', 'text', 'subtitle', 'action', 'data-label']);
 // On plain HTML tags these attributes are shown, but only Localized* elements translate them.
@@ -60,6 +60,8 @@ export const ALLOWED = new Set([
   'XP', 'Demo', 'Solar Cerah', 'Basikal Bersama', 'Kopi Hijau', 'Kitar Plus Recyclers', 'Tuai Segar Market', 'Nurseri Rimbun', 'Aktif Elmina Fitness', 'Roti Desa Bakery', 'Farmasi Elmina Sihat', 'Dobi Bersih Laundry', 'Kedai Bunga Melati', 'Perkakasan Jaya', 'Bengkel Basikal Roda', '(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw', '(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw', 'Puan Rahmah', '(min-width: 1024px) 58vw, 100vw', '(min-width: 1280px) 1200px, 100vw', '(min-width: 1024px) 50vw, 100vw', '(min-width: 640px) 33vw, 50vw', 'Poster', 'Shopee Express', 'Pos Laju', 'Ninja Van', '{0} min', 'Simulator', 'Simulator: {0}', 'Plot {0}', 'AI · {0}', '{0} kWh', ', minimum {0}',
   // Elmina place names and kiosk names (Kitar Map tab), the same in Malay.
   'Elmina Gardens', 'Elmina Valley', 'Elmina Valley 1', 'Elmina Valley 2', 'Elmina Green', 'Elmina West', 'Kiosk Elmina Gardens', 'Kiosk Elmina Valley',
+  // Demo locker banks, courier and addresses in the walkthroughs, the same in Malay.
+  'Elmina Valley Locker A', 'Elmina Gardens Locker B', 'Elmina West Locker C', 'J&T Express', 'No. 3, Jalan Frekuensi', 'No. 5, Jalan Metafasa', 'J&T Express · JT208F96D0E7', 'Main guardhouse', 'SHOW0003 · No. 5, Jalan Metafasa',
   // Already Malay, on purpose: the place name, a Malay suggestion and the Malay voice sample.
   'Tasik', 'Bila kutipan sampah?', 'Ini contoh suara SimeTown.',
   // The language switch always names the other language in that language.

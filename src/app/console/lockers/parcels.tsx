@@ -14,6 +14,7 @@ import { Input, Select, Textarea } from '@/components/ui/field';
 import { FilterBar, FilterChips, FilterSummary, SearchField } from '@/components/ui/filter-bar';
 import { api } from '@/lib/api';
 import { formatDateTime } from '@/lib/format';
+import { DoorCommandList, type DoorCommand } from '@/components/features/door-commands';
 import { useAction, useApi } from '@/lib/hooks';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 import { DELIVERY_PROBLEM_LABELS, PARCEL_STATE_LABELS, type DeliveryProblem, type ParcelState } from '@/shared/lockers';
@@ -35,7 +36,7 @@ interface Detail {
   parcel: Row & { exception_note: string | null; overflow_location_id: string | null; delivery_problem: DeliveryProblem | null; delivery_problem_note: string | null; ready_at: string | null; overdue_at: string | null; call_requested_at: string | null };
   events: { from_state: string | null; to_state: ParcelState; actor_kind: string; reason: string; at: string; actor: string | null }[];
   custody: { from_kind: string; from_ref: string | null; to_kind: string; to_ref: string | null; note: string | null; at: string; actor: string | null }[];
-  commands: { purpose: string; status: string; error: string | null; created_at: string; acked_at: string | null; compartment: string }[];
+  commands: (DoorCommand & { acked_at: string | null })[];
   notes: { id: string; body: string; created_at: string; author: string | null }[];
 }
 
@@ -203,11 +204,7 @@ function ParcelDetail({ id, onClose, onChanged }: { id: string | null; onClose: 
           {detail.data.commands.length > 0 && (
             <section>
               <h3 className="mb-2 text-sm font-semibold text-ink-900"><Text>Door commands</Text></h3>
-              <ul className="space-y-1 text-sm text-ink-700">
-                {detail.data.commands.map((c, i) => (
-                  <li key={i}><span className="tabular-nums text-ink-500"><Text>{formatDateTime(c.created_at)}</Text></span> · {c.compartment} · {c.purpose} · <strong>{c.status}</strong>{c.error && <> · <Text>{c.error}</Text></>}</li>
-                ))}
-              </ul>
+              <DoorCommandList commands={detail.data.commands} />
             </section>
           )}
           <div className="flex flex-wrap gap-2 border-t border-ink-100 pt-4">

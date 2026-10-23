@@ -168,14 +168,12 @@ function LockerParcelList({ view }: { view: 'doors' | 'guardhouse' }) {
   }
   const completed = data.parcels.filter((p) => ['COLLECTED', 'RETURNED'].includes(p.state));
   const done = completed.filter((p, index) => index < 5 || p.id === parcelId);
-  const atTheGuardhouse = data.parcels.filter((p) => atGuardhouse(p)).length;
   return (
     <LocalizedDiv className="space-y-4" aria-label="Parcel lockers">
       <DoorCard door={data.door} />
       {live.length === 0 && completed.length === 0 ? (
         <EmptyState icon={Package} title="Nothing in your locker"><Text>When a courier puts a parcel in your home’s locker door, you are told at once and the code appears here.</Text></EmptyState>
       ) : live.length === 0 && <p className="text-[15px] text-ink-600"><Text>Nothing in your locker right now.</Text></p>}
-      {atTheGuardhouse > 0 && <p className="flex items-center gap-2 rounded-lg bg-gold-50 p-3 text-sm text-gold-700"><Store className="size-4 shrink-0" aria-hidden /><Text>{atTheGuardhouse === 1 ? 'You also have a parcel at the guardhouse. See the Guardhouse tab.' : `You also have ${atTheGuardhouse} parcels at the guardhouse. See the Guardhouse tab.`}</Text></p>}
       {/* One column beside the How to collect guide; two only on very wide screens. */}
       <div className="stagger-in grid gap-4 2xl:grid-cols-2">
         {live.map((p) => <div key={p.id} id={`parcel-${p.id}`} className={`scroll-mt-20 rounded-xl ${parcelId === p.id ? 'ring-2 ring-brand-400' : ''}`}><LockerCard parcel={p} policy={data.policy} atStation={station} onChange={() => void mine.mutate()} /></div>)}

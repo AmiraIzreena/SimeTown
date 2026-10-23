@@ -16,6 +16,13 @@ export interface LockerActor {
   id: string | null;
   kind: ActorKind;
 }
+/**
+ * Who asked for a door command, for every screen that lists commands: their name, role and, for a courier, their
+ * company. Use with `locker_commands k`; it adds the aliases u, ca and cc.
+ */
+export const COMMAND_WHO_COLUMNS = 'u.full_name AS requested_by, u.role AS requester_role, cc.name AS requester_company';
+export const COMMAND_WHO_JOINS = 'LEFT JOIN users u ON u.id = k.requested_by LEFT JOIN courier_accounts ca ON ca.user_id = u.id LEFT JOIN courier_companies cc ON cc.id = ca.company_id';
+
 export const SYSTEM: LockerActor = { id: null, kind: 'SYSTEM' };
 export const DEVICE: LockerActor = { id: null, kind: 'DEVICE' };
 export const userActor = (id: string): LockerActor => ({ id, kind: 'USER' });

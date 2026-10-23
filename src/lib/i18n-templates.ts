@@ -5,6 +5,7 @@ import { aksesTemplates } from './i18n-akses';
 import { shopsTemplates } from './i18n-shops';
 import { collectionsTemplates } from './i18n-collections';
 import { lockersTemplates } from './i18n-lockers';
+import { walkthroughsTemplates } from './i18n-walkthroughs';
 import { campaignsTemplates } from './i18n-campaigns';
 
 /** Templates for application-generated messages; interpolated personal values stay unchanged. */
@@ -1358,5 +1359,6 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
   ...shopsTemplates,
   ...collectionsTemplates,
   ...lockersTemplates,
+  ...walkthroughsTemplates,
   ...campaignsTemplates,
 ];

@@ -859,6 +859,20 @@ html[data-signed-in] .field:focus-within > label { color: var(--color-brand-700)
 }
 @media print { .flood-banner { display: none; } }
 
+/*
+ * --- Parcel bar (components/shell/parcel-bar.tsx) ------------------------------------------------
+ * SimeTown gold, so it stands out from the cream page and is never mistaken for the red flood band; deep
+ * brown text (well over 7:1). It slides in once; a soft sheen crosses it once to catch the eye.
+ */
+.parcel-bar { background-color: var(--color-gold-300); background-image: linear-gradient(100deg, #f6dc8f 0%, var(--color-gold-300) 55%, #e4b84a 100%); border-bottom: 1px solid rgb(198 138 18 / 0.45); }
+.parcel-bar::after { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(100deg, transparent 30%, rgb(255 255 255 / 0.45) 50%, transparent 70%); transform: translateX(-100%); content: ""; }
+@media (prefers-reduced-motion: no-preference) {
+  .parcel-bar { animation: parcel-bar-in 420ms var(--ease-soft) both; }
+  .parcel-bar::after { animation: parcel-bar-sheen 1.6s var(--ease-soft) 600ms 1 both; }
+}
+@keyframes parcel-bar-in { from { opacity: 0; transform: translateY(-8px); } }
+@keyframes parcel-bar-sheen { to { transform: translateX(100%); } }
+
 /* --- Home service category page: photo hero, company cards, back link ------------------------- */
 .service-hero-img, .company-card-img { transition: transform 900ms var(--ease-soft); }
 .company-card { transition: transform 240ms var(--ease-soft), box-shadow 240ms var(--ease-soft), border-color 240ms var(--ease-soft); }
@@ -1774,6 +1788,32 @@ html[data-signed-in] { scroll-behavior: smooth; scroll-padding-top: 5.5rem; scro
   20% { opacity: 1; }
   80% { opacity: 1; }
   to { left: calc(100% - 0.5rem); opacity: 0; }
+}
+
+/* ---------- Feature walkthroughs (components/features/walkthrough.tsx) ---------- */
+/* A locker door swinging open on its hinge, once, after the screen settles. */
+.walk-door {
+  transform-origin: left center;
+  animation: walk-door 900ms var(--ease-soft) 700ms both;
+}
+@keyframes walk-door {
+  from { transform: perspective(300px) rotateY(0deg); }
+  to { transform: perspective(300px) rotateY(-62deg); }
+}
+/* The door, parcel or row that matters, gently drawing the eye. */
+.walk-glow {
+  animation: walk-glow 2.4s var(--ease-soft) 900ms 3;
+}
+@keyframes walk-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(236 203 106 / 0); }
+  50% { box-shadow: 0 0 0 5px rgb(236 203 106 / 0.35); }
+}
+/* A parcel sliding into its place. */
+.walk-drop {
+  animation: walk-drop 700ms var(--ease-soft) 500ms both;
+}
+@keyframes walk-drop {
+  from { opacity: 0; transform: translateY(-14px) scale(0.9); }
 }
 
 /* ---------- Sponsorship, Shops and Challenges ---------- */
