@@ -128,13 +128,14 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 
 | Method | Path | Who | What it does |
 | --- | --- | --- | --- |
-| POST | `/reports` | RESIDENT | Report a hazard or access barrier (multipart form; optional photo). Without "issue", a likely matching issue is returned first ({ needsChoice, issue, alreadyYours }) and nothing is saved |
+| POST | `/reports` | RESIDENT | Report a hazard or access barrier (multipart form; a photo is required: JPEG, PNG or WebP, up to 1.5 MB, at least 400 px). Without "issue", a likely matching issue is returned first ({ needsChoice, issue, alreadyYours }) and nothing is saved |
 | GET | `/reports` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | My reports and the ones I follow (resident) or the township queue (staff) |
 | GET | `/report-issues` | RESIDENT | Public issues in my township (enough residents affected): written title, type, area, status and dates only, with the township's figures |
 | GET | `/report-issues/similar` | RESIDENT | Public open issues that look like the report being written, to tap "Me too" instead |
 | GET | `/report-issues/attention` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Open issues that reached the public threshold or are urgent, with their reports (Needs attention) |
+| GET | `/report-issues/:issueId/photo` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | The photo neighbours see on a public issue (one report's photo, unless staff hid it); staff see any issue's |
 | POST | `/report-issues/:issueId/me-too` | RESIDENT | Say "Me too" on an issue (follow it and count as affected; no XP) |
-| PATCH | `/report-issues/:issueId` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Staff update every open report in an issue at once, or correct its public title (logged) |
+| PATCH | `/report-issues/:issueId` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Staff update every open report in an issue at once, correct its public title, or choose or hide its public photo (logged) |
 | GET | `/reports/similar` | RESIDENT | Open reports that look like the one about to be sent, to tap "Me too" instead |
 | GET | `/reports/stats` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Open, late, duplicates avoided and time to fix (the one-channel test) |
 | GET | `/reports/:reportId` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | One report |
@@ -409,8 +410,8 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | GET | `/kitar/collections` | RESIDENT | My home's booked collections |
 | POST | `/kitar/collections` | RESIDENT | Book a collection of bulky or special items; confirmed at once, with the gate pass |
 | POST | `/kitar/collections/:collectionId/cancel` | RESIDENT | Cancel a booked collection |
-| POST | `/kitar/collections/:collectionId/weight` | RESIDENT | Send what the collector took: credited at once after a gate scan, within the automatic limit; otherwise checked by staff |
-| POST | `/kitar/collections/:collectionId/came` | RESIDENT | Say the collector came on a collection marked missed (staff check it) |
+| POST | `/kitar/collections/:collectionId/weight` | RESIDENT | Send what the collector took. The gate record decides it: the collector scanned in that day credits it (counted up to a maximum per material); no record closes it with no reward. On the day itself it waits for the nightly check |
+| POST | `/kitar/collections/:collectionId/came` | RESIDENT | Say the collector came on a collection marked missed, with the weight they took. The gate record decides it at once |
 | POST | `/kitar/collections/:collectionId/demo/today` | RESIDENT | Local demos only (pglite in development): move my confirmed collection and its gate pass to today |
 | POST | `/kitar/collections/:collectionId/demo/gate-scan` | RESIDENT | Local demos only (pglite in development): the real gate scan of my collection's pass, made with the township's guard account |
 | GET | `/admin/kitar/collectors` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Partner collectors with what they have collected |
@@ -418,6 +419,7 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | POST | `/admin/kitar/collectors/:collectorId/active` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Pause or resume a collector |
 | GET | `/admin/kitar/collectors/:collectorId/today` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | A collector's collections today, to copy or print for them |
 | GET | `/admin/kitar/collections` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Recent collections, newest first, and how each was settled |
+| GET | `/admin/kitar/collections/history` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Collection history: what each household logged, what was counted, the gate record and who settled it. Search, filters and paging |
 | GET | `/admin/kitar/collections/exceptions` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Only what needs a person: weights and disputes to check, homes and collectors to look at |
 | POST | `/admin/kitar/collections/:collectionId/review` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Settle a collection waiting for review: accept a weight, or close it with no points |
 | POST | `/admin/kitar/collections/:collectionId/confirm` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Confirm a request made before bookings were confirmed at once; the collector gets a gate pass for the day |

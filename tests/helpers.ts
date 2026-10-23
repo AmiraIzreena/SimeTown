@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { Role } from '@/shared/domain';
+import type { Photo } from '@/server/ai/classifier';
 import type { Actor } from '@/server/auth/actor';
 import { ACTOR_COLUMNS, toActor } from '@/server/auth/session';
 import { createDb, one, type Db } from '@/server/db/client';
@@ -167,4 +168,14 @@ export async function expectFloatBalanced(db: Db): Promise<void> {
     throw new Error(`Float out of balance: ${JSON.stringify(p)}`);
   }
   if (p.lotsSen !== p.walletsSen) throw new Error(`Lots do not match wallets: ${JSON.stringify(p)}`);
+}
+
+/** A report photo as the server stores it (Lapor needs one on every new report). */
+export const REPORT_PHOTO: Photo = { mime: 'image/jpeg', bytes: Uint8Array.from([0xff, 0xd8, 0xff, 0xe0, 0, 0x10]) };
+
+/** A real JPEG for upload tests, big enough for a report photo (at least 400 px on its longer side). */
+export async function reportPhotoFile(width = 640, height = 480): Promise<File> {
+  const { default: sharp } = await import('sharp');
+  const bytes = await sharp({ create: { width, height, channels: 3, background: { r: 120, g: 120, b: 110 } } }).jpeg().toBuffer();
+  return new File([new Uint8Array(bytes)], 'photo.jpg', { type: 'image/jpeg' });
 }

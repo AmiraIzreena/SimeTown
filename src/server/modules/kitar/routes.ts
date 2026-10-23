@@ -5,6 +5,7 @@ import { identifyMaterial } from '../../ai/classifier';
 import { requireVerifiedResident } from '../../auth/actor';
 import { badRequest } from '../../errors';
 import { emptyBody, route, zId, zText } from '../../http/router';
+import { pageQuery } from '../../http/pagination';
 import { readForm, readPhoto } from '../../http/uploads';
 import { zScanCode } from '../gerak/routes';
 import * as collectionDemo from './collection-demo';
@@ -138,15 +139,16 @@ export const kitarRoutes = [
     handler: (c) => collections.cancelCollection(c.db, c.actor, c.params.collectionId!, c.now),
   }),
   route({
-    method: 'POST', path: '/kitar/collections/:collectionId/weight', tag: 'Kitar', summary: 'Send what the collector took: credited at once after a gate scan, within the automatic limit; otherwise checked by staff', auth: 'session', roles: ['RESIDENT'],
+    method: 'POST', path: '/kitar/collections/:collectionId/weight', tag: 'Kitar', summary: 'Send what the collector took. The gate record decides it: the collector scanned in that day credits it (counted up to a maximum per material); no record closes it with no reward. On the day itself it waits for the nightly check', auth: 'session', roles: ['RESIDENT'],
     rateLimit: { limit: 20, windowSec: 3600, by: 'user' },
     body: z.object({ weightG: z.number().int().min(1, 'Enter a weight more than 0 kg.').max(500_000, 'Enter a weight up to 500 kg.') }),
     handler: (c) => collections.reportCollectionWeight(c.db, c.actor, c.params.collectionId!, c.body.weightG, c.now),
   }),
   route({
-    method: 'POST', path: '/kitar/collections/:collectionId/came', tag: 'Kitar', summary: 'Say the collector came on a collection marked missed (staff check it)', auth: 'session', roles: ['RESIDENT'], body: emptyBody,
+    method: 'POST', path: '/kitar/collections/:collectionId/came', tag: 'Kitar', summary: 'Say the collector came on a collection marked missed, with the weight they took. The gate record decides it at once', auth: 'session', roles: ['RESIDENT'],
+    body: z.object({ weightG: z.number().int().min(1, 'Enter a weight more than 0 kg.').max(500_000, 'Enter a weight up to 500 kg.') }),
     rateLimit: { limit: 10, windowSec: 3600, by: 'user' },
-    handler: (c) => collections.reportCollectorCame(c.db, c.actor, c.params.collectionId!, c.now),
+    handler: (c) => collections.reportCollectorCame(c.db, c.actor, c.params.collectionId!, c.body.weightG, c.now),
   }),
   route({
     method: 'POST', path: '/kitar/collections/:collectionId/demo/today', tag: 'Kitar', summary: 'Local demos only (pglite in development): move my confirmed collection and its gate pass to today', auth: 'session', roles: ['RESIDENT'], body: emptyBody,
@@ -185,6 +187,15 @@ export const kitarRoutes = [
     method: 'GET', path: '/admin/kitar/collections', tag: 'Kitar', summary: 'Recent collections, newest first, and how each was settled', auth: 'session', roles: STAFF,
     query: z.object({ status: z.enum(['REQUESTED', 'CONFIRMED', 'COLLECTED', 'CANCELLED', 'MISSED']).optional(), townshipId: zId.optional() }),
     handler: (c) => collections.collectionsForStaff(c.db, c.actor, c.query),
+  }),
+  route({
+    method: 'GET', path: '/admin/kitar/collections/history', tag: 'Kitar', summary: 'Collection history: what each household logged, what was counted, the gate record and who settled it. Search, filters and paging', auth: 'session', roles: STAFF,
+    query: pageQuery.extend({
+      townshipId: zId.optional(), q: z.string().trim().max(60).optional(), outcome: z.enum(collections.HISTORY_OUTCOMES).optional(),
+      collectorId: zId.optional(), material: z.enum(MATERIALS).optional(), days: z.coerce.number().int().min(1).max(3650).optional(),
+      settledBy: z.enum(['SYSTEM', 'STAFF']).optional(),
+    }),
+    handler: (c) => collections.collectionHistory(c.db, c.actor, c.query, c.now),
   }),
   route({
     method: 'GET', path: '/admin/kitar/collections/exceptions', tag: 'Kitar', summary: 'Only what needs a person: weights and disputes to check, homes and collectors to look at', auth: 'session', roles: STAFF,

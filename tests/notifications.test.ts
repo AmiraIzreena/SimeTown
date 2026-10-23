@@ -3,7 +3,7 @@ import type { Db } from '@/server/db/client';
 import { listNotifications, markAllRead, notify, updateNotification } from '@/server/modules/notifications';
 import { notificationCategoriesFor, notificationCategory, notificationDestination } from '@/shared/notifications';
 import { createReport } from '@/server/modules/reports/service';
-import { freshDb, makeResident, makeWorld, T0 } from './helpers';
+import { freshDb, makeResident, makeWorld, T0, REPORT_PHOTO } from './helpers';
 
 let db: Db;
 let user: string;
@@ -92,7 +92,7 @@ describe('notification center', () => {
   it('generates a persistent notification from an actual report submission', async () => {
     const world = await makeWorld(db);
     const resident = await makeResident(world);
-    const report = await createReport(db, resident, { description: 'Broken street light outside my house', locationText: 'Main road', category: 'LIGHTING' }, T0);
+    const report = await createReport(db, resident, { photo: REPORT_PHOTO, description: 'Broken street light outside my house', locationText: 'Main road', category: 'LIGHTING' }, T0);
     const inbox = await listNotifications(db, resident.id);
     expect(inbox.items.some((n) => n.category === 'REPORTS' && n.link?.includes(report.id))).toBe(true);
   });
@@ -100,12 +100,12 @@ describe('notification center', () => {
     const world = await makeWorld(db);
     const resident = await makeResident(world);
     const titles = async (userId: string) => (await listNotifications(db, userId, { limit: 50 })).items.map((n) => n.title);
-    await createReport(db, resident, { description: 'Someone is using the parking reserved for me', locationText: 'Block A car park', category: 'OTHER' }, T0);
+    await createReport(db, resident, { photo: REPORT_PHOTO, description: 'Someone is using the parking reserved for me', locationText: 'Block A car park', category: 'OTHER' }, T0);
     expect(await titles(world.staff.id)).toContain('New Lapor report');
     expect(await titles(world.admin.id)).toContain('New Lapor report');
     expect(await titles(world.hq.id)).not.toContain('New Lapor report');
 
-    const urgent = await createReport(db, resident, { description: 'Pokok tumbang across the road, live wire on the ground', locationText: 'Jalan Satu' }, T0);
+    const urgent = await createReport(db, resident, { photo: REPORT_PHOTO, description: 'Pokok tumbang across the road, live wire on the ground', locationText: 'Jalan Satu' }, T0);
     expect(urgent.urgency).toBe('URGENT');
     expect(await titles(world.hq.id)).toContain('Urgent safety report');
     expect(await titles(world.staff.id)).toContain('Urgent safety report');

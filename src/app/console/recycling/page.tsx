@@ -3,12 +3,14 @@
 import { Text } from '@/components/ui/localized-text';
 
 import {
-  CalendarCheck, CheckCircle2, ChevronDown, ClipboardList, Copy, Hand, Pause, Phone, Play, Plus, Printer, Recycle, Scale, ShieldCheck, Truck, XCircle, type LucideIcon,
+  CalendarCheck, CheckCircle2, ChevronDown, ClipboardList, Copy, Hand, History, Pause, Phone, Play, Plus, Printer, Recycle, Scale, ShieldCheck, Truck, XCircle, type LucideIcon,
 } from 'lucide-react';
 import { useState, type CSSProperties, type FormEvent } from 'react';
 import { ScheduleText } from '@/components/features/collector-schedule';
 import { COLLECTION_STATUS } from '@/components/features/collections';
+import { CollectionHistory } from './history';
 import { Button } from '@/components/ui/button';
+import { ConsoleCollectionsWalkthrough } from '@/components/features/kitar-walkthroughs';
 import { Badge, Card, CardHeader, PageHeader, Stat } from '@/components/ui/card';
 import { BarChart } from '@/components/ui/charts';
 import { CountUp } from '@/components/ui/count-up';
@@ -32,10 +34,10 @@ import { ADMINS, MATERIALS, MATERIAL_INFO, type Material } from '@/shared/domain
  * The console for booked collections. Bookings confirm themselves, the gate
  * pass is made, the household sends the weight and the nightly job closes the
  * rest. This page leads with the few cases the system cannot settle, each with
- * the action that settles it, and keeps what ran by itself one click away.
+ * the action that settles it; History holds every collection, with search and filters.
  */
 
-type Tab = 'attention' | 'collectors' | 'accepted';
+type Tab = 'attention' | 'history' | 'collectors' | 'accepted';
 type Slot = 'MORNING' | 'AFTERNOON';
 type ReviewReason = 'OVER_LIMIT' | 'NO_GATE_SCAN' | 'COLLECTOR_CAME';
 
@@ -71,6 +73,9 @@ interface Collection {
   weight_g: number | null;
   reported_weight_g: number | null;
   reviewed_at: string | null;
+  /** Who decided a reviewed collection: the system (from the gate record) or staff. */
+  decided_by: 'SYSTEM' | 'STAFF' | null;
+  review_reason: ReviewReason | null;
   in_review: boolean;
   gate_scanned: boolean;
   collector: string;
@@ -113,8 +118,13 @@ const REASON: Record<ReviewReason, { title: string; why: string; rail: string }>
 function handledBy(x: Collection): string {
   if (x.status === 'CANCELLED') return 'Cancelled by the household';
   if (x.status === 'REQUESTED') return 'Waiting to be confirmed';
-  if (x.status === 'CONFIRMED') return x.gate_scanned ? 'Collector arrived. Waiting for the weight' : 'Booked. Gate pass ready';
-  if (x.status === 'MISSED') return x.reviewed_at ? 'Missed. Checked by staff' : 'Missed. The collector did not come';
+  if (x.status === 'CONFIRMED') {
+    if (x.reported_weight_g != null) return 'Weight sent. Checked against the gate record tonight';
+    return x.gate_scanned ? 'Collector arrived. Waiting for the weight' : 'Booked. Gate pass ready';
+  }
+  const bySystem = x.decided_by === 'SYSTEM';
+  if (x.status === 'MISSED') return !x.reviewed_at ? 'Missed. The collector did not come' : bySystem ? 'Missed. The gate has no record of the collector' : 'Missed. Checked by staff';
+  if (x.reviewed_at && bySystem) return x.review_reason === 'NO_GATE_SCAN' ? 'No gate record of the collector. Closed with no reward' : 'The collector was at the gate that day. Weight credited';
   if (x.reviewed_at) return 'Settled by staff';
   if (x.weight_g == null) return 'Closed with no weight';
   return x.reported_weight_g != null ? 'Weight sent by the household' : 'Weight recorded by staff';
@@ -148,9 +158,12 @@ export default function RecyclingConsolePage() {
       <PageHeader
         title="Recycling collections"
         description="Bookings, gate passes, weights and missed collections are handled automatically. You only see what the system cannot settle on its own."
-        action={hq && townships.data && (
-          <FilterMenu<string> label="Township" value={townshipId} onChange={setTownshipId} options={[{ value: '', label: 'All townships' }, ...townships.data.map((t) => ({ value: t.id, label: t.name, raw: true }))]} />
-        )}
+        action={<>
+          <ConsoleCollectionsWalkthrough />
+          {hq && townships.data && (
+            <FilterMenu<string> label="Township" value={townshipId} onChange={setTownshipId} options={[{ value: '', label: 'All townships' }, ...townships.data.map((t) => ({ value: t.id, label: t.name, raw: true }))]} />
+          )}
+        </>}
       />
       <div className="mb-5">
         <Tabs<Tab>
@@ -159,13 +172,15 @@ export default function RecyclingConsolePage() {
           onChange={setTab}
           items={[
             { key: 'attention', label: 'Needs attention', count: attention },
+            { key: 'history', label: 'History' },
             { key: 'collectors', label: 'Collectors' },
             { key: 'accepted', label: 'Material accepted' },
           ]}
         />
       </div>
       <div key={tab} className="parcel-view">
-        {tab === 'attention' && <Attention state={exceptions} scope={scope} hq={hq} />}
+        {tab === 'attention' && <Attention state={exceptions} scope={scope} hq={hq} onHistory={() => setTab('history')} />}
+        {tab === 'history' && <CollectionHistory scope={scope} hq={hq} />}
         {tab === 'collectors' && <Collectors scope={scope} hq={hq} canSetUp={canSetUp} townships={townships.data ?? []} townshipId={townshipId} onAdded={() => void exceptions.mutate()} />}
         {tab === 'accepted' && <Accepted scope={scope} />}
       </div>
@@ -175,7 +190,7 @@ export default function RecyclingConsolePage() {
 
 // --- Needs attention ---------------------------------------------------------------------------
 
-function Attention({ state, scope, hq }: { state: ReturnType<typeof useApi<Exceptions>>; scope: string; hq: boolean }) {
+function Attention({ state, scope, hq, onHistory }: { state: ReturnType<typeof useApi<Exceptions>>; scope: string; hq: boolean; onHistory: () => void }) {
   const [queue, setQueue] = useState<Queue>('ALL');
   const [approving, setApproving] = useState<Review | null>(null);
   const [confirming, setConfirming] = useState<{ kind: 'reject' | 'missed'; r: Review } | { kind: 'pause'; c: Exceptions['collectors'][number] } | null>(null);
@@ -337,18 +352,21 @@ function Attention({ state, scope, hq }: { state: ReturnType<typeof useApi<Excep
       </Card>
 
       <Card className="ops-panel min-w-0 overflow-hidden">
-        <button
-          type="button"
-          aria-expanded={showHandled}
-          onClick={() => setShowHandled((v) => !v)}
-          className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left sm:px-6"
-        >
-          <span>
-            <span className="block font-semibold text-ink-900"><Text>Handled automatically</Text></span>
-            <span className="block text-sm text-ink-500"><Text>Recent collections and how the system settled each one. Read-only.</Text></span>
-          </span>
-          <ChevronDown className={cn('size-5 shrink-0 text-ink-400 transition-transform', showHandled && 'rotate-180')} aria-hidden />
-        </button>
+        <div className="flex flex-wrap items-center gap-3 pr-5 sm:pr-6">
+          <button
+            type="button"
+            aria-expanded={showHandled}
+            onClick={() => setShowHandled((v) => !v)}
+            className="flex min-w-0 flex-1 items-center justify-between gap-3 px-5 py-4 text-left sm:px-6"
+          >
+            <span>
+              <span className="block font-semibold text-ink-900"><Text>Handled automatically</Text></span>
+              <span className="block text-sm text-ink-500"><Text>Recent collections and how the system settled each one. Read-only.</Text></span>
+            </span>
+            <ChevronDown className={cn('size-5 shrink-0 text-ink-400 transition-transform', showHandled && 'rotate-180')} aria-hidden />
+          </button>
+          <Button size="sm" variant="secondary" onClick={onHistory} className="mb-4 ml-5 sm:mb-0 sm:ml-0"><History className="size-4" aria-hidden /><Text>Search all in History</Text></Button>
+        </div>
         {showHandled && (
           <Async state={recent} skeleton={<SkeletonList rows={4} className="p-5" />}>
             {(rows) => <HandledList rows={rows.filter((x) => !x.in_review)} hq={hq} />}

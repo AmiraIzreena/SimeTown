@@ -1,6 +1,6 @@
 
 import { Text } from '@/components/ui/localized-text';
-import { LocalizedTd } from '@/components/ui/localized-elements';
+import { LocalizedDiv, LocalizedTd } from '@/components/ui/localized-elements';
 import type { CSSProperties, ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 import { Card } from './card';
@@ -17,7 +17,8 @@ export interface Column<T> {
 export function DataTable<T>({ columns, rows, keyOf, caption }: { columns: Column<T>[]; rows: T[]; keyOf: (row: T) => string | number; caption: string }) {
   return (
     <Card className="overflow-hidden">
-      <div className="overflow-x-auto">
+      {/* Focusable and named, so a keyboard user can scroll a wide table sideways. */}
+      <LocalizedDiv role="region" aria-label={caption} tabIndex={0} className="overflow-x-auto focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand-600">
         <table className="rtable w-full text-left text-sm">
           <caption className="sr-only"><Text>{caption}</Text></caption>
           <thead>
@@ -41,7 +42,7 @@ export function DataTable<T>({ columns, rows, keyOf, caption }: { columns: Colum
             ))}
           </tbody>
         </table>
-      </div>
+      </LocalizedDiv>
     </Card>
   );
 }

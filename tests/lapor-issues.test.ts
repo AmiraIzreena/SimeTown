@@ -2,10 +2,10 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Actor } from '@/server/auth/actor';
 import { type Db } from '@/server/db/client';
 import { cleanWording } from '@/server/modules/reports/issue-core';
-import { attentionIssues, findIssueMatch, getIssue, setIssueMeToo, similarIssues, townshipIssues, updateIssue } from '@/server/modules/reports/issues';
+import { attentionIssues, findIssueMatch, getIssue, getIssuePhoto, setIssueMeToo, similarIssues, townshipIssues, updateIssue } from '@/server/modules/reports/issues';
 import { createReport, getReport, myLaporReports } from '@/server/modules/reports/service';
 import { checkReportText, hasRudeWords, looksLikeJunk } from '@/server/modules/reports/text-check';
-import { T0, at, freshDb, makeResident, makeWorld, type World } from './helpers';
+import { T0, at, freshDb, makeResident, makeWorld, type World, REPORT_PHOTO } from './helpers';
 
 /** Lapor issues: the same problem grouped, public only once enough residents are affected, and Needs attention. */
 
@@ -43,7 +43,7 @@ describe('What residents may type', () => {
 
   it('turns a junk report away before anything is saved', async () => {
     const r = await makeResident(w);
-    await expect(createReport(db, r, { description: 'qwertyuiop', locationText: 'Jalan Satu' }, T0)).rejects.toMatchObject({ status: 400, details: { fields: { description: expect.any(String) } } });
+    await expect(createReport(db, r, { photo: REPORT_PHOTO, description: 'qwertyuiop', locationText: 'Jalan Satu' }, T0)).rejects.toMatchObject({ status: 400, details: { fields: { description: expect.any(String) } } });
     await expect(findIssueMatch(db, r, { description: 'Lampu rosak', locationText: '!!!' }, T0)).rejects.toMatchObject({ status: 400 });
   });
 
@@ -57,7 +57,7 @@ describe('What residents may type', () => {
 describe('Grouping reports into issues', () => {
   it('offers the matching open issue, joins it on request, and makes it public at the threshold', async () => {
     const [a, b, c, d] = (await residents(4)) as [Actor, Actor, Actor, Actor];
-    const first = await createReport(db, a, { description: 'Street light not working outside the playground', locationText: 'Jalan Lima playground', zoneId: w.zoneId, category: 'LIGHTING' }, T0);
+    const first = await createReport(db, a, { photo: REPORT_PHOTO, description: 'Street light not working outside the playground', locationText: 'Jalan Lima playground', zoneId: w.zoneId, category: 'LIGHTING' }, T0);
     expect(first.joined).toBe(false);
 
     // Below the threshold nobody else sees it, but the reporter does.
@@ -74,9 +74,9 @@ describe('Grouping reports into issues', () => {
     // The reporter is told they already reported it.
     expect(await findIssueMatch(db, a, { description: 'Playground light still broken', locationText: 'Jalan Lima playground', category: 'LIGHTING' }, T0)).toMatchObject({ alreadyYours: true });
 
-    const joined = await createReport(db, b, { description: 'The light at the playground is broken', locationText: 'Playground, Jalan Lima', issueId: first.issueId }, at(0.1));
+    const joined = await createReport(db, b, { photo: REPORT_PHOTO, description: 'The light at the playground is broken', locationText: 'Playground, Jalan Lima', issueId: first.issueId }, at(0.1));
     expect(joined).toMatchObject({ joined: true, issueId: first.issueId, category: 'LIGHTING' });
-    await expect(createReport(db, b, { description: 'Again, the playground light', locationText: 'Jalan Lima', issueId: first.issueId }, at(0.2))).rejects.toMatchObject({ code: 'ALREADY_REPORTED' });
+    await expect(createReport(db, b, { photo: REPORT_PHOTO, description: 'Again, the playground light', locationText: 'Jalan Lima', issueId: first.issueId }, at(0.2))).rejects.toMatchObject({ code: 'ALREADY_REPORTED' });
     // Joining does not tell the township office again; reaching the threshold does, once.
     const staffBefore = (await notificationsOf(w.staff.id)).length;
     await setIssueMeToo(db, c, first.issueId, true, at(0.3));
@@ -100,11 +100,11 @@ describe('Grouping reports into issues', () => {
 
   it('lists threshold and urgent issues as Needs attention, and one update reaches every report', async () => {
     const [a, b, c] = (await residents(3)) as [Actor, Actor, Actor];
-    const issue = await createReport(db, a, { description: 'Blocked drain flooding the road after rain', locationText: 'Jalan Enam drain', category: 'DRAINAGE' }, T0);
-    await createReport(db, b, { description: 'Drain blocked, water on the road', locationText: 'Jalan Enam', issueId: issue.issueId }, T0);
+    const issue = await createReport(db, a, { photo: REPORT_PHOTO, description: 'Blocked drain flooding the road after rain', locationText: 'Jalan Enam drain', category: 'DRAINAGE' }, T0);
+    await createReport(db, b, { photo: REPORT_PHOTO, description: 'Drain blocked, water on the road', locationText: 'Jalan Enam', issueId: issue.issueId }, T0);
     await setIssueMeToo(db, c, issue.issueId, true, T0);
-    const urgent = await createReport(db, a, { description: 'Pokok tumbang across the road, live wire on the ground', locationText: 'Jalan Tujuh' }, T0);
-    const quiet = await createReport(db, b, { description: 'Faded road markings at the junction', locationText: 'Jalan Lapan', category: 'POTHOLE' }, T0);
+    const urgent = await createReport(db, a, { photo: REPORT_PHOTO, description: 'Pokok tumbang across the road, live wire on the ground', locationText: 'Jalan Tujuh' }, T0);
+    const quiet = await createReport(db, b, { photo: REPORT_PHOTO, description: 'Faded road markings at the junction', locationText: 'Jalan Lapan', category: 'POTHOLE' }, T0);
 
     const attention = await attentionIssues(db, w.staff, T0);
     const ids = attention.items.map((i) => i.id);
@@ -125,7 +125,7 @@ describe('Grouping reports into issues', () => {
 
     // A report joining an issue in progress is in progress too, with the same team and date.
     const d = (await residents(1))[0] as Actor;
-    const added = await createReport(db, d, { description: 'Drain on Jalan Enam overflowing', locationText: 'Jalan Enam', issueId: issue.issueId }, at(0.2));
+    const added = await createReport(db, d, { photo: REPORT_PHOTO, description: 'Drain on Jalan Enam overflowing', locationText: 'Jalan Enam', issueId: issue.issueId }, at(0.2));
     expect(await getReport(db, d, added.id, at(0.2))).toMatchObject({ status: 'IN_PROGRESS', assigned_to: 'Drainage team', target_date: '2026-11-06' });
 
     // Closed with no action: it disappears from neighbours' view at once.
@@ -135,5 +135,44 @@ describe('Grouping reports into issues', () => {
       expect((await townshipIssues(db, neighbour, { view, limit: 50 }, at(0.3))).items.map((i) => i.id)).not.toContain(issue.issueId);
     }
     await expect(updateIssue(db, w.staff, issue.issueId, { status: 'IN_PROGRESS' }, at(0.4))).rejects.toMatchObject({ code: 'REPORT_CLOSED' });
+  });
+});
+
+describe('The photo neighbours see', () => {
+  const photo = (marker: number) => ({ mime: 'image/jpeg' as const, bytes: Uint8Array.from([0xff, 0xd8, 0xff, marker]) });
+  const bytesOf = async (res: Response) => new Uint8Array(await res.arrayBuffer());
+
+  it('shows the first report’s photo once the problem is public, and lets staff swap or hide it (logged)', async () => {
+    const [a, b, c, outsider] = (await residents(4)) as [Actor, Actor, Actor, Actor];
+    const first = await createReport(db, a, { photo: photo(1), description: 'Fallen signboard blocking the pavement', locationText: 'Jalan Sembilan corner', category: 'SAFETY' }, T0);
+    const second = await createReport(db, b, { photo: photo(2), description: 'Signboard fell onto the pavement', locationText: 'Corner of Jalan Sembilan', issueId: first.issueId }, at(0.1));
+
+    // Not public yet: no neighbour gets the photo; staff do.
+    await expect(getIssuePhoto(db, outsider, first.issueId)).rejects.toMatchObject({ status: 404 });
+    expect((await getIssuePhoto(db, w.staff, first.issueId)).status).toBe(200);
+
+    await setIssueMeToo(db, c, first.issueId, true, at(0.2));
+    const listed = (await townshipIssues(db, outsider, { view: 'open', limit: 50 }, at(0.3))).items.find((i) => i.id === first.issueId)!;
+    expect(listed.photo_version).toBe(first.id.slice(0, 8));
+    expect(await bytesOf(await getIssuePhoto(db, outsider, first.issueId))).toEqual(photo(1).bytes);
+
+    // Staff pick the second report's photo, then hide the photo altogether.
+    await updateIssue(db, w.staff, first.issueId, { photoReportId: second.id }, at(0.4));
+    expect(await bytesOf(await getIssuePhoto(db, outsider, first.issueId))).toEqual(photo(2).bytes);
+    await updateIssue(db, w.staff, first.issueId, { photoHidden: true }, at(0.5));
+    await expect(getIssuePhoto(db, outsider, first.issueId)).rejects.toMatchObject({ status: 404 });
+    expect((await townshipIssues(db, outsider, { view: 'open', limit: 50 }, at(0.5))).items.find((i) => i.id === first.issueId)!.photo_version).toBeNull();
+    const logged = await db.query<{ detail: { to: { photoHidden: boolean } } }>(`SELECT detail FROM audit_log WHERE action = 'ISSUE_PHOTO' AND entity_id = $1 ORDER BY id`, [first.issueId]);
+    expect(logged.map((l) => l.detail.to.photoHidden)).toEqual([false, true]);
+
+    // Only a report in this problem with a photo can be picked.
+    const other = await createReport(db, a, { photo: photo(3), description: 'Broken bench by the pond', locationText: 'Taman Sepuluh pond', category: 'OTHER' }, at(0.6));
+    await expect(updateIssue(db, w.staff, first.issueId, { photoReportId: other.id }, at(0.7))).rejects.toMatchObject({ code: 'NO_SUCH_PHOTO' });
+  });
+
+  it('refuses a report without a photo', async () => {
+    const [a] = (await residents(1)) as [Actor];
+    await expect(createReport(db, a, { description: 'Overflowing drain by the shops', locationText: 'Jalan Sebelas' } as Parameters<typeof createReport>[2], T0))
+      .rejects.toMatchObject({ status: 400, details: { fields: { photo: expect.stringContaining('photo') } } });
   });
 });

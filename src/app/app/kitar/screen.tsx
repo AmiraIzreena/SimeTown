@@ -7,6 +7,7 @@ import { Collections } from '@/components/features/collections';
 import { LiveMachineSession } from '@/components/features/machine-session';
 import { RecyclingGuide } from '@/components/features/recycling-guide';
 import { AksesPage, AksesWizard, useAksesMode } from '@/components/features/akses-mode';
+import { ResidentKitarWalkthrough } from '@/components/features/kitar-walkthroughs';
 import { HubSummary } from '@/components/features/kitar/hub-summary';
 import { GOOD_TO_KNOW_ID, HOW_KITAR_WORKS, KitarAbout } from '@/components/features/kitar/kitar-about';
 import { KitarMap } from '@/components/features/kitar/kitar-map';
@@ -208,7 +209,7 @@ export function KitarScreen() {
 
   return (
     <AksesPage>
-      <PageHeader title="Kitar" description="Recycle at a kiosk. Each bin has a scale that sends the weight by itself, so you never type it. Every drop-off earns Impact XP." action={<ReportProblemButton context="KITAR" subtitle="A bin, its weight, your points or the Kitar page" />} />
+      <PageHeader title="Kitar" description="Recycle at a kiosk. Each bin has a scale that sends the weight by itself, so you never type it. Every drop-off earns Impact XP." action={<><ResidentKitarWalkthrough /><ReportProblemButton context="KITAR" subtitle="A bin, its weight, your points or the Kitar page" /></>} />
       {akses.simple ? (
         <div className="space-y-6">
           {statsBlock}

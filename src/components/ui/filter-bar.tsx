@@ -173,7 +173,8 @@ export function FilterMenu<V extends string>({ label, value, options, onChange }
   const button = useRef<HTMLButtonElement>(null);
   const list = useRef<HTMLUListElement>(null);
   const [open, setOpen] = useState(false);
-  const [place, setPlace] = useState<{ top: number; left: number; minWidth: number } | null>(null);
+  // Below the pill, or above it (`bottom`) when there is more room there; the height fits the room it has.
+  const [place, setPlace] = useState<{ top?: number; bottom?: number; left: number; minWidth: number; maxHeight: number } | null>(null);
   const current = options.find((o) => o.value === value) ?? options[0]!;
   const active = value !== options[0]?.value;
 
@@ -184,7 +185,15 @@ export function FilterMenu<V extends string>({ label, value, options, onChange }
   const show = () => {
     const r = button.current!.getBoundingClientRect();
     // Fixed, so a card with hidden overflow cannot clip it; flips left near the right edge.
-    setPlace({ top: r.bottom + 6, left: Math.max(8, Math.min(r.left, window.innerWidth - Math.max(r.width, 224) - 8)), minWidth: Math.max(r.width, 224) });
+    const left = Math.max(8, Math.min(r.left, window.innerWidth - Math.max(r.width, 224) - 8));
+    const minWidth = Math.max(r.width, 224);
+    // Near the bottom of the screen it opens upwards instead of being cut off.
+    const below = window.innerHeight - r.bottom - 14;
+    const above = r.top - 14;
+    const wanted = Math.min(320, options.length * 40 + 12);
+    setPlace(below >= wanted || below >= above
+      ? { top: r.bottom + 6, left, minWidth, maxHeight: Math.min(320, Math.max(below, 120)) }
+      : { bottom: window.innerHeight - r.top + 6, left, minWidth, maxHeight: Math.min(320, above) });
     setOpen(true);
   };
 
@@ -200,7 +209,11 @@ export function FilterMenu<V extends string>({ label, value, options, onChange }
     const away = (event: PointerEvent) => {
       if (!list.current?.contains(event.target as Node) && !button.current?.contains(event.target as Node)) close(false);
     };
-    const moved = () => close(false);
+    // The page moving closes the menu, but scrolling the menu's own list must not.
+    const moved = (event: Event) => {
+      if (event.type === 'scroll' && list.current?.contains(event.target as Node)) return;
+      close(false);
+    };
     document.addEventListener('pointerdown', away);
     window.addEventListener('resize', moved);
     window.addEventListener('scroll', moved, true);
@@ -246,8 +259,8 @@ export function FilterMenu<V extends string>({ label, value, options, onChange }
           role="listbox"
           aria-label={label}
           onKeyDown={onListKey}
-          style={{ top: place.top, left: place.left, minWidth: place.minWidth }}
-          className="filter-menu-list fixed z-50 max-h-80 max-w-[min(22rem,calc(100vw-1rem))] overflow-y-auto rounded-xl border border-ink-100 bg-white p-1.5 shadow-lg"
+          style={{ top: place.top, bottom: place.bottom, left: place.left, minWidth: place.minWidth, maxHeight: place.maxHeight, transformOrigin: place.bottom !== undefined ? 'bottom left' : undefined }}
+          className="filter-menu-list fixed z-50 max-w-[min(22rem,calc(100vw-1rem))] overflow-y-auto overscroll-contain rounded-xl border border-ink-100 bg-white p-1.5 shadow-lg"
         >
           {options.map((option, i) => {
             const selected = option.value === value;

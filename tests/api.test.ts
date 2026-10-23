@@ -9,7 +9,7 @@ import { createRouter } from '@/server/http/router';
 import { notify } from '@/server/modules/notifications';
 import { createKiosk } from '@/server/modules/kitar/service';
 import { createLoop, listLoopsForStaff } from '@/server/modules/gerak/service';
-import { T0, expectFloatBalanced, freshDb, makeCampaign, makeHome, makeMerchant, makeResident, makeSponsorUser, makeWorld, sell, walletOf, type World } from './helpers';
+import { T0, expectFloatBalanced, freshDb, makeCampaign, makeHome, makeMerchant, makeResident, makeSponsorUser, makeWorld, reportPhotoFile, sell, walletOf, type World } from './helpers';
 
 /** These tests go through the real router: sign-in, roles, the origin check, validation and each feature's rules. */
 
@@ -277,7 +277,7 @@ describe('Lapor', () => {
     const form = new FormData();
     form.set('description', 'Lampu jalan rosak di depan taman permainan');
     form.set('locationText', 'Jalan Satu, near the playground');
-    form.set('photo', new File([PNG], 'lamp.png', { type: 'image/png' }));
+    form.set('photo', await reportPhotoFile());
     const created = await call('POST', '/reports', { as: reporter, form });
     expect(created.status).toBe(200);
     expect(created.data).toMatchObject({ category: 'LIGHTING', urgency: 'MEDIUM', suggestion: { source: 'RULES' } });
@@ -287,7 +287,7 @@ describe('Lapor', () => {
     expect((await call('GET', `/reports/${id}`, { as: stranger })).status).toBe(404);
     expect((await call('GET', `/reports/${id}/photo`, { as: stranger })).status).toBe(404);
     const photo = await call('GET', `/reports/${id}/photo`, { as: reporter });
-    expect(photo.headers.get('content-type')).toBe('image/png');
+    expect(photo.headers.get('content-type')).toBe('image/jpeg');
     expect(photo.headers.get('x-content-type-options')).toBe('nosniff');
     expect((await call('GET', '/reports', { as: w.staff })).data.items.some((r: { id: string }) => r.id === id)).toBe(true);
     expect((await call('PATCH', `/reports/${id}`, { as: reporter, body: { status: 'RESOLVED' } })).status).toBe(403);
@@ -310,11 +310,31 @@ describe('Lapor', () => {
     expect(res.status).toBe(400);
   });
 
+  it('needs a photo of the problem: a real JPEG, PNG or WebP, not a tiny one', async () => {
+    const reporter = await makeResident(w);
+    const send = async (photo?: File) => {
+      const form = new FormData();
+      form.set('description', 'Blocked drain flooding the back lane');
+      form.set('locationText', 'Back lane behind Jalan Tiga');
+      if (photo) form.set('photo', photo);
+      return call('POST', '/reports', { as: reporter, form });
+    };
+    const none = await send();
+    expect(none.status).toBe(400);
+    expect(none.error!.details.fields.photo).toMatch(/add a photo/);
+    const tiny = await send(new File([PNG], 'dot.png', { type: 'image/png' }));
+    expect(tiny.status).toBe(400);
+    expect(tiny.error!.details.fields.photo).toMatch(/too small/);
+    expect((await one<{ n: number }>(db, 'SELECT count(*)::int AS n FROM reports WHERE reporter_id = $1', [reporter.id]))!.n).toBe(0);
+    expect((await send(await reportPhotoFile(400, 300))).status).toBe(200);
+  });
+
   it('pushes an urgent safety report to staff as URGENT (BR19)', async () => {
     const reporter = await makeResident(w);
     const form = new FormData();
     form.set('description', 'Pokok tumbang across the road, live wire on the ground');
     form.set('locationText', 'Jalan Dua');
+    form.set('photo', await reportPhotoFile());
     const created = await call('POST', '/reports', { as: reporter, form });
     expect(created.data).toMatchObject({ category: 'SAFETY', urgency: 'URGENT' });
     const inbox = await call('GET', '/notifications', { as: w.staff });

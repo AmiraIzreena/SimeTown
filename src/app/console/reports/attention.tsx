@@ -1,6 +1,6 @@
 'use client';
 
-import { CalendarClock, ChevronRight, FileText, Info, MapPin, Siren, Sparkles, Users } from 'lucide-react';
+import { CalendarClock, ChevronRight, FileText, ImageOff, Info, MapPin, Siren, Sparkles, Users } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { IssueSummary, IssueTitle, LateBadge, ReportPhoto, STATUS_LABELS, StatusBadge, UrgencyBadge, categoryLabel, type Issue } from '@/components/features/report-bits';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/card';
 import { Modal } from '@/components/ui/dialog';
 import { EmptyState, ErrorState, SkeletonList } from '@/components/ui/feedback';
 import { Input, Select, Textarea } from '@/components/ui/field';
+import { LocalizedImg } from '@/components/ui/localized-elements';
 import { Text } from '@/components/ui/localized-text';
 import { api } from '@/lib/api';
 import { formatDate, timeAgo } from '@/lib/format';
@@ -20,6 +21,10 @@ export interface AttentionIssue extends Issue {
   assigned_to: string | null;
   /** Reached the public threshold (otherwise it is here because it is urgent). */
   reached: boolean;
+  /** The report whose photo neighbours see (null when hidden or none), staff's pick, and whether staff hid it. */
+  photo_report_id: string | null;
+  photo_choice: string | null;
+  photo_hidden: boolean;
   members: { id: string; description: string; location_text: string; urgency: Urgency; status: ReportStatus; photo_id: string | null; created_at: string; affected: number }[];
 }
 export interface Attention {
@@ -27,6 +32,9 @@ export interface Attention {
   belowThreshold: number;
   items: AttentionIssue[];
 }
+
+/** The photo choice as the form holds it: the first photo, a chosen report, or hidden. */
+const photoValue = (issue: AttentionIssue) => (issue.photo_hidden ? 'hidden' : issue.photo_choice ?? 'auto');
 
 /**
  * Console → Lapor → Needs attention: the problems enough residents share to be public, and anything urgent. Each is
@@ -53,6 +61,12 @@ export function NeedsAttention({ data, error, isLoading, reload }: { data?: Atte
       targetDate: form.targetDate || null,
       staffNote: form.staffNote || undefined,
     };
+    // The photo neighbours see: only sent when staff changed it.
+    const photo = form.publicPhoto ?? 'auto';
+    if (photo !== photoValue(open!)) {
+      body.photoHidden = photo === 'hidden';
+      if (photo !== 'hidden') body.photoReportId = photo === 'auto' ? null : photo;
+    }
     // Only send a title when staff changed it, so a written one is not frozen by saving the status.
     if ((form.title ?? '') !== (open!.title_source === 'STAFF' ? open!.title ?? '' : '')) body.title = form.title ?? '';
     if ((form.titleMs ?? '') !== (open!.title_source === 'STAFF' ? open!.title_ms ?? '' : '')) body.titleMs = form.titleMs ?? '';
@@ -143,14 +157,30 @@ export function NeedsAttention({ data, error, isLoading, reload }: { data?: Atte
               <Input label="Who is fixing it" name="assignedTo" defaultValue={open.assigned_to ?? ''} maxLength={80} placeholder="e.g. Landscape contractor" />
               <Input label="Target date" name="targetDate" type="date" defaultValue={open.target_date ?? ''} hint="Residents see this date." />
               <Textarea label="Note to residents (optional)" name="staffNote" maxLength={500} className="sm:col-span-3" hint="Everyone who reported it or said Me too sees it." />
+              <div className="flex flex-col gap-4 rounded-xl border border-ink-100 bg-ink-50/50 p-4 sm:col-span-3 sm:flex-row sm:items-start">
+                {open.photo_report_id ? (
+                  <LocalizedImg src={`/api/v1/reports/${open.photo_report_id}/photo`} alt="The photo neighbours see" className="h-28 w-full shrink-0 rounded-lg object-cover ring-1 ring-ink-200 sm:w-40" />
+                ) : (
+                  <span className="grid h-28 w-full shrink-0 place-items-center rounded-lg bg-white text-ink-400 ring-1 ring-ink-200 sm:w-40"><ImageOff className="size-6" aria-hidden /></span>
+                )}
+                <div className="min-w-0 flex-1">
+                  <Select label="Photo neighbours see" name="publicPhoto" defaultValue={photoValue(open)} hint="Hide it if it shows a face, a car plate or a house number. The change is logged.">
+                    <option value="auto">{t('The first report’s photo')}</option>
+                    {open.members.map((report, n) => report.photo_id && <option key={report.id} value={report.id}>{t(`Photo from report ${n + 1}`)}</option>)}
+                    <option value="hidden">{t('No photo (hidden from neighbours)')}</option>
+                  </Select>
+                </div>
+              </div>
             </form>
 
             <section>
               <h3 className="mb-3 text-sm font-semibold text-ink-900"><Text>{open.members.length === 1 ? 'The report' : `The ${open.members.length} reports`}</Text></h3>
               <ul className="divide-y divide-ink-100 overflow-hidden rounded-xl border border-ink-100">
-                {open.members.map((report) => (
+                {open.members.map((report, n) => (
                   <li key={report.id} className="space-y-2 bg-white/60 px-4 py-3">
                     <div className="flex flex-wrap items-center gap-2 text-xs text-ink-500">
+                      <span className="font-semibold text-ink-700"><Text>{`Report ${n + 1}`}</Text></span>
+                      {report.id === open.photo_report_id && <Badge tone="brand"><Text>Neighbours see this photo</Text></Badge>}
                       <UrgencyBadge urgency={report.urgency} />
                       <StatusBadge status={report.status} />
                       {report.affected > 1 && <span><Text>{`+${report.affected - 1} Me too`}</Text></span>}

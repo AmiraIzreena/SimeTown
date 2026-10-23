@@ -19,11 +19,13 @@ const reportFields = z.object({
   // 'new', or the issue the resident agreed it belongs to. Absent: look for a matching issue first.
   issue: z.union([z.literal('new'), zId]).optional(),
 });
+/** A report photo must be at least this many pixels on its longer side. */
+const MIN_PHOTO_SIDE = 400;
 const zDay = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Choose a date.');
 
 export const reportRoutes = [
   route({
-    method: 'POST', path: '/reports', tag: 'Lapor', summary: 'Report a hazard or access barrier (multipart form; optional photo). Without "issue", a likely matching issue is returned first ({ needsChoice, issue, alreadyYours }) and nothing is saved', auth: 'session', roles: ['RESIDENT'],
+    method: 'POST', path: '/reports', tag: 'Lapor', summary: 'Report a hazard or access barrier (multipart form; a photo is required: JPEG, PNG or WebP, up to 1.5 MB, at least 400 px). Without "issue", a likely matching issue is returned first ({ needsChoice, issue, alreadyYours }) and nothing is saved', auth: 'session', roles: ['RESIDENT'],
     rateLimit: { limit: 10, windowSec: 3600, by: 'user' },
     handler: async (c) => {
       requireVerifiedResident(c.actor); // before the upload is read
@@ -35,11 +37,14 @@ export const reportRoutes = [
       const parsed = reportFields.safeParse({ description: text('description'), locationText: text('locationText'), zoneId: text('zoneId'), category: text('category'), issue: text('issue') });
       if (!parsed.success) throw badRequest('Please describe the problem and where it is.', { fields: Object.fromEntries(parsed.error.issues.map((i) => [i.path.join('.'), i.message])) });
       const { issue, ...fields } = parsed.data;
+      // The photo is checked first, so a resident fixes it before choosing whether the report joins a problem.
+      const photo = await readPhoto(form, 'photo', { minSide: MIN_PHOTO_SIDE });
+      if (!photo) throw badRequest(reports.PHOTO_NEEDED, { fields: { photo: reports.PHOTO_NEEDED } });
       if (!issue) {
         const match = await issues.findIssueMatch(c.db, c.actor, fields, c.now);
         if (match) return { needsChoice: true, ...match };
       }
-      return reports.createReport(c.db, c.actor, { ...fields, issueId: issue && issue !== 'new' ? issue : undefined, photo: await readPhoto(form) }, c.now);
+      return reports.createReport(c.db, c.actor, { ...fields, issueId: issue && issue !== 'new' ? issue : undefined, photo }, c.now);
     },
   }),
   route({
@@ -72,18 +77,24 @@ export const reportRoutes = [
     handler: (c) => issues.attentionIssues(c.db, c.actor, c.now),
   }),
   route({
+    method: 'GET', path: '/report-issues/:issueId/photo', tag: 'Lapor', summary: "The photo neighbours see on a public issue (one report's photo, unless staff hid it); staff see any issue's", auth: 'session', roles: ['RESIDENT', ...STAFF],
+    handler: (c) => issues.getIssuePhoto(c.db, c.actor, c.params.issueId!),
+  }),
+  route({
     method: 'POST', path: '/report-issues/:issueId/me-too', tag: 'Lapor', summary: 'Say "Me too" on an issue (follow it and count as affected; no XP)', auth: 'session', roles: ['RESIDENT'],
     rateLimit: { limit: 30, windowSec: 3600, by: 'user' },
     body: z.object({ on: z.boolean().default(true) }),
     handler: (c) => issues.setIssueMeToo(c.db, c.actor, c.params.issueId!, c.body.on, c.now),
   }),
   route({
-    method: 'PATCH', path: '/report-issues/:issueId', tag: 'Lapor', summary: 'Staff update every open report in an issue at once, or correct its public title (logged)', auth: 'session', roles: STAFF,
+    method: 'PATCH', path: '/report-issues/:issueId', tag: 'Lapor', summary: 'Staff update every open report in an issue at once, correct its public title, or choose or hide its public photo (logged)', auth: 'session', roles: STAFF,
     body: z.object({
       status: z.enum(REPORT_STATUSES).optional(), category: z.enum(REPORT_CATEGORIES).optional(),
       urgency: z.enum(URGENCIES).optional(), staffNote: zText(500).optional(),
       assignedTo: z.string().trim().max(80).optional(), targetDate: zDay.nullable().optional(),
       title: z.string().trim().max(80).optional(), titleMs: z.string().trim().max(80).optional(),
+      // The photo neighbours see: a report in this issue, null for the first photo, or hidden.
+      photoReportId: zId.nullable().optional(), photoHidden: z.boolean().optional(),
     }),
     handler: (c) => issues.updateIssue(c.db, c.actor, c.params.issueId!, c.body, c.now),
   }),

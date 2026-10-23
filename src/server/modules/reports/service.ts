@@ -31,10 +31,14 @@ export interface ReportInput {
   zoneId?: string;
   /** The resident's own choice. When absent, the suggestion is used. */
   category?: ReportCategory;
-  photo?: Photo;
+  /** Required: staff check the problem from it, and a public problem shows one report's photo to neighbours. */
+  photo: Photo;
   /** The issue the resident agreed this report belongs to. Absent: the report starts a new issue. */
   issueId?: string;
 }
+
+/** The message when a report comes without a photo. */
+export const PHOTO_NEEDED = 'Please add a photo of the problem.';
 
 /**
  * What a resident typed must read as a report (no keyboard mash, no rude words) and any area must be in their
@@ -69,13 +73,14 @@ async function joinableIssue(db: Queryable, resident: { id: string; townshipId: 
  */
 export async function createReport(db: Db, actor: Actor, input: ReportInput, now: Date) {
   const resident = requireVerifiedResident(actor);
+  if (!input.photo) throw badRequest(PHOTO_NEEDED, { fields: { photo: PHOTO_NEEDED } });
   await checkReportInput(db, resident, input);
   const joining = input.issueId ? await joinableIssue(db, resident, input.issueId) : null;
   // Outside the transaction: it may call a remote service.
   const suggestion: ReportSuggestion & { wording?: IssueWording } = joining ? suggestReportByRules(input.description) : await suggestReport(input.description, input.photo, input.locationText);
   const wording = suggestion.wording ? cleanWording(suggestion.wording) : null;
   const created = await db.tx(async (tx) => {
-    const photoId = input.photo ? await storePhoto(tx, resident.id, input.photo) : null;
+    const photoId = await storePhoto(tx, resident.id, input.photo);
     const category = joining ? joining.category : input.category ?? suggestion.category;
     let issueId: string;
     let peopleBefore = 0;
@@ -276,7 +281,7 @@ export async function getReport(db: Db, actor: Actor, id: string, now: Date) {
   return present(await loadVisibleReport(db, actor, id), actor, await todayIn(db, now));
 }
 
-const photoResponse = (upload: { mime: string; bytes: Uint8Array }) =>
+export const photoResponse = (upload: { mime: string; bytes: Uint8Array }) =>
   new Response(Buffer.from(upload.bytes), {
     headers: {
       'Content-Type': upload.mime,

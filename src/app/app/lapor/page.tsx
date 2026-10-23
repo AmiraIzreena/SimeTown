@@ -1,13 +1,14 @@
 'use client';
 
 import { Text } from '@/components/ui/localized-text';
-import { LocalizedInput } from '@/components/ui/localized-elements';
+import { LocalizedImg, LocalizedInput } from '@/components/ui/localized-elements';
 
 import { Camera, CheckCircle2, MapPin, Plus, SearchX, ThumbsUp } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useState, type FormEvent } from 'react';
+import { Suspense, useEffect, useMemo, useState, type FormEvent } from 'react';
 import { AksesPage, AksesWizard, useAksesMode } from '@/components/features/akses-mode';
-import { FixedPhoto, IssueReach, IssueSummary, IssueTitle, LateBadge, ReportPhoto, ReportProgress, StatusBadge, UrgencyBadge, categoryLabel, URGENCY_LABELS, type Issue, type Report } from '@/components/features/report-bits';
+import { ResidentLaporWalkthrough } from '@/components/features/lapor-walkthroughs';
+import { FixedPhoto, IssueReach, IssueSummary, IssueThumb, IssueTitle, LateBadge, ReportPhoto, ReportProgress, StatusBadge, UrgencyBadge, categoryLabel, URGENCY_LABELS, type Issue, type Report } from '@/components/features/report-bits';
 import { Button } from '@/components/ui/button';
 import { Badge, PageHeader } from '@/components/ui/card';
 import { Modal } from '@/components/ui/dialog';
@@ -120,7 +121,7 @@ function LaporScreen() {
       <PageHeader
         title="Lapor"
         description="Report a hazard or an access barrier in under a minute, then follow it until it is fixed. You earn Impact XP once township staff confirm it."
-        action={newReport}
+        action={<><ResidentLaporWalkthrough />{newReport}</>}
       />
       <Tabs<LaporTab>
         label="Lapor sections"
@@ -243,7 +244,7 @@ function LaporScreen() {
             {detail.mine && detail.issue_people !== undefined && detail.issue_threshold !== undefined && (
               <p className="rounded-lg bg-ink-50 px-4 py-3 text-sm text-ink-600">
                 {detail.issue_people >= detail.issue_threshold
-                  ? <Text>{`${detail.issue_people} residents have this problem, so neighbours can see it in Reports around the township, without your words or photo.`}</Text>
+                  ? <Text>{`${detail.issue_people} residents have this problem, so neighbours can see it in Reports around the township. They see a title SimeTown writes and one report’s photo, never your words.`}</Text>
                   : <Text>{`Neighbours see a problem once ${detail.issue_threshold} residents have reported it or said Me too. So far: ${detail.issue_people}. Until then only you and the township office see your report.`}</Text>}
               </p>
             )}
@@ -294,11 +295,14 @@ function AlreadyReported({ text, category, zoneId, onFollowed }: { text: string;
       <ul className="mt-3 space-y-2">
         {similar.data.map((s) => (
           <li key={s.id} className="flex flex-wrap items-center justify-between gap-3 rounded-md bg-white p-3">
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-ink-900"><IssueTitle issue={s} /></p>
-              <p className="text-xs text-ink-500">
-                <Text>{categoryLabel(s.category)}</Text> · <Text>{`${s.people} residents affected`}</Text>
-              </p>
+            <div className="flex min-w-0 flex-1 items-center gap-3">
+              <IssueThumb issue={s} className="size-14" />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-ink-900"><IssueTitle issue={s} /></p>
+                <p className="text-xs text-ink-500">
+                  <Text>{categoryLabel(s.category)}</Text> · <Text>{`${s.people} residents affected`}</Text>
+                </p>
+              </div>
             </div>
             {s.following ? (
               <Badge tone="success"><Text>Following</Text></Badge>
@@ -315,7 +319,6 @@ function AlreadyReported({ text, category, zoneId, onFollowed }: { text: string;
 
 function NewReport({ open, guided, onClose, onCreated }: { open: boolean; guided: boolean; onClose: () => void; onCreated: () => void }) {
   const zones = useApi<BanjirOverview>(open ? '/banjir' : null);
-  const [photoName, setPhotoName] = useState<string | null>(null);
   const [photo, setPhoto] = useState<File | null>(null);
   const [step, setStep] = useState(0);
   const [description, setDescription] = useState('');
@@ -326,7 +329,6 @@ function NewReport({ open, guided, onClose, onCreated }: { open: boolean; guided
   // Set when the report looks like a problem already reported: the resident adds theirs to it or sends it on its own.
   const [choice, setChoice] = useState<NeedsChoice | null>(null);
   const reset = () => {
-    setPhotoName(null);
     setPhoto(null);
     setStep(0);
     setDescription('');
@@ -378,8 +380,8 @@ function NewReport({ open, guided, onClose, onCreated }: { open: boolean; guided
   // Empty fields are caught here, before anything is sent; a field's message goes as soon as it is edited.
   const [missing, setMissing] = useState<Record<string, string>>({});
   const [edited, setEdited] = useState<Record<string, boolean>>({});
-  const errorOf = (field: 'description' | 'locationText') => (edited[field] ? undefined : missing[field] ?? create.fields[field]);
-  const editing = (field: 'description' | 'locationText') => setEdited((current) => (current[field] ? current : { ...current, [field]: true }));
+  const errorOf = (field: 'description' | 'locationText' | 'photo') => (edited[field] ? undefined : missing[field] ?? create.fields[field]);
+  const editing = (field: 'description' | 'locationText' | 'photo') => setEdited((current) => (current[field] ? current : { ...current, [field]: true }));
   const choose = (issue: string) => void create.run(toForm(issue));
   const close = () => {
     setChoice(null);
@@ -390,6 +392,7 @@ function NewReport({ open, guided, onClose, onCreated }: { open: boolean; guided
     const empty: Record<string, string> = {};
     if (!description.trim()) empty.description = 'Please describe the problem in a few words.';
     if (!locationText.trim()) empty.locationText = 'Please say where it is: a street, landmark or nearest house.';
+    if (!photo) empty.photo = PHOTO_NEEDED;
     setMissing(empty);
     setEdited({});
     if (Object.keys(empty).length === 0) void create.run(toForm());
@@ -407,13 +410,26 @@ function NewReport({ open, guided, onClose, onCreated }: { open: boolean; guided
     setStep((current) => Math.min(current + 1, 4));
   };
   const f = create.fields;
+  const pickPhoto = (file: File | null) => {
+    setPhoto(file);
+    if (file) editing('photo');
+  };
+  // Simple Mode: the photo is checked on the last step, before anything is sent.
+  const sendGuided = () => {
+    if (!photo) {
+      setMissing({ photo: PHOTO_NEEDED });
+      setEdited({});
+      return;
+    }
+    void create.run(toForm());
+  };
   const similar = <AlreadyReported text={`${description} ${locationText}`} category={category} zoneId={zoneId} onFollowed={followed} />;
   const sameProblem = choice && <SameProblem choice={choice} large={guided} />;
   // On the last step of the guided form, a problem with what was typed earlier is shown here too.
   const typedError = f.description || f.locationText;
   return (
     guided ? (
-      <AksesWizard open={open} title="New report" step={step} total={5} onClose={close} onBack={() => setStep((current) => current - 1)} onNext={next} onSubmit={() => void create.run(toForm())} pending={create.pending} submitLabel="Send report">
+      <AksesWizard open={open} title="New report" step={step} total={5} onClose={close} onBack={() => setStep((current) => current - 1)} onNext={next} onSubmit={sendGuided} pending={create.pending} submitLabel="Send report">
         {step === 0 && <Textarea label="What is the problem?" labelClassName="!text-3xl !font-semibold" value={description} onChange={(event) => { setDescription(event.target.value); setGuidedError(''); }} maxLength={1000} placeholder="e.g. Street light not working outside the playground" required error={guidedError || f.description} />}
         {step === 1 && <Input label="Where is it?" labelClassName="!text-3xl !font-semibold" value={locationText} onChange={(event) => { setLocationText(event.target.value); setGuidedError(''); }} maxLength={160} placeholder="Street, landmark or nearest house" required error={guidedError || f.locationText} />}
         {step === 2 && <Select label="Area (optional)" labelClassName="!text-3xl !font-semibold" value={zoneId} onChange={(event) => setZoneId(event.target.value)}>
@@ -438,13 +454,9 @@ function NewReport({ open, guided, onClose, onCreated }: { open: boolean; guided
           </div>
         </>}
         {step === 4 && !choice && <>
-          {typedError && <p role="alert" className="text-lg font-semibold text-danger-700">{typedError}</p>}
+          {typedError && <p role="alert" className="text-lg font-semibold text-accent-700">{typedError}</p>}
+          <PhotoPicker photo={photo} onChange={pickPhoto} error={errorOf('photo')} large />
           {similar}
-          <label className="flex min-h-24 cursor-pointer items-center gap-4 rounded-xl border-2 border-dashed border-ink-300 px-6 py-5 text-2xl font-semibold text-ink-700 hover:border-brand-500 hover:bg-brand-50/40">
-            <Camera className="size-8 shrink-0 text-ink-500" aria-hidden />
-            <span className="min-w-0 flex-1"><Text>{photoName ?? 'Add a photo (optional)'}</Text></span>
-            <LocalizedInput type="file" accept="image/jpeg,image/png,image/webp" capture="environment" className="sr-only" onChange={(event) => { const file = event.target.files?.[0] ?? null; setPhoto(file); setPhotoName(file?.name ?? null); }} />
-          </label>
         </>}
         <p className="text-lg text-ink-600"><Text>If someone is in immediate danger, call 999 first.</Text></p>
       </AksesWizard>
@@ -472,18 +484,90 @@ function NewReport({ open, guided, onClose, onCreated }: { open: boolean; guided
         <form method="post" id="new-report" onSubmit={submit} className={cn('space-y-4', choice && 'hidden')} noValidate>
           <Textarea label="What is the problem?" name="description" value={description} onChange={(event) => { setDescription(event.target.value); editing('description'); }} maxLength={1000} placeholder="e.g. Street light not working outside the playground" required error={errorOf('description')} />
           <Input label="Where is it?" name="locationText" value={locationText} onChange={(event) => { setLocationText(event.target.value); editing('locationText'); }} maxLength={160} placeholder="Street, landmark or nearest house" required error={errorOf('locationText')} />
+          {/* The three things a report needs come first: what, where, and a photo. */}
+          <PhotoPicker photo={photo} onChange={pickPhoto} error={errorOf('photo')} />
           <div className="grid gap-3 sm:grid-cols-2">
             <Select label="Area (optional)" name="zoneId" value={zoneId} onChange={(event) => setZoneId(event.target.value)}><option value=""><Text>Not sure</Text></option>{zones.data?.zones.map((zone) => <option key={zone.id} value={zone.id}>{zone.name}</option>)}</Select>
             <Select label="Type" name="category" value={category} onChange={(event) => setCategory(event.target.value)} hint="Leave it and SimeTown will suggest one."><option value=""><Text>Suggest for me</Text></option>{REPORT_CATEGORIES.map((item) => <option key={item} value={item}><Text>{REPORT_CATEGORY_LABELS[item]}</Text></option>)}</Select>
           </div>
           {similar}
-          <label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-md border border-dashed border-ink-300 px-4 py-3 text-[15px] text-ink-700 transition-colors duration-200 hover:border-brand-500 hover:bg-brand-50/40 focus-within:border-brand-500">
-            <Camera className="size-5 shrink-0 text-ink-500" aria-hidden /><span className="min-w-0 flex-1 truncate"><Text>{photoName ?? 'Add a photo (optional)'}</Text></span>
-            <LocalizedInput type="file" name="photo" accept="image/jpeg,image/png,image/webp" capture="environment" className="sr-only" onChange={(event) => { const file = event.target.files?.[0] ?? null; setPhoto(file); setPhotoName(file?.name ?? null); }} />
-          </label>
         </form>
       </Modal>
     )
+  );
+}
+
+/** What a report without a photo is told (the server says the same). */
+const PHOTO_NEEDED = 'Please add a photo of the problem.';
+
+/** Photos the form takes: what the server accepts. Anything bigger than this is refused before it is shrunk. */
+const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const MAX_ORIGINAL_BYTES = 20 * 1024 * 1024;
+const MIN_PHOTO_SIDE = 400;
+
+/** Checks a chosen photo in the browser, so a wrong one is caught before anything is sent. */
+async function checkPhoto(file: File): Promise<string | null> {
+  if (!PHOTO_TYPES.includes(file.type)) return 'The photo must be a JPEG, PNG or WebP image.';
+  if (file.size > MAX_ORIGINAL_BYTES) return 'The photo is too large. Please use one under 20 MB.';
+  try {
+    const bitmap = await createImageBitmap(file);
+    const side = Math.max(bitmap.width, bitmap.height);
+    bitmap.close();
+    if (side < MIN_PHOTO_SIDE) return 'The photo is too small to show the problem. Please take or choose a bigger one.';
+  } catch {
+    // The browser cannot read it here; the server checks it again when it is sent.
+  }
+  return null;
+}
+
+/**
+ * The required photo of the problem: take one or choose one, see it before sending, and change it. Residents are
+ * told that a public problem shows one report's photo to neighbours.
+ */
+function PhotoPicker({ photo, onChange, error, large = false }: { photo: File | null; onChange: (file: File | null) => void; error?: string; large?: boolean }) {
+  const [checkError, setCheckError] = useState('');
+  // A local address for the chosen file, released when it changes or the form closes.
+  const preview = useMemo(() => (photo ? URL.createObjectURL(photo) : null), [photo]);
+  useEffect(() => () => {
+    if (preview) URL.revokeObjectURL(preview);
+  }, [preview]);
+  const choose = async (file: File | null) => {
+    if (!file) return;
+    const problem = await checkPhoto(file);
+    setCheckError(problem ?? '');
+    onChange(problem ? null : file);
+  };
+  const shown = checkError || error;
+  return (
+    <div className="space-y-2">
+      <p className={cn('font-semibold text-ink-900', large ? 'text-3xl' : 'text-sm')}>
+        <Text>Photo of the problem</Text> <span className="text-accent-700" aria-hidden>*</span>
+      </p>
+      <label className={cn(
+        'flex cursor-pointer items-center gap-4 rounded-xl border-2 border-dashed transition-colors duration-200 hover:border-brand-500 hover:bg-brand-50/40 focus-within:border-brand-500',
+        large ? 'min-h-24 px-6 py-5 text-2xl font-semibold' : 'min-h-16 px-4 py-3 text-[15px]',
+        shown ? 'border-accent-500/60 bg-accent-50/40' : 'border-ink-300',
+      )}>
+        {preview ? (
+          <LocalizedImg src={preview} alt="The photo you chose" className={cn('shrink-0 rounded-lg object-cover ring-1 ring-ink-200', large ? 'size-20' : 'size-14')} />
+        ) : (
+          <Camera className={cn('shrink-0 text-ink-500', large ? 'size-8' : 'size-6')} aria-hidden />
+        )}
+        <span className="min-w-0 flex-1">
+          <span className="block font-semibold text-ink-800"><Text>{photo ? 'Change the photo' : 'Take or choose a photo'}</Text></span>
+          <span className={cn('block text-ink-500', large ? 'text-lg font-normal' : 'text-xs')}><Text>JPEG, PNG or WebP, under 20 MB.</Text></span>
+        </span>
+        <LocalizedInput
+          type="file" accept={PHOTO_TYPES.join(',')} capture="environment" className="sr-only" aria-required="true"
+          aria-invalid={shown ? true : undefined} aria-describedby="report-photo-note"
+          onChange={(event) => { void choose(event.target.files?.[0] ?? null); event.target.value = ''; }}
+        />
+      </label>
+      {shown && <p role="alert" className={cn('font-medium text-accent-700', large ? 'text-lg' : 'text-sm')}><Text>{shown}</Text></p>}
+      <p id="report-photo-note" className={cn('text-ink-500', large ? 'text-lg' : 'text-xs')}>
+        <Text>Once enough residents share this problem, neighbours may see one report’s photo. Try to leave out faces, car plates and house numbers.</Text>
+      </p>
+    </div>
   );
 }
 
@@ -511,8 +595,13 @@ function SameProblem({ choice, large }: { choice: NeedsChoice; large: boolean })
           <span className="text-sm font-semibold text-ink-700"><Text>{categoryLabel(issue.category)}</Text></span>
           {issue.zone_name && <span className="text-sm text-ink-500">· <Text>{issue.zone_name}</Text></span>}
         </div>
-        <p className={cn('mt-2 font-semibold text-ink-900', large ? 'text-xl' : 'text-[15px]')}><IssueTitle issue={issue} /></p>
-        <IssueSummary issue={issue} className="mt-1 text-sm text-ink-600" />
+        <div className="mt-2 flex items-start gap-3">
+          <IssueThumb issue={issue} className={large ? 'size-24' : 'size-20'} />
+          <div className="min-w-0">
+            <p className={cn('font-semibold text-ink-900', large ? 'text-xl' : 'text-[15px]')}><IssueTitle issue={issue} /></p>
+            <IssueSummary issue={issue} className="mt-1 text-sm text-ink-600" />
+          </div>
+        </div>
         <p className="mt-2 text-xs text-ink-500"><Text>{issue.people === 1 ? '1 resident affected so far' : `${issue.people} residents affected so far`}</Text></p>
       </div>
     </section>

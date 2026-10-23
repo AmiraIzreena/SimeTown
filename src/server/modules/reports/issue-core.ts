@@ -34,12 +34,23 @@ export interface IssueFacts {
   resolved_at: Date | null;
   target_date: string | null;
   assigned_to: string | null;
+  /** The report whose photo neighbours see: staff's pick, else the first one with a photo; null when hidden or none. */
+  photo_report_id: string | null;
+  /** Staff hid the photo from neighbours. */
+  photo_hidden: boolean;
+  /** The report staff picked, if any (otherwise the first photo is used). */
+  photo_choice: string | null;
 }
 
 export const ISSUE_SELECT = `
   SELECT f.id, f.township_id, f.category, f.zone_id, z.name AS zone_name, f.title, f.title_ms, f.summary, f.summary_ms, f.title_source,
          f.status, f.urgent, f.reports, f.people, f.first_report_id, f.created_at, f.updated_at, f.resolved_at,
-         f.target_date::text AS target_date, f.assigned_to
+         f.target_date::text AS target_date, f.assigned_to,
+         (SELECT r.id FROM report_issues pi JOIN reports r ON r.issue_id = pi.id
+           WHERE pi.id = f.id AND NOT pi.photo_hidden AND r.photo_id IS NOT NULL
+           ORDER BY coalesce(r.id = pi.photo_report_id, false) DESC, r.created_at, r.id LIMIT 1) AS photo_report_id,
+         (SELECT pi.photo_hidden FROM report_issues pi WHERE pi.id = f.id) AS photo_hidden,
+         (SELECT pi.photo_report_id FROM report_issues pi WHERE pi.id = f.id) AS photo_choice
     FROM report_issue_facts f LEFT JOIN flood_zones z ON z.id = f.zone_id`;
 
 export const issueFacts = (q: Queryable, id: string) => one<IssueFacts>(q, `${ISSUE_SELECT} WHERE f.id = $1`, [id]);

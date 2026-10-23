@@ -39,6 +39,12 @@ interface Collection {
   gate_scanned: boolean;
   reported_weight_g: number | null;
   in_review: boolean;
+  /** Weight sent on the day, before the gate had seen the collector: decided by tonight's check. */
+  waiting_for_gate: boolean;
+  /** The collector was scanned in at the gate that day, on any home's pass. */
+  collector_at_gate: boolean;
+  /** Closed with no reward (no gate record of the collector, or staff turned the weight down). */
+  no_reward: boolean;
   can_report: boolean;
   can_dispute: boolean;
   /** Local demos only: the demo steps are offered for this collection. */
@@ -113,8 +119,11 @@ export function Collections({ request }: { request: { material: Material; n: num
     },
   });
   const cancel = useAction((id: string) => api.post(`/kitar/collections/${id}/cancel`), { success: 'Collection cancelled.', onSuccess: () => void mine.mutate() });
-  const sendWeight = useAction((id: string, weightG: number) => api.post<{ status: 'COLLECTED' | 'IN_REVIEW' }>(`/kitar/collections/${id}/weight`, { weightG }), {
-    success: (r) => (r.status === 'COLLECTED' ? 'Thank you. The weight is recorded.' : 'Thank you. The township office will check the weight.'),
+  // A missed collection the household says did happen goes to /came with its weight; the gate record decides both.
+  const sendWeight = useAction((x: Collection, weightG: number) => api.post<{ status: 'COLLECTED' | 'WAITING_FOR_GATE' | 'NO_GATE_RECORD' | 'MISSED' }>(`/kitar/collections/${x.id}/${x.status === 'MISSED' ? 'came' : 'weight'}`, { weightG }), {
+    success: (r) => (r.status === 'COLLECTED' ? 'Thank you. The weight is recorded.'
+      : r.status === 'WAITING_FOR_GATE' ? 'Thank you. It is checked against the gate record tonight.'
+        : 'The gate has no record of the collector, so there is no reward for this collection.'),
     onSuccess: () => {
       setWeighing(null);
       void mine.mutate();
@@ -129,14 +138,10 @@ export function Collections({ request }: { request: { material: Material; n: num
     success: 'Demo: the gate has scanned the pass.',
     onSuccess: () => void mine.mutate(),
   });
-  const came = useAction((id: string) => api.post(`/kitar/collections/${id}/came`), {
-    success: 'Thank you. The township office will check and let you know.',
-    onSuccess: () => void mine.mutate(),
-  });
   const submitWeight = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const kg = Number(new FormData(event.currentTarget).get('kg'));
-    if (kg > 0 && weighing) void sendWeight.run(weighing.id, Math.round(kg * 1000));
+    if (kg > 0 && weighing) void sendWeight.run(weighing, Math.round(kg * 1000));
   };
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -182,19 +187,21 @@ export function Collections({ request }: { request: { material: Material; n: num
                     {x.status === 'CONFIRMED' && x.pass_code && !x.gate_scanned && <p className="text-sm text-ink-600"><Text>{`Gate pass ${x.pass_code} is ready in Tamu.`}</Text></p>}
                     {x.status === 'COLLECTED' && x.weight_g && <p className="text-sm text-success-700"><Text>{`${formatKg(x.weight_g)} collected`}</Text></p>}
                     {x.in_review && <p className="text-sm text-ink-600"><Text>The township office is checking this collection.</Text></p>}
+                    {x.waiting_for_gate && <p className="text-sm text-ink-600"><Text>Weight sent. The gate has no record of the collector yet, so it is checked tonight.</Text></p>}
+                    {x.no_reward && <p className="text-sm text-ink-600"><Text>No reward: the gate has no record of the collector that day.</Text></p>}
                     {x.can_report && x.gate_scanned && <p className="text-sm font-semibold text-ink-900"><Text>How much did they take?</Text></p>}
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge tone={x.in_review ? 'gold' : COLLECTION_STATUS[x.status].tone}><Text>{x.in_review ? 'Under review' : COLLECTION_STATUS[x.status].label}</Text></Badge>
+                    <Badge tone={x.in_review ? 'gold' : x.no_reward ? 'neutral' : COLLECTION_STATUS[x.status].tone}><Text>{x.in_review ? 'Under review' : x.no_reward ? 'No reward' : COLLECTION_STATUS[x.status].label}</Text></Badge>
                     {x.can_report && (
-                      x.gate_scanned
+                      x.gate_scanned || x.collector_at_gate
                         ? <Button size="sm" onClick={() => setWeighing(x)}><Scale className="size-4" aria-hidden /><Text>Enter the weight</Text></Button>
                         : <Button size="sm" variant="ghost" onClick={() => setWeighing(x)}><Text>The collector came</Text></Button>
                     )}
                     {x.can_dispute && (
-                      <Button size="sm" variant="ghost" onClick={() => void came.run(x.id)} disabled={came.pending}><Text>The collector came</Text></Button>
+                      <Button size="sm" variant="ghost" onClick={() => setWeighing(x)}><Text>The collector came</Text></Button>
                     )}
-                    {(x.status === 'REQUESTED' || x.status === 'CONFIRMED') && !x.gate_scanned && !x.in_review && (
+                    {(x.status === 'REQUESTED' || x.status === 'CONFIRMED') && !x.gate_scanned && !x.in_review && !x.waiting_for_gate && (
                       <Button size="sm" variant="ghost" onClick={() => void cancel.run(x.id)} disabled={cancel.pending}><Text>Cancel</Text></Button>
                     )}
                   </div>
@@ -220,11 +227,11 @@ export function Collections({ request }: { request: { material: Material; n: num
         open={weighing !== null}
         onClose={() => setWeighing(null)}
         title="How much did they take?"
-        description={weighing?.gate_scanned ? 'Use the weight the collector told you.' : 'The gate did not record the collector, so the township office will check this weight first.'}
+        description={weighing?.gate_scanned || weighing?.collector_at_gate ? 'Use the weight the collector told you.' : 'The gate has no record of the collector on this pass. If they were scanned in that day for any home, it counts. If not, there is no reward.'}
         footer={<><Button variant="secondary" onClick={() => setWeighing(null)}><Text>Cancel</Text></Button><Button type="submit" form="collection-weight" pending={sendWeight.pending}><Text>Send</Text></Button></>}
       >
         <form method="post" id="collection-weight" onSubmit={submitWeight}>
-          <Input label="Weight (kg)" name="kg" type="number" min={0.1} max={500} step={0.1} required error={sendWeight.fields.weightG} hint="Small weights are recorded straight away. Large ones are checked by the township office first." />
+          <Input label="Weight (kg)" name="kg" type="number" min={0.1} max={500} step={0.1} required error={sendWeight.fields.weightG} hint="A very large weight counts up to a maximum for the material. Your Impact XP is the same." />
         </form>
       </Modal>
 

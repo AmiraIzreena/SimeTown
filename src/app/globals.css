@@ -1087,13 +1087,18 @@ html[data-signed-in] .field:focus-within > label { color: var(--color-brand-700)
 .see-all { transition: background-color 160ms var(--ease-soft); }
 .see-all-arrow { transition: transform 220ms var(--ease-soft); }
 .see-all:focus-visible { outline: 2px solid var(--color-brand-500); outline-offset: -2px; }
+/* A problem's photo: a slight zoom on hover says it opens bigger. */
+.around-photo { cursor: zoom-in; transition: box-shadow 200ms var(--ease-soft); }
+.around-photo img { transition: transform 260ms var(--ease-soft); }
 @media (hover: hover) and (pointer: fine) {
+  .around-photo:hover { box-shadow: 0 6px 16px rgb(0 0 0 / 0.12); }
+  .around-photo:hover img { transform: scale(1.05); }
   .around-row:hover { background-color: rgb(255 247 237 / 0.6); }
   .around-rail[aria-pressed='false']:hover { background-color: rgb(255 255 255 / 0.7); color: var(--color-ink-900); }
   .see-all:hover { background-color: rgb(255 247 237 / 0.6); }
   .see-all:hover .see-all-arrow { transform: translateX(3px); }
 }
-@media (prefers-reduced-motion: reduce) { .around-link, .around-link-arrow, .around-row, .around-rail, .see-all, .see-all-arrow { transition: none; } .see-all:hover .see-all-arrow { transform: none; } .around-link:hover, .around-link:active, .around-link:hover .around-link-arrow { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .around-link, .around-link-arrow, .around-row, .around-rail, .see-all, .see-all-arrow, .around-photo, .around-photo img { transition: none; } .around-photo:hover img { transform: none; } .see-all:hover .see-all-arrow { transform: none; } .around-link:hover, .around-link:active, .around-link:hover .around-link-arrow { transform: none; } }
 @media print {
   .insights-hero { background: none !important; color: var(--color-ink-900) !important; box-shadow: none !important; border: 1px solid var(--color-ink-200); }
   .insights-hero::before { display: none; }

@@ -10,3 +10,5 @@ next-env.d.ts
 .DS_Store
 docs/SimeTown-UI-UX-GUIDELINES.md
 docs/CONSOLE_UI_HANDOVER.md
+# Demo photos as downloaded, before they are resized into scripts/demo-photos/lapor/
+scripts/demo-photos/incoming/

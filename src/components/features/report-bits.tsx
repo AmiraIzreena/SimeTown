@@ -2,6 +2,7 @@ import { Text } from '@/components/ui/localized-text';
 import { LocalizedImg } from '@/components/ui/localized-elements';
 import { Check, Eye, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/card';
+import { useState } from 'react';
 import { cn } from '@/lib/cn';
 import { formatDate, formatDateTime } from '@/lib/format';
 import { useLang } from '@/lib/i18n';
@@ -59,7 +60,12 @@ export interface Issue {
   late: boolean;
   following: boolean;
   mine: boolean;
+  /** Set when the problem has a photo neighbours can see; changes when staff pick another. */
+  photo_version?: string | null;
 }
+
+/** The address of the photo neighbours see on a public problem, or null when it has none (or staff hid it). */
+export const issuePhotoSrc = (issue: Pick<Issue, 'id' | 'photo_version'>) => (issue.photo_version ? `/api/v1/report-issues/${issue.id}/photo?v=${issue.photo_version}` : null);
 
 export const STATUS_LABELS: Record<ReportStatus, string> = { NEW: 'Received', IN_PROGRESS: 'In progress', RESOLVED: 'Resolved', REJECTED: 'Closed, no action' };
 const STATUS_TONES = { NEW: 'brand', IN_PROGRESS: 'warning', RESOLVED: 'success', REJECTED: 'neutral' } as const;
@@ -79,6 +85,17 @@ export function AffectedBadge({ affected }: { affected: number }) {
       <Text>{`${affected} residents affected`}</Text>
     </Badge>
   );
+}
+
+/**
+ * A small square of a problem's public photo, beside its title (so it is decorative). Shows nothing when the problem
+ * has no photo, staff hid it, or it is not public yet.
+ */
+export function IssueThumb({ issue, className }: { issue: Pick<Issue, 'id' | 'photo_version'>; className?: string }) {
+  const [failed, setFailed] = useState(false);
+  const src = issuePhotoSrc(issue);
+  if (!src || failed) return null;
+  return <LocalizedImg src={src} alt="" loading="lazy" decoding="async" onError={() => setFailed(true)} className={cn('shrink-0 rounded-lg bg-ink-100 object-cover ring-1 ring-ink-200', className)} />;
 }
 
 /** An issue's title in the reader's language; without a written one, its type and area. */
@@ -109,7 +126,7 @@ export function IssueReach({ report }: { report: Pick<Report, 'issue_people' | '
 
 export const LateBadge = ({ late }: { late: boolean }) => (late ? <Badge tone="danger"><Text>Late</Text></Badge> : null);
 
-/** The reporter's photo, served only to them and to township staff. */
+/** The reporter's photo, served to them and to township staff; one report's photo is also shown on a public problem. */
 export function ReportPhoto({ report }: { report: Pick<Report, 'id' | 'photo_id'> }) {
   if (!report.photo_id) return null;
   return <LocalizedImg src={`/api/v1/reports/${report.id}/photo`} alt="Photo attached to this report" loading="lazy" className="max-h-72 w-full rounded-lg border border-ink-200 object-cover" />;

@@ -35,6 +35,8 @@ export interface Provider {
   about: string | null;
   listing_id: string;
   category: ServiceCategory;
+  /** The company's main trade: the first service it listed (picks its photo). */
+  main_category?: ServiceCategory | null;
   description: string;
   pricing: ServicePricing;
   callout_fee_sen: number | null;

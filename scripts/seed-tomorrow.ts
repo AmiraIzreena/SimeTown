@@ -4,6 +4,7 @@ import { ACTOR_COLUMNS, toActor } from '../src/server/auth/session';
 import { one, type Db } from '../src/server/db/client';
 import { bookCollection, completeCollection, createCollector } from '../src/server/modules/kitar/collections';
 import { handOverParcel, logParcel, myParcels } from '../src/server/modules/parcels/service';
+import { demoReportPhoto } from './seed-report-photos';
 import { createReport, setMeToo, updateReport } from '../src/server/modules/reports/service';
 
 /**
@@ -97,19 +98,19 @@ export async function seedRequestShowcase(db: Db, input: { now: Date; log: (line
 
   // Reports, one at each step: received, checked, assigned and late, fixed, closed.
   // (The blocked drain he follows with "Me too" is already assigned with a future date.)
-  await createReport(db, daniel, { description: FIRST, locationText: 'Playground, Jalan Metafasa U16/171', zoneId: zone, category: 'SAFETY' }, ago(0, 2));
+  await createReport(db, daniel, { photo: await demoReportPhoto('Playground, Jalan Metafasa U16/171'), description: FIRST, locationText: 'Playground, Jalan Metafasa U16/171', zoneId: zone, category: 'SAFETY' }, ago(0, 2));
 
-  const checked = await createReport(db, daniel, { description: 'Overgrown grass hiding the kerb on the corner', locationText: 'Corner of Jalan Metafasa U16/171', zoneId: zone, category: 'OTHER' }, ago(2));
+  const checked = await createReport(db, daniel, { photo: await demoReportPhoto('Corner of Jalan Metafasa U16/171'), description: 'Overgrown grass hiding the kerb on the corner', locationText: 'Corner of Jalan Metafasa U16/171', zoneId: zone, category: 'OTHER' }, ago(2));
   await updateReport(db, staff, checked.id, { status: 'IN_PROGRESS', staffNote: 'Seen by the team. Grass cutting will be booked this week.' }, ago(1, 20));
 
-  const late = await createReport(db, daniel, { description: 'Street sign knocked over at the junction', locationText: 'Junction of Persiaran Metafasa and Jalan Metafasa U16/171', zoneId: zone, category: 'SAFETY' }, ago(6));
+  const late = await createReport(db, daniel, { photo: await demoReportPhoto('Junction of Persiaran Metafasa and Jalan Metafasa U16/171'), description: 'Street sign knocked over at the junction', locationText: 'Junction of Persiaran Metafasa and Jalan Metafasa U16/171', zoneId: zone, category: 'SAFETY' }, ago(6));
   await updateReport(db, staff, late.id, { status: 'IN_PROGRESS', assignedTo: 'Signage contractor', targetDate: dayOf(ago(2)), staffNote: 'The contractor will put the sign back up.' }, ago(5));
 
-  const fixed = await createReport(db, daniel, { description: 'Loose drain cover outside No. 5', locationText: 'Outside No. 5, Jalan Metafasa U16/171', zoneId: zone, category: 'DRAINAGE' }, ago(8));
+  const fixed = await createReport(db, daniel, { photo: await demoReportPhoto('Outside No. 5, Jalan Metafasa U16/171'), description: 'Loose drain cover outside No. 5', locationText: 'Outside No. 5, Jalan Metafasa U16/171', zoneId: zone, category: 'DRAINAGE' }, ago(8));
   await updateReport(db, staff, fixed.id, { status: 'IN_PROGRESS', assignedTo: 'Drainage contractor', targetDate: dayOf(ago(4)) }, ago(7));
   await updateReport(db, staff, fixed.id, { status: 'RESOLVED', staffNote: 'Cover replaced and fixed in place.' }, ago(4, 2));
 
-  const closed = await createReport(db, daniel, { description: 'Cars parked on the road outside my gate every night', locationText: 'Outside No. 2, Jalan Metafasa U16/171', zoneId: zone, category: 'OTHER' }, ago(5));
+  const closed = await createReport(db, daniel, { photo: await demoReportPhoto('Outside No. 2, Jalan Metafasa U16/171'), description: 'Cars parked on the road outside my gate every night', locationText: 'Outside No. 2, Jalan Metafasa U16/171', zoneId: zone, category: 'OTHER' }, ago(5));
   await updateReport(db, staff, closed.id, { status: 'REJECTED', staffNote: 'Parking on a public road is enforced by the local council (MBSA), not township maintenance. Please contact them.' }, ago(4));
 
   // A parcel waiting at the guardhouse.

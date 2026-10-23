@@ -236,6 +236,266 @@ export const walkthroughsMalay: Record<string, string> = {
   'Event report': 'Laporan kejadian',
   'Warned': 'Diberi amaran',
   'Lead time': 'Masa awal',
+
+  // Lapor: residents. "Checked by staff" and "Update the resident" are also the real screens' words.
+  'How Lapor works': 'Cara Lapor berfungsi',
+  'Report a problem, follow it, and see what neighbours reported.': 'Laporkan masalah, ikutinya, dan lihat apa yang dilaporkan oleh jiran.',
+  'Tap New report: say what and where': 'Ketik Laporan baharu: nyatakan apa dan di mana',
+  'Describe the problem, say where it is (a street, landmark or nearest house) and add a photo of it. The area and the type are optional. If someone is in immediate danger, call 999 first.':
+    'Terangkan masalah, nyatakan lokasinya (jalan, mercu tanda atau rumah terdekat) dan tambah fotonya. Kawasan dan jenis adalah pilihan. Jika seseorang dalam bahaya serta-merta, hubungi 999 dahulu.',
+  'Street light not working outside the playground': 'Lampu jalan tidak berfungsi di luar taman permainan',
+  'SimeTown suggests the type and urgency': 'SimeTown mencadangkan jenis dan tahap kecemasan',
+  'Leave Type on Suggest for me, and SimeTown reads your words and photo to choose a type and urgency. Staff can correct either, and every correction is recorded. Urgent safety reports are seen first.':
+    'Biarkan Jenis pada Cadangkan untuk saya, dan SimeTown membaca kata-kata dan foto anda untuk memilih jenis dan tahap kecemasan. Kakitangan boleh membetulkan kedua-duanya, dan setiap pembetulan direkodkan. Laporan keselamatan segera dilihat dahulu.',
+  'Sorted as Lighting': 'Dikategorikan sebagai Pencahayaan',
+  'Medium urgency · Staff can correct this': 'Keutamaan sederhana · Kakitangan boleh membetulkannya',
+  'Urgent safety reports': 'Laporan keselamatan segera',
+  'Seen first': 'Dilihat dahulu',
+  'Already reported? Tap Me too': 'Sudah dilaporkan? Ketik Saya juga',
+  'While you type, problems neighbours have already reported may appear. If one is the same, tap Me too instead of reporting it again: you count as affected and hear every update.':
+    'Semasa anda menaip, masalah yang telah dilaporkan oleh jiran mungkin muncul. Jika salah satunya sama, ketik Saya juga dan bukannya melaporkannya sekali lagi: anda dikira sebagai terjejas dan menerima setiap kemas kini.',
+  'Street light out near the playground': 'Lampu jalan padam berhampiran taman permainan',
+  'Lighting · 4 residents affected': 'Pencahayaan · 4 penduduk terjejas',
+  'Follow it until it is fixed': 'Ikuti sehingga ia dibaiki',
+  'Your report moves through four steps: Reported, Checked by staff, Assigned to a team with a target date, then Fixed. You are told at each step. If it passes its target date, it shows as Late.':
+    'Laporan anda melalui empat langkah: Dilaporkan, Disemak oleh kakitangan, Diserahkan kepada pasukan dengan tarikh sasaran, kemudian Dibaiki. Anda dimaklumkan pada setiap langkah. Jika ia melepasi tarikh sasarannya, ia ditunjukkan sebagai Lewat.',
+  'Your report': 'Laporan anda',
+  'Checked by staff': 'Disemak oleh kakitangan',
+  'Neighbours see it once enough people share it': 'Jiran melihatnya apabila cukup ramai berkongsi masalah yang sama',
+  'At first, only you and the township office see your report. Once enough residents have reported it or said Me too, it appears in Reports around the township, with a title SimeTown writes and one report’s photo, never your words. Staff can hide a photo.':
+    'Pada mulanya, hanya anda dan pejabat perbandaran melihat laporan anda. Apabila cukup ramai penduduk telah melaporkannya atau berkata Saya juga, ia muncul dalam Laporan di sekitar perbandaran, dengan tajuk yang ditulis oleh SimeTown dan foto daripada satu laporan, tidak sekali-kali kata-kata anda. Kakitangan boleh menyembunyikan foto.',
+  'Street light out near the playground · 5 people affected': 'Lampu jalan padam berhampiran taman permainan · 5 orang terjejas',
+  'Earn Impact XP once staff confirm it': 'Dapatkan XP Impak setelah kakitangan mengesahkannya',
+  'When staff mark your report In progress or Resolved, you earn Impact XP. Only the first reporter earns it, and Me too earns none, so a false report gains nothing.':
+    'Apabila kakitangan menandakan laporan anda Sedang diuruskan atau Selesai, anda mendapat XP Impak. Hanya pelapor pertama mendapatnya, dan Saya juga tidak mendapat apa-apa, jadi laporan palsu tidak membawa sebarang faedah.',
+  'Reports from other pages are here too': 'Laporan dari halaman lain juga ada di sini',
+  'Problems you report from Parcels, Tamu, Kitar, Gerak or Home services each have their own tab. If the township office asks you something, the report shows Needs your answer: reply right there. Not fixed? Reopen it within 7 days of the outcome.':
+    'Masalah yang anda laporkan dari Bungkusan, Tamu, Kitar, Gerak atau Perkhidmatan rumah masing-masing ada tab sendiri. Jika pejabat perbandaran bertanya sesuatu, laporan itu menunjukkan Perlukan jawapan anda: balas terus di situ. Belum selesai? Buka semula dalam masa 7 hari selepas keputusannya.',
+  'INC-000123 · Which door did you use?': 'INC-000123 · Pintu mana yang anda gunakan?',
+
+  // Lapor: staff, admins and HQ.
+  'How Lapor works for staff': 'Cara Lapor berfungsi untuk kakitangan',
+  'Community reports, cases, and who does what.': 'Laporan komuniti, kes, dan siapa melakukan apa.',
+  'Needs attention: what matters most': 'Perlu perhatian: perkara paling penting',
+  'Problems that enough residents share, and anything urgent. Urgent comes first, then late, then the most people affected. An urgent safety report also alerts staff at once, and HQ.':
+    'Masalah yang dikongsi oleh cukup ramai penduduk, dan apa-apa yang segera. Yang segera didahulukan, kemudian yang lewat, kemudian yang menjejaskan paling ramai orang. Laporan keselamatan segera juga memaklumkan kakitangan serta-merta, dan juga HQ.',
+  'Fallen tree across Jalan Metafasa': 'Pokok tumbang melintangi Jalan Metafasa',
+  'Urgent · Safety hazard · 2 residents': 'Segera · Bahaya keselamatan · 2 penduduk',
+  'Blocked drain by the lake': 'Longkang tersumbat di tepi tasik',
+  'One update reaches every report': 'Satu kemas kini sampai ke setiap laporan',
+  'Open a problem to set its status, who is fixing it and a target date, with a note for residents. Tap Save for every report: everyone who reported it or said Me too is told.':
+    'Buka masalah untuk menetapkan statusnya, siapa yang membaikinya dan tarikh sasaran, dengan nota untuk penduduk. Ketik Simpan untuk setiap laporan: semua yang melaporkannya atau berkata Saya juga dimaklumkan.',
+  'Drainage contractor': 'Kontraktor saliran',
+  'Check what SimeTown suggested': 'Semak cadangan SimeTown',
+  'In Community reports, each report shows the type and urgency SimeTown suggested. If either is wrong, change it and tap Save. Every change is recorded in the audit log.':
+    'Dalam Laporan komuniti, setiap laporan menunjukkan jenis dan tahap kecemasan yang dicadangkan oleh SimeTown. Jika salah satunya salah, tukarnya dan ketik Simpan. Setiap perubahan direkodkan dalam log audit.',
+  'Suggested: Lighting, medium urgency': 'Dicadangkan: Pencahayaan, keutamaan sederhana',
+  'Change recorded in the audit log': 'Perubahan direkodkan dalam log audit',
+  'Confirm it, fix it, show the fix': 'Sahkan, baiki, tunjukkan pembaikan',
+  'Moving a report to In progress confirms it is real, and the reporter earns Impact XP. When it is done, choose Resolved and add a photo of the fix for everyone following it. Not a real problem? Choose Closed, no action.':
+    'Memindahkan laporan ke Sedang diuruskan mengesahkan ia benar, dan pelapor mendapat XP Impak. Apabila siap, pilih Selesai dan tambah foto pembaikan untuk semua yang mengikutinya. Bukan masalah sebenar? Pilih Ditutup, tiada tindakan.',
+  'Reporter earns XP': 'Pelapor mendapat XP',
+  'Everyone following it is told': 'Semua yang mengikutinya dimaklumkan',
+  'Cases: tap I’ll handle this': 'Kes: ketik Saya akan uruskan',
+  'Gate & community cases and Parcel & locker cases come from Tamu, Parcels, Kitar and Gerak. Each must be taken, then resolved, within its deadline. If two people tap at once, only one gets it.':
+    'Kes pintu masuk & komuniti dan Kes bungkusan & lokar datang dari Tamu, Bungkusan, Kitar dan Gerak. Setiap kes mesti diambil, kemudian diselesaikan, dalam tarikh akhirnya. Jika dua orang mengetik serentak, hanya seorang yang mendapatnya.',
+  'Work the case, then Resolve': 'Uruskan kes, kemudian Selesaikan',
+  'Add a note only staff see, Update the resident, or Ask the resident: the case then waits for their answer. Waiting for someone covers a courier company or a contractor. Resolve records the outcome the resident is told.':
+    'Tambah nota yang hanya dilihat kakitangan, Maklumkan penduduk, atau Tanya penduduk: kes kemudian menunggu jawapan mereka. Menunggu seseorang meliputi syarikat kurier atau kontraktor. Selesaikan merekodkan keputusan yang dimaklumkan kepada penduduk.',
+  'Update the resident': 'Maklumkan penduduk',
+  'Case owner': 'Pemilik kes',
+  'Stuck? Ask an admin': 'Buntu? Minta pentadbir',
+  'Tap Ask an admin and say what they should do. The township admins are told at once, and the case stays with you. Admins set case deadlines in Parcels › Manage › Case deadlines.':
+    'Ketik Minta pentadbir dan nyatakan apa yang perlu mereka lakukan. Pentadbir perbandaran dimaklumkan serta-merta, dan kes kekal dengan anda. Pentadbir menetapkan tarikh akhir kes dalam Bungkusan › Urus › Tarikh akhir kes.',
+  'Admins told': 'Pentadbir dimaklumkan',
+  'Ravi Kumar asked for an admin': 'Ravi Kumar meminta pentadbir',
+
+  // Lapor: case deadlines.
+  'How case deadlines work': 'Cara tarikh akhir kes berfungsi',
+  'How deadlines work': 'Cara tarikh akhir berfungsi',
+  'Deadlines, escalations and who is told.': 'Tarikh akhir, kes yang dinaikkan dan siapa yang dimaklumkan.',
+  'Two deadlines for every case': 'Dua tarikh akhir untuk setiap kes',
+  'Each priority has a time to be taken and a time to be resolved. These are proposed starting values: the township decides its own.':
+    'Setiap keutamaan ada masa untuk diambil dan masa untuk diselesaikan. Ini nilai permulaan yang dicadangkan: perbandaran menentukan nilainya sendiri.',
+  'Working time skips nights and holidays': 'Masa bekerja tidak mengira waktu malam dan cuti',
+  'Normal and Low count only working time: 9 am to 6 pm, Monday to Friday, skipping the holidays you list. Critical and High count every minute.':
+    'Biasa dan Rendah hanya mengira masa bekerja: 9 pagi hingga 6 petang, Isnin hingga Jumaat, tidak termasuk cuti yang anda senaraikan. Kritikal dan Tinggi mengira setiap minit.',
+  'Working day': 'Waktu bekerja',
+  'Mon – Fri': 'Isn – Jum',
+  'Deadlines are checked every 5 minutes': 'Tarikh akhir disemak setiap 5 minit',
+  'A case nobody took in time, or one past its deadline, is escalated to the township admins once, never twice. It is marked Escalated and shows Not taken in time or Past its deadline.':
+    'Kes yang tidak diambil sesiapa tepat pada masanya, atau yang melepasi tarikh akhirnya, dinaikkan kepada pentadbir perbandaran sekali sahaja, tidak sekali-kali dua kali. Ia ditanda Dinaikkan dan menunjukkan Tidak diambil tepat pada masanya atau Melepasi tarikh akhirnya.',
+  'Some cases reach admins at once': 'Sesetengah kes sampai kepada pentadbir serta-merta',
+  'A critical case, such as a locker door opened without an unlock, goes to the admins straight away. So does a staff member’s Ask an admin, and a case the resident reopens because it was not fixed.':
+    'Kes kritikal, seperti pintu lokar terbuka tanpa buka kunci, terus sampai kepada pentadbir. Begitu juga Minta pentadbir oleh kakitangan, dan kes yang dibuka semula oleh penduduk kerana belum dibaiki.',
+  'Township admins': 'Pentadbir perbandaran',
+  'Critical · Admins told at once': 'Kritikal · Pentadbir dimaklumkan serta-merta',
+  'The resident says it is not fixed': 'Penduduk berkata ia belum dibaiki',
+  'Admins assign and reassign': 'Pentadbir menugaskan dan menugaskan semula',
+  'Give a case to a staff member with Assign, or move it with Reassign and a reason. The new owner is told, and the move is recorded.':
+    'Berikan kes kepada kakitangan dengan Tugaskan, atau pindahkannya dengan Tugaskan semula dan sebab. Pemilik baharu dimaklumkan, dan pemindahan itu direkodkan.',
+  'Admins and HQ': 'Pentadbir dan HQ',
+  'On leave this week': 'Bercuti minggu ini',
+  'Sent to Ravi Kumar': 'Dihantar kepada Ravi Kumar',
+  'Resolved cases close by themselves': 'Kes yang selesai ditutup dengan sendiri',
+  'A resolved case closes once the resident can no longer reopen it: 7 days here. A case that is not resolved never closes by itself.':
+    'Kes yang selesai ditutup sebaik sahaja penduduk tidak lagi boleh membukanya semula: 7 hari di sini. Kes yang belum selesai tidak sekali-kali ditutup dengan sendiri.',
+  'Only admins change the deadlines': 'Hanya pentadbir menukar tarikh akhir',
+  'Staff can see the deadlines here. Admins change them and tap Save deadlines. Run the deadline checks now runs the checks at once, for a demonstration.':
+    'Kakitangan boleh melihat tarikh akhir di sini. Pentadbir menukarnya dan mengetik Simpan tarikh akhir. Jalankan semakan tarikh akhir sekarang menjalankan semakan serta-merta, untuk demonstrasi.',
+
+  // Kitar: residents.
+  'Recycle at a kiosk bin, claim a guest code, or book a collection.': 'Kitar semula di tong kiosk, tuntut kod tetamu, atau tempah kutipan.',
+  'Get your items ready': 'Sediakan barang anda',
+  'Empty, rinse and dry them, then sort them by type. Each bin takes one material, such as paper or aluminium, and each material earns its own points per kg.':
+    'Kosongkan, bilas dan keringkannya, kemudian asingkan mengikut jenis. Setiap tong menerima satu bahan, seperti kertas atau aluminium, dan setiap bahan memberi mata sekilogramnya sendiri.',
+  'Tap Recycle now and scan the bin': 'Ketik Kitar semula sekarang dan imbas tong',
+  'Choose the site and the bin, then scan the code on the bin’s screen with your phone camera. The code changes every 30 seconds, so it only works at the bin.':
+    'Pilih tapak dan tong, kemudian imbas kod pada skrin tong dengan kamera telefon anda. Kod bertukar setiap 30 saat, jadi ia hanya berfungsi di tong itu.',
+  'The bin weighs it for you': 'Tong menimbangnya untuk anda',
+  'Put your items in the bin. Its scale weighs them and sends the weight by itself, so you never type it. Only the weight the bin sends counts.':
+    'Masukkan barang anda ke dalam tong. Penimbangnya menimbang dan menghantar berat dengan sendiri, jadi anda tidak perlu menaipnya. Hanya berat yang dihantar oleh tong dikira.',
+  'Weighed by the bin’s scale': 'Ditimbang oleh penimbang tong',
+  'Nothing is typed on your phone': 'Tiada apa-apa ditaip di telefon anda',
+  'See your reward straight away': 'Lihat ganjaran anda serta-merta',
+  'Each trip earns 20 Impact XP, and the bin’s weight earns points at your material’s rate. Spend points at a member shop and confirm on your own phone.':
+    'Setiap perjalanan memberi 20 XP Impak, dan berat daripada tong memberi mata mengikut kadar bahan anda. Belanjakan mata di kedai ahli dan sahkan di telefon anda sendiri.',
+  'Thank you for recycling': 'Terima kasih kerana mengitar semula',
+  'For the trip': 'Untuk perjalanan ini',
+  'Limits keep it fair': 'Had memastikan ia adil',
+  'XP and points count for 2 trips a day per person and 60 trips a month per home, and your home shares a monthly points limit. More trips are welcome but earn nothing.':
+    'XP dan mata dikira untuk 2 perjalanan sehari bagi setiap orang dan 60 perjalanan sebulan bagi setiap rumah, dan rumah anda berkongsi had mata bulanan. Perjalanan tambahan dialu-alukan tetapi tidak memberi apa-apa.',
+  'Visitors get a guest code': 'Pelawat mendapat kod tetamu',
+  'A visitor recycles as a guest and gets an 8-letter code. A resident taps I have a guest code and enters it within 14 days. Guest recycling earns XP only.':
+    'Pelawat mengitar semula sebagai tetamu dan mendapat kod 8 huruf. Penduduk mengetik Saya ada kod tetamu dan memasukkannya dalam masa 14 hari. Kitar semula tetamu hanya memberi XP.',
+  'Bulky items? Book a collection': 'Barang besar? Tempah kutipan',
+  'An old fridge, e-waste or a big load of paper: tap Book, choose what it is, a collector who takes it, and a day from tomorrow up to 30 days ahead. It is confirmed at once, and the gate gets the collector’s pass.':
+    'Peti sejuk lama, sisa elektronik atau longgokan kertas yang banyak: ketik Tempah, pilih apa barangnya, pengutip yang menerimanya, dan hari dari esok hingga 30 hari ke hadapan. Ia disahkan serta-merta, dan pintu pagar menerima pas pengutip.',
+  'After the visit, enter the weight': 'Selepas lawatan, masukkan berat',
+  'Collector scanned in at the gate': 'Pengutip diimbas masuk di pintu pagar',
+  'Impact XP earned': 'XP Impak diperoleh',
+
+  // Kitar: Recycling collections.
+  'How recycling collections work': 'Cara kutipan kitar semula berfungsi',
+  'What runs by itself, and what needs you.': 'Apa yang berjalan dengan sendiri, dan apa yang memerlukan anda.',
+  'Most collections run by themselves': 'Kebanyakan kutipan berjalan dengan sendiri',
+  'Booking confirmed': 'Tempahan disahkan',
+  'Gate pass for the collector': 'Pas pintu pagar untuk pengutip',
+  'Reminder the day before': 'Peringatan sehari sebelumnya',
+  'The gate scans the collector in': 'Pintu pagar mengimbas masuk pengutip',
+  'Contractor pass · scanned in': 'Pas kontraktor · diimbas masuk',
+  'Weights': 'Berat',
+  '12 kg, gate scanned': '12 kg, diimbas di pintu pagar',
+  'To watch: homes and collectors': 'Untuk dipantau: rumah dan pengutip',
+  'A home that keeps sending large weights or hitting its limits, or a collector who keeps missing visits, is flagged after 3 times in 30 days. Contact them, or Pause collector until it is sorted.':
+    'Rumah yang kerap menghantar berat yang besar atau mencapai hadnya, atau pengutip yang kerap terlepas lawatan, ditanda selepas 3 kali dalam 30 hari. Hubungi mereka, atau Gantung pengutip sehingga ia selesai.',
+  'Missed 3 collections': 'Terlepas 3 kutipan',
+  'Minyak Hijau Collectors · last 30 days': 'Minyak Hijau Collectors · 30 hari lalu',
+  'Collectors and their day': 'Pengutip dan hari mereka',
+  'Admins add a collector with what they take and which days they come. Today’s collections gives each collector a list to Copy or Print. Material accepted shows the kilograms each month, and why bins turned items away.':
+    'Pentadbir menambah pengutip dengan apa yang mereka terima dan hari mereka datang. Kutipan hari ini memberi setiap pengutip senarai untuk Salin atau Cetak. Bahan diterima menunjukkan kilogram setiap bulan, dan sebab tong menolak barang.',
+
+  // Kitar: weights and disputes decided by the gate record.
+  'Tap Enter the weight with what the collector took. If the gate scanned the collector in that day, it earns Impact XP at once. With no gate record of them, there is no reward. Collections never earn points per kg.':
+    'Ketik Masukkan berat dengan apa yang diambil oleh pengutip. Jika pintu pagar mengimbas masuk pengutip pada hari itu, ia memberi XP Impak serta-merta. Tanpa rekod pintu pagar, tiada ganjaran. Kutipan tidak sekali-kali memberi mata sekilogram.',
+  'A booking is confirmed at once and the collector gets a gate pass for that day. The household is reminded the day before. Weights and disputes settle themselves; staff only watch for patterns.':
+    'Tempahan disahkan serta-merta dan pengutip mendapat pas pintu pagar untuk hari itu. Isi rumah diingatkan sehari sebelumnya. Berat dan pertikaian diselesaikan dengan sendiri; kakitangan hanya memantau corak.',
+  'The collector shows their pass at the gate, like any contractor. That scan proves the visit happened. A collector visiting several homes that day only needs one pass scanned.':
+    'Pengutip menunjukkan pas mereka di pintu pagar, seperti mana-mana kontraktor. Imbasan itu membuktikan lawatan berlaku. Pengutip yang melawat beberapa rumah pada hari itu hanya perlu satu pas diimbas.',
+  'The gate record decides each weight': 'Rekod pintu pagar menentukan setiap berat',
+  'Collector scanned in that day, on any home’s pass: the weight is credited at once, counted up to a maximum per material (e-waste 100 kg, paper 50 kg). No gate record: the collection closes with no reward. Nobody approves it.':
+    'Pengutip diimbas masuk pada hari itu, menggunakan pas mana-mana rumah: berat dikreditkan serta-merta, dikira sehingga had maksimum bagi setiap bahan (sisa elektronik 100 kg, kertas 50 kg). Tiada rekod pintu pagar: kutipan ditutup tanpa ganjaran. Tiada sesiapa perlu meluluskannya.',
+  '150 kg of e-waste': '150 kg sisa elektronik',
+  'Counts as 100 kg': 'Dikira sebagai 100 kg',
+  '8 kg, no gate record': '8 kg, tiada rekod pintu pagar',
+  'No reward': 'Tiada ganjaran',
+  'Every night, the rest is settled': 'Setiap malam, selebihnya diselesaikan',
+  'A weight sent before the collector reached the gate is decided that night. A past collection with no gate scan and no weight is marked missed, and its pass is cancelled. The household is told each result.':
+    'Berat yang dihantar sebelum pengutip sampai ke pintu pagar diputuskan pada malam itu. Kutipan lepas tanpa imbasan pintu pagar dan tanpa berat ditanda terlepas, dan pasnya dibatalkan. Isi rumah dimaklumkan setiap keputusan.',
+  'Weight sent. Checked against the gate record tonight': 'Berat dihantar. Disemak dengan rekod pintu pagar malam ini',
+  'Disputes settle themselves too': 'Pertikaian juga diselesaikan dengan sendiri',
+  'On a missed collection, the household taps The collector came within 7 days and sends the weight. If the gate saw the collector that day for another home, it is credited. If not, it stays missed.':
+    'Bagi kutipan terlepas, isi rumah mengetik Pengutip telah datang dalam masa 7 hari dan menghantar berat. Jika pintu pagar merekodkan pengutip pada hari itu untuk rumah lain, ia dikreditkan. Jika tidak, ia kekal terlepas.',
+  'Collector at the gate that day': 'Pengutip di pintu pagar pada hari itu',
+  'No gate record': 'Tiada rekod pintu pagar',
+  'Stays missed': 'Kekal terlepas',
+
+  // Kitar collections: the household's screen and the staff list.
+  'Weight sent. The gate has no record of the collector yet, so it is checked tonight.': 'Berat dihantar. Pintu pagar belum ada rekod pengutip, jadi ia disemak malam ini.',
+  'No reward: the gate has no record of the collector that day.': 'Tiada ganjaran: pintu pagar tiada rekod pengutip pada hari itu.',
+  'The gate has no record of the collector on this pass. If they were scanned in that day for any home, it counts. If not, there is no reward.':
+    'Pintu pagar tiada rekod pengutip bagi pas ini. Jika mereka diimbas masuk pada hari itu untuk mana-mana rumah, ia dikira. Jika tidak, tiada ganjaran.',
+  'A very large weight counts up to a maximum for the material. Your Impact XP is the same.': 'Berat yang sangat besar dikira sehingga had maksimum bahan itu. XP Impak anda tetap sama.',
+  'Thank you. It is checked against the gate record tonight.': 'Terima kasih. Ia disemak dengan rekod pintu pagar malam ini.',
+  'The gate has no record of the collector, so there is no reward for this collection.': 'Pintu pagar tiada rekod pengutip, jadi tiada ganjaran untuk kutipan ini.',
+  'Missed. The gate has no record of the collector': 'Terlepas. Pintu pagar tiada rekod pengutip',
+  'No gate record of the collector. Closed with no reward': 'Tiada rekod pintu pagar bagi pengutip. Ditutup tanpa ganjaran',
+  'The collector was at the gate that day. Weight credited': 'Pengutip berada di pintu pagar pada hari itu. Berat dikreditkan',
+
+  // Gerak: residents.
+  'Walk, run, cycle or wheel a township loop, and what it earns.': 'Berjalan, berlari, berbasikal atau berkerusi roda di laluan perbandaran, dan apa yang diperoleh.',
+  'Pick a township loop': 'Pilih laluan perbandaran',
+  'The Loops tab lists every walking and cycling loop, with its checkpoints in order and how often you have finished it. Tap Directions to start to get there.':
+    'Tab Laluan menyenaraikan setiap laluan berjalan kaki dan berbasikal, dengan titik semaknya mengikut turutan dan berapa kerap anda telah menamatkannya. Ketik Arah ke titik mula untuk ke sana.',
+  'Walking · 2 checkpoints': 'Berjalan kaki · 2 titik semak',
+  'Tap Start on the Track tab': 'Ketik Mula pada tab Jejak',
+  'Choose walk, run, cycle or wheelchair, and follow your trip on the map. Your location is read only between Start and Finish.':
+    'Pilih berjalan, berlari, berbasikal atau kerusi roda, dan ikuti perjalanan anda di peta. Lokasi anda hanya dibaca antara Mula dan Tamatkan.',
+  'Pass each checkpoint': 'Lalui setiap titik semak',
+  'A checkpoint ticks itself as you go past it. If GPS is weak, scan the QR poster at the post, or type the code printed under it. Each checkpoint counts once a day.':
+    'Titik semak ditanda dengan sendiri apabila anda melaluinya. Jika GPS lemah, imbas poster QR di tiang itu, atau taip kod yang dicetak di bawahnya. Setiap titik semak dikira sekali sehari.',
+  'Ticked': 'Ditanda',
+  'Poster scanned': 'Poster diimbas',
+  'Fair play is checked on the server': 'Permainan adil disemak di pelayan',
+  'A poor GPS fix is ignored, and any part of a trip faster than the activity allows does not count, so a car or motorbike ride never earns. A trip counts once it has 200 m of fair-play distance.':
+    'Kedudukan GPS yang lemah diabaikan, dan mana-mana bahagian perjalanan yang lebih laju daripada had aktiviti tidak dikira, jadi menaiki kereta atau motosikal tidak sekali-kali mendapat ganjaran. Perjalanan dikira apabila ada 200 m jarak permainan adil.',
+  'Walking pace': 'Rentak berjalan',
+  'Counts': 'Dikira',
+  'Too fast for the activity': 'Terlalu laju untuk aktiviti ini',
+  'Not counted': 'Tidak dikira',
+  'Weak GPS fix': 'Kedudukan GPS lemah',
+  'Ignored': 'Diabaikan',
+  'Tap Finish and see what you earned': 'Ketik Tamatkan dan lihat apa yang anda peroleh',
+  'Finish every checkpoint of a loop on the same day and the loop is complete. A trip, each checkpoint and each finished loop earn Impact XP, and tracked trips can also earn points, within your and your home’s limits.':
+    'Lengkapkan setiap titik semak sesuatu laluan pada hari yang sama dan laluan itu selesai. Perjalanan, setiap titik semak dan setiap laluan yang selesai memberi XP Impak, dan perjalanan yang dijejak juga boleh memberi mata, dalam had anda dan rumah anda.',
+  'Trip finished': 'Perjalanan tamat',
+  'Eco Lake Loop complete': 'Eco Lake Loop selesai',
+  'Every checkpoint ticked today': 'Setiap titik semak ditanda hari ini',
+  '+40 Impact XP': '+40 XP Impak',
+  'For the finished loop': 'Untuk laluan yang selesai',
+  'For a tracked trip, within your home’s monthly limit': 'Untuk perjalanan yang dijejak, dalam had bulanan rumah anda',
+  'Challenges count by themselves': 'Cabaran dikira dengan sendiri',
+  'You never join a challenge. Every challenge that is running counts your activity, so one walk can move several. Each card says whether part-loops count, or only whole loops.':
+    'Anda tidak perlu menyertai cabaran. Setiap cabaran yang sedang berjalan mengira aktiviti anda, jadi satu perjalanan boleh menggerakkan beberapa cabaran. Setiap kad menyatakan sama ada sebahagian laluan dikira, atau hanya laluan penuh.',
+  'Your location stays private': 'Lokasi anda kekal peribadi',
+  'On Finish, the first and last 200 m of your route, usually near home, are cut and never stored, and the whole route is deleted after 30 days. Scanning a poster sends no location at all.':
+    'Apabila Tamatkan, 200 m pertama dan terakhir laluan anda, biasanya berhampiran rumah, dipotong dan tidak sekali-kali disimpan, dan seluruh laluan dipadam selepas 30 hari. Mengimbas poster tidak menghantar sebarang lokasi.',
+  'Read only between Start and Finish': 'Dibaca hanya antara Mula dan Tamatkan',
+  'First and last 200 m never stored': '200 m pertama dan terakhir tidak disimpan',
+  'Route deleted after 30 days': 'Laluan dipadam selepas 30 hari',
+
+  // Gerak: Kiosks, trails & patrol points.
+  'How places work': 'Cara tempat berfungsi',
+  'Kiosks, loops and patrol points, and who sets them up.': 'Kiosk, laluan dan titik rondaan, dan siapa yang menyediakannya.',
+  'Three kinds of places, one page': 'Tiga jenis tempat, satu halaman',
+  'Kitar recycling kiosks and their bins, Gerak walking and cycling loops, and the guards’ patrol points. Each has a printed code that proves someone was there.':
+    'Kiosk kitar semula Kitar dan tongnya, laluan berjalan kaki dan berbasikal Gerak, dan titik rondaan pengawal. Setiap satu ada kod bercetak yang membuktikan seseorang telah berada di situ.',
+  'Kiosks, then bins with a scale': 'Kiosk, kemudian tong dengan penimbang',
+  'An admin adds a kiosk, then puts a bin at it. The bin’s signing key is made on the server and never shown. Each bin shows whether it is online, full or offline, and today’s use.':
+    'Pentadbir menambah kiosk, kemudian meletakkan tong di situ. Kunci tandatangan tong dibuat di pelayan dan tidak sekali-kali dipaparkan. Setiap tong menunjukkan sama ada ia dalam talian, penuh atau luar talian, dan penggunaan hari ini.',
+  'New loop: name, distance, checkpoints': 'Laluan baharu: nama, jarak, titik semak',
+  'Create a walking or cycling loop with 2 to 12 checkpoints, one per line, in order. It appears on the Gerak page for every resident at once. Then print a poster for each checkpoint.':
+    'Cipta laluan berjalan kaki atau berbasikal dengan 2 hingga 12 titik semak, satu setiap baris, mengikut turutan. Ia muncul di halaman Gerak untuk setiap penduduk serta-merta. Kemudian cetak poster untuk setiap titik semak.',
+  'Print posters and check the map': 'Cetak poster dan semak peta',
+  'Print poster gives each checkpoint its QR code, which opens the Gerak page. View on map shows the loop’s route and checkpoints. Until a route is drawn, only its posters work.':
+    'Cetak poster memberi setiap titik semak kod QRnya, yang membuka halaman Gerak. Lihat di peta menunjukkan laluan dan titik semaknya. Sehingga laluan dilukis, hanya posternya yang berfungsi.',
+  'Hide or show a loop, with a reason': 'Sembunyikan atau tunjukkan laluan, dengan sebab',
+  'Hide from residents takes a loop off Gerak at once: its posters stop working and trips no longer count it, but what residents already earned stays. The reason is kept in the audit log with your name.':
+    'Sembunyikan daripada penduduk mengeluarkan laluan dari Gerak serta-merta: posternya berhenti berfungsi dan perjalanan tidak lagi mengiranya, tetapi apa yang telah diperoleh penduduk kekal. Sebabnya disimpan dalam log audit bersama nama anda.',
+  'Path flooded': 'Laluan banjir',
+  'Patrol points for security rounds': 'Titik rondaan untuk rondaan keselamatan',
+  'Print a poster for each patrol point and put it up on site. Guards scan them on their security rounds. Residents never see these, and they earn no points or XP.':
+    'Cetak poster untuk setiap titik rondaan dan pasang di tapak. Pengawal mengimbasnya semasa rondaan keselamatan. Penduduk tidak sekali-kali melihatnya, dan ia tidak memberi mata atau XP.',
 };
 
 export const walkthroughsTemplates: readonly (readonly [string, string])[] = [

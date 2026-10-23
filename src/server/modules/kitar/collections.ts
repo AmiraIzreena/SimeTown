@@ -4,6 +4,7 @@ import { one, type Db, type Queryable } from '../../db/client';
 import { assertTownshipAccess, requireVerifiedResident, type Actor } from '../../auth/actor';
 import { getConfig } from '../../config';
 import { badRequest, conflict, notFound, ruleViolation } from '../../errors';
+import { decodeCursor, toPage, type PageQuery } from '../../http/pagination';
 import { audit } from '../audit';
 import { notify } from '../notifications';
 import { recordAction, rewardUserById } from '../rewards';
@@ -16,18 +17,31 @@ import { testEntryEnabled } from './test-entry';
  * Kitar collections (the brief's "book local collections"). Partner collectors
  * list what they accept and when they come. A household books a pickup for
  * bulky or special items; the booking is confirmed at once and the collector
- * gets a Tamu contractor pass for that day, so the gate expects them. Once the
- * gate has scanned them in, the household types the weight: a small weight is
- * credited straight away (Impact XP and any funded campaign's points, never
- * per-kg offer-backed points, BR23), anything else waits for staff. The
- * nightly `recycling` job closes the rest (collection-automation.ts).
+ * gets a Tamu contractor pass for that day, so the gate expects them. The
+ * household types the weight, and the gate record decides it without staff: if the
+ * collector was scanned in that day (on this pass or another home's), it is credited
+ * (Impact XP and any funded campaign's points, never per-kg offer-backed points, BR23),
+ * counted up to a maximum for the material; if not, it closes with no reward. The
+ * nightly `recycling` job decides weights sent on the day itself and closes the rest
+ * (collection-automation.ts). Staff only watch homes and collectors that keep
+ * tripping the rules.
  */
 
 export const COLLECTION_SLOTS = ['MORNING', 'AFTERNOON'] as const;
 export type CollectionSlot = (typeof COLLECTION_SLOTS)[number];
 const MAX_OPEN_PER_HOME = 3;
-/** A typed weight up to this, after a gate scan, is credited without staff. More goes to review. */
+/** A weight over this is "large": a home that keeps sending large weights is flagged for staff to watch. */
 export const AUTO_ACCEPT_MAX_G = 20_000;
+/**
+ * The most a collection counts for, by material, toward township figures and weight-based challenge goals (a fridge
+ * is e-waste and weighs 50 to 70 kg). The household's own figure is kept as they sent it. The flat Impact XP for a
+ * collection does not depend on its weight.
+ */
+export const COUNT_UP_TO_G: Record<Material, number> = {
+  E_WASTE: 100_000, PAPER: 50_000, GLASS: 30_000, TEXTILE: 30_000, PLASTIC_PET: 20_000, PLASTIC_OTHER: 20_000, ALUMINIUM: 20_000, COOKING_OIL: 20_000,
+};
+/** What a collection's weight counts for: up to the highest maximum among its materials. */
+export const countedWeight = (materials: readonly Material[], weightG: number) => Math.min(weightG, Math.max(...materials.map((m) => COUNT_UP_TO_G[m] ?? AUTO_ACCEPT_MAX_G)));
 /** A collection the gate scanned but nobody weighed closes this many days after its day, with no points. */
 export const CLOSE_UNWEIGHED_AFTER_DAYS = 2;
 /** How long after a missed collection the household can still say the collector came. */
@@ -42,15 +56,12 @@ export type ReviewReason = (typeof REVIEW_REASONS)[number];
 const kgText = (g: number) => (g / 1000).toLocaleString('en-MY', { maximumFractionDigits: 1 });
 /** The collector's gate pass has been scanned at the gate at least once. */
 const GATE_SCANNED = 'EXISTS (SELECT 1 FROM visitor_entries e WHERE e.pass_id = x.pass_id)';
-
-/** The people who work the township's queue: exceptions only. */
-async function tellStaff(tx: Queryable, townshipId: string, n: { title: string; body: string; dedupeKey: string }) {
-  const staff = await tx.query<{ id: string }>(
-    `SELECT id FROM users WHERE township_id = $1 AND role IN ('TOWNSHIP_STAFF', 'TOWNSHIP_ADMIN') AND status = 'ACTIVE'`,
-    [townshipId],
-  );
-  await notify(tx, staff.map((s) => s.id), { ...n, link: '/console/recycling', category: 'RECYCLING' });
-}
+/**
+ * The collector was scanned in at the gate on the collection's day, on any home's pass: they were in the township.
+ * A collector visiting several homes often shows one pass only.
+ */
+const COLLECTOR_AT_GATE = `EXISTS (SELECT 1 FROM recycling_collections y JOIN visitor_entries e ON e.pass_id = y.pass_id
+  WHERE y.collector_id = x.collector_id AND y.day = x.day)`;
 
 const tellResident = (tx: Queryable, userId: string, n: { title: string; body: string; dedupeKey?: string }) =>
   notify(tx, [userId], { ...n, link: '/app/kitar', category: 'RECYCLING' });
@@ -201,6 +212,9 @@ export async function myCollections(db: Db, actor: Actor, now: Date) {
             c.name AS collector, c.phone AS collector_phone, p.code AS pass_code,
             ${GATE_SCANNED} AS gate_scanned, x.reported_weight_g,
             (x.review_reason IS NOT NULL AND x.reviewed_at IS NULL) AS in_review,
+            (x.status = 'CONFIRMED' AND x.reported_weight_g IS NOT NULL AND x.review_reason IS NULL) AS waiting_for_gate,
+            ${COLLECTOR_AT_GATE} AS collector_at_gate, x.decided_by,
+            (x.status = 'COLLECTED' AND x.weight_g IS NULL AND x.reviewed_at IS NOT NULL) AS no_reward,
             (x.status = 'CONFIRMED' AND x.reported_weight_g IS NULL AND x.review_reason IS NULL AND x.day <= $2::date) AS can_report,
             (x.status = 'MISSED' AND x.review_reason IS NULL AND x.day >= $2::date - $3::int) AS can_dispute,
             ($4::boolean AND x.status = 'CONFIRMED' AND NOT ${GATE_SCANNED} AND x.reported_weight_g IS NULL AND x.review_reason IS NULL) AS demo,
@@ -245,69 +259,131 @@ interface ResidentCollectionRow extends CreditTarget {
   township_id: string;
   status: string;
   day: string;
+  materials: Material[];
   reported_weight_g: number | null;
   review_reason: ReviewReason | null;
   gate_scanned: boolean;
+  collector_at_gate: boolean;
 }
+
+const RESIDENT_ROW = `SELECT x.id, x.user_id, x.township_id, x.status, x.day::text AS day, x.materials, x.reported_weight_g, x.review_reason, c.name AS collector,
+         ${GATE_SCANNED} AS gate_scanned, ${COLLECTOR_AT_GATE} AS collector_at_gate
+    FROM recycling_collections x JOIN recycling_collectors c ON c.id = x.collector_id`;
 
 async function loadForResident(tx: Queryable, actor: Actor, id: string) {
   const resident = requireVerifiedResident(actor);
-  const x = await one<ResidentCollectionRow>(
-    tx,
-    `SELECT x.id, x.user_id, x.township_id, x.status, x.day::text AS day, x.reported_weight_g, x.review_reason, c.name AS collector, ${GATE_SCANNED} AS gate_scanned
-       FROM recycling_collections x JOIN recycling_collectors c ON c.id = x.collector_id WHERE x.id = $1 AND x.home_id = $2 FOR UPDATE OF x`,
-    [id, resident.homeId],
-  );
+  const x = await one<ResidentCollectionRow>(tx, `${RESIDENT_ROW} WHERE x.id = $1 AND x.home_id = $2 FOR UPDATE OF x`, [id, resident.homeId]);
   if (!x) throw notFound('Collection');
   return x;
 }
 
+/** The gate saw the collector that day: credits the weight, counted up to the material's maximum. */
+async function creditByGateRecord(tx: Queryable, x: ResidentCollectionRow, weightG: number, now: Date, actorId: string | null) {
+  const counted = countedWeight(x.materials, weightG);
+  const reward = await creditCollection(tx, x, counted, now);
+  await audit(tx, actorId, 'COLLECTION_WEIGHT_ACCEPTED', 'recycling_collection', x.id, { weightG, countedG: counted, evidence: x.gate_scanned ? 'OWN_PASS' : 'SAME_DAY_VISIT' });
+  return reward;
+}
+
+/** No gate record of the collector that day: the collection closes with no reward, decided by the system. */
+async function closeWithoutGateRecord(tx: Queryable, x: ResidentCollectionRow, now: Date) {
+  await tx.query(
+    `UPDATE recycling_collections SET status = 'COLLECTED', collected_at = $2, review_reason = 'NO_GATE_SCAN', reviewed_at = $2, decided_by = 'SYSTEM' WHERE id = $1`,
+    [x.id, now],
+  );
+  await tellResident(tx, x.user_id, {
+    title: 'No reward for this collection',
+    body: `The gate has no record of ${x.collector} on ${x.day}, so no Impact XP was given. Next time, make sure they show their pass at the gate.`,
+    dedupeKey: `kitar-collection-no-gate:${x.id}`,
+  });
+  await audit(tx, null, 'COLLECTION_NO_GATE_RECORD', 'recycling_collection', x.id, { weightG: x.reported_weight_g, by: 'system' });
+}
+
 /**
- * The household types what the collector took. After a gate scan and up to
- * AUTO_ACCEPT_MAX_G it is credited at once; with no gate scan, or more than
- * that, it waits for staff and nothing is credited yet.
+ * The household types what the collector took, and the gate record decides it at once: the collector scanned in that
+ * day (on this pass or another home's) credits it; no record closes it with no reward. On the collection day itself
+ * the collector may still reach the gate, so a weight with no record yet waits for the nightly check.
  */
 export async function reportCollectionWeight(db: Db, actor: Actor, id: string, weightG: number, now: Date) {
   return db.tx(async (tx) => {
     const x = await loadForResident(tx, actor, id);
     if (x.status !== 'CONFIRMED') throw conflict('COLLECTION_CLOSED', 'This collection is already closed.');
     if (x.reported_weight_g !== null || x.review_reason !== null) throw conflict('WEIGHT_ALREADY_SENT', 'You have already sent the weight for this collection.');
-    if (x.day > (await todayIn(tx, now))) throw ruleViolation('COLLECTION_NOT_YET', 'You can add the weight on the collection day.');
+    const today = await todayIn(tx, now);
+    if (x.day > today) throw ruleViolation('COLLECTION_NOT_YET', 'You can add the weight on the collection day.');
     await tx.query('UPDATE recycling_collections SET reported_weight_g = $2, reported_at = $3 WHERE id = $1', [id, weightG, now]);
 
-    if (x.gate_scanned && weightG <= AUTO_ACCEPT_MAX_G) {
-      const reward = await creditCollection(tx, x, weightG, now);
-      await audit(tx, actor.id, 'COLLECTION_WEIGHT_ACCEPTED', 'recycling_collection', id, { weightG });
-      return { status: 'COLLECTED' as const, reward };
+    if (x.gate_scanned || x.collector_at_gate) {
+      return { status: 'COLLECTED' as const, reward: await creditByGateRecord(tx, x, weightG, now, actor.id) };
     }
-    const reason: ReviewReason = x.gate_scanned ? 'OVER_LIMIT' : 'NO_GATE_SCAN';
-    await tx.query('UPDATE recycling_collections SET review_reason = $2 WHERE id = $1', [id, reason]);
-    await tellResident(tx, x.user_id, { title: 'Collection under review', body: 'The township office will check the weight and let you know.', dedupeKey: `kitar-collection-review:${id}` });
-    await tellStaff(tx, x.township_id, {
-      title: 'Collection weight to check',
-      body: reason === 'OVER_LIMIT'
-        ? `${kgText(weightG)} kg reported for a collection by ${x.collector}. This is over the ${AUTO_ACCEPT_MAX_G / 1000} kg automatic limit.`
-        : `${kgText(weightG)} kg reported for a collection by ${x.collector}, but the gate did not scan them in.`,
-      dedupeKey: `kitar-collection-review:${id}`,
-    });
-    await audit(tx, actor.id, 'COLLECTION_WEIGHT_HELD', 'recycling_collection', id, { weightG, reason });
-    return { status: 'IN_REVIEW' as const, reason };
+    if (x.day === today) {
+      await tellResident(tx, x.user_id, {
+        title: 'Weight received',
+        body: `The gate has no record of ${x.collector} yet today. It is checked tonight, and you will hear the result.`,
+        dedupeKey: `kitar-collection-waiting:${id}`,
+      });
+      await audit(tx, actor.id, 'COLLECTION_WEIGHT_WAITING', 'recycling_collection', id, { weightG });
+      return { status: 'WAITING_FOR_GATE' as const };
+    }
+    await closeWithoutGateRecord(tx, { ...x, reported_weight_g: weightG }, now);
+    return { status: 'NO_GATE_RECORD' as const };
   });
 }
 
-/** On a collection marked missed, the household says the collector did come. Staff decide. */
-export async function reportCollectorCame(db: Db, actor: Actor, id: string, now: Date) {
+/**
+ * The nightly check for weights sent on the collection day before the gate had seen the collector: now the day is
+ * over, the gate record decides each one. Run by the `recycling` job; safe to run again.
+ */
+export async function settleWaitingWeights(db: Db, now: Date) {
+  const today = await todayIn(db, now);
+  const waiting = await db.query<{ id: string }>(
+    `SELECT id FROM recycling_collections WHERE status = 'CONFIRMED' AND reported_weight_g IS NOT NULL AND review_reason IS NULL AND day < $1::date`,
+    [today],
+  );
+  let credited = 0;
+  let closed = 0;
+  for (const { id } of waiting) {
+    await db.tx(async (tx) => {
+      const x = await one<ResidentCollectionRow>(tx, `${RESIDENT_ROW} WHERE x.id = $1 FOR UPDATE OF x`, [id]);
+      if (!x || x.status !== 'CONFIRMED' || x.review_reason !== null || x.reported_weight_g === null) return;
+      if (x.gate_scanned || x.collector_at_gate) {
+        await creditByGateRecord(tx, x, x.reported_weight_g, now, null);
+        credited++;
+      } else {
+        await closeWithoutGateRecord(tx, x, now);
+        closed++;
+      }
+    });
+  }
+  return { credited, closed };
+}
+
+/**
+ * On a collection marked missed, the household says the collector did come, with the weight they took. The gate record
+ * decides at once: the collector scanned in that day for another home credits it; no record keeps it missed.
+ */
+export async function reportCollectorCame(db: Db, actor: Actor, id: string, weightG: number, now: Date) {
   return db.tx(async (tx) => {
     const x = await loadForResident(tx, actor, id);
     if (x.status !== 'MISSED') throw conflict('COLLECTION_NOT_MISSED', 'Only a missed collection can be reported this way.');
     if (x.review_reason !== null) throw conflict('ALREADY_REPORTED', 'You have already reported this collection.');
     const open = await one<{ ok: boolean }>(tx, 'SELECT $1::date >= $2::date - $3::int AS ok', [x.day, await todayIn(tx, now), DISPUTE_DAYS]);
     if (!open!.ok) throw ruleViolation('DISPUTE_CLOSED', `This can be reported up to ${DISPUTE_DAYS} days after the collection day.`);
-    await tx.query(`UPDATE recycling_collections SET review_reason = 'COLLECTOR_CAME', reported_at = $2 WHERE id = $1`, [id, now]);
-    await tellResident(tx, x.user_id, { title: 'Collection under review', body: 'The township office will check with the collector and let you know.', dedupeKey: `kitar-collection-review:${id}` });
-    await tellStaff(tx, x.township_id, { title: 'Missed collection disputed', body: `A household says ${x.collector} came on ${x.day}.`, dedupeKey: `kitar-collection-review:${id}` });
-    await audit(tx, actor.id, 'COLLECTION_DISPUTED', 'recycling_collection', id);
-    return { ok: true };
+    await tx.query(
+      `UPDATE recycling_collections SET reported_weight_g = $2, reported_at = $3, review_reason = 'COLLECTOR_CAME', reviewed_at = $3, decided_by = 'SYSTEM' WHERE id = $1`,
+      [id, weightG, now],
+    );
+    if (x.collector_at_gate) {
+      // They were in the township that day: not a miss after all.
+      return { status: 'COLLECTED' as const, reward: await creditByGateRecord(tx, x, weightG, now, actor.id) };
+    }
+    await tellResident(tx, x.user_id, {
+      title: 'The collection stays missed',
+      body: `The gate has no record of ${x.collector} on ${x.day}, so no Impact XP was given. Next time, make sure they show their pass at the gate.`,
+      dedupeKey: `kitar-collection-dispute:${id}`,
+    });
+    await audit(tx, actor.id, 'COLLECTION_DISPUTE_NO_GATE_RECORD', 'recycling_collection', id, { weightG, by: 'system' });
+    return { status: 'MISSED' as const };
   });
 }
 
@@ -337,7 +413,7 @@ const withHouse = <T extends HomeAddress>({ property_type, house_no, building, s
 export async function collectionsForStaff(db: Db, actor: Actor, filter: { status?: string; townshipId?: string } = {}) {
   const rows = await db.query<HomeAddress & Record<string, unknown>>(
     `SELECT x.id, x.home_id, x.materials, x.items, x.day::text AS day, x.slot, x.status, x.weight_g, x.reported_weight_g, x.created_at,
-            x.reviewed_at, (x.review_reason IS NOT NULL AND x.reviewed_at IS NULL) AS in_review, ${GATE_SCANNED} AS gate_scanned,
+            x.reviewed_at, x.decided_by, x.review_reason, (x.review_reason IS NOT NULL AND x.reviewed_at IS NULL) AS in_review, ${GATE_SCANNED} AS gate_scanned,
             c.name AS collector, t.name AS township, ${HOME_ADDRESS_COLUMNS}
        FROM recycling_collections x JOIN recycling_collectors c ON c.id = x.collector_id JOIN homes h ON h.id = x.home_id JOIN townships t ON t.id = x.township_id
       WHERE ($1::uuid IS NULL OR x.township_id = $1) AND ($2::text IS NULL OR x.status = $2)
@@ -345,6 +421,87 @@ export async function collectionsForStaff(db: Db, actor: Actor, filter: { status
     [listScope(actor, filter.townshipId), filter.status ?? null],
   );
   return rows.map(withHouse);
+}
+
+/** How a collection ended up, as the history filters name it. */
+export const HISTORY_OUTCOMES = ['BOOKED', 'CREDITED', 'NO_REWARD', 'MISSED', 'CANCELLED'] as const;
+export type HistoryOutcome = (typeof HISTORY_OUTCOMES)[number];
+const OUTCOME_SQL: Record<HistoryOutcome, string> = {
+  BOOKED: `x.status IN ('REQUESTED', 'CONFIRMED')`,
+  CREDITED: `x.status = 'COLLECTED' AND x.weight_g IS NOT NULL`,
+  NO_REWARD: `x.status = 'COLLECTED' AND x.weight_g IS NULL`,
+  MISSED: `x.status = 'MISSED'`,
+  CANCELLED: `x.status = 'CANCELLED'`,
+};
+/** Who settled it: staff (a review, or a weight they recorded), the system (everything else that is closed), or nobody yet. */
+const SETTLED_BY = `CASE
+    WHEN x.decided_by = 'STAFF' OR (x.reviewed_at IS NOT NULL AND x.decided_by IS NULL) OR (x.reported_weight_g IS NULL AND x.weight_g IS NOT NULL) THEN 'STAFF'
+    WHEN x.status IN ('COLLECTED', 'MISSED') THEN 'SYSTEM' END`;
+
+export interface HistoryFilter extends PageQuery {
+  townshipId?: string;
+  q?: string;
+  outcome?: HistoryOutcome;
+  collectorId?: string;
+  material?: Material;
+  /** Days back from today, by collection day; absent for all time. */
+  days?: number;
+  settledBy?: 'SYSTEM' | 'STAFF';
+}
+
+/**
+ * Collection history for staff, admins and HQ: every collection with what the household logged (the weight they
+ * typed and when), what was counted, the gate record and who settled it. Searchable by household, resident, collector
+ * or item, filtered by outcome, collector, material, period and who settled it, newest collection day first. The first
+ * page also carries the total, the count for each outcome (with the other filters applied) and the collectors to pick.
+ */
+export async function collectionHistory(db: Db, actor: Actor, filter: HistoryFilter, now: Date) {
+  const scope = listScope(actor, filter.townshipId);
+  const today = await todayIn(db, now);
+  const params: unknown[] = [scope];
+  const add = (value: unknown) => `$${params.push(value)}`;
+  const where: string[] = ['($1::uuid IS NULL OR x.township_id = $1)'];
+  const q = filter.q?.trim();
+  if (q) {
+    const p = add(`%${q.replace(/[\\%_]/g, (m) => `\\${m}`)}%`);
+    where.push(`(c.name ILIKE ${p} OR x.items ILIKE ${p} OR u.full_name ILIKE ${p} OR concat_ws(' ', h.house_no, h.building, h.street, h.precinct) ILIKE ${p})`);
+  }
+  if (filter.collectorId) where.push(`x.collector_id = ${add(filter.collectorId)}::uuid`);
+  if (filter.material) where.push(`${add(filter.material)} = ANY(x.materials)`);
+  if (filter.days) where.push(`x.day >= ${add(today)}::date - ${add(filter.days)}::int`);
+  if (filter.settledBy) where.push(`(${SETTLED_BY}) = ${add(filter.settledBy)}`);
+  const base = `FROM recycling_collections x JOIN recycling_collectors c ON c.id = x.collector_id JOIN homes h ON h.id = x.home_id
+                JOIN users u ON u.id = x.user_id JOIN townships t ON t.id = x.township_id
+               WHERE ${where.join(' AND ')}`;
+  const countParams = [...params];
+
+  const outcome = filter.outcome ? ` AND ${OUTCOME_SQL[filter.outcome]}` : '';
+  const [afterDay, afterId] = decodeCursor(filter.cursor, 'time');
+  const page = afterDay && afterId ? ` AND (x.day, x.id) < (${add(afterDay.slice(0, 10))}::date, ${add(afterId)}::uuid)` : '';
+  const rows = await db.query<HomeAddress & Record<string, unknown> & { day: string; id: string }>(
+    `SELECT x.id, x.day::text AS day, x.slot, x.status, x.materials, x.items, x.reported_weight_g, x.reported_at, x.weight_g, x.collected_at,
+            x.created_at, x.review_reason, x.reviewed_at, x.limit_hit, ${SETTLED_BY} AS settled_by,
+            ${GATE_SCANNED} AS gate_scanned, ${COLLECTOR_AT_GATE} AS collector_at_gate,
+            c.id AS collector_id, c.name AS collector, u.full_name AS resident, t.name AS township, ${HOME_ADDRESS_COLUMNS}
+       ${base}${outcome}${page}
+      ORDER BY x.day DESC, x.id DESC LIMIT ${add(filter.limit + 1)}`,
+    params,
+  );
+  const result = toPage(rows, filter.limit, (r) => [`${r.day}T00:00:00.000Z`, r.id]);
+  const items = result.items.map(withHouse);
+  // Later pages only add rows: the total, counts and collectors come with the first page.
+  if (filter.cursor) return { ...result, items, total: undefined, counts: undefined, collectors: undefined };
+
+  const counts = await one<Record<'all' | Lowercase<HistoryOutcome>, number>>(
+    db,
+    `SELECT count(*)::int AS all, ${HISTORY_OUTCOMES.map((o) => `count(*) FILTER (WHERE ${OUTCOME_SQL[o]})::int AS ${o.toLowerCase()}`).join(', ')} ${base}`,
+    countParams,
+  );
+  const collectors = await db.query<{ id: string; name: string }>(
+    'SELECT id, name FROM recycling_collectors WHERE ($1::uuid IS NULL OR township_id = $1) ORDER BY name',
+    [scope],
+  );
+  return { ...result, items, total: filter.outcome ? counts![filter.outcome.toLowerCase() as Lowercase<HistoryOutcome>] : counts!.all, counts, collectors };
 }
 
 interface StaffCollectionRow extends CreditTarget {
@@ -416,7 +573,7 @@ export async function completeCollection(db: Db, actor: Actor, id: string, weigh
   return db.tx(async (tx) => {
     const x = await loadForStaff(tx, actor, id);
     if (x.status !== 'CONFIRMED') throw conflict('COLLECTION_NOT_CONFIRMED', 'Confirm the collection before recording it.');
-    if (openReview(x)) await tx.query('UPDATE recycling_collections SET reviewed_at = $2 WHERE id = $1', [id, now]);
+    if (openReview(x)) await tx.query(`UPDATE recycling_collections SET reviewed_at = $2, decided_by = 'STAFF' WHERE id = $1`, [id, now]);
     const reward = await creditCollection(tx, x, weightG, now);
     await audit(tx, actor.id, 'COLLECTION_DONE', 'recycling_collection', id, { weightG });
     return { ok: true, reward };
@@ -449,7 +606,7 @@ export async function reviewCollection(db: Db, actor: Actor, id: string, input: 
   return db.tx(async (tx) => {
     const x = await loadForStaff(tx, actor, id);
     if (!openReview(x)) throw conflict('NO_OPEN_REVIEW', 'This collection has nothing waiting for review.');
-    await tx.query('UPDATE recycling_collections SET reviewed_at = $2 WHERE id = $1', [id, now]);
+    await tx.query(`UPDATE recycling_collections SET reviewed_at = $2, decided_by = 'STAFF' WHERE id = $1`, [id, now]);
     if (input.decision === 'ACCEPT') {
       const weightG = input.weightG ?? x.reported_weight_g;
       if (!weightG) throw ruleViolation('WEIGHT_NEEDED', 'Enter the weight the collector took.');
@@ -515,7 +672,7 @@ export async function collectionExceptions(db: Db, actor: Actor, now: Date, town
       db,
       `SELECT count(*) FILTER (WHERE status = 'CONFIRMED' AND day >= $2::date)::int AS upcoming,
               count(*) FILTER (WHERE status = 'COLLECTED' AND day > $2::date - 30)::int AS collected,
-              count(*) FILTER (WHERE status = 'COLLECTED' AND day > $2::date - 30 AND (reviewed_at IS NOT NULL OR (reported_weight_g IS NULL AND weight_g IS NOT NULL)))::int AS by_staff,
+              count(*) FILTER (WHERE status = 'COLLECTED' AND day > $2::date - 30 AND ((reviewed_at IS NOT NULL AND decided_by IS DISTINCT FROM 'SYSTEM') OR (reported_weight_g IS NULL AND weight_g IS NOT NULL)))::int AS by_staff,
               count(*) FILTER (WHERE status = 'MISSED' AND day > $2::date - 30)::int AS missed
          FROM recycling_collections WHERE ($1::uuid IS NULL OR township_id = $1)`,
       [scope, today],

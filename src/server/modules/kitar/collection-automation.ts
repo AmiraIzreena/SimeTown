@@ -2,22 +2,24 @@ import type { Db } from '../../db/client';
 import { audit } from '../audit';
 import { notify } from '../notifications';
 import { todayIn } from '../settings';
-import { CLOSE_UNWEIGHED_AFTER_DAYS, collectionFlags, confirmWaitingRequests, FLAG_WINDOW_DAYS, tellMissed } from './collections';
+import { CLOSE_UNWEIGHED_AFTER_DAYS, collectionFlags, confirmWaitingRequests, FLAG_WINDOW_DAYS, settleWaitingWeights, tellMissed } from './collections';
 
 /**
  * The collections clock, run nightly by the scheduler (the `recycling` job).
  * It confirms any request still waiting from before bookings confirmed
  * themselves; reminds a household the day before; marks a past collection the gate never
- * scanned, and nobody weighed, as missed and cancels its pass; closes one the
+ * scanned, and nobody weighed, as missed and cancels its pass; decides a weight sent
+ * on the collection day before the gate had seen the collector, by the gate record
+ * now the day is over; closes one the
  * gate scanned but nobody weighed after CLOSE_UNWEIGHED_AFTER_DAYS, with no
  * weight and no points; and flags homes and collectors that keep tripping the
- * rules. It never credits anything, and never touches a collection waiting for
- * review. Every step is guarded by the row's state and every notice has a
+ * rules. It credits only through that gate-record decision, and never touches a
+ * collection waiting for staff review. Every step is guarded by the row's state and every notice has a
  * dedupe key, so running it twice changes nothing.
  */
 export async function runCollectionChecks(db: Db, now: Date) {
   const today = await todayIn(db, now);
-  const counts = { confirmed: 0, reminders: 0, missed: 0, closedUnweighed: 0, homeFlags: 0, collectorFlags: 0 };
+  const counts = { confirmed: 0, reminders: 0, weightsCredited: 0, weightsClosed: 0, missed: 0, closedUnweighed: 0, homeFlags: 0, collectorFlags: 0 };
 
   // Requests from before bookings confirmed themselves: confirmed now, with the gate pass.
   counts.confirmed = await confirmWaitingRequests(db, now);
@@ -35,6 +37,11 @@ export async function runCollectionChecks(db: Db, now: Date) {
       link: '/app/kitar', category: 'RECYCLING', dedupeKey: `kitar-collection-reminder:${x.id}`,
     });
   }
+
+  // Weights sent on the day before the gate had seen the collector: the day is over, so the gate record decides.
+  const settled = await settleWaitingWeights(db, now);
+  counts.weightsCredited = settled.credited;
+  counts.weightsClosed = settled.closed;
 
   // A past day with no gate scan and no weight: it did not happen.
   await db.tx(async (tx) => {

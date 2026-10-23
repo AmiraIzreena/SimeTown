@@ -27,6 +27,8 @@ import { seedLockers } from './seed-lockers';
 import { seedRequestShowcase, seedTomorrow } from './seed-tomorrow';
 import { seedShowcase } from './seed-showcase';
 import { seedAroundReports } from './seed-around';
+import { demoReportPhoto, seedReportPhotos } from './seed-report-photos';
+import { seedCollectionsShowcase } from './seed-collections-showcase';
 import { seedGerakChallenges } from './seed-gerak-challenges';
 
 /**
@@ -66,6 +68,8 @@ async function main() {
     await seedIncidents(db, { passwordHash, now, log: (line) => console.log(`  ${line}`) });
     await seedShowcase(db, { now, log: (line) => console.log(`  ${line}`) });
     await seedAroundReports(db, { now, log: (line) => console.log(`  ${line}`) });
+    await seedReportPhotos(db, { log: (line) => console.log(`  ${line}`) });
+    await seedCollectionsShowcase(db, { now, log: (line) => console.log(`  ${line}`) });
     await seedGerakChallenges(db, { now, log: (line) => console.log(`  ${line}`) });
     const check = await runFloatCheck(db, null, now);
     console.log(`\n  Float check: ${check.ok ? 'OK' : `FAILED: ${check.issues.join(' ')}`}`);
@@ -263,8 +267,8 @@ async function main() {
   await createPost(db, neighbours[7]!, { type: 'GIVE', title: 'Box of children’s story books', body: 'About 20 books, ages 4 to 8, English and Bahasa Malaysia.', location: 'Jalan Frekuensi U16/115' }, now);
 
   // --- Lapor ----------------------------------------------------------------------
-  const report = (by: Actor, description: string, locationText: string, zone: string, at: Date) =>
-    createReport(db, by, { description, locationText, zoneId: zones[zone] }, at);
+  const report = async (by: Actor, description: string, locationText: string, zone: string, at: Date) =>
+    createReport(db, by, { description, locationText, zoneId: zones[zone], photo: await demoReportPhoto(locationText) }, at);
   const r1 = await report(neighbours[0]!, 'Lampu jalan tidak menyala sejak tiga malam', 'Jalan Metafasa U16/171, near No. 4', 'Elmina Valley 1 & 2', daysAgo(6));
   await updateReport(db, staff, r1.id, { status: 'RESOLVED', staffNote: 'Bulb replaced by the contractor.' }, daysAgo(4));
   const r2 = await report(neighbours[4]!, 'Longkang tersumbat, air bertakung selepas hujan', 'Back lane behind Jalan Metafasa U16/1N', 'Elmina Valley 3, 4 & 5', daysAgo(3));
@@ -289,6 +293,8 @@ async function main() {
   await seedIncidents(db, { passwordHash, now, log: () => undefined });
   await seedShowcase(db, { now, log: () => undefined });
   await seedAroundReports(db, { now, log: () => undefined });
+  await seedReportPhotos(db, { log: () => undefined });
+  await seedCollectionsShowcase(db, { now, log: () => undefined });
   await seedGerakChallenges(db, { now, log: () => undefined });
 
   const check = await runFloatCheck(db, admin2.id, now);

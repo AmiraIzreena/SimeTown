@@ -5,6 +5,7 @@ import { Text } from '@/components/ui/localized-text';
 import { Cpu, Eye, EyeOff, Footprints, MapPin, MonitorSmartphone, Plus, Printer, QrCode as QrIcon, Recycle, Route, ShieldCheck, X } from 'lucide-react';
 import { useState, type CSSProperties, type FormEvent, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
+import { ConsolePlacesWalkthrough } from '@/components/features/gerak-walkthroughs';
 import { Badge, Card, CardHeader, PageHeader, Stat } from '@/components/ui/card';
 import { Modal } from '@/components/ui/dialog';
 import { Async, EmptyState, SkeletonStats } from '@/components/ui/feedback';
@@ -92,7 +93,7 @@ export default function PlacesPage() {
   const [poster, setPoster] = useState<Poster | null>(null);
   return (
     <>
-      <PageHeader title="Kiosks, trails & patrol points" description="Places for three different features: Kitar recycling kiosks and bins, Gerak walking and cycling loops, and the guards’ patrol points. Each printed code proves someone was there." />
+      <PageHeader action={<ConsolePlacesWalkthrough />} title="Kiosks, trails & patrol points" description="Places for three different features: Kitar recycling kiosks and bins, Gerak walking and cycling loops, and the guards’ patrol points. Each printed code proves someone was there." />
       <PlacesSummary onPick={setTab} />
       <Tabs<Tab>
         label="Places"

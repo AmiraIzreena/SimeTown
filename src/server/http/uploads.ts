@@ -16,15 +16,28 @@ const MAX_INPUT_PIXELS = 40_000_000;
  * only JPEG, PNG and WebP are accepted. The picture is then decoded and saved
  * again as a fresh image (see `rebuildImage`), so nothing but pixels survives.
  */
-export async function readPhoto(form: FormData, field = 'photo'): Promise<Photo | undefined> {
+export async function readPhoto(form: FormData, field = 'photo', options: { minSide?: number } = {}): Promise<Photo | undefined> {
   const file = form.get(field);
   if (!(file instanceof File) || file.size === 0) return undefined;
-  if (file.size > MAX_PHOTO_BYTES) throw new AppError(413, 'PHOTO_TOO_LARGE', 'The photo is too large. Please use one under 1.5 MB.');
+  // Each message is also the field's, so a form can show it under the photo.
+  const fail = (message: string) => ({ fields: { [field]: message } });
+  if (file.size > MAX_PHOTO_BYTES) throw new AppError(413, 'PHOTO_TOO_LARGE', TOO_LARGE, fail(TOO_LARGE));
   const bytes = new Uint8Array(await file.arrayBuffer());
   const mime = sniffImage(bytes);
-  if (!mime) throw badRequest('The photo must be a JPEG, PNG or WebP image.');
-  return rebuildImage({ mime, bytes });
+  if (!mime) throw badRequest(WRONG_TYPE, fail(WRONG_TYPE));
+  const photo = await rebuildImage({ mime, bytes });
+  if (options.minSide) {
+    // A tiny picture (a thumbnail or an icon) cannot show the problem.
+    const { default: sharp } = await import('sharp');
+    const { width = 0, height = 0 } = await sharp(photo.bytes).metadata();
+    if (Math.max(width, height) < options.minSide) throw badRequest(TOO_SMALL, fail(TOO_SMALL));
+  }
+  return photo;
 }
+
+const TOO_LARGE = 'The photo is too large. Please use one under 1.5 MB.';
+const WRONG_TYPE = 'The photo must be a JPEG, PNG or WebP image.';
+const TOO_SMALL = 'The photo is too small to show the problem. Please take or choose a bigger one.';
 
 /**
  * Decodes a photo and writes it out again as a new image of the same type. Only the
@@ -45,7 +58,8 @@ export async function rebuildImage(photo: Photo): Promise<Photo> {
     // sharp writes no metadata unless asked to, so EXIF, GPS, XMP and ICC extras are all left behind.
     return { mime: photo.mime, bytes: new Uint8Array(await image.toBuffer()) };
   } catch {
-    throw badRequest('The photo could not be read as an image. Please take or choose another photo.');
+    const message = 'The photo could not be read as an image. Please take or choose another photo.';
+    throw badRequest(message, { fields: { photo: message } });
   }
 }
 

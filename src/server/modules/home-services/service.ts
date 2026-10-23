@@ -261,6 +261,7 @@ export async function listProviders(db: Db, actor: Actor, category: ServiceCateg
   const townshipId = townshipOf(actor);
   return db.query(
     `SELECT m.id AS merchant_id, m.name, m.service_about AS about, l.id AS listing_id, l.category, l.description, l.pricing,
+            (SELECT x.category FROM service_listings x WHERE x.merchant_id = m.id AND x.active ORDER BY x.created_at, x.id LIMIT 1) AS main_category,
             l.callout_fee_sen, l.price_note, r.rating, coalesce(r.reviews, 0) AS reviews, coalesce(j.jobs, 0) AS completed_jobs
        FROM service_listings l JOIN merchants m ON m.id = l.merchant_id ${RATINGS}
       WHERE ${PROVIDER_FILTER} AND l.category = $2

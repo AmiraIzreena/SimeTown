@@ -7,6 +7,7 @@ import { CalendarClock, Camera, ClipboardList, MapPin, Sparkles, ThumbsUp, Timer
 import { Suspense, useState, type FormEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { IncidentBoard, COMMUNITY_MODULES } from '@/components/features/incident-board';
+import { ConsoleLaporWalkthrough } from '@/components/features/lapor-walkthroughs';
 import { AffectedBadge, FixedPhoto, LateBadge, ReportPhoto, ReportProgress, STATUS_LABELS, StatusBadge, URGENCY_LABELS, UrgencyBadge, categoryLabel, type Report } from '@/components/features/report-bits';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, PageHeader, Stat } from '@/components/ui/card';
@@ -47,7 +48,7 @@ function LaporWorkspace() {
   // Loaded here so the tab shows how many problems need attention from any tab.
   const attention = useApi<Attention>('/report-issues/attention');
   return <>
-    <PageHeader title="Lapor" description="Community reports, gate and community cases, and parcel, locker and courier cases, in one place." />
+    <PageHeader action={<ConsoleLaporWalkthrough />} title="Lapor" description="Community reports, gate and community cases, and parcel, locker and courier cases, in one place." />
     <Tabs label="Lapor" value={tab} onChange={(value) => router.push(`/console/reports?tab=${value}`, { scroll: false })} items={[
       { key: 'attention', label: 'Needs attention', count: attention.data?.items.length },
       { key: 'reports', label: 'Community reports' }, { key: 'cases', label: 'Gate & community cases' }, { key: 'parcels', label: 'Parcel & locker cases' },

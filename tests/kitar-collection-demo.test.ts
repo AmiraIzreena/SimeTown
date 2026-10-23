@@ -5,7 +5,7 @@ import { one, type Db } from '@/server/db/client';
 import { routes } from '@/server/http/api';
 import { createRouter } from '@/server/http/router';
 import { demoGateScan, demoMoveToToday } from '@/server/modules/kitar/collection-demo';
-import { AUTO_ACCEPT_MAX_G, bookCollection, createCollector, myCollections, reportCollectionWeight } from '@/server/modules/kitar/collections';
+import { COUNT_UP_TO_G, bookCollection, createCollector, myCollections, reportCollectionWeight } from '@/server/modules/kitar/collections';
 import { T0, freshDb, makeResident, makeWorld, type World } from './helpers';
 
 /**
@@ -71,13 +71,15 @@ describe('Demo helper on a local demo (pglite, development)', () => {
     expect(await demoAudits(id)).toEqual(['MOVE_TO_TODAY', 'GATE_SCAN']);
   });
 
-  it('keeps the 20 kg rule: more goes to the review queue', async () => {
+  it('settles a big weight after the demo gate scan, counted up to the material’s maximum', async () => {
     const { resident, id } = await book();
     await demoMoveToToday(db, resident, id, T0, ON);
     await demoGateScan(db, resident, id, T0, ON);
-    expect(await reportCollectionWeight(db, resident, id, AUTO_ACCEPT_MAX_G + 1, T0)).toEqual({ status: 'IN_REVIEW', reason: 'OVER_LIMIT' });
-    // A weight waiting for staff cannot be touched by the demo.
-    await expect(demoMoveToToday(db, resident, id, T0, ON)).rejects.toMatchObject({ code: 'WEIGHT_ALREADY_SENT' });
+    expect((await reportCollectionWeight(db, resident, id, COUNT_UP_TO_G.PAPER + 5000, T0)).status).toBe('COLLECTED');
+    const x = await one<{ weight_g: number; reported_weight_g: number }>(db, 'SELECT weight_g, reported_weight_g FROM recycling_collections WHERE id = $1', [id]);
+    expect(x).toEqual({ weight_g: COUNT_UP_TO_G.PAPER, reported_weight_g: COUNT_UP_TO_G.PAPER + 5000 });
+    // A closed collection cannot be touched by the demo.
+    await expect(demoMoveToToday(db, resident, id, T0, ON)).rejects.toMatchObject({ code: 'COLLECTION_CLOSED' });
   });
 
   it('keeps one open collection per home per day', async () => {

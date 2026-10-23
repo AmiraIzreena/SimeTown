@@ -11,6 +11,7 @@ import { GerakAbout } from '@/components/features/gerak/gerak-about';
 import { CodeEntry } from '@/components/features/scan';
 import { Tracker } from '@/components/features/tracker';
 import { Button } from '@/components/ui/button';
+import { ResidentGerakWalkthrough } from '@/components/features/gerak-walkthroughs';
 import { Badge, Card, PageHeader, Progress, Stat } from '@/components/ui/card';
 import { ReportProblemButton } from '@/components/features/report-problem';
 import { Async, EmptyState, SkeletonList, SkeletonStats } from '@/components/ui/feedback';
@@ -170,7 +171,7 @@ export function GerakScreen({ scanned }: { scanned: string }) {
 
   return (
     <AksesPage>
-      <PageHeader title="Gerak" description="Walk, run, cycle or wheel a township loop. Track it on the map and the checkpoints tick themselves, or scan the posters on the way." action={<ReportProblemButton context="GERAK" subtitle="A loop, a checkpoint, the map, your distance or a challenge" />} />
+      <PageHeader title="Gerak" description="Walk, run, cycle or wheel a township loop. Track it on the map and the checkpoints tick themselves, or scan the posters on the way." action={<><ResidentGerakWalkthrough /><ReportProblemButton context="GERAK" subtitle="A loop, a checkpoint, the map, your distance or a challenge" /></>} />
       {akses.simple ? (
         // Simple mode keeps one page, in the original order, as Kitar does.
         <div className="space-y-6">

@@ -5,20 +5,22 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { Suspense, useRef, useState, type CSSProperties } from 'react';
-import { IssueSummary, IssueTitle, LateBadge, StatusBadge, type Issue } from '@/components/features/report-bits';
+import { IssueSummary, IssueTitle, LateBadge, StatusBadge, issuePhotoSrc, type Issue } from '@/components/features/report-bits';
 import { BackLink } from '@/components/ui/back-link';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/card';
+import { Modal } from '@/components/ui/dialog';
 import { CountUp } from '@/components/ui/count-up';
 import { EmptyState, ErrorState, Skeleton } from '@/components/ui/feedback';
 import { FilterChips, FilterSegmented, FilterSummary, SearchField } from '@/components/ui/filter-bar';
+import { LocalizedButton, LocalizedImg } from '@/components/ui/localized-elements';
 import { Text } from '@/components/ui/localized-text';
 import { Reveal } from '@/components/ui/reveal';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { formatDate, timeAgo } from '@/lib/format';
 import { useAction, usePaged } from '@/lib/hooks';
-import { useT } from '@/lib/i18n';
+import { useLang, useT } from '@/lib/i18n';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 import { REPORT_CATEGORIES, REPORT_CATEGORY_LABELS, type ReportCategory } from '@/shared/domain';
 
@@ -51,8 +53,8 @@ const TYPE: Record<ReportCategory, { icon: LucideIcon; hint: string }> = {
 /**
  * Lapor → Around the township: what other residents have reported, with the township's figures on top, a
  * "browse by type" rail and the reports as aligned rows grouped by type. A resident checks whether a problem is
- * already known and taps "Me too" to follow it, instead of reporting it again. Never shows who reported, their
- * words or photos.
+ * already known and taps "Me too" to follow it, instead of reporting it again. Each problem shows one report's
+ * photo (unless staff hid it), but never who reported it or their words.
  */
 export function AroundScreen() {
   return <Suspense fallback={<AroundSkeleton />}><Around /></Suspense>;
@@ -108,7 +110,7 @@ function Around() {
       {data && (
         <p className="-mt-2 mb-5 flex items-start gap-2 text-sm text-ink-500">
           <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
-          <Text>{`A problem appears here once ${data.threshold} residents have reported it or said Me too. Titles are written for the township, never copied from anyone's report.`}</Text>
+          <Text>{`A problem appears here once ${data.threshold} residents have reported it or said Me too. Titles are written for the township, never copied from anyone's report. The photo is from one of the reports.`}</Text>
         </p>
       )}
 
@@ -297,7 +299,9 @@ function AroundRow({ report: r, index, onChange }: { report: AroundReport; index
   });
   return (
     <li style={{ '--i': Math.min(index, 8) } as CSSProperties} className="around-row grid gap-3 px-4 py-4 sm:px-5 md:grid-cols-[minmax(0,1fr)_auto_7rem_8rem] md:items-center md:gap-5">
-      <div className="min-w-0">
+      <div className="flex min-w-0 items-start gap-3 sm:gap-4">
+      <ProblemPhoto issue={r} />
+      <div className="min-w-0 flex-1">
         <p className="font-semibold text-ink-900"><IssueTitle issue={r} /></p>
         <IssueSummary issue={r} className="mt-0.5 line-clamp-2 text-sm text-ink-600" />
         <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-500">
@@ -315,6 +319,7 @@ function AroundRow({ report: r, index, onChange }: { report: AroundReport; index
                   : <Text>Waiting for a fix date</Text>}
           </span>
         </p>
+      </div>
       </div>
       <div className="flex flex-wrap items-center gap-1.5 md:justify-end"><LateBadge late={r.late} /><StatusBadge status={r.status} /></div>
       <div className="flex items-center justify-between gap-3 md:contents">
@@ -341,6 +346,40 @@ function AroundRow({ report: r, index, onChange }: { report: AroundReport; index
   );
 }
 
+/**
+ * The problem's photo as a small square beside its title; tapping it opens the photo full size. Without a photo
+ * (staff hid it, or the problem was reported before photos were required) the type's icon keeps the row aligned.
+ */
+function ProblemPhoto({ issue }: { issue: AroundReport }) {
+  const t = useT();
+  const lang = useLang();
+  const [open, setOpen] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const src = issuePhotoSrc(issue);
+  const Icon = TYPE[issue.category].icon;
+  const tile = 'size-16 shrink-0 overflow-hidden rounded-xl sm:size-20';
+  if (!src || failed) {
+    return <span aria-hidden className={cn(tile, 'grid place-items-center bg-ink-50 text-ink-300 ring-1 ring-ink-100')}><Icon className="size-6" /></span>;
+  }
+  const title = (lang === 'ms' ? issue.title_ms ?? issue.title : issue.title) ?? t(REPORT_CATEGORY_LABELS[issue.category]);
+  return (
+    <>
+      <LocalizedButton
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-label={`${t('See the photo')}: ${title}`}
+        className={cn(tile, 'around-photo relative bg-ink-100 ring-1 ring-ink-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600')}
+      >
+        <LocalizedImg src={src} alt="" loading="lazy" decoding="async" onError={() => setFailed(true)} className="size-full object-cover" />
+      </LocalizedButton>
+      <Modal open={open} onClose={() => setOpen(false)} title={title} description={issue.zone_name ?? undefined} wide>
+        <LocalizedImg src={src} alt={`${t('Photo of the problem')}: ${title}`} className="max-h-[70vh] w-full rounded-xl bg-ink-50 object-contain" />
+        <p className="mt-3 text-sm text-ink-500"><Text>From a resident’s report. The township office can hide a photo that shows a face, a car plate or a house number.</Text></p>
+      </Modal>
+    </>
+  );
+}
+
 /** The list in the shape it loads into: one group with four rows. */
 function ListSkeleton() {
   return (
@@ -348,6 +387,7 @@ function ListSkeleton() {
       <div className="flex items-center gap-3 border-b border-ink-100 px-5 py-3"><Skeleton className="size-8 rounded-lg" /><div className="flex-1"><Skeleton className="h-4 w-36" /><Skeleton className="mt-1.5 h-3 w-56" /></div></div>
       {[0, 1, 2, 3].map((i) => (
         <div key={i} className="flex items-center gap-5 border-b border-ink-100 px-5 py-4 last:border-0">
+          <Skeleton className="size-16 shrink-0 rounded-xl sm:size-20" />
           <div className="flex-1"><Skeleton className="h-4 w-3/5" /><Skeleton className="mt-2 h-3 w-4/5" /></div>
           <Skeleton className="hidden h-5 w-24 rounded-full md:block" />
           <Skeleton className="hidden h-4 w-10 md:block" />

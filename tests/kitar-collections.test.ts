@@ -6,7 +6,7 @@ import { routes } from '@/server/http/api';
 import { createRouter } from '@/server/http/router';
 import { runJob } from '@/server/modules/admin/service';
 import {
-  AUTO_ACCEPT_MAX_G, bookCollection, collectionExceptions, collectionsForStaff, collectorDaySheet, createCollector, listCollectorsForStaff, myCollections,
+  AUTO_ACCEPT_MAX_G, COUNT_UP_TO_G, bookCollection, collectionHistory, collectionExceptions, collectionsForStaff, collectorDaySheet, createCollector, listCollectorsForStaff, myCollections,
   reportCollectionWeight, reportCollectorCame, reviewCollection, setCollectorActive,
 } from '@/server/modules/kitar/collections';
 import { createKiosk } from '@/server/modules/kitar/service';
@@ -15,7 +15,7 @@ import { T0, at, freshDb, makeHome, makeResident, makeWorld, type World } from '
 
 /**
  * Booked collections run themselves: confirmed at booking, weighed by the
- * household after a gate scan, closed by the nightly job. Staff see exceptions only.
+ * household and decided by the gate record, closed by the nightly job. Staff only watch flags.
  * T0 is Monday 2 November 2026, noon in Kuala Lumpur.
  */
 
@@ -42,9 +42,9 @@ const collection = (id: string) =>
 const xpEventsFor = async (id: string) => Number((await one<{ n: number }>(db, `SELECT count(*)::int AS n FROM xp_events WHERE ref = $1`, [`collection:${id}`]))!.n);
 
 /** A fresh household with a collection booked for Tuesday 3 November. */
-async function booked(day = '2026-11-03', resident?: Actor) {
+async function booked(day = '2026-11-03', resident?: Actor, collector = collectorId) {
   const who = resident ?? (await makeResident(w));
-  const b = await bookCollection(db, who, { collectorId, materials: ['E_WASTE'], items: 'Old cables', day, slot: 'MORNING' }, T0);
+  const b = await bookCollection(db, who, { collectorId: collector, materials: ['E_WASTE'], items: 'Old cables', day, slot: 'MORNING' }, T0);
   return { resident: who, ...b };
 }
 
@@ -81,22 +81,62 @@ describe('The household types the weight', () => {
     await expect(reportCollectionWeight(db, resident, id, 1000, at(1))).rejects.toMatchObject({ code: 'COLLECTION_CLOSED' });
   });
 
-  it('holds a weight sent with no gate scan, credits nothing, and tells staff', async () => {
-    const { resident, id } = await booked();
-    const result = await reportCollectionWeight(db, resident, id, 3000, at(1));
-    expect(result).toEqual({ status: 'IN_REVIEW', reason: 'NO_GATE_SCAN' });
-    expect(await collection(id)).toMatchObject({ status: 'CONFIRMED', weight_g: null, reported_weight_g: 3000, review_reason: 'NO_GATE_SCAN' });
-    expect(await xpEventsFor(id)).toBe(0);
-    expect(await titlesOf(resident.id)).toContain('Collection under review');
-    expect(await titlesOf(w.staff.id)).toContain('Collection weight to check');
-    await expect(reportCollectionWeight(db, resident, id, 3000, at(1))).rejects.toMatchObject({ code: 'WEIGHT_ALREADY_SENT' });
+  it('credits a weight with no scan on its own pass when the collector was at the gate that day for another home', async () => {
+    const twoStops = (await createCollector(db, w.admin, { name: 'Two Stops', materials: ['E_WASTE'], days: 'Weekdays' })).id;
+    const scanned = await booked('2026-11-03', undefined, twoStops);
+    const other = await booked('2026-11-03', undefined, twoStops);
+    await scanPass(db, guard, scanned.passCode, at(1));
+    expect((await myCollections(db, other.resident, at(1))).find((x) => x.id === other.id)).toMatchObject({ gate_scanned: false, collector_at_gate: true, can_report: true });
+    const result = await reportCollectionWeight(db, other.resident, other.id, 3000, at(1));
+    expect(result.status).toBe('COLLECTED');
+    expect(await collection(other.id)).toMatchObject({ status: 'COLLECTED', weight_g: 3000, review_reason: null });
+    expect(await xpEventsFor(other.id)).toBe(1);
+    const logged = await one<{ detail: { evidence: string } }>(db, `SELECT detail FROM audit_log WHERE action = 'COLLECTION_WEIGHT_ACCEPTED' AND entity_id = $1`, [other.id]);
+    expect(logged!.detail.evidence).toBe('SAME_DAY_VISIT');
   });
 
-  it('holds a weight over the limit; staff accept a corrected weight through the same credit step', async () => {
+  it('with no gate record: waits on the day, then closes with no reward at night; after the day it closes at once; staff are never asked', async () => {
+    const neverCame = (await createCollector(db, w.admin, { name: 'Never Came', materials: ['E_WASTE'], days: 'Weekdays' })).id;
+    const onTheDay = await booked('2026-11-03', undefined, neverCame);
+    const dayAfter = await booked('2026-11-03', undefined, neverCame);
+    const staffBefore = await titlesOf(w.staff.id);
+
+    expect(await reportCollectionWeight(db, onTheDay.resident, onTheDay.id, 3000, at(1))).toEqual({ status: 'WAITING_FOR_GATE' });
+    expect(await collection(onTheDay.id)).toMatchObject({ status: 'CONFIRMED', weight_g: null, reported_weight_g: 3000, review_reason: null });
+    expect((await myCollections(db, onTheDay.resident, at(1))).find((x) => x.id === onTheDay.id)).toMatchObject({ waiting_for_gate: true, can_report: false });
+    await expect(reportCollectionWeight(db, onTheDay.resident, onTheDay.id, 3000, at(1))).rejects.toMatchObject({ code: 'WEIGHT_ALREADY_SENT' });
+
+    // Sent after the collection day: decided at once.
+    expect(await reportCollectionWeight(db, dayAfter.resident, dayAfter.id, 2000, at(1.5))).toEqual({ status: 'NO_GATE_RECORD' });
+    expect(await collection(dayAfter.id)).toMatchObject({ status: 'COLLECTED', weight_g: null, review_reason: 'NO_GATE_SCAN' });
+    expect(await titlesOf(dayAfter.resident.id)).toContain('No reward for this collection');
+
+    // That night the day is over: still no gate record, so no reward.
+    await runJob(db, 'recycling', at(2));
+    expect(await collection(onTheDay.id)).toMatchObject({ status: 'COLLECTED', weight_g: null, review_reason: 'NO_GATE_SCAN' });
+    expect((await collection(onTheDay.id))!.reviewed_at).not.toBeNull();
+    expect((await myCollections(db, onTheDay.resident, at(2))).find((x) => x.id === onTheDay.id)).toMatchObject({ no_reward: true, decided_by: 'SYSTEM' });
+    expect(await xpEventsFor(onTheDay.id)).toBe(0);
+    expect(await titlesOf(onTheDay.resident.id)).toContain('No reward for this collection');
+    expect(await titlesOf(w.staff.id)).toEqual(staffBefore);
+    const queue = await collectionExceptions(db, w.staff, at(2));
+    expect(queue.reviews.some((r) => r.id === onTheDay.id || r.id === dayAfter.id)).toBe(false);
+  });
+
+  it('credits a big weight after a gate scan, counted up to the material’s maximum, with the household’s figure kept', async () => {
     const { resident, id, passCode } = await booked();
     await scanPass(db, guard, passCode, at(1));
-    expect(await reportCollectionWeight(db, resident, id, AUTO_ACCEPT_MAX_G + 1, at(1))).toEqual({ status: 'IN_REVIEW', reason: 'OVER_LIMIT' });
-    expect(await xpEventsFor(id)).toBe(0);
+    const result = await reportCollectionWeight(db, resident, id, 150_000, at(1));
+    expect(result.status).toBe('COLLECTED');
+    expect(await collection(id)).toMatchObject({ status: 'COLLECTED', weight_g: COUNT_UP_TO_G.E_WASTE, reported_weight_g: 150_000, review_reason: null });
+    expect(await xpEventsFor(id)).toBe(1);
+  });
+
+  it('still lets staff settle an older held weight, with a corrected weight through the same credit step', async () => {
+    const { resident, id, passCode } = await booked();
+    await scanPass(db, guard, passCode, at(1));
+    // Held under the old rules, before weights settled themselves.
+    await db.query(`UPDATE recycling_collections SET reported_weight_g = $2, reported_at = $3, review_reason = 'OVER_LIMIT' WHERE id = $1`, [id, AUTO_ACCEPT_MAX_G + 1, at(1)]);
     const queue = await collectionExceptions(db, w.staff, at(1));
     expect(queue.reviews.find((r) => r.id === id)).toMatchObject({ review_reason: 'OVER_LIMIT', gate_scanned: true, reported_weight_g: AUTO_ACCEPT_MAX_G + 1 });
 
@@ -137,7 +177,8 @@ describe('The nightly recycling job', () => {
     expect(await titlesOf(reminded.resident.id)).toContain('Collection tomorrow');
 
     await scanPass(db, guard, unweighed.passCode, at(1));
-    await reportCollectionWeight(db, held.resident, held.id, 2000, at(1)); // no gate scan: waits for staff
+    // No scan on its own pass, but the collector was at the gate that day for another home: credited at once.
+    expect((await reportCollectionWeight(db, held.resident, held.id, 2000, at(1))).status).toBe('COLLECTED');
 
     // Wednesday night: Tuesday is past.
     const wed = at(2);
@@ -146,13 +187,12 @@ describe('The nightly recycling job', () => {
     expect((await one<{ status: string }>(db, 'SELECT status FROM visitor_passes WHERE code = $1', [unscanned.passCode]))!.status).toBe('CANCELLED');
     expect(await titlesOf(unscanned.resident.id)).toContain('Collection missed');
     expect((await collection(unweighed.id))!.status).toBe('CONFIRMED'); // still time to weigh
-    expect(await collection(held.id)).toMatchObject({ status: 'CONFIRMED', review_reason: 'NO_GATE_SCAN' }); // never touched
+    expect(await collection(held.id)).toMatchObject({ status: 'COLLECTED', weight_g: 2000 });
 
     // Thursday: two days after, closed with no weight and no points.
     await runJob(db, 'recycling', at(3));
     expect(await collection(unweighed.id)).toMatchObject({ status: 'COLLECTED', weight_g: null });
     expect(await xpEventsFor(unweighed.id)).toBe(0);
-    expect(await collection(held.id)).toMatchObject({ status: 'CONFIRMED', review_reason: 'NO_GATE_SCAN' });
 
     const notices = (await titlesOf(unscanned.resident.id)).length;
     await runJob(db, 'recycling', at(3));
@@ -161,23 +201,35 @@ describe('The nightly recycling job', () => {
 });
 
 describe('A missed collection the household disputes', () => {
-  it('goes to staff; closing it without points keeps it missed; too late after 7 days', async () => {
-    const a = await booked('2026-11-03');
-    const late = await booked('2026-11-03');
-    await runJob(db, 'recycling', at(2));
-    expect((await myCollections(db, a.resident, at(2))).find((x) => x.id === a.id)).toMatchObject({ status: 'MISSED', can_dispute: true });
+  it('is decided by the gate record at once: the collector seen that day credits it, no record keeps it missed; too late after 7 days', async () => {
+    const disputeCo = (await createCollector(db, w.admin, { name: 'Dispute Co', materials: ['E_WASTE'], days: 'Weekdays' })).id;
+    const noRecord = await booked('2026-11-03', undefined, disputeCo);
+    const late = await booked('2026-11-03', undefined, disputeCo);
+    const seenThatDay = await booked('2026-11-04', undefined, disputeCo);
+    const neighbour = await booked('2026-11-04', undefined, disputeCo);
+    await scanPass(db, guard, neighbour.passCode, at(2)); // the collector came in on the neighbour's pass only
+    const staffBefore = await titlesOf(w.staff.id);
+    await runJob(db, 'recycling', at(3));
+    expect((await myCollections(db, noRecord.resident, at(3))).find((x) => x.id === noRecord.id)).toMatchObject({ status: 'MISSED', can_dispute: true });
+    expect((await collection(seenThatDay.id))!.status).toBe('MISSED');
 
-    await reportCollectorCame(db, a.resident, a.id, at(2));
-    expect(await collection(a.id)).toMatchObject({ status: 'MISSED', review_reason: 'COLLECTOR_CAME' });
-    expect(await titlesOf(w.staff.id)).toContain('Missed collection disputed');
-    await expect(reportCollectorCame(db, a.resident, a.id, at(2))).rejects.toMatchObject({ code: 'ALREADY_REPORTED' });
-    // Accepting needs a weight: the household did not send one.
-    await expect(reviewCollection(db, w.staff, a.id, { decision: 'ACCEPT' }, at(2))).rejects.toMatchObject({ code: 'WEIGHT_NEEDED' });
-    await reviewCollection(db, w.staff, a.id, { decision: 'REJECT' }, at(2));
-    expect((await collection(a.id))!.status).toBe('MISSED');
-    expect(await xpEventsFor(a.id)).toBe(0);
+    expect(await reportCollectorCame(db, noRecord.resident, noRecord.id, 4000, at(3))).toEqual({ status: 'MISSED' });
+    expect(await collection(noRecord.id)).toMatchObject({ status: 'MISSED', review_reason: 'COLLECTOR_CAME', reported_weight_g: 4000 });
+    expect(await xpEventsFor(noRecord.id)).toBe(0);
+    expect(await titlesOf(noRecord.resident.id)).toContain('The collection stays missed');
+    await expect(reportCollectorCame(db, noRecord.resident, noRecord.id, 4000, at(3))).rejects.toMatchObject({ code: 'ALREADY_REPORTED' });
 
-    await expect(reportCollectorCame(db, late.resident, late.id, at(10))).rejects.toMatchObject({ code: 'DISPUTE_CLOSED' });
+    expect((await reportCollectorCame(db, seenThatDay.resident, seenThatDay.id, 6000, at(3))).status).toBe('COLLECTED');
+    expect(await collection(seenThatDay.id)).toMatchObject({ status: 'COLLECTED', weight_g: 6000 });
+    expect(await xpEventsFor(seenThatDay.id)).toBe(1);
+
+    // Staff were never asked to check anything, and nothing waits for them.
+    const asked = (await titlesOf(w.staff.id)).slice(staffBefore.length);
+    expect(asked).not.toContain('Missed collection disputed');
+    expect(asked).not.toContain('Collection weight to check');
+    expect((await collectionExceptions(db, w.staff, at(3))).reviews.some((r) => r.id === noRecord.id || r.id === seenThatDay.id)).toBe(false);
+
+    await expect(reportCollectorCame(db, late.resident, late.id, 1000, at(10))).rejects.toMatchObject({ code: 'DISPUTE_CLOSED' });
   });
 });
 
@@ -330,5 +382,46 @@ describe('Who may set up collectors, kiosks and bins (through the real routes)',
     expect(bin.status).toBe(200);
     expect((await post(`/admin/kitar/machines/${bin.body.data!.id}/material`, w.staff, { material: 'PAPER' })).status).toBe(403);
     expect((await post(`/admin/kitar/machines/${bin.body.data!.id}/material`, w.admin, { material: 'PAPER' })).status).toBe(200);
+  });
+});
+
+describe('Collection history for staff, admins and HQ', () => {
+  const handle = (req: Request) => createRouter(routes, { prefix: '/api/v1', db: async () => db, now: () => T0 }).handle(req);
+  async function get(path: string, as: Actor) {
+    const headers = new Headers({ origin: 'http://kita.test', cookie: `kita_session=${await createSession(db, as.id, T0)}` });
+    return handle(new Request(`http://kita.test/api/v1${path}`, { headers }));
+  }
+  it('lists what each household logged with what was counted, and searches, filters and pages on the server', async () => {
+    const historyCo = (await createCollector(db, w.admin, { name: 'History Haulers', materials: ['E_WASTE', 'PAPER'], days: 'Weekdays' })).id;
+    const big = await booked('2026-11-03', undefined, historyCo);
+    await scanPass(db, guard, big.passCode, at(1));
+    await reportCollectionWeight(db, big.resident, big.id, 150_000, at(1));
+    const none = await booked('2026-11-04', undefined, historyCo);
+    await reportCollectionWeight(db, none.resident, none.id, 2000, at(3)); // after the day, no gate record
+    const ahead = await booked('2026-11-20', undefined, historyCo);
+
+    const all = await collectionHistory(db, w.staff, { limit: 50, collectorId: historyCo }, at(3));
+    expect(all.total).toBe(3);
+    expect(all.counts).toMatchObject({ all: 3, credited: 1, no_reward: 1, booked: 1 });
+    expect(all.collectors!.some((c) => c.name === 'History Haulers')).toBe(true);
+    expect(all.items.map((x) => x.id)).toEqual([ahead.id, none.id, big.id]); // newest collection day first
+    expect(all.items.find((x) => x.id === big.id)).toMatchObject({ reported_weight_g: 150_000, weight_g: COUNT_UP_TO_G.E_WASTE, gate_scanned: true, settled_by: 'SYSTEM' });
+    expect(all.items.find((x) => x.id === none.id)).toMatchObject({ reported_weight_g: 2000, weight_g: null, gate_scanned: false, collector_at_gate: false, settled_by: 'SYSTEM' });
+
+    const credited = await collectionHistory(db, w.staff, { limit: 50, collectorId: historyCo, outcome: 'CREDITED' }, at(3));
+    expect(credited.items.map((x) => x.id)).toEqual([big.id]);
+    expect(credited.total).toBe(1);
+    expect((await collectionHistory(db, w.staff, { limit: 50, q: 'History Haul' }, at(3))).total).toBe(3);
+    expect((await collectionHistory(db, w.staff, { limit: 50, collectorId: historyCo, settledBy: 'STAFF' }, at(3))).total).toBe(0);
+
+    // Paging: one at a time, no repeats.
+    const page1 = await collectionHistory(db, w.staff, { limit: 1, collectorId: historyCo }, at(3));
+    const page2 = await collectionHistory(db, w.staff, { limit: 1, collectorId: historyCo, cursor: page1.nextCursor! }, at(3));
+    expect(page2.items[0]!.id).not.toBe(page1.items[0]!.id);
+    expect(page2.items[0]!.id).toBe(none.id);
+
+    // Through the route: HQ sees every township; a resident is refused.
+    expect((await get(`/admin/kitar/collections/history?collectorId=${historyCo}`, w.hq)).status).toBe(200);
+    expect((await get('/admin/kitar/collections/history', big.resident)).status).toBe(403);
   });
 });

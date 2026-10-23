@@ -8,12 +8,12 @@ import { decodeCursor, toPage, type PageQuery } from '../../http/pagination';
 import { audit } from '../audit';
 import { todayIn } from '../settings';
 import { afterJoin, ISSUE_SELECT, issueFacts, publicThreshold, words, type IssueFacts } from './issue-core';
-import { applyReportUpdate, checkReportInput, type ReportUpdate } from './service';
+import { applyReportUpdate, checkReportInput, photoResponse, type ReportUpdate } from './service';
 
 /**
  * Lapor issues: reports about the same problem at the same place, grouped. Neighbours see an issue only once enough
  * different residents (reporters and "Me too") are affected, and then only its written title and summary, type,
- * area, status and dates: never who reported it, their words or photos. An issue closed with no action disappears
+ * area, status, dates and one report's photo (unless staff hid it): never who reported it or their words. An issue closed with no action disappears
  * from their view at once. Staff get the issues that reached that number, and anything urgent, as "Needs attention",
  * and one update reaches every report in the issue.
  */
@@ -30,6 +30,8 @@ function present(f: IssueFacts & { following?: boolean; mine?: boolean }, today:
     created_at: f.created_at, updated_at: f.updated_at, resolved_at: f.resolved_at, target_date: f.target_date,
     late: OPEN.includes(f.status) && f.target_date !== null && f.target_date < today,
     following: Boolean(f.following), mine: Boolean(f.mine),
+    // Changes when staff pick another photo, so the browser does not keep showing the old one.
+    photo_version: f.photo_report_id ? f.photo_report_id.slice(0, 8) : null,
   };
 }
 
@@ -281,6 +283,9 @@ export async function attentionIssues(db: Db, actor: Actor, now: Date) {
       title_source: f.title_source,
       assigned_to: f.assigned_to,
       reached: f.people >= threshold,
+      photo_report_id: f.photo_report_id,
+      photo_choice: f.photo_choice,
+      photo_hidden: f.photo_hidden,
       members: reports.filter((r) => r.issue_id === f.id).map(({ issue_id: _issue, ...r }) => (void _issue, r)),
     })),
   };
@@ -290,6 +295,9 @@ export interface IssueUpdate extends ReportUpdate {
   /** The public title, corrected by staff; an empty string goes back to the written one. */
   title?: string;
   titleMs?: string;
+  /** The report whose photo neighbours see; null goes back to the first photo. */
+  photoReportId?: string | null;
+  photoHidden?: boolean;
 }
 
 /**
@@ -302,7 +310,18 @@ export async function updateIssue(db: Db, actor: Actor, issueId: string, update:
   return db.tx(async (tx: Queryable) => {
     const issue = await one<{ township_id: string; title: string | null; title_ms: string | null }>(tx, 'SELECT township_id, title, title_ms FROM report_issues WHERE id = $1 FOR UPDATE', [issueId]);
     if (!issue || (actor.role !== 'HQ_ADMIN' && issue.township_id !== actor.townshipId)) throw notFound('Issue');
-    const { title, titleMs, ...reportUpdate } = update;
+    const { title, titleMs, photoReportId, photoHidden, ...reportUpdate } = update;
+    if (photoReportId !== undefined || photoHidden !== undefined) {
+      if (photoReportId && !(await one(tx, 'SELECT 1 FROM reports WHERE id = $1 AND issue_id = $2 AND photo_id IS NOT NULL', [photoReportId, issueId]))) {
+        throw ruleViolation('NO_SUCH_PHOTO', 'Choose a photo from one of the reports in this problem.');
+      }
+      const before = await one<{ photo_report_id: string | null; photo_hidden: boolean }>(tx, 'SELECT photo_report_id, photo_hidden FROM report_issues WHERE id = $1', [issueId]);
+      const next = { photoReportId: photoReportId === undefined ? before!.photo_report_id : photoReportId, photoHidden: photoHidden ?? before!.photo_hidden };
+      if (next.photoReportId !== before!.photo_report_id || next.photoHidden !== before!.photo_hidden) {
+        await tx.query('UPDATE report_issues SET photo_report_id = $2, photo_hidden = $3 WHERE id = $1', [issueId, next.photoReportId, next.photoHidden]);
+        await audit(tx, actor.id, 'ISSUE_PHOTO', 'report_issue', issueId, { from: { photoReportId: before!.photo_report_id, photoHidden: before!.photo_hidden }, to: next });
+      }
+    }
     if (title !== undefined || titleMs !== undefined) {
       const nextTitle = title === undefined ? issue.title : title.trim() || null;
       const nextMs = titleMs === undefined ? issue.title_ms : titleMs.trim() || null;
@@ -320,6 +339,25 @@ export async function updateIssue(db: Db, actor: Actor, issueId: string, update:
     }
     return { ok: true };
   });
+}
+
+/**
+ * The photo neighbours see on a public issue: staff's pick, or the first report's photo, unless staff hid it.
+ * Residents get it only from a public issue in their own township (as on Reports around the township); staff of
+ * the township, and HQ, from any issue.
+ */
+export async function getIssuePhoto(db: Db, actor: Actor, issueId: string): Promise<Response> {
+  const facts = await issueFacts(db, issueId);
+  if (!facts || (actor.role !== 'HQ_ADMIN' && facts.township_id !== actor.townshipId)) throw notFound('Photo');
+  if (!isStaff(actor)) {
+    requireVerifiedResident(actor);
+    if (facts.people < (await publicThreshold(db)) || facts.status === 'REJECTED') throw notFound('Photo');
+  }
+  const upload = facts.photo_report_id
+    ? await one<{ mime: string; bytes: Uint8Array }>(db, 'SELECT u.mime, u.bytes FROM reports r JOIN uploads u ON u.id = r.photo_id WHERE r.id = $1', [facts.photo_report_id])
+    : undefined;
+  if (!upload) throw notFound('Photo');
+  return photoResponse(upload);
 }
 
 /** For tests and the console: one issue's figures as staff see them. */

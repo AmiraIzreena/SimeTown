@@ -72,8 +72,8 @@ export function ServiceCategoryScreen({ category }: { category: ServiceCategory 
               <EmptyState icon={Wrench} title="No companies offer this yet"><Text>The township office is inviting more companies. Try another service for now.</Text></EmptyState>
             ) : (
               <div className="stagger-in grid gap-5 lg:grid-cols-2">
-                {list.map((p, i) => (
-                  <CompanyCard key={p.listing_id} provider={p} image={page.card} index={i} onBook={() => setBooking(p)} onProfile={() => setProfileId(p.merchant_id)} />
+                {companyPhotos(list, page.card).map(({ provider: p, image }, i) => (
+                  <CompanyCard key={p.listing_id} provider={p} image={image} index={i} onBook={() => setBooking(p)} onProfile={() => setProfileId(p.merchant_id)} />
                 ))}
               </div>
             )
@@ -96,6 +96,21 @@ export function ServiceCategoryScreen({ category }: { category: ServiceCategory 
 }
 
 /** One company: photo header with its badges, then rating, about, price, the latest reviews and the actions. */
+/**
+ * A photo for each company, never the same twice on one page: the photo of its main trade (so an aircon
+ * company shows an aircon unit even on the Electrical page), else this service's photo, else the next unused one.
+ */
+function companyPhotos(list: Provider[], own: string) {
+  const used = new Set<string>();
+  const all = Object.values(SERVICE_CATEGORY_PAGE).map((c) => c.card);
+  return list.map((provider) => {
+    const main = provider.main_category ? SERVICE_CATEGORY_PAGE[provider.main_category]?.card : undefined;
+    const image = [main, own, ...all].find((src): src is string => Boolean(src) && !used.has(src!)) ?? own;
+    used.add(image);
+    return { provider, image };
+  });
+}
+
 function CompanyCard({ provider: p, image, index, onBook, onProfile }: { provider: Provider; image: string; index: number; onBook: () => void; onProfile: () => void }) {
   return (
     <article style={{ '--i': index } as CSSProperties} className="company-card glass-surface group flex flex-col overflow-hidden rounded-2xl border shadow-sm">

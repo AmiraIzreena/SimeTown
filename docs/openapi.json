@@ -5514,7 +5514,7 @@
         "tags": [
           "Lapor"
         ],
-        "summary": "Report a hazard or access barrier (multipart form; optional photo). Without \"issue\", a likely matching issue is returned first ({ needsChoice, issue, alreadyYours }) and nothing is saved",
+        "summary": "Report a hazard or access barrier (multipart form; a photo is required: JPEG, PNG or WebP, up to 1.5 MB, at least 400 px). Without \"issue\", a likely matching issue is returned first ({ needsChoice, issue, alreadyYours }) and nothing is saved",
         "description": "Signed-in RESIDENT.",
         "operationId": "postReports",
         "parameters": [],
@@ -5902,6 +5902,53 @@
         }
       }
     },
+    "/api/v1/report-issues/{issueId}/photo": {
+      "get": {
+        "tags": [
+          "Lapor"
+        ],
+        "summary": "The photo neighbours see on a public issue (one report's photo, unless staff hid it); staff see any issue's",
+        "description": "Signed-in RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "getReportIssuesIssueIdPhoto",
+        "parameters": [
+          {
+            "name": "issueId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
     "/api/v1/report-issues/{issueId}/me-too": {
       "post": {
         "tags": [
@@ -5980,7 +6027,7 @@
         "tags": [
           "Lapor"
         ],
-        "summary": "Staff update every open report in an issue at once, or correct its public title (logged)",
+        "summary": "Staff update every open report in an issue at once, correct its public title, or choose or hide its public photo (logged)",
         "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
         "operationId": "patchReportIssuesIssueId",
         "parameters": [
@@ -6059,6 +6106,21 @@
                   "titleMs": {
                     "type": "string",
                     "maxLength": 80
+                  },
+                  "photoReportId": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "photoHidden": {
+                    "type": "boolean"
                   }
                 }
               }
@@ -21846,7 +21908,7 @@
         "tags": [
           "Kitar"
         ],
-        "summary": "Send what the collector took: credited at once after a gate scan, within the automatic limit; otherwise checked by staff",
+        "summary": "Send what the collector took. The gate record decides it: the collector scanned in that day credits it (counted up to a maximum per material); no record closes it with no reward. On the day itself it waits for the nightly check",
         "description": "Signed-in RESIDENT.",
         "operationId": "postKitarCollectionsCollectionIdWeight",
         "parameters": [
@@ -21923,7 +21985,7 @@
         "tags": [
           "Kitar"
         ],
-        "summary": "Say the collector came on a collection marked missed (staff check it)",
+        "summary": "Say the collector came on a collection marked missed, with the weight they took. The gate record decides it at once",
         "description": "Signed-in RESIDENT.",
         "operationId": "postKitarCollectionsCollectionIdCame",
         "parameters": [
@@ -21944,8 +22006,16 @@
               "schema": {
                 "$schema": "https://json-schema.org/draft/2020-12/schema",
                 "type": "object",
-                "properties": {},
-                "additionalProperties": false
+                "properties": {
+                  "weightG": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 500000
+                  }
+                },
+                "required": [
+                  "weightG"
+                ]
               }
             }
           }
@@ -22462,6 +22532,151 @@
               "type": "string",
               "format": "uuid",
               "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/kitar/collections/history": {
+      "get": {
+        "tags": [
+          "Kitar"
+        ],
+        "summary": "Collection history: what each household logged, what was counted, the gate record and who settled it. Search, filters and paging",
+        "description": "Signed-in TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "getAdminKitarCollectionsHistory",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "townshipId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 60
+            }
+          },
+          {
+            "name": "outcome",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "BOOKED",
+                "CREDITED",
+                "NO_REWARD",
+                "MISSED",
+                "CANCELLED"
+              ]
+            }
+          },
+          {
+            "name": "collectorId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "material",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PLASTIC_PET",
+                "PLASTIC_OTHER",
+                "PAPER",
+                "GLASS",
+                "ALUMINIUM",
+                "E_WASTE",
+                "TEXTILE",
+                "COOKING_OIL"
+              ]
+            }
+          },
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 3650
+            }
+          },
+          {
+            "name": "settledBy",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "SYSTEM",
+                "STAFF"
+              ]
             }
           }
         ],

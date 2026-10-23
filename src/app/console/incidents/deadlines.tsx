@@ -4,6 +4,7 @@ import { Text } from '@/components/ui/localized-text';
 
 import { PlayCircle } from 'lucide-react';
 import { type FormEvent } from 'react';
+import { CaseDeadlinesWalkthrough } from '@/components/features/lapor-walkthroughs';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader } from '@/components/ui/card';
 import { Async, SkeletonForm } from '@/components/ui/feedback';
@@ -49,7 +50,7 @@ export function Deadlines() {
       {({ policy: p }) => (
         <form method="post" onSubmit={submit} className="space-y-6" noValidate>
           <Card>
-            <CardHeader title="Targets by priority" description="In minutes. Proposed starting values: the township decides its own. “Working time only” skips evenings, weekends and holidays." />
+            <CardHeader action={<CaseDeadlinesWalkthrough />} title="Targets by priority" description="In minutes. Proposed starting values: the township decides its own. “Working time only” skips evenings, weekends and holidays." />
             <div className="space-y-4 p-5">
               {PRIORITIES.map((pr) => (
                 <div key={pr} className="grid items-end gap-3 sm:grid-cols-4">

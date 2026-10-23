@@ -7,7 +7,7 @@ import { addShelfNote, checkParcelCode, guardParcels, handOverParcel, logParcel,
 import { createReport, getReport, listReports, myLaporReports, reportStats, setMeToo, similarReports, updateReport } from '@/server/modules/reports/service';
 import { myRequests } from '@/server/modules/requests/service';
 import { searchGuide } from '@/shared/recycling-guide';
-import { T0, at, freshDb, makeHome, makeResident, makeWorld, type World } from './helpers';
+import { T0, at, freshDb, makeHome, makeResident, makeWorld, REPORT_PHOTO, type World } from './helpers';
 
 /** The hackathon brief's PEOPLE and PLANET problems, each against the brief's own test. */
 
@@ -29,7 +29,7 @@ describe('One reporting channel: live progress and "Me too"', () => {
   it('lets a neighbour follow a report instead of filing another, without XP or the reporter’s words', async () => {
     const reporter = await makeResident(w);
     const neighbour = await makeResident(w);
-    const { id } = await createReport(db, reporter, { description: 'Street light not working outside the playground', locationText: 'Jalan Satu playground', zoneId: w.zoneId, category: 'LIGHTING' }, T0);
+    const { id } = await createReport(db, reporter, { photo: REPORT_PHOTO, description: 'Street light not working outside the playground', locationText: 'Jalan Satu playground', zoneId: w.zoneId, category: 'LIGHTING' }, T0);
 
     const similar = await similarReports(db, neighbour, { text: 'The light at the playground is broken', category: 'LIGHTING', zoneId: w.zoneId }, T0);
     expect(similar.map((s) => s.id)).toContain(id);
@@ -77,9 +77,9 @@ describe('One reporting channel: live progress and "Me too"', () => {
   it('lists a resident’s Lapor reports as ongoing or finished, by type, mine or followed, searchable, with matching counts', async () => {
     const me = await makeResident(w);
     const neighbour = await makeResident(w);
-    const light = await createReport(db, me, { description: 'Street light out by the surau', locationText: 'Jalan Dua', category: 'LIGHTING' }, T0);
-    const drain = await createReport(db, me, { description: 'Drain 50% blocked with leaves', locationText: 'Bus stop', category: 'DRAINAGE' }, T0);
-    const theirs = await createReport(db, neighbour, { description: 'Pothole at the junction', locationText: 'Jalan Tiga', category: 'POTHOLE' }, T0);
+    const light = await createReport(db, me, { photo: REPORT_PHOTO, description: 'Street light out by the surau', locationText: 'Jalan Dua', category: 'LIGHTING' }, T0);
+    const drain = await createReport(db, me, { photo: REPORT_PHOTO, description: 'Drain 50% blocked with leaves', locationText: 'Bus stop', category: 'DRAINAGE' }, T0);
+    const theirs = await createReport(db, neighbour, { photo: REPORT_PHOTO, description: 'Pothole at the junction', locationText: 'Jalan Tiga', category: 'POTHOLE' }, T0);
     await setMeToo(db, me, theirs.id, true, T0);
     await updateReport(db, w.staff, drain.id, { status: 'RESOLVED' }, at(1));
 
@@ -221,7 +221,7 @@ describe('My requests', () => {
   it('shows a household everything it is waiting on, in one list', async () => {
     const homeId = await makeHome(w, 'Jalan Inbox');
     const resident = await makeResident(w, { homeId });
-    await createReport(db, resident, { description: 'Blocked drain by the bus stop', locationText: 'Bus stop', category: 'DRAINAGE' }, T0);
+    await createReport(db, resident, { photo: REPORT_PHOTO, description: 'Blocked drain by the bus stop', locationText: 'Bus stop', category: 'DRAINAGE' }, T0);
     await logParcel(db, guard, { homeId, courier: 'DHL', shelf: 'C2' }, T0);
     const r = await myRequests(db, resident, T0);
     expect(r.open).toBe(2);
@@ -233,7 +233,7 @@ describe('My requests', () => {
   it('shows every report step and collections exactly as the database holds them', async () => {
     const homeId = await makeHome(w, 'Jalan Steps');
     const resident = await makeResident(w, { homeId });
-    const report = (description: string) => createReport(db, resident, { description, locationText: 'Jalan Steps', category: 'OTHER' }, T0);
+    const report = (description: string) => createReport(db, resident, { photo: REPORT_PHOTO, description, locationText: 'Jalan Steps', category: 'OTHER' }, T0);
     await report('Received and not yet checked');
     const checked = await report('Checked by staff only');
     await updateReport(db, w.staff, checked.id, { status: 'IN_PROGRESS' }, T0);
