@@ -51,6 +51,18 @@ export async function ensurePrivateDoors(db: Db, now: Date, log: (line: string) 
   const admin = await actorByEmail(db, 'admin');
   if (!admin?.townshipId) return;
   const township = admin.townshipId;
+  // Demo databases from before the real Elmina addresses call the six demo flats "Residensi KITA, Block A,
+  // Precinct Melur" (RK-A-01-01…). Give them the address a fresh seed uses, so Elmina West has its homes.
+  const moved = await db.query(
+    `UPDATE homes h SET unit_code = 'HM-' || substring(h.unit_code FROM 4), precinct = 'Elmina West', street = 'Jalan Casuarina U17/56',
+            building = 'Pangsapuri Harmoni Elmina, Block A',
+            zone_id = coalesce((SELECT z.id FROM flood_zones z WHERE z.township_id = $1 AND z.name = 'Elmina West'), h.zone_id)
+      WHERE h.township_id = $1 AND h.precinct = 'Precinct Melur' AND h.unit_code LIKE 'RK-A-%'
+        AND NOT EXISTS (SELECT 1 FROM homes x WHERE x.township_id = $1 AND x.unit_code = 'HM-' || substring(h.unit_code FROM 4))
+      RETURNING h.id`,
+    [township],
+  );
+  if (moved.length) log(`Homes: ${moved.length} demo flats moved to their current address in Elmina West.`);
   let firstStation: string | null = null;
   for (const bank of BANKS) {
     const homes = await db.query<{ id: string }>('SELECT id FROM homes WHERE township_id = $1 AND precinct = ANY($2::text[]) ORDER BY precinct, unit_code', [township, bank.precincts]);
@@ -207,9 +219,14 @@ export async function seedLockers(db: Db, input: { passwordHash: string; now: Da
  */
 async function seedParcelShowcase(db: Db, input: { passwordHash: string; now: Date; log: (line: string) => void }) {
   const { now, log } = input;
-  if (await one(db, `SELECT 1 FROM locker_parcels WHERE tracking_no LIKE 'PLSHOW%' UNION ALL SELECT 1 FROM parcels WHERE tracking_no LIKE 'SHOW%' LIMIT 1`)) {
-    return log('Parcels: showcase already there.');
-  }
+  // Added in two parts, each once: Locker C's own parcels, and everything else. A database that got the showcase
+  // before it had Elmina West homes still gets Locker C's part.
+  const mainThere = Boolean(await one(db, `SELECT 1 FROM locker_parcels WHERE tracking_no LIKE 'PLSHOW%' UNION ALL SELECT 1 FROM parcels WHERE tracking_no LIKE 'SHOW%' LIMIT 1`));
+  const westThere = async () => {
+    const station = await one<{ id: string }>(db, `SELECT id FROM locker_stations WHERE 'Elmina West' = ANY(precincts) LIMIT 1`);
+    return !station || Boolean(await one(db, 'SELECT 1 FROM locker_parcels WHERE station_id = $1 LIMIT 1', [station.id]));
+  };
+  if (mainThere && (await westThere())) return log('Parcels: showcase already there.');
   const admin = await actorByEmail(db, 'admin');
   const staff = await actorByEmail(db, 'staff');
   if (!admin?.townshipId || !staff) return log('Parcels: demo accounts missing; showcase skipped.');
@@ -238,6 +255,8 @@ async function seedParcelShowcase(db: Db, input: { passwordHash: string; now: Da
   const izzah = await westResident('izzah', 'Nurul Izzah Kamal', 'HM-A-01-01');
   const rajesh = await westResident('rajesh', 'Rajesh Pillai', 'HM-A-02-02');
   await ensurePrivateDoors(db, now, () => undefined);
+  const addWest = !(await westThere());
+  if (mainThere && !addWest) return log('Parcels: showcase already there.');
 
   // The guardhouse and a Pos Laju courier who may use every locker bank.
   let counter = await one<{ id: string }>(db, `SELECT id FROM overflow_locations WHERE township_id = $1 AND active ORDER BY name LIMIT 1`, [admin.townshipId]);
@@ -268,7 +287,7 @@ async function seedParcelShowcase(db: Db, input: { passwordHash: string; now: Da
     return new Date(t);
   };
   let serial = 0;
-  const tracking = () => `PLSHOW${String(++serial).padStart(4, '0')}`;
+  const tracking = () => `${mainThere ? 'PLWEST' : 'PLSHOW'}${String(++serial).padStart(4, '0')}`;
   const stationOf = async (resident: Actor) => {
     const home = await one<{ precinct: string | null }>(db, 'SELECT precinct FROM homes WHERE id = $1', [resident.homeId]);
     return stations.find((s) => home?.precinct && s.precincts.includes(home.precinct)) ?? stations[0]!;
@@ -304,31 +323,42 @@ async function seedParcelShowcase(db: Db, input: { passwordHash: string; now: Da
   };
 
   // Locker C in use over the last two weeks, so its figures are real.
-  for (const [i, resident] of [izzah, rajesh, izzah, rajesh, izzah].entries()) {
-    if (!resident) continue;
-    const when = at(14 - i * 3, 11);
-    const delivered = await deliver(resident, when);
-    if (delivered) await collect(resident, delivered, new Date(when.getTime() + (6 + i * 4) * HOUR));
+  if (addWest) {
+    for (const [i, resident] of [izzah, rajesh, izzah, rajesh, izzah].entries()) {
+      if (!resident) continue;
+      const when = at(14 - i * 3, 11);
+      const delivered = await deliver(resident, when);
+      if (delivered) await collect(resident, delivered, new Date(when.getTime() + (6 + i * 4) * HOUR));
+    }
   }
 
   // Locker parcels kept at the guardhouse.
-  const lateOne = await toGuardhouse(aisyah, at(40, 12)); // collected late last month: in her late-collections record
-  if (lateOne) {
-    await runExpiry(db, at(33, 14));
-    const pin = (await myLockerParcels(db, aisyah, at(31, 18))).parcels.find((p) => p.id === lateOne)?.pin;
-    if (pin) await handOverAtCounter(db, guard, counter.id, pin, true, at(31, 18));
+  if (!mainThere) {
+    const lateOne = await toGuardhouse(aisyah, at(40, 12)); // collected late last month: in her late-collections record
+    if (lateOne) {
+      await runExpiry(db, at(33, 14));
+      const pin = (await myLockerParcels(db, aisyah, at(31, 18))).parcels.find((p) => p.id === lateOne)?.pin;
+      if (pin) await handOverAtCounter(db, guard, counter.id, pin, true, at(31, 18));
+    }
+    await toGuardhouse(hafiz, at(15, 12)); // over two weeks: overdue, reminded weekly, and a call is due
+    await runExpiry(db, at(8, 10));
+    const daniels = await toGuardhouse(daniel, at(9, 14)); // nine days: overdue, with a note
+    await runExpiry(db, at(2, 10));
+    if (daniels) await addParcelNote(db, staff, daniels, 'Called the household: they will collect it this weekend.', at(1, 15));
   }
-  await toGuardhouse(hafiz, at(15, 12)); // over two weeks: overdue, reminded weekly, and a call is due
-  await runExpiry(db, at(8, 10));
-  const daniels = await toGuardhouse(daniel, at(9, 14)); // nine days: overdue, with a note
-  await runExpiry(db, at(2, 10));
-  if (daniels) await addParcelNote(db, staff, daniels, 'Called the household: they will collect it this weekend.', at(1, 15));
-  if (rajesh) await toGuardhouse(rajesh, at(3, 16)); // from Locker C, three days at the guardhouse
+  if (addWest && rajesh) await toGuardhouse(rajesh, at(3, 16)); // from Locker C, three days at the guardhouse
 
   // Locker parcels in homes' own doors.
-  await deliver(arjun, at(3, 10)); // three days: a gentle reminder
-  await runExpiry(db, at(1, 12));
-  if (izzah) await deliver(izzah, new Date(now.getTime() - 6 * HOUR));
+  if (!mainThere) {
+    await deliver(arjun, at(3, 10)); // three days: a gentle reminder
+    await runExpiry(db, at(1, 12));
+  }
+  if (addWest && izzah) await deliver(izzah, new Date(now.getTime() - 6 * HOUR));
+  if (mainThere) {
+    await runExpiry(db, now);
+    await runShelfRules(db, now);
+    return log('Parcels: Locker C showcase added (Nurul Izzah and Rajesh in Elmina West, with a parcel at the guardhouse).');
+  }
   await deliver(meiling, new Date(now.getTime() - 5 * HOUR));
   await deliver(zainab, new Date(now.getTime() - 3 * HOUR));
   await deliver(aisyah, new Date(now.getTime() - 40 * MIN));
