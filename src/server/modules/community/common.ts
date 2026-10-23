@@ -15,6 +15,17 @@ import { forbidden, notFound, ruleViolation } from '../../errors';
 
 export const isStaff = (actor: Actor) => actor.role !== 'RESIDENT';
 
+/**
+ * A post's photo is held once this many different residents have open reports on it: other
+ * residents no longer see it until staff decide (Keep releases it). The author and staff still
+ * see it. The whole post is hidden later, at the programme's flag_hide_threshold (3 by default).
+ */
+export const PHOTO_HOLD_REPORTS = 2;
+
+/** SQL: true when post `p` has a photo that is held. Takes the hold threshold as a parameter. */
+export const photoHeldSql = (param: string) =>
+  `(p.photo_id IS NOT NULL AND (SELECT count(*) FROM post_flags f WHERE f.post_id = p.id AND f.status = 'OPEN') >= ${param}::int)`;
+
 /** Township dates are Malaysian dates (UTC+8, no daylight saving). */
 export const localDate = (at: Date) => new Date(at.getTime() + 8 * 3_600_000).toISOString().slice(0, 10);
 

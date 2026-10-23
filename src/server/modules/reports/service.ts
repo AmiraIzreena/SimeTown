@@ -5,6 +5,7 @@ import { one, type Db, type Queryable } from '../../db/client';
 import { requireVerifiedResident, type Actor } from '../../auth/actor';
 import { badRequest, conflict, notFound, ruleViolation } from '../../errors';
 import { decodeCursor, toPage, type PageQuery } from '../../http/pagination';
+import { photoResponse } from '../../http/uploads';
 import { audit } from '../audit';
 import { notify } from '../notifications';
 import { reportSignal } from '../banjir/agent';
@@ -280,16 +281,6 @@ async function loadVisibleReport(db: Queryable, actor: Actor, id: string) {
 export async function getReport(db: Db, actor: Actor, id: string, now: Date) {
   return present(await loadVisibleReport(db, actor, id), actor, await todayIn(db, now));
 }
-
-export const photoResponse = (upload: { mime: string; bytes: Uint8Array }) =>
-  new Response(Buffer.from(upload.bytes), {
-    headers: {
-      'Content-Type': upload.mime,
-      'X-Content-Type-Options': 'nosniff',
-      'Content-Disposition': 'inline',
-      'Cache-Control': 'private, max-age=3600',
-    },
-  });
 
 /** The reporter's photo is served only to them and to staff of that township. */
 export async function getReportPhoto(db: Db, actor: Actor, reportId: string): Promise<Response> {

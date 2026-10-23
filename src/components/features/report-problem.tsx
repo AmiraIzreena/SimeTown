@@ -13,7 +13,7 @@ import { useToast } from '@/components/ui/toast';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { useAction } from '@/lib/hooks';
-import { shrinkPhoto } from '@/lib/image';
+import { PHOTO_ACCEPT, PHOTO_HINT, shrinkPhoto, usePhotoPick } from '@/lib/image';
 import { useT } from '@/lib/i18n';
 import { PHOTO_CONTEXTS, REPORT_REASONS, type ReportContext } from '@/shared/incidents';
 
@@ -60,6 +60,7 @@ export function ReportProblemDialog({ open, onClose, context, subtitle, lockerPa
   const withPhoto = PHOTO_CONTEXTS.includes(context);
   const [photo, setPhoto] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const pickPhoto = usePhotoPick();
   const choosePhoto = (file: File | null) => {
     if (preview) URL.revokeObjectURL(preview);
     setPhoto(file);
@@ -133,9 +134,9 @@ export function ReportProblemDialog({ open, onClose, context, subtitle, lockerPa
                   <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-brand-50 text-brand-700"><ImagePlus className="size-4" aria-hidden /></span>
                   <span>
                     <span className="block font-semibold text-ink-900"><Text>Add a screenshot or photo</Text></span>
-                    <Text>It helps the township office see the problem. JPEG, PNG or WebP.</Text>
+                    <Text>It helps the township office see the problem.</Text> <Text>{PHOTO_HINT}</Text>.
                   </span>
-                  <LocalizedInput type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(event) => choosePhoto(event.target.files?.[0] ?? null)} />
+                  <LocalizedInput type="file" accept={PHOTO_ACCEPT} className="sr-only" onChange={(event) => choosePhoto(pickPhoto(event.target))} />
                 </label>
               )}
             </div>

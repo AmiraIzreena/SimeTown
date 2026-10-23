@@ -1,8 +1,10 @@
 'use client';
 
 import { Text } from '@/components/ui/localized-text';
+import { LocalizedImg, LocalizedInput } from '@/components/ui/localized-elements';
 
-import { useState, type FormEvent } from 'react';
+import { ImagePlus, X } from 'lucide-react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/dialog';
 import { Input, Select, Textarea } from '@/components/ui/field';
@@ -10,6 +12,7 @@ import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { useAction } from '@/lib/hooks';
 import { useT } from '@/lib/i18n';
+import { PHOTO_ACCEPT, PHOTO_HINT, shrinkPhoto, usePhotoPick } from '@/lib/image';
 import { POST_FLAG_CATEGORIES, POST_FLAG_CATEGORY_LABELS, type PostFlagCategory, type PostType } from '@/shared/domain';
 import { KINDS, addDays, today, type Post, type PostKind, type Responder } from './model';
 
@@ -89,9 +92,26 @@ export function CreatePost({ kind, accessible, onClose, onCreated }: { kind: Pos
   const [startsAt, setStartsAt] = useState('');
   const [capacity, setCapacity] = useState('');
   const [guidedError, setGuidedError] = useState('');
-  const steps = kind.type === 'EVENT' ? ['title', 'body', 'location', 'startsAt', 'capacity'] as const : ['title', 'body', 'location'] as const;
+  // One optional photo, shrunk in the browser before it is sent (as in Lapor).
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const pickPhoto = usePhotoPick();
+  useEffect(() => () => {
+    if (preview) URL.revokeObjectURL(preview);
+  }, [preview]);
+  const choosePhoto = (file: File | null) => {
+    setPhoto(file);
+    setPreview(file ? URL.createObjectURL(file) : null);
+  };
+  const steps = kind.type === 'EVENT' ? ['title', 'body', 'location', 'startsAt', 'capacity', 'photo'] as const : ['title', 'body', 'location', 'photo'] as const;
   const currentStep = steps[step];
-  const create = useAction((body: Record<string, unknown>) => api.post('/posts', body), {
+  const create = useAction(async (body: Record<string, string | number | undefined>) => {
+    if (!photo) return api.post('/posts', body);
+    const data = new FormData();
+    for (const [key, value] of Object.entries(body)) if (value !== undefined) data.set(key, String(value));
+    data.set('photo', await shrinkPhoto(photo), 'photo.jpg');
+    return api.post('/posts/with-photo', data);
+  }, {
     success: 'Posted.',
     onSuccess: () => {
       onCreated();
@@ -152,6 +172,27 @@ export function CreatePost({ kind, accessible, onClose, onCreated }: { kind: Pos
         {(!accessible || currentStep === 'location') && <Input label="Where (optional)" labelClassName={accessible ? '!text-3xl !font-semibold' : undefined} name="location" value={location} onChange={(event) => setLocation(event.target.value)} maxLength={120} error={f.location} />}
         {kind.type === 'EVENT' && (!accessible || currentStep === 'startsAt') && <Input label="Date and time" labelClassName={accessible ? '!text-3xl !font-semibold' : undefined} name="startsAt" type="datetime-local" value={startsAt} onChange={(event) => { setStartsAt(event.target.value); setGuidedError(''); }} required error={guidedError || f.startsAt} />}
         {kind.type === 'EVENT' && (!accessible || currentStep === 'capacity') && <Input label="Places (optional)" labelClassName={accessible ? '!text-3xl !font-semibold' : undefined} name="capacity" type="number" value={capacity} onChange={(event) => setCapacity(event.target.value)} min={1} inputMode="numeric" error={f.capacity} />}
+        {(!accessible || currentStep === 'photo') && (
+          <div className="space-y-2">
+            <p className={accessible ? 'text-3xl font-semibold text-ink-900' : 'text-sm font-medium text-ink-700'}><Text>Photo (optional)</Text></p>
+            {preview ? (
+              <div className="flex items-start gap-3">
+                <LocalizedImg src={preview} alt="The photo you chose" className="max-h-40 w-auto rounded-lg border border-ink-200 object-contain" />
+                <Button size="sm" variant="ghost" onClick={() => choosePhoto(null)}><X className="size-4" aria-hidden /><Text>Remove</Text></Button>
+              </div>
+            ) : (
+              <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-ink-300 bg-white p-3 text-sm text-ink-600 transition-colors hover:border-brand-400 hover:bg-brand-50/50 has-focus-visible:outline-2 has-focus-visible:outline-brand-600">
+                <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-brand-50 text-brand-700"><ImagePlus className="size-4" aria-hidden /></span>
+                <span>
+                  <span className="block font-semibold text-ink-900"><Text>Add a photo</Text></span>
+                  <Text>It helps neighbours see what you mean.</Text> <Text>{PHOTO_HINT}</Text>.
+                </span>
+                <LocalizedInput type="file" accept={PHOTO_ACCEPT} className="sr-only" onChange={(event) => choosePhoto(pickPhoto(event.target))} />
+              </label>
+            )}
+            <p className={accessible ? 'text-base text-ink-600' : 'text-xs text-ink-500'}><Text>Don’t include faces, car plates or house numbers.</Text></p>
+          </div>
+        )}
       </form>
     </Modal>
   );

@@ -473,6 +473,14 @@
   dialog.modal.wide {
     width: min(100% - 2rem, 46rem);
   }
+  /* The photo viewer fills the screen: the whole picture on a dark background; a click on the dark area closes it. */
+  dialog.photo-viewer {
+    @apply m-0 grid h-dvh max-h-none w-screen max-w-none place-items-center border-0 px-4 pt-16 pb-4;
+    background: rgb(10 12 12 / 0.92);
+  }
+  dialog.photo-viewer:not([open]) {
+    display: none;
+  }
   dialog.modal.guided-modal {
     width: min(94vw, 76rem);
     height: min(82dvh, 54rem);

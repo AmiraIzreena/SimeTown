@@ -11,9 +11,11 @@ import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/feedback';
 import { Checkbox, Input, Select } from '@/components/ui/field';
 import { api } from '@/lib/api';
+import { rules, useFieldChecks, type FieldRules } from '@/lib/field-checks';
 import { useAction, useApi } from '@/lib/hooks';
 import { useHydrated } from '@/lib/use-hydrated';
 import { MALAYSIAN_STATES, MERCHANT_KINDS, MERCHANT_KIND_LABELS, ROLE_HOME, type Role } from '@/shared/domain';
+import { FIELD_MESSAGES } from '@/shared/validation';
 import { AddressPicker } from './address';
 import { reloadTo } from '@/lib/navigate';
 
@@ -115,19 +117,26 @@ function formBody(form: HTMLFormElement): Record<string, unknown> {
   return values;
 }
 
+const REGISTER_RULES: FieldRules = {
+  fullName: rules.fullName, email: rules.email, phone: rules.phone,
+  townshipId: rules.chosen(FIELD_MESSAGES.township), homeId: rules.chosen(FIELD_MESSAGES.address),
+  password: rules.password, acceptTerms: rules.terms,
+};
+
 export function RegisterForm() {
   const townships = useTownships();
   const [townshipId, setTownshipId] = useState('');
   const register = useAction((body: Record<string, unknown>) => api.post<SignedIn>('/auth/register', body), {
     onSuccess: () => reloadTo('/app'),
   });
+  const checks = useFieldChecks(REGISTER_RULES, register.fields);
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    void register.run(formBody(event.currentTarget));
+    if (checks.check(event.currentTarget)) void register.run(formBody(event.currentTarget));
   };
-  const f = register.fields;
+  const f = checks.fields;
   return (
-    <form onSubmit={submit} method="post" className="space-y-4" noValidate>
+    <form onSubmit={submit} onBlur={checks.onBlur} method="post" className="space-y-4" noValidate>
       <Input label="Full name (as in your MyKad or passport)" name="fullName" autoComplete="name" required error={f.fullName} />
       <Input label="Email" name="email" type="email" autoComplete="email" required error={f.email} />
       <Input label="Phone" name="phone" type="tel" autoComplete="tel" inputMode="tel" required hint={PHONE_HINT} error={f.phone} />
@@ -176,13 +185,21 @@ export function ShopAddressFields({ fields, initial }: { fields: Record<string, 
   );
 }
 
+const MERCHANT_RULES: FieldRules = {
+  businessName: rules.atLeast(2), registrationNo: rules.atLeast(4), category: rules.atLeast(2),
+  townshipId: rules.chosen(FIELD_MESSAGES.township), addressLine: rules.atLeast(5), postcode: rules.postcode,
+  city: rules.atLeast(2), state: rules.chosen(FIELD_MESSAGES.state),
+  contactName: rules.fullName, email: rules.email, phone: rules.phone, password: rules.password, acceptTerms: rules.terms,
+};
+
 export function MerchantApplyForm() {
   const townships = useTownships();
   const [done, setDone] = useState(false);
   const apply = useAction((body: Record<string, unknown>) => api.post('/merchants/apply', body), { onSuccess: () => setDone(true) });
+  const checks = useFieldChecks(MERCHANT_RULES, apply.fields);
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    void apply.run(formBody(event.currentTarget));
+    if (checks.check(event.currentTarget)) void apply.run(formBody(event.currentTarget));
   };
   if (done) {
     return (
@@ -193,9 +210,9 @@ export function MerchantApplyForm() {
       </div>
     );
   }
-  const f = apply.fields;
+  const f = checks.fields;
   return (
-    <form onSubmit={submit} method="post" className="space-y-4" noValidate>
+    <form onSubmit={submit} onBlur={checks.onBlur} method="post" className="space-y-4" noValidate>
       <Input label="Business name" name="businessName" required error={f.businessName} />
       <Select label="What does your business offer?" name="kind" defaultValue="RETAIL" error={f.kind} hint="Home service companies take bookings from residents and send registered workers.">
         {MERCHANT_KINDS.map((k) => (
@@ -245,18 +262,21 @@ export function InviteFromLink() {
   return <InviteForm token={token} />;
 }
 
+const INVITE_RULES: FieldRules = { password: rules.password, acceptTerms: rules.terms };
+
 export function InviteForm({ token }: { token: string }) {
   const accept = useAction((body: Record<string, unknown>) => api.post<SignedIn>('/auth/accept-invite', { ...body, token }), {
     onSuccess: (user) => reloadTo(ROLE_HOME[user.role]),
   });
+  const checks = useFieldChecks(INVITE_RULES, accept.fields);
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    void accept.run(formBody(event.currentTarget));
+    if (checks.check(event.currentTarget)) void accept.run(formBody(event.currentTarget));
   };
   return (
-    <form onSubmit={submit} method="post" className="space-y-4" noValidate>
-      <Input label="Choose a password" name="password" type="password" autoComplete="new-password" hint="At least 10 characters." required error={accept.fields.password} />
-      <TermsConsent error={accept.fields.acceptTerms} />
+    <form onSubmit={submit} onBlur={checks.onBlur} method="post" className="space-y-4" noValidate>
+      <Input label="Choose a password" name="password" type="password" autoComplete="new-password" hint="At least 10 characters." required error={checks.fields.password} />
+      <TermsConsent error={checks.fields.acceptTerms} />
       <Button type="submit" size="lg" className="w-full" pending={accept.pending}><Text>Set password and sign in</Text></Button>
     </form>
   );

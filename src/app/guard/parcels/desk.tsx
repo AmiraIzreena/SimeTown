@@ -14,7 +14,7 @@ import { GuardParcelWalkthrough } from '@/components/features/parcel-walkthrough
 import { Input, Select } from '@/components/ui/field';
 import { api } from '@/lib/api';
 import { useAction, useApi } from '@/lib/hooks';
-import { shrinkPhoto } from '@/lib/image';
+import { PHOTO_ACCEPT, PHOTO_HINT, shrinkPhoto, usePhotoPick } from '@/lib/image';
 import type { Me } from '@/lib/types';
 
 const COURIERS = ['Shopee Express', 'J&T Express', 'Pos Laju', 'Ninja Van', 'DHL', 'GDex', 'City-Link', 'Lalamove', 'Grab'];
@@ -27,6 +27,7 @@ const COURIERS = ['Shopee Express', 'J&T Express', 'Pos Laju', 'Ninja Van', 'DHL
 export function ParcelDesk() {
   const me = useApi<Me>('/me');
   const [photoName, setPhotoName] = useState<string | null>(null);
+  const pickPhoto = usePhotoPick();
   const [courierChoice, setCourierChoice] = useState('');
   const [otherCourier, setOtherCourier] = useState('');
 
@@ -81,8 +82,8 @@ export function ParcelDesk() {
               <Input label="Note (optional)" name="note" maxLength={200} placeholder="e.g. Large box, kept behind the counter" />
               <label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-md border border-dashed border-ink-300 px-4 py-3 text-[15px] text-ink-700 transition-colors duration-200 hover:border-brand-500 hover:bg-brand-50/40 focus-within:border-brand-500">
                 <Camera className="size-5 shrink-0 text-ink-500" aria-hidden />
-                <span className="min-w-0 flex-1 truncate"><Text>{photoName ?? 'Photo of the parcel (recommended)'}</Text></span>
-                <LocalizedInput type="file" name="photo" accept="image/jpeg,image/png,image/webp" capture="environment" className="sr-only" onChange={(event) => setPhotoName(event.target.files?.[0]?.name ?? null)} />
+                <span className="min-w-0 flex-1"><span className="block truncate"><Text>{photoName ?? 'Photo of the parcel (recommended)'}</Text></span><span className="block text-xs text-ink-500"><Text>{PHOTO_HINT}</Text></span></span>
+                <LocalizedInput type="file" name="photo" accept={PHOTO_ACCEPT} capture="environment" className="sr-only" onChange={(event) => setPhotoName(pickPhoto(event.target)?.name ?? null)} />
               </label>
               <Button type="submit" pending={log.pending}>
                 <Package className="size-4" aria-hidden /><Text>Log parcel</Text></Button>

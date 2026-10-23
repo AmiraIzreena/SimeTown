@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { MATERIALS, REPORT_CATEGORIES, URGENCIES, type Material, type ReportCategory, type Urgency } from '@/shared/domain';
+import type { PhotoType } from '@/shared/photos';
 import { getConfig } from '../config';
 import { log } from '../logger';
 
@@ -12,7 +13,7 @@ import { log } from '../logger';
  */
 
 export interface Photo {
-  mime: 'image/jpeg' | 'image/png' | 'image/webp';
+  mime: PhotoType;
   bytes: Uint8Array;
 }
 
@@ -22,12 +23,11 @@ export interface ReportSuggestion {
   source: 'MODEL' | 'RULES';
 }
 
-/** Reads the real file type from the first bytes, so a renamed file cannot pass as an image. */
+/** Reads the real file type from the first bytes, so a renamed file cannot pass as an image. JPEG and PNG only. */
 export function sniffImage(bytes: Uint8Array): Photo['mime'] | null {
   const starts = (...sig: number[]) => sig.every((b, i) => bytes[i] === b);
   if (starts(0xff, 0xd8, 0xff)) return 'image/jpeg';
   if (starts(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a)) return 'image/png';
-  if (starts(0x52, 0x49, 0x46, 0x46) && bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50) return 'image/webp';
   return null;
 }
 

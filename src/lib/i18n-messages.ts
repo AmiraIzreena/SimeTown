@@ -1665,7 +1665,7 @@ export const malay: Record<string, string> = {
   "The Partners page: sponsors with a current tier (names only)": "Halaman Rakan Kongsi: penaja dengan peringkat aktif (nama sahaja)",
   "The pass must end after it starts.": "Pas mesti tamat selepas bermula.",
   "The person sets their own password from a one-time link.": "Penerima menetapkan kata laluan sendiri melalui pautan sekali guna.",
-  "The photo must be a JPEG, PNG or WebP image.": "Foto mesti dalam format JPEG, PNG atau WebP.",
+  "The photo must be a JPG or PNG image.": "Foto mesti dalam format JPG atau PNG.", // native review
   "The priority help list is for residents.": "Senarai bantuan keutamaan untuk penduduk.",
   "The programme’s adjustable rules. Every change is logged.": "Peraturan program boleh laras. Setiap perubahan direkodkan.",
   "The programme’s rules. Only an SDP HQ admin can change them.": "Peraturan program. Hanya pentadbir ibu pejabat SDP boleh mengubahnya.",
@@ -2127,7 +2127,23 @@ export const malay: Record<string, string> = {
   "The request is too large.": "Permintaan terlalu besar.",
   "This action is not available here.": "Tindakan ini tidak tersedia di sini.",
   "Enter the 5-digit postcode.": "Masukkan poskod 5 digit.",
-  "The photo is too large. Please use one under 1.5 MB.": "Foto terlalu besar. Sila guna foto di bawah 1.5 MB.",
+  "The photo is too large. Please use one under 10 MB.": "Foto terlalu besar. Sila guna foto di bawah 10 MB.", // native review
+  "JPG or PNG, up to 10 MB": "JPG atau PNG, maksimum 10 MB", // native review
+  // Field messages (src/shared/validation.ts)
+  "Please fill in this field.": "Sila isi medan ini.", // native review
+  "Please check this field.": "Sila semak medan ini.", // native review
+  "Please choose one of the options.": "Sila pilih salah satu pilihan.", // native review
+  "Please enter a number.": "Sila masukkan nombor.", // native review
+  "Please enter a larger number.": "Sila masukkan nombor yang lebih besar.", // native review
+  "Please enter a smaller number.": "Sila masukkan nombor yang lebih kecil.", // native review
+  "Please enter a full web address, starting with https://.": "Sila masukkan alamat web penuh, bermula dengan https://.", // native review
+  "Please enter your full name (at least 2 characters).": "Sila masukkan nama penuh anda (sekurang-kurangnya 2 aksara).", // native review
+  "Please enter a valid email address.": "Sila masukkan alamat e-mel yang sah.", // native review
+  "Please choose your township.": "Sila pilih perbandaran anda.", // native review
+  "Please choose your address.": "Sila pilih alamat anda.", // native review
+  "Please choose owner or tenant.": "Sila pilih pemilik atau penyewa.", // native review
+  "This file is not a JPG or PNG photo. Please choose another one.": "Fail ini bukan foto JPG atau PNG. Sila pilih foto lain.", // native review
+  "This photo is larger than 10 MB. Please choose a smaller one.": "Foto ini melebihi 10 MB. Sila pilih foto yang lebih kecil.", // native review
   "Enter a number other than zero.": "Masukkan nombor selain sifar.",
   "The database is not ready.": "Pangkalan data belum sedia.",
   "Check the member code.": "Semak kod ahli.",
@@ -2157,7 +2173,8 @@ export const malay: Record<string, string> = {
   "Please confirm within 5 minutes.": "Sila sahkan dalam 5 minit.",
   "The signal fell back.": "Isyarat telah menurun.",
   "No answer in 3 minutes and the water is still rising.": "Tiada jawapan dalam 3 minit dan air masih naik.",
-  "The water stopped rising.": "Air telah berhenti naik.",
+  "The water stopped rising.": "Air telah berhenti naik."
+,
   // Business counter, menus and back links (UI audit, Oct 2026)
   "Shop settings": "Tetapan kedai",
   "This week": "Minggu ini",
@@ -2293,7 +2310,7 @@ export const malay: Record<string, string> = {
   "Screenshot or photo (optional)": "Tangkapan skrin atau foto (pilihan)",
   "The screenshot or photo you chose": "Tangkapan skrin atau foto yang anda pilih",
   "Add a screenshot or photo": "Tambah tangkapan skrin atau foto",
-  "It helps the township office see the problem. JPEG, PNG or WebP.": "Ia membantu pejabat perbandaran melihat masalah itu. JPEG, PNG atau WebP.",
+  "It helps the township office see the problem.": "Ia membantu pejabat perbandaran melihat masalah itu.", // native review
   "Kitar reports": "Laporan Kitar",
   "Gerak reports": "Laporan Gerak",
   "Kitar recycling": "Kitar semula Kitar",

@@ -25,7 +25,7 @@ import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { timeAgo } from '@/lib/format';
 import { useAction, useApi, usePaged } from '@/lib/hooks';
-import { shrinkPhoto } from '@/lib/image';
+import { PHOTO_ACCEPT, PHOTO_HINT, photoProblem, shrinkPhoto } from '@/lib/image';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 import type { BanjirOverview } from '@/lib/types';
 import { REPORT_CATEGORIES, REPORT_CATEGORY_LABELS, type ReportCategory, type Urgency } from '@/shared/domain';
@@ -500,15 +500,14 @@ function NewReport({ open, guided, onClose, onCreated }: { open: boolean; guided
 /** What a report without a photo is told (the server says the same). */
 const PHOTO_NEEDED = 'Please add a photo of the problem.';
 
-/** Photos the form takes: what the server accepts. Anything bigger than this is refused before it is shrunk. */
-const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
-const MAX_ORIGINAL_BYTES = 20 * 1024 * 1024;
+/** A report photo must show the problem: at least this many pixels on its longer side (the server checks it too). */
 const MIN_PHOTO_SIDE = 400;
 
 /** Checks a chosen photo in the browser, so a wrong one is caught before anything is sent. */
 async function checkPhoto(file: File): Promise<string | null> {
-  if (!PHOTO_TYPES.includes(file.type)) return 'The photo must be a JPEG, PNG or WebP image.';
-  if (file.size > MAX_ORIGINAL_BYTES) return 'The photo is too large. Please use one under 20 MB.';
+  // The app-wide rules first (JPG or PNG, up to 10 MB), then the size a report needs.
+  const problem = photoProblem(file);
+  if (problem) return problem;
   try {
     const bitmap = await createImageBitmap(file);
     const side = Math.max(bitmap.width, bitmap.height);
@@ -555,10 +554,10 @@ function PhotoPicker({ photo, onChange, error, large = false }: { photo: File | 
         )}
         <span className="min-w-0 flex-1">
           <span className="block font-semibold text-ink-800"><Text>{photo ? 'Change the photo' : 'Take or choose a photo'}</Text></span>
-          <span className={cn('block text-ink-500', large ? 'text-lg font-normal' : 'text-xs')}><Text>JPEG, PNG or WebP, under 20 MB.</Text></span>
+          <span className={cn('block text-ink-500', large ? 'text-lg font-normal' : 'text-xs')}><Text>{PHOTO_HINT}</Text></span>
         </span>
         <LocalizedInput
-          type="file" accept={PHOTO_TYPES.join(',')} capture="environment" className="sr-only" aria-required="true"
+          type="file" accept={PHOTO_ACCEPT} capture="environment" className="sr-only" aria-required="true"
           aria-invalid={shown ? true : undefined} aria-describedby="report-photo-note"
           onChange={(event) => { void choose(event.target.files?.[0] ?? null); event.target.value = ''; }}
         />

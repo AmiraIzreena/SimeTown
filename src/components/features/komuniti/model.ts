@@ -12,6 +12,12 @@ export interface Post {
   capacity: number | null;
   status: 'OPEN' | 'CLOSED' | 'HIDDEN';
   created_at: string;
+  /** The photo is fetched from /posts/:id/photo, which checks who may see it. */
+  has_photo: boolean;
+  /** Reported by two residents: other residents do not see the photo until staff decide. */
+  photo_held: boolean;
+  /** Whether this viewer gets the picture itself (always for the author and staff). */
+  photo_shown: boolean;
   author_name: string;
   by_township: boolean;
   is_mine: boolean;

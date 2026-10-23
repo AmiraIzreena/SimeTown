@@ -1,9 +1,12 @@
 import { sniffImage, type Photo } from '../ai/classifier';
+import { MAX_PHOTO_BYTES } from '@/shared/photos';
 import { one, type Queryable } from '../db/client';
 import { AppError, badRequest } from '../errors';
 import { readBody } from './body';
 
-export const MAX_PHOTO_BYTES = 1_500_000;
+export { MAX_PHOTO_BYTES };
+/** Room for the form's text fields and multipart framing around one full-size photo. */
+const MAX_FORM_BYTES = MAX_PHOTO_BYTES + 250_000;
 
 /** Larger photos are scaled down to fit this box; plenty for a report or a drain reading. */
 const MAX_SIDE_PX = 2560;
@@ -13,7 +16,7 @@ const MAX_INPUT_PIXELS = 40_000_000;
 /**
  * Reads one optional photo from a multipart form. The browser's stated type and
  * file name are ignored: the type comes from the file's own first bytes, and
- * only JPEG, PNG and WebP are accepted. The picture is then decoded and saved
+ * only JPEG and PNG are accepted (so SVG, HTML, WebP and GIF never are). The picture is then decoded and saved
  * again as a fresh image (see `rebuildImage`), so nothing but pixels survives.
  */
 export async function readPhoto(form: FormData, field = 'photo', options: { minSide?: number } = {}): Promise<Photo | undefined> {
@@ -35,8 +38,8 @@ export async function readPhoto(form: FormData, field = 'photo', options: { minS
   return photo;
 }
 
-const TOO_LARGE = 'The photo is too large. Please use one under 1.5 MB.';
-const WRONG_TYPE = 'The photo must be a JPEG, PNG or WebP image.';
+const TOO_LARGE = 'The photo is too large. Please use one under 10 MB.';
+const WRONG_TYPE = 'The photo must be a JPG or PNG image.';
 const TOO_SMALL = 'The photo is too small to show the problem. Please take or choose a bigger one.';
 
 /**
@@ -54,7 +57,7 @@ export async function rebuildImage(photo: Photo): Promise<Photo> {
     let image = sharp(photo.bytes, { limitInputPixels: MAX_INPUT_PIXELS, failOn: 'error', animated: false })
       .rotate()
       .resize({ width: MAX_SIDE_PX, height: MAX_SIDE_PX, fit: 'inside', withoutEnlargement: true });
-    image = photo.mime === 'image/png' ? image.png({ compressionLevel: 9 }) : photo.mime === 'image/webp' ? image.webp({ quality: 85 }) : image.jpeg({ quality: 85, mozjpeg: true });
+    image = photo.mime === 'image/png' ? image.png({ compressionLevel: 9 }) : image.jpeg({ quality: 85, mozjpeg: true });
     // sharp writes no metadata unless asked to, so EXIF, GPS, XMP and ICC extras are all left behind.
     return { mime: photo.mime, bytes: new Uint8Array(await image.toBuffer()) };
   } catch {
@@ -71,13 +74,24 @@ export async function storeUpload(q: Queryable, ownerId: string, photo: Photo): 
   return upload!.id;
 }
 
+/** Sends a stored photo back: inline, never sniffed as another type, and cached only by the viewer's own browser. */
+export const photoResponse = (upload: { mime: string; bytes: Uint8Array }) =>
+  new Response(Buffer.from(upload.bytes), {
+    headers: {
+      'Content-Type': upload.mime,
+      'X-Content-Type-Options': 'nosniff',
+      'Content-Disposition': 'inline',
+      'Cache-Control': 'private, max-age=3600',
+    },
+  });
+
 export async function readForm(req: Request): Promise<FormData> {
   const type = req.headers.get('content-type') ?? '';
   if (!type.toLowerCase().startsWith('multipart/form-data')) {
     throw badRequest('Send this request as a form.');
   }
   // Read at most one photo plus the text fields, so an oversized upload is never held in memory.
-  const bytes = await readBody(req, MAX_PHOTO_BYTES + 100_000);
+  const bytes = await readBody(req, MAX_FORM_BYTES);
   try {
     return await new Response(bytes, { headers: { 'content-type': type } }).formData();
   } catch {

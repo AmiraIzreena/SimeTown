@@ -1,7 +1,9 @@
 import { z } from 'zod';
 import { ADMINS, POST_FLAG_CATEGORIES, POST_STATUSES, POST_TYPES, STAFF } from '@/shared/domain';
+import { AppError } from '../../errors';
 import { pageQuery } from '../../http/pagination';
 import { emptyBody, route, zText } from '../../http/router';
+import { readForm, readPhoto } from '../../http/uploads';
 import * as moderation from './moderation';
 import * as posts from './posts';
 import * as responses from './responses';
@@ -10,6 +12,13 @@ const TAG = 'Komuniti';
 const everyoneLocal = ['RESIDENT', ...STAFF] as const;
 /** HQ can narrow the console to one township; others always see their own. */
 const townshipQuery = z.object({ townshipId: z.uuid().optional() });
+const postFields = {
+  type: z.enum(POST_TYPES), title: zText(100, 3), body: zText(1000, 3), location: zText(120).optional(),
+  startsAt: z.coerce.date().optional(),
+};
+const zCapacity = z.number().int().positive().max(5000);
+/** The same fields sent as a multipart form, where every value arrives as text. */
+const postForm = z.object({ ...postFields, capacity: z.coerce.number().pipe(zCapacity).optional() });
 
 export const communityRoutes = [
   // The feed
@@ -28,11 +37,33 @@ export const communityRoutes = [
   }),
   route({
     method: 'POST', path: '/posts', tag: TAG, summary: 'Create an event, a help request or a sharing offer', auth: 'session', roles: everyoneLocal,
-    body: z.object({
-      type: z.enum(POST_TYPES), title: zText(100, 3), body: zText(1000, 3), location: zText(120).optional(),
-      startsAt: z.coerce.date().optional(), capacity: z.number().int().positive().max(5000).optional(),
-    }),
+    body: z.object({ ...postFields, capacity: zCapacity.optional() }),
     handler: (c) => posts.createPost(c.db, c.actor, c.body, c.now),
+  }),
+  route({
+    method: 'POST', path: '/posts/with-photo', tag: TAG, summary: 'Create a post with one optional photo (multipart form: the same fields as POST /posts, plus "photo")', auth: 'session', roles: everyoneLocal,
+    rateLimit: { limit: 10, windowSec: 3600, by: 'user' },
+    handler: async (c) => {
+      await posts.assertCanPost(c.db, c.actor, c.now); // before the upload is read
+      const form = await readForm(c.req);
+      const text = (name: string) => {
+        const value = form.get(name);
+        return typeof value === 'string' && value.trim() ? value : undefined;
+      };
+      const parsed = postForm.safeParse({
+        type: text('type'), title: text('title') ?? '', body: text('body') ?? '', location: text('location'), startsAt: text('startsAt'), capacity: text('capacity'),
+      });
+      if (!parsed.success) {
+        const fields: Record<string, string> = {};
+        for (const issue of parsed.error.issues) fields[issue.path.join('.')] ??= issue.message;
+        throw new AppError(400, 'VALIDATION_FAILED', 'Please check the highlighted fields.', { fields });
+      }
+      return posts.createPost(c.db, c.actor, { ...parsed.data, photo: await readPhoto(form) }, c.now);
+    },
+  }),
+  route({
+    method: 'GET', path: '/posts/:postId/photo', tag: TAG, summary: "A post's photo: its township while open or closed, the author and staff while hidden, staff only once removed", auth: 'session', roles: everyoneLocal,
+    handler: (c) => posts.getPostPhoto(c.db, c.actor, c.params.postId!),
   }),
   route({
     method: 'POST', path: '/posts/:postId/close', tag: TAG, summary: 'Close a post', auth: 'session', roles: everyoneLocal, body: emptyBody,

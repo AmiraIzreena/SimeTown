@@ -184,9 +184,11 @@ Decisions worth knowing:
   (`identity/service.ts → deleteAccount`).
 - **Rules that may change are data**: rates, limits, expiry periods and flood lines are in
   `program_settings`; XP per activity and its caps are in `activity_rules`.
-- **Photos are stored in the database** (`uploads.bytes`), at most 1.5 MB each after the browser has
-  shrunk them. This keeps the prototype to one piece of infrastructure. At pilot scale they belong
-  in object storage (for example Cloudflare R2); only `reports/service.ts` would change.
+- **Photos are stored in the database** (`uploads.bytes`): JPEG or PNG, at most 10 MB as chosen, and
+  usually far smaller because the browser shrinks them to 1280 px and the server rebuilds them. This keeps
+  the prototype to one piece of infrastructure. At pilot scale they belong in object storage (for example
+  Cloudflare R2); `http/uploads.ts` (`storeUpload`) and the modules that still insert into `uploads`
+  directly would change.
 
 ## 5. The points ledger
 

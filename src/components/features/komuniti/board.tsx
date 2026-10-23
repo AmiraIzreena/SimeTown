@@ -90,7 +90,7 @@ export function KomunitiBoard({ initialTab = 'all' }: { initialTab?: KomunitiTab
             <Text>{q || mine ? 'Try another word, or clear the filters.' : current.empty}</Text>
           </EmptyState>
         ) : (
-          <div className={`grid gap-4 ${akses.simple ? '' : 'md:grid-cols-2'}`}>
+          <div className={`grid items-start gap-4 ${akses.simple ? '' : 'md:grid-cols-2'}`}>
             {posts.items.map((post, index) => (
               <PostCard
                 key={post.id}

@@ -17,7 +17,7 @@ import { log } from '../../logger';
  *
  * The model server contract (so a data-science team can build it independently):
  *   POST FLOOD_MODEL_URL   Authorization: Bearer FLOOD_MODEL_TOKEN (if set)
- *   body  {"image": "<base64>", "mime": "image/jpeg" | "image/png" | "image/webp"}
+ *   body  {"image": "<base64>", "mime": "image/jpeg" | "image/png"}
  *   reply {"levelPct": 0-100 | null, "confidence": 0-1}
  * Later, a CCTV frame grabber posts each camera's latest frame through the same readPhoto().
  */

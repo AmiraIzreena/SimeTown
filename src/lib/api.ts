@@ -1,3 +1,4 @@
+import { friendlyFields } from '@/shared/validation';
 import { reloadTo } from './navigate';
 
 /** The browser's one way to talk to the server. Every screen goes through here. */
@@ -11,8 +12,9 @@ export class ApiError extends Error {
   ) {
     super(message);
   }
+  /** Field messages to show next to each field. Anything that reads like a validator's wording becomes "Please check this field." */
   get fields(): Record<string, string> {
-    return this.details?.fields ?? {};
+    return friendlyFields(this.details?.fields);
   }
 }
 

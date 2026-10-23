@@ -8,6 +8,7 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 - Money is in whole sen. 1 SimeTown Point = 1 sen.
 - Sign-in sets an HttpOnly session cookie. Every POST, PATCH and DELETE must send an `Origin` header equal to the app origin.
 - Lists that can grow take `?cursor=&limit=` and return `{ items, nextCursor }`.
+- Photos are sent as multipart field `photo`: JPEG or PNG only (the type is read from the file itself), at most 10 MB; a form is read up to 10.25 MB. Anything else gets 400, a larger photo 413 `PHOTO_TOO_LARGE`.
 
 ## SimeTown ID
 
@@ -107,6 +108,8 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | GET | `/posts` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Events, help requests and items to give or lend: one type, several (GIVE,LEND) or all |
 | GET | `/posts/impact` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Your verified community XP: events attended, items shared, neighbours helped |
 | POST | `/posts` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Create an event, a help request or a sharing offer |
+| POST | `/posts/with-photo` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Create a post with one optional photo (multipart form: the same fields as POST /posts, plus "photo") |
+| GET | `/posts/:postId/photo` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | A post's photo: its township while open or closed, the author and staff while hidden, staff only once removed |
 | POST | `/posts/:postId/close` | RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Close a post |
 | POST | `/posts/:postId/respond` | RESIDENT | Join, offer help or ask for an item |
 | POST | `/posts/:postId/withdraw` | RESIDENT | Cancel your RSVP or request (events: before they start) |

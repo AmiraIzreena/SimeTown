@@ -8,7 +8,8 @@ import { decodeCursor, toPage, type PageQuery } from '../../http/pagination';
 import { audit } from '../audit';
 import { todayIn } from '../settings';
 import { afterJoin, ISSUE_SELECT, issueFacts, publicThreshold, words, type IssueFacts } from './issue-core';
-import { applyReportUpdate, checkReportInput, photoResponse, type ReportUpdate } from './service';
+import { photoResponse } from '../../http/uploads';
+import { applyReportUpdate, checkReportInput, type ReportUpdate } from './service';
 
 /**
  * Lapor issues: reports about the same problem at the same place, grouped. Neighbours see an issue only once enough

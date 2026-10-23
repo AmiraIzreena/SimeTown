@@ -3030,15 +3030,11 @@ export const extraMalay: Record<string, string> = {
   'Photo of the problem': 'Foto masalah',
   'Take or choose a photo': 'Ambil atau pilih foto',
   'Change the photo': 'Tukar foto',
-  'JPEG, PNG or WebP, under 20 MB.': 'JPEG, PNG atau WebP, bawah 20 MB.',
   'The photo you chose': 'Foto yang anda pilih',
   'Once enough residents share this problem, neighbours may see one report’s photo. Try to leave out faces, car plates and house numbers.':
     'Apabila cukup ramai penduduk berkongsi masalah ini, jiran mungkin melihat foto daripada satu laporan. Cuba elakkan wajah, nombor plat kereta dan nombor rumah.',
   'Please add a photo of the problem.': 'Sila tambah foto masalah itu.',
-  'The photo is too large. Please use one under 20 MB.': 'Foto terlalu besar. Sila gunakan foto bawah 20 MB.',
-  'The photo is too large. Please use one under 1.5 MB.': 'Foto terlalu besar. Sila gunakan foto bawah 1.5 MB.',
   'The photo is too small to show the problem. Please take or choose a bigger one.': 'Foto terlalu kecil untuk menunjukkan masalah. Sila ambil atau pilih foto yang lebih besar.',
-  'The photo must be a JPEG, PNG or WebP image.': 'Foto mestilah imej JPEG, PNG atau WebP.',
   'See the photo': 'Lihat foto',
   'From a resident’s report. The township office can hide a photo that shows a face, a car plate or a house number.':
     'Daripada laporan penduduk. Pejabat perbandaran boleh menyembunyikan foto yang menunjukkan wajah, nombor plat kereta atau nombor rumah.',

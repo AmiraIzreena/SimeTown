@@ -6,6 +6,7 @@ import { parseConfig } from '@/server/config';
 import { one, type Db } from '@/server/db/client';
 import { routes } from '@/server/http/api';
 import { clientIpFrom, createRouter } from '@/server/http/router';
+import { MAX_PHOTO_BYTES } from '@/shared/photos';
 import { T0, freshDb, makeHome, makeMerchant, makeResident, makeSponsorUser, makeWorld, sell, sellWithPoints, type World } from './helpers';
 
 /** Regression tests for the security review: each block names the finding it guards against. */
@@ -178,7 +179,9 @@ describe('request size (KITA-06)', () => {
     const { body, state } = endless(head);
     const res = await call('POST', '/reports', { cookie: await cookieFor(resident), stream: { body, type: 'multipart/form-data; boundary=B' } });
     expect(res.status).toBe(413);
-    expect(state.pulled).toBeLessThan(2_000_000);
+    // The form may hold one 10 MB photo plus its fields; reading stops just past that, far before the 20 MB the stream offers.
+    expect(state.pulled).toBeGreaterThan(MAX_PHOTO_BYTES);
+    expect(state.pulled).toBeLessThan(MAX_PHOTO_BYTES + 1_000_000);
   });
 
   it('refuses an unverified resident before reading their upload at all', async () => {

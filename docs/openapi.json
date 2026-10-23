@@ -3,7 +3,7 @@
   "info": {
     "title": "SimeTown API",
     "version": "1.0.0",
-    "description": "One API for the resident, shop, sponsor and SDP views. Amounts of money are whole sen; 1 SimeTown Point = 1 sen. State-changing requests must carry an Origin header equal to the app origin. Lists use `cursor` and `limit`."
+    "description": "One API for the resident, shop, sponsor and SDP views. Amounts of money are whole sen; 1 SimeTown Point = 1 sen. State-changing requests must carry an Origin header equal to the app origin. Lists use `cursor` and `limit`. Photos are sent as multipart field `photo`: JPEG or PNG only (the type is read from the file itself), at most 10 MB; a form is read up to 10.25 MB. Anything else gets 400, a larger photo 413 `PHOTO_TOO_LARGE`."
   },
   "paths": {
     "/api/v1/townships": {
@@ -4328,6 +4328,96 @@
         "description": "Signed-in RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
         "operationId": "getPostsImpact",
         "parameters": [],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/posts/with-photo": {
+      "post": {
+        "tags": [
+          "Komuniti"
+        ],
+        "summary": "Create a post with one optional photo (multipart form: the same fields as POST /posts, plus \"photo\")",
+        "description": "Signed-in RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "postPostsWithPhoto",
+        "parameters": [],
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/posts/{postId}/photo": {
+      "get": {
+        "tags": [
+          "Komuniti"
+        ],
+        "summary": "A post's photo: its township while open or closed, the author and staff while hidden, staff only once removed",
+        "description": "Signed-in RESIDENT, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "operationId": "getPostsPostIdPhoto",
+        "parameters": [
+          {
+            "name": "postId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
         "security": [
           {
             "session": []

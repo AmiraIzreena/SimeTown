@@ -1,8 +1,9 @@
 import { z } from 'zod';
 import { ADMINS, MERCHANT_KINDS } from '@/shared/domain';
+import { FIELD_MESSAGES } from '@/shared/validation';
 import { townshipOf } from '../../auth/actor';
 import { pageQuery } from '../../http/pagination';
-import { emptyBody, route, zAcceptTerms, zEmail, zId, zPassword, zPhone, zPostcode, zSen, zState, zText } from '../../http/router';
+import { emptyBody, route, zAcceptTerms, zChoice, zEmail, zFullName, zId, zPassword, zPhone, zPostcode, zSen, zState, zText } from '../../http/router';
 import { recordMerchantDeposit } from '../ledger/finance';
 import * as admin from './admin';
 import * as merchant from './service';
@@ -14,9 +15,9 @@ export const merchantRoutes = [
     method: 'POST', path: '/merchants/apply', tag: 'SimeTown Merchant', summary: 'Apply to join as a shop or a home service company (needs admin approval)', auth: 'public',
     rateLimit: { limit: 5, windowSec: 3600, by: 'ip' },
     body: z.object({
-      townshipId: zId, businessName: zText(120, 2), registrationNo: zText(40, 4), category: zText(40, 2), kind: z.enum(MERCHANT_KINDS).default('RETAIL'),
+      townshipId: zChoice(FIELD_MESSAGES.township), businessName: zText(120, 2), registrationNo: zText(40, 4), category: zText(40, 2), kind: z.enum(MERCHANT_KINDS).default('RETAIL'),
       addressLine: zText(160, 5), postcode: zPostcode, city: zText(60, 2), state: zState,
-      contactName: zText(100, 2), email: zEmail, phone: zPhone, password: zPassword, acceptTerms: zAcceptTerms,
+      contactName: zFullName(), email: zEmail, phone: zPhone, password: zPassword, acceptTerms: zAcceptTerms,
     }),
     handler: (c) => admin.applyAsMerchant(c.db, c.body, c.now),
   }),
