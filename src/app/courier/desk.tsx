@@ -350,6 +350,8 @@ function Delivery({ parcelId, initialNoDoor, onDone }: { parcelId: string; initi
               <div className="p-5" aria-live="polite">
                 {s.state === 'READY_FOR_COLLECTION' ? (
                   <Line icon={CheckCircle2} tone="text-success-700" title="Delivered" text={`Door ${s.compartment} is shut with the parcel inside. The household has been told.`} />
+                ) : s.state !== 'VERIFIED' && s.state !== 'LOCKER_RESERVED' && s.state !== 'DEPOSIT_IN_PROGRESS' && s.state !== 'DELIVERY_FAILED' ? (
+                  <Line icon={CheckCircle2} tone="text-success-700" title="Delivered" text="This parcel has already been handed over. There is nothing more to do." />
                 ) : s.state === 'DELIVERY_FAILED' ? (
                   <Line icon={XCircle} tone="text-accent-600" title="Not delivered today" text={s.failureReason ?? ''} />
                 ) : noDoor ? (

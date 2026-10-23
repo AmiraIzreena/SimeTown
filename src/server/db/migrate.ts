@@ -12,6 +12,7 @@ export async function listMigrations(): Promise<string[]> {
 /** Migrations that were renumbered after release: old file name → new file name. */
 const RENAMED: Record<string, string> = {
   '028_kitar_collection_automation.sql': '029_kitar_collection_automation.sql',
+  '040_account_emails.sql': '043_account_emails.sql',
 };
 
 export async function migrate(db: Db): Promise<string[]> {
