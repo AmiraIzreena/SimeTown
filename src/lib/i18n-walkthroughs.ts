@@ -496,6 +496,75 @@ export const walkthroughsMalay: Record<string, string> = {
   'Patrol points for security rounds': 'Titik rondaan untuk rondaan keselamatan',
   'Print a poster for each patrol point and put it up on site. Guards scan them on their security rounds. Residents never see these, and they earn no points or XP.':
     'Cetak poster untuk setiap titik rondaan dan pasang di tapak. Pengawal mengimbasnya semasa rondaan keselamatan. Penduduk tidak sekali-kali melihatnya, dan ia tidak memberi mata atau XP.',
+
+  // Tamu: residents.
+  'How Tamu works': 'Cara Tamu berfungsi',
+  'Visitor passes, walk-ins and SOS, from your phone to the main gate.': 'Pas pelawat, pelawat tanpa pas dan SOS, dari telefon anda ke pintu utama.',
+  'Create a visitor pass': 'Cipta pas pelawat',
+  'Choose the kind of visit, type the visitor’s name and, if they drive, the vehicle number. Nobody is ever asked for an identity card. Each kind has its own longest length: a delivery lasts a day, a contractor up to 30 days.':
+    'Pilih jenis lawatan, taip nama pelawat dan, jika mereka memandu, nombor kenderaan. Tiada sesiapa diminta kad pengenalan. Setiap jenis ada tempoh paling lama sendiri: penghantaran sehari, kontraktor sehingga 30 hari.',
+  'Send the link by WhatsApp or SMS': 'Hantar pautan melalui WhatsApp atau SMS',
+  'The pass is a link with a QR code. Your visitor needs no app and no account. Share again later makes a new link, and the old one stops working.':
+    'Pas ialah pautan dengan kod QR. Pelawat anda tidak memerlukan aplikasi atau akaun. Berkongsi semula kemudian membuat pautan baharu, dan pautan lama berhenti berfungsi.',
+  'The code printed under the QR code': 'Kod yang dicetak di bawah kod QR',
+  'Sharing again makes a new link': 'Berkongsi semula membuat pautan baharu',
+  'Your visitor': 'Pelawat anda',
+  'Your visitor opens the link': 'Pelawat anda membuka pautan',
+  'They see the QR code to show the guard, when it is valid, and directions to the main gate in Waze or Google Maps. Only your street is shown, never your house number or your name.':
+    'Mereka melihat kod QR untuk ditunjukkan kepada pengawal, apabila ia sah, dan arah ke pintu utama dalam Waze atau Google Maps. Hanya jalan anda dipaparkan, tidak sekali-kali nombor rumah atau nama anda.',
+  'House number and host’s name hidden': 'Nombor rumah dan nama tuan rumah disembunyikan',
+  'You are told the moment they arrive': 'Anda dimaklumkan sebaik sahaja mereka tiba',
+  'The guard scans the QR code at the main gate, or types the code under it. You get a notification straight away. A one-visit or delivery pass then closes by itself.':
+    'Pengawal mengimbas kod QR di pintu utama, atau menaip kod di bawahnya. Anda menerima pemberitahuan serta-merta. Pas satu lawatan atau penghantaran kemudian ditutup dengan sendirinya.',
+  'Someone came without a pass? You are asked': 'Seseorang datang tanpa pas? Anda ditanya',
+  'The guard logs them and your home is asked straight away. Tap Expected, Not expected or Call me; the first answer from your home is the one the guard sees. Not expected tells the guard. It never blocks lawful access on a public road.':
+    'Pengawal merekodkan mereka dan rumah anda ditanya serta-merta. Ketik Dijangka, Tidak dijangka atau Hubungi saya; jawapan pertama dari rumah anda ialah yang dilihat pengawal. Tidak dijangka memaklumkan pengawal. Ia tidak sekali-kali menghalang akses yang sah di jalan awam.',
+  'Not expected · Call me': 'Tidak dijangka · Hubungi saya',
+  'SOS reaches the guardhouse at once': 'SOS sampai ke pondok pengawal serta-merta',
+  'SOS to the guardhouse tells the guards and the township team your address straight away, and you are told when a guard is on the way. Pressing it again sends nothing more. In a medical emergency, also call 999.':
+    'SOS ke pondok pengawal memaklumkan alamat anda kepada pengawal dan pasukan perbandaran serta-merta, dan anda dimaklumkan apabila pengawal dalam perjalanan. Menekannya sekali lagi tidak menghantar apa-apa lagi. Dalam kecemasan perubatan, hubungi juga 999.',
+  'Sent to the guardhouse': 'Dihantar ke pondok pengawal',
+  'Guards and the township team': 'Pengawal dan pasukan perbandaran',
+  'Only what the gate needs, and not for long': 'Hanya apa yang diperlukan pintu masuk, dan tidak lama',
+  'A visit keeps a name, vehicle number and time only. Visitor records are deleted after 90 days. Cancel a pass at any time and its link stops working. Tamu gives no points and no XP.':
+    'Lawatan hanya menyimpan nama, nombor kenderaan dan masa. Rekod pelawat dipadam selepas 90 hari. Batalkan pas pada bila-bila masa dan pautannya berhenti berfungsi. Tamu tidak memberi mata dan tiada XP.',
+  'Visitor privacy': 'Privasi pelawat',
+  'Name, vehicle and time only': 'Nama, kenderaan dan masa sahaja',
+  'Never an identity card': 'Tidak sekali-kali kad pengenalan',
+  'Deleted after 90 days': 'Dipadam selepas 90 hari',
+
+  // Tamu: the guard at the main gate.
+  'How the gate works': 'Cara pintu masuk berfungsi',
+  'Visitor passes, walk-ins, SOS calls and the patrol round.': 'Pas pelawat, pelawat tanpa pas, panggilan SOS dan pusingan rondaan.',
+  'Scan the visitor’s pass': 'Imbas pas pelawat',
+  'Tap Scan with camera and point it at the QR code on the visitor’s phone. If the camera cannot read it, type the code printed under it and tap Check pass.':
+    'Ketik Imbas dengan kamera dan halakan ke kod QR pada telefon pelawat. Jika kamera tidak dapat membacanya, taip kod yang dicetak di bawahnya dan ketik Semak pas.',
+  'Valid: let them in': 'Sah: benarkan mereka masuk',
+  'The screen shows who they are, the kind of pass and the house. The host is told they arrived, and the visit goes into the gate log.':
+    'Skrin menunjukkan siapa mereka, jenis pas dan rumah yang dituju. Tuan rumah dimaklumkan mereka telah tiba, dan lawatan masuk ke log pintu masuk.',
+  'Let in: Puan Rahmah': 'Benarkan masuk: Puan Rahmah',
+  'Not valid: the screen says why': 'Tidak sah: skrin menyatakan sebabnya',
+  'A pass may be cancelled by the host, expired, already used or not valid yet. Nobody is let in on it. Log the visitor as a walk-in instead, so the household can answer.':
+    'Pas mungkin dibatalkan oleh tuan rumah, tamat tempoh, sudah digunakan atau belum sah. Tiada sesiapa dibenarkan masuk dengannya. Rekodkan pelawat sebagai pelawat tanpa pas, supaya isi rumah boleh menjawab.',
+  'This pass has already been used.': 'Pas ini sudah digunakan.',
+  'This pass is not valid yet.': 'Pas ini belum sah.',
+  'No pass? Ask the household': 'Tiada pas? Tanya isi rumah',
+  'Record the visitor’s name, vehicle number and house, never an identity card, and tap Ask the household. Everyone at that house with the app is asked. If nobody there has the app, the screen tells you to call the house.':
+    'Rekodkan nama pelawat, nombor kenderaan dan rumah, tidak sekali-kali kad pengenalan, dan ketik Tanya isi rumah. Setiap orang di rumah itu yang ada aplikasi akan ditanya. Jika tiada sesiapa di situ ada aplikasi, skrin meminta anda menghubungi rumah itu.',
+  'The answer appears in the gate log': 'Jawapan muncul dalam log pintu masuk',
+  'Expected, Not expected or Call the host shows beside the visitor, and you get a notification too. Not expected is for your information; it never blocks lawful access on a public road. Tap Left when a visitor goes.':
+    'Dijangka, Tidak dijangka atau Hubungi tuan rumah dipaparkan di sebelah pelawat, dan anda juga menerima pemberitahuan. Tidak dijangka adalah untuk makluman anda; ia tidak sekali-kali menghalang akses yang sah di jalan awam. Ketik Keluar apabila pelawat pergi.',
+  'Encik Hafiz · Walk-in': 'Encik Hafiz · Tanpa pas',
+  'Puan Rahmah · Pass': 'Puan Rahmah · Pas',
+  'An SOS goes to the top of the screen': 'SOS dipaparkan di bahagian atas skrin',
+  'It shows the resident’s address and phone. Tap On my way and the resident is told a guard is coming. Tap Close once it is dealt with.':
+    'Ia menunjukkan alamat dan telefon penduduk. Ketik Dalam perjalanan dan penduduk dimaklumkan pengawal sedang datang. Ketik Tutup setelah ia selesai.',
+  'Just now · waiting': 'Baru sahaja · menunggu',
+  'Resident told: a guard is coming': 'Penduduk dimaklumkan: pengawal sedang datang',
+  'Check each point on the patrol round': 'Semak setiap titik dalam pusingan rondaan',
+  'Scan the poster at each patrol point with your phone camera: it opens the gate screen with the code filled in. Or type the code, then tap Check point. The round shows which points are checked today.':
+    'Imbas poster di setiap titik rondaan dengan kamera telefon anda: ia membuka skrin pintu masuk dengan kod sudah diisi. Atau taip kod, kemudian ketik Semak titik. Pusingan menunjukkan titik mana yang telah disemak hari ini.',
+  '1. Main gate': '1. Pintu utama',
 };
 
 export const walkthroughsTemplates: readonly (readonly [string, string])[] = [

@@ -118,6 +118,7 @@ export async function profile(db: Db, actor: Actor) {
       has_home: boolean;
       language: 'en' | 'ms';
       parcel_emails: boolean;
+      visitor_emails: boolean;
       email: string | null;
       shop_address_line: string | null;
       shop_postcode: string | null;
@@ -126,7 +127,7 @@ export async function profile(db: Db, actor: Actor) {
     }
   >(
     db,
-    `SELECT u.phone, t.name AS township, u.occupancy, u.terms_version, u.terms_accepted_at, u.language, u.parcel_emails, u.email, (h.id IS NOT NULL) AS has_home, ${HOME_ADDRESS_COLUMNS},
+    `SELECT u.phone, t.name AS township, u.occupancy, u.terms_version, u.terms_accepted_at, u.language, u.parcel_emails, u.visitor_emails, u.email, (h.id IS NOT NULL) AS has_home, ${HOME_ADDRESS_COLUMNS},
             m.address_line AS shop_address_line, m.postcode AS shop_postcode, m.city AS shop_city, m.state AS shop_state
        FROM users u
        LEFT JOIN homes h ON h.id = u.home_id
@@ -149,7 +150,7 @@ export async function profile(db: Db, actor: Actor) {
     phone: r.phone,
     language: r.language,
     // Residents get parcel emails unless they switch them off; security alerts are always sent.
-    emails: actor.role === 'RESIDENT' ? { parcels: r.parcel_emails, address: r.email } : null,
+    emails: actor.role === 'RESIDENT' ? { parcels: r.parcel_emails, visitors: r.visitor_emails, address: r.email } : null,
     township: r.township,
     occupancy: r.occupancy,
     home: home && {
@@ -169,11 +170,15 @@ export async function profile(db: Db, actor: Actor) {
   };
 }
 
-/** A resident switches parcel emails on or off. Security alerts about their locker door are always sent. */
-export async function setEmailPreferences(db: Db, actor: Actor, input: { parcels: boolean }) {
-  if (actor.role !== 'RESIDENT') throw forbidden('Only residents receive parcel emails.');
-  await db.query('UPDATE users SET parcel_emails = $2 WHERE id = $1', [actor.id, input.parcels]);
-  return { parcels: input.parcels };
+/** A resident switches parcel or visitor emails on or off. Security alerts about their locker door are always sent. */
+export async function setEmailPreferences(db: Db, actor: Actor, input: { parcels?: boolean; visitors?: boolean }) {
+  if (actor.role !== 'RESIDENT') throw forbidden('Only residents receive parcel and visitor emails.');
+  const row = await one<{ parcel_emails: boolean; visitor_emails: boolean }>(
+    db,
+    'UPDATE users SET parcel_emails = coalesce($2, parcel_emails), visitor_emails = coalesce($3, visitor_emails) WHERE id = $1 RETURNING parcel_emails, visitor_emails',
+    [actor.id, input.parcels ?? null, input.visitors ?? null],
+  );
+  return { parcels: row!.parcel_emails, visitors: row!.visitor_emails };
 }
 
 /** English or Bahasa Malaysia, remembered for the person across devices. */
@@ -670,7 +675,11 @@ export async function deleteAccount(db: Db, actor: Actor, password: string, now:
     // Third-edition features: access needs, carers, visitors, routes, bills, offer points, gardens.
     await tx.query('DELETE FROM access_profiles WHERE user_id = $1', [id]);
     await tx.query(`UPDATE carer_links SET status = 'REVOKED', revoked_at = $2 WHERE (resident_id = $1 OR carer_id = $1) AND status <> 'REVOKED'`, [id, now]);
-    await tx.query(`UPDATE visitor_passes SET status = 'CANCELLED', visitor_name = '[removed]', vehicle_no = NULL WHERE host_user_id = $1`, [id]);
+    await tx.query(
+      `UPDATE visitor_passes SET status = 'CANCELLED', visitor_name = '[removed]', vehicle_no = NULL, citizenship = NULL, id_number_enc = NULL, id_last4 = NULL,
+              transport = NULL, licence_expiry = NULL, reason = NULL, reason_other = NULL WHERE host_user_id = $1`,
+      [id],
+    );
     await tx.query(
       `UPDATE gerak_activities SET route = '[]', route_deleted_at = $2, status = CASE WHEN status = 'ACTIVE' THEN 'ABANDONED' ELSE status END WHERE user_id = $1`,
       [id, now],

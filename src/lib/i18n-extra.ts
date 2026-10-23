@@ -6,11 +6,12 @@ import { shopsMalay } from './i18n-shops';
 import { collectionsMalay } from './i18n-collections';
 import { lockersMalay } from './i18n-lockers';
 import { walkthroughsMalay } from './i18n-walkthroughs';
+import { tamuMalay } from './i18n-tamu';
 import { campaignsMalay } from './i18n-campaigns';
 import { malay } from './i18n-messages';
 
 /** Akses+, Shops, collections, campaigns and lockers entries never replace a translation the shared catalogues already give. */
-const aksesOnly = Object.fromEntries(Object.entries({ ...aksesMalay, ...shopsMalay, ...collectionsMalay, ...campaignsMalay, ...lockersMalay, ...walkthroughsMalay }).filter(([english]) => !Object.hasOwn(malay, english)));
+const aksesOnly = Object.fromEntries(Object.entries({ ...aksesMalay, ...shopsMalay, ...collectionsMalay, ...campaignsMalay, ...lockersMalay, ...walkthroughsMalay, ...tamuMalay }).filter(([english]) => !Object.hasOwn(malay, english)));
 
 /** Shared labels, validation and short messages used by several features. */
 export const extraMalay: Record<string, string> = {

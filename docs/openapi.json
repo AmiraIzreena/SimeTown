@@ -602,7 +602,7 @@
         "tags": [
           "SimeTown ID"
         ],
-        "summary": "Switch parcel emails on or off (residents; security alerts are always sent)",
+        "summary": "Switch parcel or visitor emails on or off (residents; security alerts are always sent)",
         "description": "Signed-in user (any role).",
         "operationId": "postMeEmailPreferences",
         "parameters": [],
@@ -616,11 +616,11 @@
                 "properties": {
                   "parcels": {
                     "type": "boolean"
+                  },
+                  "visitors": {
+                    "type": "boolean"
                   }
-                },
-                "required": [
-                  "parcels"
-                ]
+                }
               }
             }
           }
@@ -6831,7 +6831,7 @@
         "tags": [
           "Tamu"
         ],
-        "summary": "Create a visitor pass; the link is returned once",
+        "summary": "Create a visitor pass with the visitor’s details (the identity may be left for the visitor); the link is returned once",
         "description": "Signed-in RESIDENT.",
         "operationId": "postTamuPasses",
         "parameters": [],
@@ -6859,13 +6859,65 @@
                     "minLength": 2,
                     "maxLength": 80
                   },
+                  "validFrom": {},
+                  "validUntil": {},
+                  "citizenship": {
+                    "type": "string",
+                    "enum": [
+                      "MALAYSIAN",
+                      "NON_MALAYSIAN"
+                    ]
+                  },
+                  "idNumber": {
+                    "type": "string",
+                    "maxLength": 30
+                  },
+                  "transport": {
+                    "type": "string",
+                    "enum": [
+                      "ON_FOOT",
+                      "CAR",
+                      "MOTORCYCLE",
+                      "BICYCLE",
+                      "VAN",
+                      "LORRY",
+                      "BUS",
+                      "E_HAILING",
+                      "OTHER"
+                    ]
+                  },
                   "vehicleNo": {
                     "type": "string",
                     "maxLength": 12,
                     "pattern": "^[A-Za-z0-9 ]*$"
                   },
-                  "validFrom": {},
-                  "validUntil": {}
+                  "licenceExpiry": {
+                    "type": "string",
+                    "format": "date",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "enum": [
+                      "VISITING",
+                      "DELIVERY",
+                      "CONTRACTOR",
+                      "HELPER",
+                      "CARER",
+                      "EVENT",
+                      "PROPERTY_VIEWING",
+                      "MAINTENANCE",
+                      "OTHER"
+                    ]
+                  },
+                  "reasonOther": {
+                    "type": "string",
+                    "maxLength": 80
+                  },
+                  "identityByVisitor": {
+                    "default": false,
+                    "type": "boolean"
+                  }
                 },
                 "required": [
                   "type",
@@ -7227,6 +7279,124 @@
         }
       }
     },
+    "/api/v1/passes/{token}/details": {
+      "post": {
+        "tags": [
+          "Tamu"
+        ],
+        "summary": "The visitor gives the details their host left for them, from their link (no sign-in)",
+        "description": "Anyone.",
+        "operationId": "postPassesTokenDetails",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                  "citizenship": {
+                    "type": "string",
+                    "enum": [
+                      "MALAYSIAN",
+                      "NON_MALAYSIAN"
+                    ]
+                  },
+                  "idNumber": {
+                    "type": "string",
+                    "maxLength": 30
+                  },
+                  "transport": {
+                    "type": "string",
+                    "enum": [
+                      "ON_FOOT",
+                      "CAR",
+                      "MOTORCYCLE",
+                      "BICYCLE",
+                      "VAN",
+                      "LORRY",
+                      "BUS",
+                      "E_HAILING",
+                      "OTHER"
+                    ]
+                  },
+                  "vehicleNo": {
+                    "type": "string",
+                    "maxLength": 12,
+                    "pattern": "^[A-Za-z0-9 ]*$"
+                  },
+                  "licenceExpiry": {
+                    "type": "string",
+                    "format": "date",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "enum": [
+                      "VISITING",
+                      "DELIVERY",
+                      "CONTRACTOR",
+                      "HELPER",
+                      "CARER",
+                      "EVENT",
+                      "PROPERTY_VIEWING",
+                      "MAINTENANCE",
+                      "OTHER"
+                    ]
+                  },
+                  "reasonOther": {
+                    "type": "string",
+                    "maxLength": 80
+                  },
+                  "consent": {
+                    "type": "boolean",
+                    "const": true
+                  }
+                },
+                "required": [
+                  "consent"
+                ]
+              }
+            }
+          }
+        },
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success. The result is in `data`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {}
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
     "/api/v1/guard": {
       "get": {
         "tags": [
@@ -7269,7 +7439,7 @@
         "tags": [
           "Tamu"
         ],
-        "summary": "Scan a visitor's pass; the host is told at once",
+        "summary": "Scan a visitor's pass; if details are missing or the licence has expired, scan again with them. The host is told at once",
         "description": "Signed-in GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN.",
         "operationId": "postGuardScan",
         "parameters": [],
@@ -7286,6 +7456,64 @@
                     "minLength": 6,
                     "maxLength": 24,
                     "pattern": "^[A-Za-z0-9:]+$"
+                  },
+                  "details": {
+                    "type": "object",
+                    "properties": {
+                      "citizenship": {
+                        "type": "string",
+                        "enum": [
+                          "MALAYSIAN",
+                          "NON_MALAYSIAN"
+                        ]
+                      },
+                      "idNumber": {
+                        "type": "string",
+                        "maxLength": 30
+                      },
+                      "transport": {
+                        "type": "string",
+                        "enum": [
+                          "ON_FOOT",
+                          "CAR",
+                          "MOTORCYCLE",
+                          "BICYCLE",
+                          "VAN",
+                          "LORRY",
+                          "BUS",
+                          "E_HAILING",
+                          "OTHER"
+                        ]
+                      },
+                      "vehicleNo": {
+                        "type": "string",
+                        "maxLength": 12,
+                        "pattern": "^[A-Za-z0-9 ]*$"
+                      },
+                      "licenceExpiry": {
+                        "type": "string",
+                        "format": "date",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                      },
+                      "reason": {
+                        "type": "string",
+                        "enum": [
+                          "VISITING",
+                          "DELIVERY",
+                          "CONTRACTOR",
+                          "HELPER",
+                          "CARER",
+                          "EVENT",
+                          "PROPERTY_VIEWING",
+                          "MAINTENANCE",
+                          "OTHER"
+                        ]
+                      },
+                      "reasonOther": {
+                        "type": "string",
+                        "maxLength": 80
+                      }
+                    }
                   }
                 },
                 "required": [
@@ -7337,7 +7565,7 @@
         "tags": [
           "Tamu"
         ],
-        "summary": "Log a visitor without a pass (name, vehicle, house; never an IC)",
+        "summary": "Log a visitor without a pass, with their details and the house (an expired driving licence is refused)",
         "description": "Signed-in GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN.",
         "operationId": "postGuardWalkIns",
         "parameters": [],
@@ -7354,15 +7582,63 @@
                     "minLength": 2,
                     "maxLength": 80
                   },
+                  "homeId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "citizenship": {
+                    "type": "string",
+                    "enum": [
+                      "MALAYSIAN",
+                      "NON_MALAYSIAN"
+                    ]
+                  },
+                  "idNumber": {
+                    "type": "string",
+                    "maxLength": 30
+                  },
+                  "transport": {
+                    "type": "string",
+                    "enum": [
+                      "ON_FOOT",
+                      "CAR",
+                      "MOTORCYCLE",
+                      "BICYCLE",
+                      "VAN",
+                      "LORRY",
+                      "BUS",
+                      "E_HAILING",
+                      "OTHER"
+                    ]
+                  },
                   "vehicleNo": {
                     "type": "string",
                     "maxLength": 12,
                     "pattern": "^[A-Za-z0-9 ]*$"
                   },
-                  "homeId": {
+                  "licenceExpiry": {
                     "type": "string",
-                    "format": "uuid",
-                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    "format": "date",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "enum": [
+                      "VISITING",
+                      "DELIVERY",
+                      "CONTRACTOR",
+                      "HELPER",
+                      "CARER",
+                      "EVENT",
+                      "PROPERTY_VIEWING",
+                      "MAINTENANCE",
+                      "OTHER"
+                    ]
+                  },
+                  "reasonOther": {
+                    "type": "string",
+                    "maxLength": 80
                   }
                 },
                 "required": [

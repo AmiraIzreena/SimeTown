@@ -21,17 +21,21 @@ import { reloadTo } from '@/lib/navigate';
 import { AddressPicker } from './address';
 import { ShopAddressFields } from './auth';
 
-/** Parcel emails: on unless the resident switches them off. Security alerts about their locker door always come. */
+/** Parcel and visitor emails: on unless the resident switches them off. Security alerts about their locker door always come. */
 function EmailCard({ me, onChanged }: { me: Me; onChanged: () => void }) {
   const save = useAction((parcels: boolean) => api.post<{ parcels: boolean }>('/me/email-preferences', { parcels }), {
     success: (r) => (r.parcels ? 'Parcel emails are on.' : 'Parcel emails are off. Security alerts still come by email.'),
+    onSuccess: onChanged,
+  });
+  const saveVisitors = useAction((visitors: boolean) => api.post<{ visitors: boolean }>('/me/email-preferences', { visitors }), {
+    success: (r) => (r.visitors ? 'Visitor emails are on.' : 'Visitor emails are off. Tamu still tells you in the app.'),
     onSuccess: onChanged,
   });
   const emails = me.emails;
   if (!emails) return null;
   return (
     <Card>
-      <CardHeader title="Emails" description="Parcel news in your inbox, in the language you use in SimeTown. Pickup codes are never sent by email." />
+      <CardHeader title="Emails" description="Parcel and visitor news in your inbox, in the language you use in SimeTown. Pickup codes and visitors’ identity numbers are never sent by email." />
       <div className="space-y-4 p-5">
         <p className="flex items-center gap-2 text-sm text-ink-600"><Mail className="size-4 shrink-0 text-ink-400" aria-hidden /><span className="min-w-0 break-all">{emails.address ?? <Text>No email address on your account</Text>}</span></p>
         <Switch
@@ -40,6 +44,13 @@ function EmailCard({ me, onChanged }: { me: Me; onChanged: () => void }) {
           checked={emails.parcels}
           disabled={save.pending}
           onChange={(on) => void save.run(on)}
+        />
+        <Switch
+          label="Visitor emails"
+          hint="When your visitor is let in at the main gate, and when someone without a pass asks for your home."
+          checked={emails.visitors}
+          disabled={saveVisitors.pending}
+          onChange={(on) => void saveVisitors.run(on)}
         />
         <p className="flex items-start gap-2 rounded-lg bg-ink-25 p-3 text-sm text-ink-600"><ShieldAlert className="mt-0.5 size-4 shrink-0 text-ink-400" aria-hidden /><Text>Security alerts, such as your locker door being opened without a code, are always sent.</Text></p>
       </div>

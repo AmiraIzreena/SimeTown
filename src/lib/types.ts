@@ -13,8 +13,8 @@ export interface Me {
   fullName: string;
   phone: string | null;
   language: 'en' | 'ms';
-  /** Residents only: whether parcel emails are on, and the address they go to. */
-  emails?: { parcels: boolean; address: string | null } | null;
+  /** Residents only: whether parcel and visitor emails are on, and the address they go to. */
+  emails?: { parcels: boolean; visitors: boolean; address: string | null } | null;
   residencyStatus: 'NONE' | 'PENDING' | 'VERIFIED' | 'REJECTED';
   memberCode: string | null;
   townshipId: string | null;

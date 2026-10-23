@@ -13,7 +13,7 @@ import { LOGO_CID, renderEmail, type EmailContent } from './layout';
  * sent to.
  */
 
-export type EmailKind = 'LOCKER_READY' | 'COUNTER_READY' | 'COUNTER_REMINDER' | 'DOOR_FORCED';
+export type EmailKind = 'LOCKER_READY' | 'COUNTER_READY' | 'COUNTER_REMINDER' | 'DOOR_FORCED' | 'VISITOR_ARRIVED' | 'VISITOR_AT_GATE';
 
 /** What the outbox needs from a mail service. Real sending uses nodemailer; tests pass their own. */
 export interface Mailer {
@@ -76,8 +76,8 @@ function logoImage(): Buffer | null {
 export const appLink = (pathAndQuery: string) => new URL(pathAndQuery, getConfig().appOrigin).toString();
 
 /**
- * Queues one email per person, in their own language, unless they switched parcel emails off (security emails
- * are always queued). The same event never queues twice for a person. Inside the caller's transaction.
+ * Queues one email per person, in their own language, unless they switched that kind of email (parcel or visitor)
+ * off in Account (security emails are always queued). The same event never queues twice for a person. Inside the caller's transaction.
  */
 export async function queueEmails(
   q: Queryable,
@@ -85,18 +85,18 @@ export async function queueEmails(
   kind: EmailKind,
   build: (lang: Lang) => Omit<EmailContent, 'lang' | 'firstName'>,
   dedupe: string,
-  options: { always?: boolean } = {},
+  options: { always?: boolean; preference?: 'parcel' | 'visitor' } = {},
   now: Date = new Date(),
 ): Promise<number> {
   if (userIds.length === 0) return 0;
-  const people = await q.query<{ id: string; email: string; full_name: string | null; language: Lang; parcel_emails: boolean }>(
-    `SELECT id, email, full_name, language, parcel_emails FROM users WHERE id = ANY($1::uuid[]) AND status = 'ACTIVE' AND email IS NOT NULL`,
+  const people = await q.query<{ id: string; email: string; full_name: string | null; language: Lang; parcel_emails: boolean; visitor_emails: boolean }>(
+    `SELECT id, email, full_name, language, parcel_emails, visitor_emails FROM users WHERE id = ANY($1::uuid[]) AND status = 'ACTIVE' AND email IS NOT NULL`,
     [userIds],
   );
   let queued = 0;
   const content = new Map<Lang, Omit<EmailContent, 'lang' | 'firstName'>>();
   for (const person of people) {
-    if (!options.always && !person.parcel_emails) continue;
+    if (!options.always && !(options.preference === 'visitor' ? person.visitor_emails : person.parcel_emails)) continue;
     const lang: Lang = person.language === 'ms' ? 'ms' : 'en';
     if (!content.has(lang)) content.set(lang, build(lang));
     const firstName = person.full_name?.trim().split(/\s+/)[0] ?? null;

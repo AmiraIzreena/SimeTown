@@ -4,8 +4,8 @@
  * asked to read and accept them again the next time they sign in.
  */
 export const LEGAL = {
-  version: '2026-10-06',
-  effectiveDate: '6 October 2026',
+  version: '2026-10-23',
+  effectiveDate: '23 October 2026',
   /** Who runs the service and answers for the personal data in it. */
   operator: 'the SimeTown project team',
   /**

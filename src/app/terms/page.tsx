@@ -121,6 +121,25 @@ const sections: LegalSection[] = [
     ),
   },
   {
+    id: 'visitors',
+    title: 'Visitor passes and the main gate',
+    body: (
+      <>
+        <p><Text>Tamu lets you send visitors a pass and tells you when they arrive. For the township’s security, every visit records the visitor’s citizenship, identity number, transport and the reason for the visit. When you create a pass or answer for a visitor:</Text></p>
+        <Bullets
+          items={[
+            'Enter your visitor’s details accurately, and only with their permission. Tell them that SimeTown keeps these details for township security and deletes them after 90 days, as our Privacy Notice explains. You may instead let your visitor give their identity on their own pass link.',
+            'Do not use someone else’s identity number, or create a pass for anyone other than the visitor named on it.',
+            'A visitor driving in must hold a valid driving licence. A visitor whose licence has expired cannot be recorded to drive in.',
+            'The guard checks the visitor’s identity card and hands it straight back. Guards never keep, copy or photograph it.',
+            '“Not expected” tells the guard; it never blocks lawful access on a public road.',
+            'We may suspend Tamu, or your account, for passes or details that break these Terms.',
+          ]}
+        />
+      </>
+    ),
+  },
+  {
     id: 'safety',
     title: 'Flood alerts and safety information',
     body: (
@@ -204,7 +223,7 @@ export default function TermsPage() {
       summary={
         <>
           <p className="font-semibold"><Text>In short</Text></p>
-          <p className="mt-1"><Text>Give accurate details and keep your account to yourself. SimeTown Points are a reward worth RM1 per 100 points at township shops, never cash. Be respectful in community features. Flood alerts support, but do not replace, official warnings. This is a prototype: no real money moves.</Text></p>
+          <p className="mt-1"><Text>Give accurate details and keep your account to yourself. SimeTown Points are a reward worth RM1 per 100 points at township shops, never cash. Be respectful in community features. Give your visitors’ details accurately and only with their permission. Flood alerts support, but do not replace, official warnings. This is a prototype: no real money moves.</Text></p>
         </>
       }
       sections={sections}

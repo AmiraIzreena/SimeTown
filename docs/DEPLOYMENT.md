@@ -142,7 +142,7 @@ release should be approved by hand. It follows the release order above:
 | `APP_ENV` | variable | no | Defaults to `production` (use `staging` for a staging environment) |
 | `DB_SSL` | variable | no | Only `disable` for a database without TLS on a private network |
 
-The app's own secrets (`CRON_SECRET`, `LOCKER_CREDENTIAL_SECRET`, `AI_API_KEY`, ...) stay in the
+The app's own secrets (`CRON_SECRET`, `LOCKER_CREDENTIAL_SECRET`, `VISITOR_DATA_KEY`, `AI_API_KEY`, ...) stay in the
 host's secret store, not in GitHub. Releases run one at a time; a newer one waits for the current one.
 
 ### First set-up of a real township
@@ -369,6 +369,7 @@ Before going live:
 - [ ] Terms of Use and Privacy Notice reviewed by a lawyer, a Bahasa Malaysia version added, and the
       operator and contact address in `src/shared/legal.ts` set to real, monitored details
 - [ ] Homes imported with full postal addresses from SDP's property record (`npm run bootstrap`)
+- [ ] Tamu: `VISITOR_DATA_KEY` set (32+ random characters; it encrypts visitors' identity numbers, and the gate refuses to record visitors without it in production), and the collection of visitors' identity numbers checked with SDP's legal team against the PDPA and the local authority's rules for guarded neighbourhoods
 - [ ] Smart lockers: `LOCKER_CREDENTIAL_SECRET` set, the `lockers` and `couriers` jobs scheduled, the collection policy agreed, and each real station's controller tested against the contract in section 6 (including refusing expired and repeated authorisations)
 - [ ] Incidents: deadlines agreed and saved, the `incidents` job scheduled, each courier company's support channel checked and recorded, and the people who handle cases given staff accounts
 - [ ] Courier companies: agreements signed, identities recorded, providers and sign-in set up per section 6a, secrets in the environment; the simulated companies removed; [RISK_REGISTER.md](RISK_REGISTER.md) reviewed

@@ -10,6 +10,7 @@ import { notify } from '../notifications';
 import { recordAction, rewardUserById } from '../rewards';
 import { getSettings, todayIn } from '../settings';
 import { insertPass } from '../tamu/service';
+import { reasonOnly } from '../tamu/visitor-data';
 import { HOME_ADDRESS_COLUMNS, listScope, resolveTownship } from '../townships';
 import { testEntryEnabled } from './test-entry';
 
@@ -149,7 +150,8 @@ async function issuePass(tx: Queryable, x: { townshipId: string; homeId: string;
   );
   return insertPass(
     tx,
-    { townshipId: x.townshipId, homeId: x.homeId, hostUserId: x.userId, type: 'CONTRACTOR', visitorName: `${x.collector} (recycling collection)`, validFrom: window!.from, validUntil: window!.until },
+    { townshipId: x.townshipId, homeId: x.homeId, hostUserId: x.userId, type: 'CONTRACTOR', visitorName: `${x.collector} (recycling collection)`, validFrom: window!.from, validUntil: window!.until,
+      details: reasonOnly('OTHER', 'Recycling collection') },
     now,
   );
 }

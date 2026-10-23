@@ -20,6 +20,8 @@ const schema = z
     SENSOR_INGEST_TOKEN: z.string().min(32).optional(),
     // Derives smart-locker pickup PINs and QR codes, which are never stored. Required in production to use lockers.
     LOCKER_CREDENTIAL_SECRET: z.string().min(32).optional(),
+    // Encrypts visitors' identity numbers in Tamu. Required in production to record visitors.
+    VISITOR_DATA_KEY: z.string().min(32).optional(),
     AI_PROVIDER: z.enum(['none', 'anthropic', 'openai']).default('none'),
     AI_API_URL: z.url().optional(),
     AI_API_KEY: z.string().min(1).optional(),

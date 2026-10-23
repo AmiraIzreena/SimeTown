@@ -4,8 +4,12 @@ import { one, type Db, type Queryable } from '../src/server/db/client';
 import { audit } from '../src/server/modules/audit';
 import { bookCollection, createCollector, reportCollectionWeight, tellMissed } from '../src/server/modules/kitar/collections';
 import { todayIn } from '../src/server/modules/settings';
+import { demoVisitorDetails } from '../src/server/modules/tamu/demo-details';
 import { scanPass } from '../src/server/modules/tamu/service';
 import type { Material } from '../src/shared/domain';
+
+/** The guard scans the collector in, typing their (made-up) details as the gate asks on a pass SimeTown made. */
+const scanIn = (db: Db, guard: Actor, code: string, when: Date) => scanPass(db, guard, code, when, demoVisitorDetails(when));
 
 /**
  * Recycling collections the gate record decides, to see and try from both sides: Daniel Tan's Kitar page (resident)
@@ -80,13 +84,13 @@ export async function seedCollectionsShowcase(db: Db, input: { now: Date; log: (
   // 9 days ago: an old fridge, 120 kg after a gate scan: credited, counted as 100 kg of e-waste.
   const fridge = shift(today, -9);
   const b = await book(daniel, green, fridge, ['E_WASTE'], 'Old fridge');
-  await scanPass(db, guard, b.passCode, at(fridge, 10));
+  await scanIn(db, guard, b.passCode, at(fridge, 10));
   await reportCollectionWeight(db, daniel, b.id, 120_000, at(fridge, 15));
 
   // 6 days ago: paper, after a gate scan: credited at once.
   const paper = shift(today, -6);
   const c = await book(daniel, green, paper, ['PAPER'], 'Flattened boxes from moving house');
-  await scanPass(db, guard, c.passCode, at(paper, 10));
+  await scanIn(db, guard, c.passCode, at(paper, 10));
   await reportCollectionWeight(db, daniel, c.id, 12_000, at(paper, 14));
 
   // 3 days ago: missed, and the gate saw nobody from this collector that day. Disputing it keeps it missed.
@@ -98,7 +102,7 @@ export async function seedCollectionsShowcase(db: Db, input: { now: Date; log: (
   const seen = shift(today, -2);
   const e = await book(daniel, green, seen, ['E_WASTE'], 'Broken microwave');
   const neighbour = await book(priya, green, seen, ['PAPER'], 'Old school books');
-  await scanPass(db, guard, neighbour.passCode, at(seen, 9));
+  await scanIn(db, guard, neighbour.passCode, at(seen, 9));
   await reportCollectionWeight(db, priya, neighbour.id, 8000, at(seen, 12));
   await markMissed(e.id, seen);
 
@@ -106,7 +110,7 @@ export async function seedCollectionsShowcase(db: Db, input: { now: Date; log: (
   const open = await one<{ n: number; today: number }>(db, "SELECT count(*)::int AS n, count(*) FILTER (WHERE day = $2::date)::int AS today FROM recycling_collections WHERE home_id = $1 AND status IN ('REQUESTED', 'CONFIRMED')", [daniel.homeId, today]);
   if (open!.n < 3 && open!.today === 0) {
     const f = await book(daniel, green, today, ['GLASS'], 'A crate of glass jars');
-    await scanPass(db, guard, f.passCode, new Date(Math.min(now.getTime(), at(today, 10).getTime())));
+    await scanIn(db, guard, f.passCode, new Date(Math.min(now.getTime(), at(today, 10).getTime())));
   }
 
   // Ahead: booked, gate pass ready, can be cancelled (unless Daniel already has a collection booked ahead).
@@ -119,7 +123,7 @@ export async function seedCollectionsShowcase(db: Db, input: { now: Date; log: (
   for (const [days, kg] of [[20, 30], [15, 45], [8, 25]] as const) {
     const day = shift(today, -days);
     const x = await book(arjun, green, day, ['E_WASTE'], 'Old electronics from the store room');
-    await scanPass(db, guard, x.passCode, at(day, 11));
+    await scanIn(db, guard, x.passCode, at(day, 11));
     await reportCollectionWeight(db, arjun, x.id, kg * 1000, at(day, 16));
   }
   // Minyak Hijau Collectors (Thursdays): three visits it never made.

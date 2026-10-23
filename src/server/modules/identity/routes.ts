@@ -86,8 +86,8 @@ export const identityRoutes = [
     handler: (c) => identity.setLanguage(c.db, c.actor, c.body.language),
   }),
   route({
-    method: 'POST', path: '/me/email-preferences', tag: 'SimeTown ID', summary: 'Switch parcel emails on or off (residents; security alerts are always sent)', auth: 'session',
-    body: z.object({ parcels: z.boolean() }),
+    method: 'POST', path: '/me/email-preferences', tag: 'SimeTown ID', summary: 'Switch parcel or visitor emails on or off (residents; security alerts are always sent)', auth: 'session',
+    body: z.object({ parcels: z.boolean().optional(), visitors: z.boolean().optional() }).refine((b) => b.parcels !== undefined || b.visitors !== undefined, 'Choose which emails to change.'),
     handler: (c) => identity.setEmailPreferences(c.db, c.actor, c.body),
   }),
   route({

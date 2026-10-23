@@ -1,24 +1,28 @@
-import { formatAddress, PASS_TYPE_INFO, shortAddress, type HomeAddress, type HostReply, type PassType } from '@/shared/domain';
+import { formatAddress, licenceExpired, PASS_TYPE_INFO, shortAddress, type HomeAddress, type HostReply, type PassType, type VisitorDetail } from '@/shared/domain';
 import { one, type Db, type Queryable } from '../../db/client';
 import { requireVerifiedResident, townshipOf, type Actor } from '../../auth/actor';
 import { hashToken, newToken } from '../../auth/session';
-import { conflict, notFound, ruleViolation } from '../../errors';
+import { conflict, fieldErrors, notFound, ruleViolation } from '../../errors';
 import { audit } from '../audit';
 import { myHelpTasks } from '../banjir/events';
+import { emailVisitorArrived, emailVisitorAtGate } from '../email/tamu';
 import { randomCode } from '../identity/service';
 import { onCollectionGateEntry } from '../kitar/collection-gate';
 import { notify } from '../notifications';
-import { getSettings } from '../settings';
+import { getSettings, todayIn } from '../settings';
 import { HOME_ADDRESS_COLUMNS } from '../townships';
+import { decryptIdNumber, DETAIL_COLUMNS, maskedDetails, mergeDetails, missingOf, requireComplete, type DetailsInput, type StoredDetails } from './visitor-data';
 
 /**
  * Tamu: visitor passes and the guard at the main gate (proposal 6.4).
  *
- * Following the published rules for guarded neighbourhoods, a guard records a
- * visitor's name, vehicle number and host home only. Identity cards are never
- * asked for, kept or photographed, records are deleted after 90 days (BR26),
- * and Tamu gives no points and no XP (BR27). "Not expected" informs the guard;
- * it never blocks lawful access on a public road.
+ * Every visit records the visitor's name, citizenship, identity number, how they travel (with the vehicle number
+ * and, when they drive, their licence's expiry) and the reason for the visit (BR26, revised 2026-10-23). On a pass
+ * the resident gives these, or leaves the identity for the visitor to give on their link; the guard completes
+ * anything missing at the gate. A driving licence that has expired blocks entry by motor vehicle. The identity
+ * number is stored encrypted and shown in full only to the guard at the gate; guards never hold the card itself.
+ * Records are deleted after 90 days (BR26), and Tamu gives no points and no XP (BR27). "Not expected" informs the
+ * guard; it never blocks lawful access on a public road.
  */
 
 const MAX_LIVE_PASSES_PER_HOME = 30;
@@ -37,16 +41,21 @@ function passStatus(p: { status: string; valid_from: Date; valid_until: Date; ma
   return 'ACTIVE';
 }
 
-export interface PassInput {
+export interface PassInput extends DetailsInput {
   type: PassType;
   visitorName: string;
-  vehicleNo?: string;
   validFrom: Date;
   validUntil: Date;
 }
 
-/** A resident creates a pass. The link's token is returned once; only its hash is kept. */
-export async function createPass(db: Db, actor: Actor, input: PassInput, now: Date) {
+/**
+ * A resident creates a pass. The link's token is returned once; only its hash is kept.
+ *
+ * From the Tamu form (`complete`), every detail is required, except that the resident may leave the visitor's
+ * identity (citizenship, number and licence expiry) for the visitor to give on their link. Other callers, such as
+ * the Assistant, which never handles identity numbers, give what they have; the visitor or the guard adds the rest.
+ */
+export async function createPass(db: Db, actor: Actor, input: PassInput, now: Date, options: { complete?: { identityByVisitor: boolean } } = {}) {
   const resident = requireVerifiedResident(actor);
   const info = PASS_TYPE_INFO[input.type];
   if (input.validUntil <= input.validFrom) throw ruleViolation('PASS_DATES', 'The pass must end after it starts.');
@@ -54,33 +63,48 @@ export async function createPass(db: Db, actor: Actor, input: PassInput, now: Da
   if (input.validUntil.getTime() - input.validFrom.getTime() > info.maxDays * 86_400_000) {
     throw ruleViolation('PASS_TOO_LONG', `A ${info.label.toLowerCase()} pass can last at most ${info.maxDays} day${info.maxDays === 1 ? '' : 's'}.`);
   }
+  const byVisitor = options.complete?.identityByVisitor ?? false;
+  const given: DetailsInput = byVisitor ? { ...input, citizenship: undefined, idNumber: undefined, licenceExpiry: undefined } : input;
+  const details = mergeDetails(null, given, await todayIn(db, now));
+  if (options.complete) requireComplete(details, byVisitor ? ['identity', 'licenceExpiry'] : []);
   return db.tx(async (tx) => {
     await tx.query('SELECT id FROM homes WHERE id = $1 FOR UPDATE', [resident.homeId]);
     const live = await one<{ n: number }>(tx, `SELECT count(*)::int AS n FROM visitor_passes WHERE home_id = $1 AND status = 'ACTIVE' AND valid_until > $2`, [resident.homeId, now]);
     if (live!.n >= MAX_LIVE_PASSES_PER_HOME) throw ruleViolation('TOO_MANY_PASSES', 'Your home has many live passes. Cancel some you no longer need first.');
-    return insertPass(tx, { townshipId: resident.townshipId, homeId: resident.homeId, hostUserId: resident.id, ...input }, now);
+    return insertPass(tx, {
+      townshipId: resident.townshipId, homeId: resident.homeId, hostUserId: resident.id,
+      type: input.type, visitorName: input.visitorName, validFrom: input.validFrom, validUntil: input.validUntil,
+      details, detailsBy: details.id_number_enc ? 'HOST' : null,
+    }, now);
   });
 }
 
 /**
- * Writes a pass with a fresh link and gate code. Also used when SimeTown makes
- * a pass for the household, such as for a recycling collector they booked.
+ * Writes a pass with a fresh link and gate code. Also used when SimeTown makes a pass for the household, such as
+ * for a recycling collector or a home-service worker they booked: those come without visitor details, which the
+ * guard fills in at the gate.
  */
 export async function insertPass(
   tx: Queryable,
-  input: PassInput & { townshipId: string; homeId: string; hostUserId: string },
+  input: { type: PassType; visitorName: string; vehicleNo?: string; validFrom: Date; validUntil: Date; townshipId: string; homeId: string; hostUserId: string; details?: StoredDetails; detailsBy?: 'HOST' | null },
   now: Date,
 ): Promise<{ id: string; code: string; token: string }> {
   const info = PASS_TYPE_INFO[input.type];
+  const d = input.details;
   const token = newToken();
   // A short code for the guard to type, printed under the QR code. Retried on the rare clash.
   for (let attempt = 0; attempt < 5; attempt++) {
     const code = `P${randomCode(7)}`;
     const row = await one<{ id: string }>(
       tx,
-      `INSERT INTO visitor_passes (township_id, home_id, host_user_id, type, visitor_name, vehicle_no, code, token_hash, valid_from, valid_until, max_entries, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) ON CONFLICT (code) DO NOTHING RETURNING id`,
-      [input.townshipId, input.homeId, input.hostUserId, input.type, input.visitorName, input.vehicleNo?.toUpperCase() || null, code, hashToken(token), input.validFrom, input.validUntil, info.entries, now],
+      `INSERT INTO visitor_passes (township_id, home_id, host_user_id, type, visitor_name, vehicle_no, code, token_hash, valid_from, valid_until, max_entries, created_at,
+                                   citizenship, id_number_enc, id_last4, transport, licence_expiry, reason, reason_other, details_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20) ON CONFLICT (code) DO NOTHING RETURNING id`,
+      [
+        input.townshipId, input.homeId, input.hostUserId, input.type, input.visitorName, (d ? d.vehicle_no : input.vehicleNo?.toUpperCase()) || null, code, hashToken(token),
+        input.validFrom, input.validUntil, info.entries, now,
+        d?.citizenship ?? null, d?.id_number_enc ?? null, d?.id_last4 ?? null, d?.transport ?? null, d?.licence_expiry ?? null, d?.reason ?? null, d?.reason_other ?? null, input.detailsBy ?? null,
+      ],
     );
     if (row) return { id: row.id, code, token };
   }
@@ -106,11 +130,10 @@ export async function cancelPass(db: Db, actor: Actor, passId: string) {
   return { ok: true };
 }
 
-interface PassRow {
+interface PassRow extends StoredDetails {
   id: string;
   type: PassType;
   visitor_name: string;
-  vehicle_no: string | null;
   code: string;
   valid_from: Date;
   valid_until: Date;
@@ -121,25 +144,28 @@ interface PassRow {
   last_entry_at: Date | null;
 }
 
+const PASS_COLUMNS = `p.id, p.type, p.visitor_name, p.code, p.valid_from, p.valid_until, p.max_entries, p.status, p.created_at,
+  p.citizenship, p.id_number_enc, p.id_last4, p.transport, p.vehicle_no, p.licence_expiry::text AS licence_expiry, p.reason, p.reason_other`;
+
 /** The home's passes, its visit history and any walk-in visitor waiting for an answer. */
 export async function tamuOverview(db: Db, actor: Actor, now: Date) {
   const resident = requireVerifiedResident(actor);
   const [passes, visits, waiting, sos] = await Promise.all([
     db.query<PassRow>(
-      `SELECT p.id, p.type, p.visitor_name, p.vehicle_no, p.code, p.valid_from, p.valid_until, p.max_entries, p.status, p.created_at,
+      `SELECT ${PASS_COLUMNS},
               (SELECT count(*)::int FROM visitor_entries e WHERE e.pass_id = p.id) AS entries,
               (SELECT max(e.entered_at) FROM visitor_entries e WHERE e.pass_id = p.id) AS last_entry_at
          FROM visitor_passes p WHERE p.home_id = $1 AND p.valid_until > $2::timestamptz - interval '7 days'
         ORDER BY p.valid_from DESC LIMIT 50`,
       [resident.homeId, now],
     ),
-    db.query(
-      `SELECT id, kind, visitor_name, vehicle_no, host_reply, entered_at, exited_at FROM visitor_entries
+    db.query<StoredDetails & { id: string; kind: string; visitor_name: string; host_reply: string | null; entered_at: Date; exited_at: Date | null }>(
+      `SELECT id, kind, visitor_name, host_reply, entered_at, exited_at, ${DETAIL_COLUMNS} FROM visitor_entries
         WHERE home_id = $1 ORDER BY entered_at DESC LIMIT 30`,
       [resident.homeId],
     ),
-    db.query(
-      `SELECT id, visitor_name, vehicle_no, entered_at FROM visitor_entries
+    db.query<StoredDetails & { id: string; visitor_name: string; entered_at: Date }>(
+      `SELECT id, visitor_name, entered_at, ${DETAIL_COLUMNS} FROM visitor_entries
         WHERE home_id = $1 AND kind = 'WALK_IN' AND host_reply IS NULL AND entered_at > $2::timestamptz - interval '2 hours'
         ORDER BY entered_at DESC`,
       [resident.homeId, now],
@@ -159,9 +185,11 @@ export async function tamuOverview(db: Db, actor: Actor, now: Date) {
       maxEntries: p.max_entries,
       lastEntryAt: p.last_entry_at,
       status: passStatus(p, now),
+      details: maskedDetails(p),
+      missing: missingOf(p),
     })),
-    visits,
-    waiting,
+    visits: visits.map((v) => ({ id: v.id, kind: v.kind, visitor_name: v.visitor_name, vehicle_no: v.vehicle_no, host_reply: v.host_reply, entered_at: v.entered_at, exited_at: v.exited_at, details: maskedDetails(v) })),
+    waiting: waiting.map((w) => ({ id: w.id, visitor_name: w.visitor_name, vehicle_no: w.vehicle_no, entered_at: w.entered_at, details: maskedDetails(w) })),
     sos: sos ?? null,
     retentionDays: VISITOR_RETENTION_DAYS,
   };
@@ -210,13 +238,13 @@ export async function raiseSos(db: Db, actor: Actor, now: Date) {
 // --- The visitor's link ------------------------------------------------------------
 
 /**
- * What a visitor sees from their link: no sign-in and no app. Only the street
- * is shown, never the house number or the host's name.
+ * What a visitor sees from their link: no sign-in and no app. Only the street is shown, never the house number or
+ * the host's name, and of their identity number only the last 4 characters.
  */
 export async function publicPass(db: Db, token: string, now: Date) {
   const p = await one<PassRow & HomeAddress & { township: string; gate_name: string | null; gate_lat: number | null; gate_lng: number | null }>(
     db,
-    `SELECT p.id, p.type, p.visitor_name, p.vehicle_no, p.code, p.valid_from, p.valid_until, p.max_entries, p.status, p.created_at,
+    `SELECT ${PASS_COLUMNS},
             (SELECT count(*)::int FROM visitor_entries e WHERE e.pass_id = p.id) AS entries, NULL AS last_entry_at,
             ${HOME_ADDRESS_COLUMNS}, t.name AS township, t.gate_name, t.gate_lat, t.gate_lng
        FROM visitor_passes p JOIN homes h ON h.id = p.home_id JOIN townships t ON t.id = p.township_id
@@ -225,6 +253,7 @@ export async function publicPass(db: Db, token: string, now: Date) {
   );
   if (!p) throw notFound('Pass');
   const status = passStatus(p, now);
+  const usable = status === 'ACTIVE' || status === 'NOT_YET';
   return {
     status,
     type: p.type,
@@ -232,13 +261,57 @@ export async function publicPass(db: Db, token: string, now: Date) {
     visitorName: p.visitor_name,
     vehicleNo: p.vehicle_no,
     // The code is only useful while the pass can still be used.
-    code: status === 'ACTIVE' || status === 'NOT_YET' ? p.code : null,
+    code: usable ? p.code : null,
     validFrom: p.valid_from,
     validUntil: p.valid_until,
     township: p.township,
     street: p.street,
     gate: p.gate_name ? { name: p.gate_name, lat: p.gate_lat, lng: p.gate_lng } : null,
+    details: maskedDetails(p),
+    // What the visitor can still give before they arrive. Anything already given cannot be changed here.
+    missing: usable ? missingOf(p) : [],
   };
+}
+
+/** Only the details still missing are taken; what the host already gave stays as it is. */
+function onlyMissing(input: DetailsInput, missing: VisitorDetail[], options: { licenceUpdate?: boolean } = {}): DetailsInput {
+  const out: DetailsInput = {};
+  if (missing.includes('identity')) Object.assign(out, { citizenship: input.citizenship, idNumber: input.idNumber });
+  if (missing.includes('transport')) Object.assign(out, { transport: input.transport, vehicleNo: input.vehicleNo, licenceExpiry: input.licenceExpiry });
+  if (missing.includes('vehicleNo')) out.vehicleNo = input.vehicleNo;
+  if (missing.includes('licenceExpiry') || options.licenceUpdate) out.licenceExpiry = input.licenceExpiry;
+  if (missing.includes('reason')) Object.assign(out, { reason: input.reason, reasonOther: input.reasonOther });
+  return out;
+}
+
+/** The visitor gives the details their host left for them, on their own link, before they arrive. */
+export async function completePassDetails(db: Db, token: string, input: DetailsInput, now: Date) {
+  const today = await todayIn(db, now);
+  await db.tx(async (tx) => {
+    const p = await one<PassRow>(
+      tx,
+      `SELECT ${PASS_COLUMNS}, (SELECT count(*)::int FROM visitor_entries e WHERE e.pass_id = p.id) AS entries, NULL AS last_entry_at
+         FROM visitor_passes p WHERE p.token_hash = $1 FOR UPDATE OF p`,
+      [hashToken(token)],
+    );
+    if (!p) throw notFound('Pass');
+    const status = passStatus(p, now);
+    if (status !== 'ACTIVE' && status !== 'NOT_YET') throw ruleViolation(`PASS_${status}`, 'This pass can no longer be used. Ask your host for a new one.');
+    const missing = missingOf(p);
+    if (missing.length === 0) throw conflict('DETAILS_GIVEN', 'Your details are already complete. The guard checks them at the gate.');
+    const next = mergeDetails(p, onlyMissing(input, missing), today);
+    requireComplete(next);
+    await writePassDetails(tx, p.id, next, missing.includes('identity') ? 'VISITOR' : null);
+  });
+  return publicPass(db, token, now);
+}
+
+async function writePassDetails(q: Queryable, passId: string, d: StoredDetails, detailsBy: 'VISITOR' | 'GUARD' | null) {
+  await q.query(
+    `UPDATE visitor_passes SET citizenship = $2, id_number_enc = $3, id_last4 = $4, transport = $5, vehicle_no = $6, licence_expiry = $7,
+            reason = $8, reason_other = $9, details_by = coalesce($10, details_by) WHERE id = $1`,
+    [passId, d.citizenship, d.id_number_enc, d.id_last4, d.transport, d.vehicle_no, d.licence_expiry, d.reason, d.reason_other, detailsBy],
+  );
 }
 
 // --- The guard ------------------------------------------------------------------------
@@ -246,20 +319,28 @@ export async function publicPass(db: Db, token: string, now: Date) {
 /** A scanned QR code reads "KITAPASS:<code>"; a typed code is just the code. */
 export const normalisePassCode = (input: string) => input.trim().toUpperCase().replace(/^KITAPASS:/, '');
 
+/** What the guard sees about a visitor: everything, including the full identity number to compare with the card. */
+function guardView(d: StoredDetails) {
+  return { ...maskedDetails(d), idNumber: decryptIdNumber(d.id_number_enc) };
+}
+
+const expiredLicence = (d: StoredDetails, today: string) => Boolean(d.licence_expiry && licenceExpired(d.licence_expiry, today));
+
 /**
- * The guard scans a pass. A valid pass opens an entry, and the host is told the
- * moment their visitor arrives. An invalid one says why, so the guard can act.
+ * The guard scans a pass. A valid pass with every detail opens an entry, and the host is told the moment their
+ * visitor arrives (in the app and by email). If details are missing, or the driving licence has expired, nothing is
+ * recorded yet: the guard is shown what is needed, fills it in and scans again with it. An invalid pass says why.
  */
-export async function scanPass(db: Db, actor: Actor, rawCode: string, now: Date) {
+export async function scanPass(db: Db, actor: Actor, rawCode: string, now: Date, details?: DetailsInput) {
   const townshipId = townshipOf(actor);
   const code = normalisePassCode(rawCode);
+  const today = await todayIn(db, now);
   return db.tx(async (tx) => {
-    const p = await one<PassRow & HomeAddress & { home_id: string; host_user_id: string }>(
+    const p = await one<PassRow & HomeAddress & { home_id: string; host_user_id: string; gate_name: string | null }>(
       tx,
-      `SELECT p.id, p.type, p.visitor_name, p.vehicle_no, p.code, p.valid_from, p.valid_until, p.max_entries, p.status, p.created_at,
-              p.home_id, p.host_user_id, NULL AS last_entry_at,
+      `SELECT ${PASS_COLUMNS}, p.home_id, p.host_user_id, NULL AS last_entry_at, t.gate_name,
               (SELECT count(*)::int FROM visitor_entries e WHERE e.pass_id = p.id) AS entries, ${HOME_ADDRESS_COLUMNS}
-         FROM visitor_passes p JOIN homes h ON h.id = p.home_id
+         FROM visitor_passes p JOIN homes h ON h.id = p.home_id JOIN townships t ON t.id = p.township_id
         WHERE p.code = $1 AND p.township_id = $2 FOR UPDATE OF p`,
       [code, townshipId],
     );
@@ -274,48 +355,67 @@ export async function scanPass(db: Db, actor: Actor, rawCode: string, now: Date)
       };
       throw ruleViolation(`PASS_${status}`, why[status]);
     }
+    const head = { passId: p.id, visitorName: p.visitor_name, type: p.type, typeLabel: PASS_TYPE_INFO[p.type].label, house: shortAddress(p), street: p.street };
+    const missing = missingOf(p);
+    const expired = expiredLicence(p, today);
+    let d: StoredDetails = p;
+    if (missing.length > 0 || expired) {
+      if (!details) {
+        return { outcome: 'NEEDS_DETAILS' as const, ...head, missing: expired ? [...missing, 'licenceExpiry' as const] : missing, licenceExpired: expired, details: guardView(p) };
+      }
+      d = mergeDetails(p, onlyMissing(details, missing, { licenceUpdate: expired }), today);
+      requireComplete(d);
+      if (expiredLicence(d, today)) throw fieldErrors({ licenceExpiry: 'This driving licence has expired. A visitor cannot drive in on it.' });
+      await writePassDetails(tx, p.id, d, missing.includes('identity') ? 'GUARD' : null);
+    }
     const entry = await one<{ id: string }>(
       tx,
-      `INSERT INTO visitor_entries (township_id, home_id, pass_id, kind, visitor_name, vehicle_no, guard_user_id, entered_at)
-       VALUES ($1, $2, $3, 'PASS', $4, $5, $6, $7) RETURNING id`,
-      [townshipId, p.home_id, p.id, p.visitor_name, p.vehicle_no, actor.id, now],
+      `INSERT INTO visitor_entries (township_id, home_id, pass_id, kind, visitor_name, vehicle_no, guard_user_id, entered_at,
+                                    citizenship, id_number_enc, id_last4, transport, licence_expiry, reason, reason_other)
+       VALUES ($1, $2, $3, 'PASS', $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING id`,
+      [townshipId, p.home_id, p.id, p.visitor_name, d.vehicle_no, actor.id, now, d.citizenship, d.id_number_enc, d.id_last4, d.transport, d.licence_expiry, d.reason, d.reason_other],
     );
     const tz = (await getSettings(tx)).timezone;
     await notify(tx, [p.host_user_id], { title: `${p.visitor_name} arrived at ${timeIn(now, tz)}`, body: 'Scanned in at the main gate.', link: '/app/tamu' });
+    await emailVisitorArrived(tx, [p.host_user_id], { entryId: entry!.id, visitorName: p.visitor_name, details: d, gate: p.gate_name, at: now });
     if (p.type === 'CONTRACTOR') await onCollectionGateEntry(tx, p.id);
-    return {
-      entryId: entry!.id,
-      visitorName: p.visitor_name,
-      vehicleNo: p.vehicle_no,
-      type: p.type,
-      typeLabel: PASS_TYPE_INFO[p.type].label,
-      house: shortAddress(p),
-      street: p.street,
-    };
+    return { outcome: 'LET_IN' as const, entryId: entry!.id, ...head, vehicleNo: d.vehicle_no, details: guardView(d) };
   });
 }
 
-/** A visitor with no pass: the guard records name, vehicle and house, and the host is asked. */
-export async function logWalkIn(db: Db, actor: Actor, input: { visitorName: string; vehicleNo?: string; homeId: string }, now: Date) {
+/**
+ * A visitor with no pass: the guard records their details and the house, and everyone in the home is asked (in the
+ * app and by email). A driving licence that has expired is refused: they cannot be logged to drive in.
+ */
+export async function logWalkIn(db: Db, actor: Actor, input: DetailsInput & { visitorName: string; homeId: string }, now: Date) {
   const townshipId = townshipOf(actor);
+  const d = mergeDetails(null, input, await todayIn(db, now));
+  requireComplete(d);
   return db.tx(async (tx) => {
-    const home = await one<HomeAddress & { id: string }>(tx, `SELECT h.id, ${HOME_ADDRESS_COLUMNS} FROM homes h WHERE h.id = $1 AND h.township_id = $2`, [input.homeId, townshipId]);
+    const home = await one<HomeAddress & { id: string; gate_name: string | null }>(
+      tx,
+      `SELECT h.id, ${HOME_ADDRESS_COLUMNS}, t.gate_name FROM homes h JOIN townships t ON t.id = h.township_id WHERE h.id = $1 AND h.township_id = $2`,
+      [input.homeId, townshipId],
+    );
     if (!home) throw notFound('Home');
     const entry = await one<{ id: string }>(
       tx,
-      `INSERT INTO visitor_entries (township_id, home_id, kind, visitor_name, vehicle_no, guard_user_id, entered_at)
-       VALUES ($1, $2, 'WALK_IN', $3, $4, $5, $6) RETURNING id`,
-      [townshipId, home.id, input.visitorName, input.vehicleNo?.toUpperCase() || null, actor.id, now],
+      `INSERT INTO visitor_entries (township_id, home_id, kind, visitor_name, vehicle_no, guard_user_id, entered_at,
+                                    citizenship, id_number_enc, id_last4, transport, licence_expiry, reason, reason_other)
+       VALUES ($1, $2, 'WALK_IN', $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id`,
+      [townshipId, home.id, input.visitorName, d.vehicle_no, actor.id, now, d.citizenship, d.id_number_enc, d.id_last4, d.transport, d.licence_expiry, d.reason, d.reason_other],
     );
     const household = await tx.query<{ id: string }>(
       `SELECT id FROM users WHERE home_id = $1 AND role = 'RESIDENT' AND residency_status = 'VERIFIED' AND status = 'ACTIVE'`,
       [home.id],
     );
-    await notify(tx, household.map((u) => u.id), {
+    const people = household.map((u) => u.id);
+    await notify(tx, people, {
       title: `${input.visitorName} is at the main gate`,
       body: 'Are you expecting them? Reply Expected, Not expected or Call me.',
       link: '/app/tamu',
     });
+    await emailVisitorAtGate(tx, people, { entryId: entry!.id, visitorName: input.visitorName, details: d, gate: home.gate_name, at: now });
     return { entryId: entry!.id, house: shortAddress(home), notified: household.length };
   });
 }
@@ -347,8 +447,10 @@ export async function guardOverview(db: Db, actor: Actor, now: Date) {
   const townshipId = townshipOf(actor);
   const tz = (await getSettings(db)).timezone;
   const [entries, sos, patrol, floods, township] = await Promise.all([
-    db.query<HomeAddress & Record<string, unknown>>(
-      `SELECT e.id, e.kind, e.visitor_name, e.vehicle_no, e.host_reply, e.entered_at, e.exited_at, p.type AS pass_type, ${HOME_ADDRESS_COLUMNS}
+    db.query<HomeAddress & StoredDetails & Record<string, unknown>>(
+      `SELECT e.id, e.kind, e.visitor_name, e.host_reply, e.entered_at, e.exited_at, p.type AS pass_type,
+              e.citizenship, e.id_number_enc, e.id_last4, e.transport, e.vehicle_no, e.licence_expiry::text AS licence_expiry, e.reason, e.reason_other,
+              ${HOME_ADDRESS_COLUMNS}
          FROM visitor_entries e JOIN homes h ON h.id = e.home_id LEFT JOIN visitor_passes p ON p.id = e.pass_id
         WHERE e.township_id = $1 AND e.entered_at > $2::timestamptz - interval '24 hours'
         ORDER BY e.entered_at DESC LIMIT 100`,
@@ -378,9 +480,12 @@ export async function guardOverview(db: Db, actor: Actor, now: Date) {
   return {
     township: township!.name,
     gate: township!.gate_name,
-    entries: entries.map(({ property_type, house_no, building, street, precinct, postcode, city, state, ...rest }) => ({
+    // The log shows the last 4 characters of an identity number; the full number appears only when scanning.
+    entries: entries.map(({ property_type, house_no, building, street, precinct, postcode, city, state, citizenship, id_number_enc, id_last4, transport, vehicle_no, licence_expiry, reason, reason_other, ...rest }) => ({
       ...rest,
+      vehicle_no,
       house: shortAddress({ property_type, house_no, building, street, precinct, postcode, city, state }),
+      details: maskedDetails({ citizenship, id_number_enc, id_last4, transport, vehicle_no, licence_expiry, reason, reason_other }),
     })),
     sos: sos.map((s) => ({ id: s.id, status: s.status, created_at: s.created_at, full_name: s.full_name, phone: s.phone, address: formatAddress(s) })),
     patrol,
@@ -416,7 +521,7 @@ export async function listPatrolPointsForStaff(db: Db, actor: Actor) {
   return db.query('SELECT id, seq, name, code FROM patrol_points WHERE ($1::uuid IS NULL OR township_id = $1) ORDER BY seq', [actor.townshipId]);
 }
 
-/** BR26: visitor records are deleted after 90 days. Part of the daily cleanup job. */
+/** BR26: visitor records, with every detail in them, are deleted after 90 days. Part of the daily cleanup job. */
 export async function deleteOldVisitorRecords(q: Queryable, now: Date): Promise<{ entries: number; passes: number }> {
   const entries = await q.query(`DELETE FROM visitor_entries WHERE entered_at < $1::timestamptz - make_interval(days => $2) RETURNING id`, [now, VISITOR_RETENTION_DAYS]);
   const passes = await q.query(`DELETE FROM visitor_passes WHERE valid_until < $1::timestamptz - make_interval(days => $2) RETURNING id`, [now, VISITOR_RETENTION_DAYS]);

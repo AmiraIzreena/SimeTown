@@ -37,6 +37,7 @@ import {
   logWalkIn,
   scanPass,
 } from "../src/server/modules/tamu/service";
+import { demoVisitorDetails } from "../src/server/modules/tamu/demo-details";
 import { ELMINA_LOOPS } from "./elmina-loops";
 
 /**
@@ -549,7 +550,7 @@ export async function seedThirdEdition(
       {
         type: "ONE_VISIT",
         visitorName: "Puan Rahmah (Mak)",
-        vehicleNo: "BKL 2408",
+        ...demoVisitorDetails(now, "family"),
         validFrom: now,
         validUntil: new Date(now.getTime() + 20 * 3_600_000),
       },
@@ -561,6 +562,7 @@ export async function seedThirdEdition(
       {
         type: "REGULAR_HELPER",
         visitorName: "Kak Siti (cleaner)",
+        ...demoVisitorDetails(now, "helper"),
         validFrom: now,
         validUntil: new Date(now.getTime() + 60 * DAY),
       },
@@ -573,7 +575,10 @@ export async function seedThirdEdition(
       {
         type: "CONTRACTOR",
         visitorName: "Aircon service (Sejuk Bina)",
+        // The technician gives their own identity on the pass link: Priya's pass waits for it.
+        transport: "VAN",
         vehicleNo: "WA 5521 K",
+        reason: "MAINTENANCE",
         validFrom: now,
         validUntil: new Date(now.getTime() + 3 * DAY),
       },
@@ -584,8 +589,8 @@ export async function seedThirdEdition(
       guard,
       {
         visitorName: "Food delivery rider",
-        vehicleNo: "VBN 772",
         homeId: daniel.homeId!,
+        ...demoVisitorDetails(now, "rider"),
       },
       new Date(now.getTime() + 120_000),
     );

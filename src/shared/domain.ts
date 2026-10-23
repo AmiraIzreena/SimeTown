@@ -185,6 +185,87 @@ export const PASS_TYPE_INFO: Record<PassType, { label: string; maxDays: number; 
 export const HOST_REPLIES = ['EXPECTED', 'NOT_EXPECTED', 'CALL_ME'] as const;
 export type HostReply = (typeof HOST_REPLIES)[number];
 
+/*
+ * Visitor details (BR26, revised 2026-10-23): citizenship, identity number, how the visitor travels, their driving
+ * licence's expiry when they drive, and the reason for the visit. The same rules check the resident's pass form,
+ * the visitor's own link, the guard's walk-in form and the server.
+ */
+export const CITIZENSHIPS = ['MALAYSIAN', 'NON_MALAYSIAN'] as const;
+export type Citizenship = (typeof CITIZENSHIPS)[number];
+export const CITIZENSHIP_LABELS: Record<Citizenship, string> = { MALAYSIAN: 'Malaysian citizen', NON_MALAYSIAN: 'Non-Malaysian citizen' };
+
+export const TRANSPORT_MODES = ['ON_FOOT', 'CAR', 'MOTORCYCLE', 'BICYCLE', 'VAN', 'LORRY', 'BUS', 'E_HAILING', 'OTHER'] as const;
+export type TransportMode = (typeof TRANSPORT_MODES)[number];
+/** vehicle: the vehicle number is asked for (required when `licence`). licence: the visitor drives it, so a valid driving licence is needed. */
+export const TRANSPORT_INFO: Record<TransportMode, { label: string; vehicle: boolean; licence: boolean }> = {
+  ON_FOOT: { label: 'No vehicle (on foot)', vehicle: false, licence: false },
+  CAR: { label: 'Car', vehicle: true, licence: true },
+  MOTORCYCLE: { label: 'Motorcycle', vehicle: true, licence: true },
+  BICYCLE: { label: 'Bicycle', vehicle: false, licence: false },
+  VAN: { label: 'Van', vehicle: true, licence: true },
+  LORRY: { label: 'Lorry', vehicle: true, licence: true },
+  BUS: { label: 'Bus', vehicle: true, licence: true },
+  E_HAILING: { label: 'E-hailing or taxi', vehicle: true, licence: false },
+  OTHER: { label: 'Other', vehicle: true, licence: false },
+};
+
+export const VISIT_REASONS = ['VISITING', 'DELIVERY', 'CONTRACTOR', 'HELPER', 'CARER', 'EVENT', 'PROPERTY_VIEWING', 'MAINTENANCE', 'OTHER'] as const;
+export type VisitReason = (typeof VISIT_REASONS)[number];
+export const VISIT_REASON_LABELS: Record<VisitReason, string> = {
+  VISITING: 'Visiting family or friends',
+  DELIVERY: 'Delivery',
+  CONTRACTOR: 'Contractor or renovation',
+  HELPER: 'Domestic helper',
+  CARER: 'Carer',
+  EVENT: 'Event',
+  PROPERTY_VIEWING: 'Property viewing',
+  MAINTENANCE: 'Maintenance or repair',
+  OTHER: 'Other',
+};
+/** The reason picked for the resident when they choose a kind of pass. They can change it. */
+export const REASON_FOR_PASS_TYPE: Record<PassType, VisitReason> = {
+  ONE_VISIT: 'VISITING', REGULAR_HELPER: 'HELPER', DELIVERY: 'DELIVERY', EVENT: 'EVENT', CONTRACTOR: 'CONTRACTOR', CARER: 'CARER',
+};
+
+/**
+ * A visitor's identity number, cleaned up, or why it is not accepted. Malaysians give their MyKad or MyKid
+ * number (12 digits starting with a real date of birth; it is also their driving licence number). Others give
+ * the passport, identity card or driving licence number of their country.
+ */
+export function normaliseIdNumber(citizenship: Citizenship, raw: string): { ok: true; value: string } | { ok: false; error: string } {
+  const value = raw.replace(/[\s-]/g, '').toUpperCase();
+  if (citizenship === 'MALAYSIAN') {
+    if (!/^\d{12}$/.test(value)) return { ok: false, error: 'A MyKad or MyKid number has 12 digits, like 900101-00-1234.' };
+    const month = Number(value.slice(2, 4));
+    const day = Number(value.slice(4, 6));
+    const days = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1];
+    if (!days || day < 1 || day > days) return { ok: false, error: 'Check the number: its first 6 digits are the date of birth.' };
+    return { ok: true, value };
+  }
+  if (!/^[A-Z0-9]{5,20}$/.test(value)) return { ok: false, error: 'Use 5 to 20 letters and numbers, as printed on the passport, identity card or licence.' };
+  return { ok: true, value };
+}
+
+/** The last 4 characters, the only part of an identity number the household and the visitor's link ever show. */
+export const idLast4 = (normalised: string) => normalised.slice(-4);
+export const maskedId = (last4: string | null) => (last4 ? `•••• ${last4}` : '');
+
+/** A YYYY-MM-DD date before today (both in Malaysia time) means the licence has expired. */
+export const licenceExpired = (expiry: string, today: string) => expiry < today;
+
+export type VisitorDetail = 'identity' | 'transport' | 'vehicleNo' | 'licenceExpiry' | 'reason';
+/** What a visit still needs before the guard can let the visitor in. */
+export function missingVisitorDetails(d: { citizenship: string | null; hasId: boolean; transport: string | null; vehicleNo: string | null; licenceExpiry: string | null; reason: string | null }): VisitorDetail[] {
+  const missing: VisitorDetail[] = [];
+  if (!d.citizenship || !d.hasId) missing.push('identity');
+  if (!d.transport) missing.push('transport');
+  const info = d.transport ? TRANSPORT_INFO[d.transport as TransportMode] : null;
+  if (info?.licence && !d.vehicleNo) missing.push('vehicleNo');
+  if (info?.licence && !d.licenceExpiry) missing.push('licenceExpiry');
+  if (!d.reason) missing.push('reason');
+  return missing;
+}
+
 // --- SimeTown Home: home services ----------------------------------------------
 
 /** What a business account offers: a shop (points, offers), home services, or both. */

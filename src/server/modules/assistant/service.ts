@@ -1,3 +1,4 @@
+import { REASON_FOR_PASS_TYPE } from '@/shared/domain';
 import { ModelError, type ChatMessage } from '../../ai/chat';
 import { assertTownshipAccess, type Actor } from '../../auth/actor';
 import { getConfig } from '../../config';
@@ -248,9 +249,10 @@ export async function confirmAction(db: Db, actor: Actor, id: string, now: Date)
   try {
     if (action.kind === 'CREATE_VISITOR_PASS') {
       const p = action.params as { type: 'ONE_VISIT' | 'DELIVERY' | 'EVENT'; visitorName: string; vehicleNo?: string; validFrom: string; validUntil: string };
-      const pass = await createPass(db, actor, { type: p.type, visitorName: p.visitorName, vehicleNo: p.vehicleNo, validFrom: new Date(p.validFrom), validUntil: new Date(p.validUntil) }, now);
+      // The Assistant never handles identity numbers: the visitor gives them on their link, or the guard at the gate.
+      const pass = await createPass(db, actor, { type: p.type, visitorName: p.visitorName, vehicleNo: p.vehicleNo, reason: REASON_FOR_PASS_TYPE[p.type], validFrom: new Date(p.validFrom), validUntil: new Date(p.validUntil) }, now);
       shareUrl = `${getConfig().appOrigin}/pass/${pass.token}`;
-      text = `Done. ${action.summary} Pass code ${pass.code}. Share the link below with ${p.visitorName}; you can make a new link in Tamu any time.`;
+      text = `Done. ${action.summary} Pass code ${pass.code}. Share the link below with ${p.visitorName}: they add their identity and transport on it, or the guard fills them in at the gate. You can make a new link in Tamu any time.`;
       link = { href: '/app/tamu', label: 'Open Tamu' };
     } else {
       const { question } = action.params as { question: string };

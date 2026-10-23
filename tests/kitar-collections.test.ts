@@ -10,8 +10,12 @@ import {
   reportCollectionWeight, reportCollectorCame, reviewCollection, setCollectorActive,
 } from '@/server/modules/kitar/collections';
 import { createKiosk } from '@/server/modules/kitar/service';
+import { demoVisitorDetails } from '@/server/modules/tamu/demo-details';
 import { scanPass } from '@/server/modules/tamu/service';
 import { T0, at, freshDb, makeHome, makeResident, makeWorld, type World } from './helpers';
+
+/** The guard scans the collector in, typing their details as the gate asks on a pass SimeTown made. */
+const scanIn = (db: Parameters<typeof scanPass>[0], guard: Parameters<typeof scanPass>[1], code: string, when: Date) => scanPass(db, guard, code, when, demoVisitorDetails(when));
 
 /**
  * Booked collections run themselves: confirmed at booking, weighed by the
@@ -67,7 +71,7 @@ describe('The household types the weight', () => {
     const { resident, id, passCode } = await booked();
     // Before the day, there is nothing to weigh yet.
     await expect(reportCollectionWeight(db, resident, id, 5000, T0)).rejects.toMatchObject({ code: 'COLLECTION_NOT_YET' });
-    await scanPass(db, guard, passCode, at(1));
+    await scanIn(db, guard, passCode, at(1));
     expect(await titlesOf(resident.id)).toContain('How much did they take?');
     const mine = (await myCollections(db, resident, at(1))).find((x) => x.id === id)!;
     expect(mine).toMatchObject({ gate_scanned: true, can_report: true, in_review: false });
@@ -85,7 +89,7 @@ describe('The household types the weight', () => {
     const twoStops = (await createCollector(db, w.admin, { name: 'Two Stops', materials: ['E_WASTE'], days: 'Weekdays' })).id;
     const scanned = await booked('2026-11-03', undefined, twoStops);
     const other = await booked('2026-11-03', undefined, twoStops);
-    await scanPass(db, guard, scanned.passCode, at(1));
+    await scanIn(db, guard, scanned.passCode, at(1));
     expect((await myCollections(db, other.resident, at(1))).find((x) => x.id === other.id)).toMatchObject({ gate_scanned: false, collector_at_gate: true, can_report: true });
     const result = await reportCollectionWeight(db, other.resident, other.id, 3000, at(1));
     expect(result.status).toBe('COLLECTED');
@@ -125,7 +129,7 @@ describe('The household types the weight', () => {
 
   it('credits a big weight after a gate scan, counted up to the material’s maximum, with the household’s figure kept', async () => {
     const { resident, id, passCode } = await booked();
-    await scanPass(db, guard, passCode, at(1));
+    await scanIn(db, guard, passCode, at(1));
     const result = await reportCollectionWeight(db, resident, id, 150_000, at(1));
     expect(result.status).toBe('COLLECTED');
     expect(await collection(id)).toMatchObject({ status: 'COLLECTED', weight_g: COUNT_UP_TO_G.E_WASTE, reported_weight_g: 150_000, review_reason: null });
@@ -134,7 +138,7 @@ describe('The household types the weight', () => {
 
   it('still lets staff settle an older held weight, with a corrected weight through the same credit step', async () => {
     const { resident, id, passCode } = await booked();
-    await scanPass(db, guard, passCode, at(1));
+    await scanIn(db, guard, passCode, at(1));
     // Held under the old rules, before weights settled themselves.
     await db.query(`UPDATE recycling_collections SET reported_weight_g = $2, reported_at = $3, review_reason = 'OVER_LIMIT' WHERE id = $1`, [id, AUTO_ACCEPT_MAX_G + 1, at(1)]);
     const queue = await collectionExceptions(db, w.staff, at(1));
@@ -155,7 +159,7 @@ describe('The household types the weight', () => {
     const ids: string[] = [];
     for (const day of ['2026-11-03', '2026-11-04', '2026-11-05']) {
       const b = await booked(day, resident);
-      await scanPass(db, guard, b.passCode, new Date(`${day}T04:00:00Z`));
+      await scanIn(db, guard, b.passCode, new Date(`${day}T04:00:00Z`));
       ids.push(b.id);
     }
     // All three weighed on the Thursday: the KITAR_DROPOFF rule allows two a day per person.
@@ -176,7 +180,7 @@ describe('The nightly recycling job', () => {
     await runJob(db, 'recycling', T0);
     expect(await titlesOf(reminded.resident.id)).toContain('Collection tomorrow');
 
-    await scanPass(db, guard, unweighed.passCode, at(1));
+    await scanIn(db, guard, unweighed.passCode, at(1));
     // No scan on its own pass, but the collector was at the gate that day for another home: credited at once.
     expect((await reportCollectionWeight(db, held.resident, held.id, 2000, at(1))).status).toBe('COLLECTED');
 
@@ -207,7 +211,7 @@ describe('A missed collection the household disputes', () => {
     const late = await booked('2026-11-03', undefined, disputeCo);
     const seenThatDay = await booked('2026-11-04', undefined, disputeCo);
     const neighbour = await booked('2026-11-04', undefined, disputeCo);
-    await scanPass(db, guard, neighbour.passCode, at(2)); // the collector came in on the neighbour's pass only
+    await scanIn(db, guard, neighbour.passCode, at(2)); // the collector came in on the neighbour's pass only
     const staffBefore = await titlesOf(w.staff.id);
     await runJob(db, 'recycling', at(3));
     expect((await myCollections(db, noRecord.resident, at(3))).find((x) => x.id === noRecord.id)).toMatchObject({ status: 'MISSED', can_dispute: true });
@@ -239,7 +243,7 @@ describe('Flags for staff and HQ', () => {
     const resident = await makeResident(w, { homeId });
     for (const day of ['2026-11-03', '2026-11-04', '2026-11-05']) {
       const b = await booked(day, resident);
-      await scanPass(db, guard, b.passCode, new Date(`${day}T04:00:00Z`));
+      await scanIn(db, guard, b.passCode, new Date(`${day}T04:00:00Z`));
       await reportCollectionWeight(db, resident, b.id, 40_000, new Date(`${day}T05:00:00Z`));
     }
     const hqBefore = (await titlesOf(w.hq.id)).filter((t) => t === 'Home to check: recycling').length;
@@ -394,7 +398,7 @@ describe('Collection history for staff, admins and HQ', () => {
   it('lists what each household logged with what was counted, and searches, filters and pages on the server', async () => {
     const historyCo = (await createCollector(db, w.admin, { name: 'History Haulers', materials: ['E_WASTE', 'PAPER'], days: 'Weekdays' })).id;
     const big = await booked('2026-11-03', undefined, historyCo);
-    await scanPass(db, guard, big.passCode, at(1));
+    await scanIn(db, guard, big.passCode, at(1));
     await reportCollectionWeight(db, big.resident, big.id, 150_000, at(1));
     const none = await booked('2026-11-04', undefined, historyCo);
     await reportCollectionWeight(db, none.resident, none.id, 2000, at(3)); // after the day, no gate record

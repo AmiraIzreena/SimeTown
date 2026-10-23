@@ -2,14 +2,22 @@
 
 import { Text } from '@/components/ui/localized-text';
 
-import { CalendarClock, Car, MapPin, Navigation, ShieldCheck } from 'lucide-react';
+import { CalendarClock, Car, CheckCircle2, IdCard, MapPin, Navigation, Send, ShieldCheck } from 'lucide-react';
+import { useState, type FormEvent } from 'react';
 import { Logo } from '@/components/shell/logo';
+import {
+  detailsBody, emptyVisitorForm, partsMissing, VisitorDetailsFields, VisitorDetailsSummary, type VisitorDetailsView, type VisitorForm,
+} from '@/components/features/visitor-details';
 import { Button } from '@/components/ui/button';
 import { Badge, Card } from '@/components/ui/card';
 import { Async, EmptyState } from '@/components/ui/feedback';
+import { Checkbox } from '@/components/ui/field';
+import { LocalizedLink as Link } from '@/components/ui/localized-elements';
 import { QrCode } from '@/components/ui/qr';
+import { api } from '@/lib/api';
 import { formatDateTime } from '@/lib/format';
-import { useApi } from '@/lib/hooks';
+import { useAction, useApi } from '@/lib/hooks';
+import type { VisitorDetail } from '@/shared/domain';
 
 interface PublicPass {
   status: 'ACTIVE' | 'NOT_YET' | 'USED' | 'EXPIRED' | 'CANCELLED';
@@ -22,6 +30,8 @@ interface PublicPass {
   township: string;
   street: string;
   gate: { name: string; lat: number; lng: number } | null;
+  details: VisitorDetailsView;
+  missing: VisitorDetail[];
 }
 
 const WORDS: Record<PublicPass['status'], { label: string; tone: 'success' | 'brand' | 'neutral' | 'warning'; text: string }> = {
@@ -33,8 +43,45 @@ const WORDS: Record<PublicPass['status'], { label: string; tone: 'success' | 'br
 };
 
 /**
- * What the visitor sees from their link. No sign-in and no app. Only the
- * street is shown, never the house number or the host's name.
+ * The details the host left for the visitor: given here, before they come, so the gate is quick. With the
+ * visitor's agreement, which is required. What the host already gave is not shown for changing.
+ */
+function CompleteDetails({ token, pass, onDone }: { token: string; pass: PublicPass; onDone: (next: PublicPass) => void }) {
+  const [form, setForm] = useState<VisitorForm>(() => ({ ...emptyVisitorForm(), transport: pass.details.transport ?? '', vehicleNo: pass.details.vehicleNo ?? '' }));
+  const [consent, setConsent] = useState(false);
+  const parts = partsMissing(pass.missing);
+  const save = useAction((body: Record<string, unknown>) => api.post<PublicPass>(`/passes/${token}/details`, body), {
+    success: 'Thank you. Your details are with the gate.',
+    onSuccess: onDone,
+  });
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    void save.run({ ...detailsBody(form, parts), consent });
+  };
+  return (
+    <form method="post" noValidate onSubmit={submit} className="space-y-4 border-t border-ink-100 bg-gold-50/60 px-6 py-5">
+      <div className="flex items-start gap-3">
+        <IdCard className="mt-0.5 size-5 shrink-0 text-gold-700" aria-hidden />
+        <div>
+          <p className="font-semibold text-ink-900"><Text>Before you come: your details for the gate</Text></p>
+          <p className="text-sm text-ink-600"><Text>Your host asked you to give these yourself. It makes the gate quicker. If you prefer, the guard can fill them in from your identity card when you arrive.</Text></p>
+        </div>
+      </div>
+      <VisitorDetailsFields form={form} onChange={setForm} parts={parts} errors={save.fields} />
+      <Checkbox
+        checked={consent}
+        onChange={(event) => setConsent(event.target.checked)}
+        error={save.fields.consent}
+        label={<><Text>I agree that SimeTown keeps these details for township security, shows the number in full only to the guard at the gate, and deletes them after 90 days. See the </Text><Link href="/privacy" className="font-semibold text-brand-700 underline"><Text>Privacy Notice</Text></Link><Text>.</Text></>}
+      />
+      <Button type="submit" pending={save.pending}><Send className="size-4" aria-hidden /><Text>Send my details</Text></Button>
+    </form>
+  );
+}
+
+/**
+ * What the visitor sees from their link. No sign-in and no app. Only the street is shown, never the house number
+ * or the host's name, and of their identity number only the last 4 characters.
  */
 export function PassView({ token }: { token: string | null }) {
   const pass = useApi<PublicPass>(token ? `/passes/${token}` : null);
@@ -49,6 +96,7 @@ export function PassView({ token }: { token: string | null }) {
             <Async state={pass}>
               {(p) => {
                 const w = WORDS[p.status];
+                const hasDetails = Boolean(p.details.citizenship || p.details.transport || p.details.reason);
                 return (
                   <Card className="overflow-hidden">
                     <div className="border-b border-ink-100 px-6 py-5 text-center">
@@ -68,44 +116,49 @@ export function PassView({ token }: { token: string | null }) {
                       <p className="text-center text-[15px] text-ink-700"><Text>{w.text}</Text></p>
                     </div>
                     <dl className="space-y-3 border-t border-ink-100 px-6 py-5 text-[15px]">
-                      <div className="flex gap-3">
-                        <ShieldCheck className="mt-0.5 size-5 shrink-0 text-brand-600" aria-hidden />
-                        <div>
-                          <dt className="text-xs font-medium text-ink-500"><Text>Visitor</Text></dt>
-                          <dd className="font-semibold text-ink-900">
-                            {p.visitorName} · <Text>{p.typeLabel}</Text>
-                          </dd>
-                        </div>
+                      <div className="grid grid-cols-[1.25rem_minmax(0,1fr)] gap-x-3">
+                        <ShieldCheck className="row-span-2 mt-0.5 size-5 shrink-0 text-brand-600" aria-hidden />
+                        <dt className="text-xs font-medium text-ink-500"><Text>Visitor</Text></dt>
+                        <dd className="font-semibold text-ink-900">
+                          {p.visitorName} · <Text>{p.typeLabel}</Text>
+                        </dd>
                       </div>
-                      {p.vehicleNo && (
-                        <div className="flex gap-3">
-                          <Car className="mt-0.5 size-5 shrink-0 text-brand-600" aria-hidden />
-                          <div>
-                            <dt className="text-xs font-medium text-ink-500"><Text>Vehicle</Text></dt>
-                            <dd className="font-semibold text-ink-900">{p.vehicleNo}</dd>
-                          </div>
+                      {hasDetails ? (
+                        <div className="grid grid-cols-[1.25rem_minmax(0,1fr)] gap-x-3">
+                          <IdCard className="row-span-2 mt-0.5 size-5 shrink-0 text-brand-600" aria-hidden />
+                          <dt className="text-xs font-medium text-ink-500"><Text>Your details</Text></dt>
+                          <dd><VisitorDetailsSummary details={p.details} vehicleNo={p.vehicleNo} className="mt-0.5" /></dd>
+                        </div>
+                      ) : p.vehicleNo && (
+                        <div className="grid grid-cols-[1.25rem_minmax(0,1fr)] gap-x-3">
+                          <Car className="row-span-2 mt-0.5 size-5 shrink-0 text-brand-600" aria-hidden />
+                          <dt className="text-xs font-medium text-ink-500"><Text>Vehicle</Text></dt>
+                          <dd className="font-semibold text-ink-900">{p.vehicleNo}</dd>
                         </div>
                       )}
-                      <div className="flex gap-3">
-                        <CalendarClock className="mt-0.5 size-5 shrink-0 text-brand-600" aria-hidden />
-                        <div>
-                          <dt className="text-xs font-medium text-ink-500"><Text>Valid</Text></dt>
-                          <dd className="text-ink-900">
-                            <Text>{formatDateTime(p.validFrom)}</Text><Text> to </Text><Text>{formatDateTime(p.validUntil)}</Text>
-                          </dd>
-                        </div>
+                      <div className="grid grid-cols-[1.25rem_minmax(0,1fr)] gap-x-3">
+                        <CalendarClock className="row-span-2 mt-0.5 size-5 shrink-0 text-brand-600" aria-hidden />
+                        <dt className="text-xs font-medium text-ink-500"><Text>Valid</Text></dt>
+                        <dd className="text-ink-900">
+                          <Text>{formatDateTime(p.validFrom)}</Text><Text> to </Text><Text>{formatDateTime(p.validUntil)}</Text>
+                        </dd>
                       </div>
-                      <div className="flex gap-3">
-                        <MapPin className="mt-0.5 size-5 shrink-0 text-brand-600" aria-hidden />
-                        <div>
-                          <dt className="text-xs font-medium text-ink-500"><Text>Going to</Text></dt>
-                          <dd className="text-ink-900">
-                            <Text>{p.street}</Text>
-                            <Text>{p.gate && `, through the ${p.gate.name}`}</Text>
-                          </dd>
-                        </div>
+                      <div className="grid grid-cols-[1.25rem_minmax(0,1fr)] gap-x-3">
+                        <MapPin className="row-span-2 mt-0.5 size-5 shrink-0 text-brand-600" aria-hidden />
+                        <dt className="text-xs font-medium text-ink-500"><Text>Going to</Text></dt>
+                        <dd className="text-ink-900">
+                          <Text>{p.street}</Text>
+                          <Text>{p.gate && `, through the ${p.gate.name}`}</Text>
+                        </dd>
                       </div>
                     </dl>
+                    {p.missing.length > 0 ? (
+                      <CompleteDetails token={token} pass={p} onDone={(next) => void pass.mutate(next, { revalidate: false })} />
+                    ) : hasDetails && (p.status === 'ACTIVE' || p.status === 'NOT_YET') && (
+                      <p className="flex items-center gap-2 border-t border-ink-100 bg-success-50 px-6 py-3 text-sm text-success-700">
+                        <CheckCircle2 className="size-4 shrink-0" aria-hidden /><Text>Your details are with the gate. Bring your identity card: the guard checks it and hands it straight back.</Text>
+                      </p>
+                    )}
                     {p.gate && (
                       <div className="grid gap-2 border-t border-ink-100 bg-ink-25 px-6 py-4 sm:grid-cols-2">
                         <Button href={`https://waze.com/ul?ll=${p.gate.lat},${p.gate.lng}&navigate=yes`}>
@@ -119,7 +172,7 @@ export function PassView({ token }: { token: string | null }) {
               }}
             </Async>
           )}
-          <p className="mt-6 text-center text-xs text-brand-100/80"><Text>SimeTown does not ask for or keep any identity card. The guard records your name, vehicle number and the house you visit only.</Text></p>
+          <p className="mt-6 text-center text-xs text-brand-100/80"><Text>For township security the gate records your name, citizenship, identity number, transport and the reason for your visit. The number is stored encrypted, shown in full only to the guard, and deleted after 90 days. The guard never keeps your identity card.</Text></p>
         </div>
       </div>
     </div>

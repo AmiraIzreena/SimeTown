@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { HOST_REPLIES, PASS_TYPES, STAFF, type Role } from '@/shared/domain';
+import { CITIZENSHIPS, HOST_REPLIES, PASS_TYPES, STAFF, TRANSPORT_MODES, VISIT_REASONS, type Role } from '@/shared/domain';
 import { notFound } from '../../errors';
 import { emptyBody, route, zId, zText } from '../../http/router';
 import * as tamu from './service';
@@ -9,6 +9,16 @@ const GATE: Role[] = ['GUARD', 'TOWNSHIP_STAFF', 'TOWNSHIP_ADMIN'];
 const zVehicle = z.string().trim().max(12).regex(/^[A-Za-z0-9 ]*$/, 'Letters and numbers only.').optional();
 const zVisitor = zText(80, 2);
 const zPassCode = z.string().trim().min(6).max(24).regex(/^[A-Za-z0-9:]+$/, 'Check the code.');
+/** Visitor details (BR26, revised). Which are required depends on who gives them; the service checks that. */
+const zDetails = {
+  citizenship: z.enum(CITIZENSHIPS).optional(),
+  idNumber: z.string().trim().max(30).optional(),
+  transport: z.enum(TRANSPORT_MODES).optional(),
+  vehicleNo: zVehicle,
+  licenceExpiry: z.iso.date().optional(),
+  reason: z.enum(VISIT_REASONS).optional(),
+  reasonOther: z.string().trim().max(80).optional(),
+};
 
 export const tamuRoutes = [
   route({
@@ -16,10 +26,10 @@ export const tamuRoutes = [
     handler: (c) => tamu.tamuOverview(c.db, c.actor, c.now),
   }),
   route({
-    method: 'POST', path: '/tamu/passes', tag: 'Tamu', summary: 'Create a visitor pass; the link is returned once', auth: 'session', roles: ['RESIDENT'],
+    method: 'POST', path: '/tamu/passes', tag: 'Tamu', summary: 'Create a visitor pass with the visitor’s details (the identity may be left for the visitor); the link is returned once', auth: 'session', roles: ['RESIDENT'],
     rateLimit: { limit: 30, windowSec: 3600, by: 'user' },
-    body: z.object({ type: z.enum(PASS_TYPES), visitorName: zVisitor, vehicleNo: zVehicle, validFrom: z.coerce.date(), validUntil: z.coerce.date() }),
-    handler: (c) => tamu.createPass(c.db, c.actor, c.body, c.now),
+    body: z.object({ type: z.enum(PASS_TYPES), visitorName: zVisitor, validFrom: z.coerce.date(), validUntil: z.coerce.date(), ...zDetails, identityByVisitor: z.boolean().default(false) }),
+    handler: ({ body: { identityByVisitor, ...input }, ...c }) => tamu.createPass(c.db, c.actor, input, c.now, { complete: { identityByVisitor } }),
   }),
   route({
     method: 'POST', path: '/tamu/passes/:passId/link', tag: 'Tamu', summary: 'A fresh link for a pass (the old link stops working)', auth: 'session', roles: ['RESIDENT'],
@@ -49,17 +59,27 @@ export const tamuRoutes = [
     },
   }),
   route({
+    method: 'POST', path: '/passes/:token/details', tag: 'Tamu', summary: 'The visitor gives the details their host left for them, from their link (no sign-in)', auth: 'public',
+    rateLimit: { limit: 10, windowSec: 600, by: 'ip' },
+    body: z.object({ ...zDetails, consent: z.literal(true, 'Please agree before sending your details.') }),
+    // The agreement is required above; the service takes only the details still missing.
+    handler: async (c) => {
+      if (!/^[A-Za-z0-9_-]{30,100}$/.test(c.params.token!)) throw notFound('Pass');
+      return tamu.completePassDetails(c.db, c.params.token!, c.body, c.now);
+    },
+  }),
+  route({
     method: 'GET', path: '/guard', tag: 'Tamu', summary: "The guard's screen: today's gate log, SOS calls, patrol and flood tasks", auth: 'session', roles: GATE,
     handler: (c) => tamu.guardOverview(c.db, c.actor, c.now),
   }),
   route({
-    method: 'POST', path: '/guard/scan', tag: 'Tamu', summary: "Scan a visitor's pass; the host is told at once", auth: 'session', roles: GATE,
-    body: z.object({ code: zPassCode }),
-    handler: (c) => tamu.scanPass(c.db, c.actor, c.body.code, c.now),
+    method: 'POST', path: '/guard/scan', tag: 'Tamu', summary: "Scan a visitor's pass; if details are missing or the licence has expired, scan again with them. The host is told at once", auth: 'session', roles: GATE,
+    body: z.object({ code: zPassCode, details: z.object(zDetails).optional() }),
+    handler: (c) => tamu.scanPass(c.db, c.actor, c.body.code, c.now, c.body.details),
   }),
   route({
-    method: 'POST', path: '/guard/walk-ins', tag: 'Tamu', summary: 'Log a visitor without a pass (name, vehicle, house; never an IC)', auth: 'session', roles: GATE,
-    body: z.object({ visitorName: zVisitor, vehicleNo: zVehicle, homeId: zId }),
+    method: 'POST', path: '/guard/walk-ins', tag: 'Tamu', summary: 'Log a visitor without a pass, with their details and the house (an expired driving licence is refused)', auth: 'session', roles: GATE,
+    body: z.object({ visitorName: zVisitor, homeId: zId, ...zDetails }),
     handler: (c) => tamu.logWalkIn(c.db, c.actor, c.body, c.now),
   }),
   route({

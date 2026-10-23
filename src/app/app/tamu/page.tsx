@@ -7,6 +7,10 @@ import { DoorOpen, Flag, LifeBuoy, MessageCircle, Send, ShieldCheck, UserRound }
 import { useState, type FormEvent } from 'react';
 import { AksesPage, AksesReadAloud, useAksesMode } from '@/components/features/akses-mode';
 import { ReportProblemDialog } from '@/components/features/report-problem';
+import { ResidentTamuWalkthrough } from '@/components/features/tamu-walkthroughs';
+import {
+  detailsBody, emptyVisitorForm, VisitorDetailsFields, VisitorDetailsSummary, type DetailPart, type VisitorDetailsView, type VisitorForm,
+} from '@/components/features/visitor-details';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, PageHeader } from '@/components/ui/card';
 import { ConfirmDialog, Modal } from '@/components/ui/dialog';
@@ -18,7 +22,7 @@ import { api } from '@/lib/api';
 import { formatDateTime, timeAgo } from '@/lib/format';
 import { useAction, useApi } from '@/lib/hooks';
 import { useT } from '@/lib/i18n';
-import { PASS_TYPES, PASS_TYPE_INFO, type HostReply, type PassType } from '@/shared/domain';
+import { PASS_TYPES, PASS_TYPE_INFO, REASON_FOR_PASS_TYPE, TRANSPORT_INFO, type HostReply, type PassType, type VisitorDetail } from '@/shared/domain';
 
 interface Pass {
   id: string;
@@ -32,11 +36,13 @@ interface Pass {
   maxEntries: number | null;
   lastEntryAt: string | null;
   status: 'ACTIVE' | 'NOT_YET' | 'USED' | 'EXPIRED' | 'CANCELLED';
+  details: VisitorDetailsView;
+  missing: VisitorDetail[];
 }
 interface Overview {
   passes: Pass[];
-  visits: { id: string; kind: 'PASS' | 'WALK_IN'; visitor_name: string; vehicle_no: string | null; host_reply: HostReply | null; entered_at: string; exited_at: string | null }[];
-  waiting: { id: string; visitor_name: string; vehicle_no: string | null; entered_at: string }[];
+  visits: { id: string; kind: 'PASS' | 'WALK_IN'; visitor_name: string; vehicle_no: string | null; host_reply: HostReply | null; entered_at: string; exited_at: string | null; details: VisitorDetailsView }[];
+  waiting: { id: string; visitor_name: string; vehicle_no: string | null; entered_at: string; details: VisitorDetailsView }[];
   sos: { id: string; status: string; created_at: string } | null;
   retentionDays: number;
 }
@@ -45,6 +51,7 @@ interface Issued {
   code: string;
   token: string;
 }
+type IdentityBy = 'HOST' | 'VISITOR';
 
 const STATUS: Record<Pass['status'], { label: string; tone: 'success' | 'brand' | 'neutral' | 'warning' }> = {
   ACTIVE: { label: 'Valid now', tone: 'success' },
@@ -61,6 +68,17 @@ function localInput(date: Date): string {
 }
 const fromLocalInput = (value: string) => new Date(`${value}:00+08:00`);
 const DEFAULT_HOURS: Record<PassType, number> = { ONE_VISIT: 12, DELIVERY: 4, EVENT: 12, REGULAR_HELPER: 24 * 30, CONTRACTOR: 24 * 7, CARER: 24 * 30 };
+/** The parts of the visitor's details the resident fills in: the identity only if they give it themselves. */
+const partsFor = (by: IdentityBy): DetailPart[] => (by === 'HOST' ? ['transport', 'identity', 'licence', 'reason'] : ['transport', 'reason']);
+
+/** The Simple Mode questions, one per screen. The identity question is left out when the visitor gives it. */
+type GuidedStep = 'start' | 'kind' | 'name' | 'transport' | 'reason' | 'who' | 'identity' | 'from' | 'until';
+const guidedSteps = (by: IdentityBy): GuidedStep[] => ['start', 'kind', 'name', 'transport', 'reason', 'who', ...(by === 'HOST' ? (['identity'] as const) : []), 'from', 'until'];
+/** Where each field is asked in Simple Mode, to go back to it when the server finds a problem. */
+const STEP_OF: Record<string, GuidedStep> = {
+  visitorName: 'name', transport: 'transport', vehicleNo: 'transport', reason: 'reason', reasonOther: 'reason',
+  citizenship: 'identity', idNumber: 'identity', licenceExpiry: 'identity', validFrom: 'from', validUntil: 'until',
+};
 
 export default function TamuPage() {
   const t = useT();
@@ -70,17 +88,28 @@ export default function TamuPage() {
   const [type, setType] = useState<PassType>('ONE_VISIT');
   const [from, setFrom] = useState(() => localInput(new Date()));
   const [until, setUntil] = useState(() => localInput(new Date(Date.now() + DEFAULT_HOURS.ONE_VISIT * 3_600_000)));
-  const [issued, setIssued] = useState<(Issued & { visitorName: string }) | null>(null);
+  const [visitor, setVisitor] = useState<VisitorForm>(() => emptyVisitorForm(REASON_FOR_PASS_TYPE.ONE_VISIT));
+  const [identityBy, setIdentityBy] = useState<IdentityBy>('HOST');
+  const [issued, setIssued] = useState<(Issued & { visitorName: string; visitorGivesId: boolean }) | null>(null);
   const [askSos, setAskSos] = useState(false);
   const [guidedOpen, setGuidedOpen] = useState(false);
   const [guidedStep, setGuidedStep] = useState(0);
   const [guidedName, setGuidedName] = useState('');
-  const [guidedVehicle, setGuidedVehicle] = useState('');
   const [guidedError, setGuidedError] = useState('');
 
   const create = useAction(
-    (body: { type: PassType; visitorName: string; vehicleNo?: string }) => api.post<Issued>('/tamu/passes', { ...body, validFrom: fromLocalInput(from), validUntil: fromLocalInput(until) }),
-    { onSuccess: () => void overview.mutate() },
+    (body: { type: PassType; visitorName: string }) =>
+      api.post<Issued>('/tamu/passes', { ...body, ...detailsBody(visitor, partsFor(identityBy)), identityByVisitor: identityBy === 'VISITOR', validFrom: fromLocalInput(from), validUntil: fromLocalInput(until) }),
+    {
+      onSuccess: () => void overview.mutate(),
+      // In Simple Mode, go back to the question that asks for what the server found missing or wrong.
+      onError: (error) => {
+        if (!guidedOpen) return;
+        const order = guidedSteps(identityBy);
+        const step = Object.keys(error.fields).map((key) => STEP_OF[key]).find((s): s is GuidedStep => Boolean(s && order.includes(s)));
+        if (step) setGuidedStep(order.indexOf(step));
+      },
+    },
   );
   const renew = useAction((pass: Pass) => api.post<Issued>(`/tamu/passes/${pass.id}/link`), {});
   const cancel = useAction((id: string) => api.post(`/tamu/passes/${id}/cancel`), { onSuccess: () => void overview.mutate(), success: 'Pass cancelled. The link no longer works.' });
@@ -93,41 +122,65 @@ export default function TamuPage() {
     success: (r) => (r.alreadyOpen ? 'Your SOS is already with the guardhouse.' : t('The guardhouse has been told. Help is coming.')),
   });
 
+  const resetVisitor = (passType: PassType = type) => {
+    setVisitor(emptyVisitorForm(REASON_FOR_PASS_TYPE[passType]));
+    setIdentityBy('HOST');
+  };
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
     const visitorName = String(form.get('visitorName') ?? '').trim();
-    const vehicleNo = String(form.get('vehicleNo') ?? '').trim() || undefined;
-    const result = await create.run({ type, visitorName, vehicleNo });
+    const result = await create.run({ type, visitorName });
     if (result) {
-      setIssued({ ...result, visitorName });
+      setIssued({ ...result, visitorName, visitorGivesId: identityBy === 'VISITOR' });
       formElement.reset();
+      resetVisitor();
     }
   };
   const onType = (next: PassType) => {
     setType(next);
     setUntil(localInput(new Date(fromLocalInput(from).getTime() + DEFAULT_HOURS[next] * 3_600_000)));
+    // The reason follows the kind of pass until the resident picks one themselves.
+    setVisitor((v) => (v.reason === '' || v.reason === REASON_FOR_PASS_TYPE[type] ? { ...v, reason: REASON_FOR_PASS_TYPE[next], reasonOther: '' } : v));
   };
+
+  const steps = guidedSteps(identityBy);
+  const stepId = steps[Math.min(guidedStep, steps.length - 1)]!;
   const startGuidedPass = () => {
     setGuidedStep(0);
     setGuidedName('');
-    setGuidedVehicle('');
+    resetVisitor();
     setGuidedError('');
     setGuidedOpen(true);
+  };
+  /** A quick check before the next question, so a missing answer is found on its own screen. */
+  const guidedProblem = (): string | null => {
+    const info = visitor.transport ? TRANSPORT_INFO[visitor.transport] : null;
+    if (stepId === 'name' && !guidedName.trim()) return t('Please enter the visitor name.');
+    if (stepId === 'transport' && !visitor.transport) return t('Choose how the visitor is travelling.');
+    if (stepId === 'transport' && info?.licence && !visitor.vehicleNo.trim()) return t('Enter the vehicle number.');
+    if (stepId === 'reason' && !visitor.reason) return t('Choose the reason for the visit.');
+    if (stepId === 'reason' && visitor.reason === 'OTHER' && !visitor.reasonOther.trim()) return t('Say what the visit is for.');
+    if (stepId === 'identity' && (!visitor.citizenship || !visitor.idNumber.trim())) return t('Enter the visitor’s citizenship and identity number.');
+    if (stepId === 'identity' && info?.licence && !visitor.licenceExpiry) return t('Enter the driving licence’s expiry date.');
+    return null;
   };
   const finishGuidedPass = async () => {
     const visitorName = guidedName.trim();
     if (!visitorName) {
+      setGuidedStep(steps.indexOf('name'));
       setGuidedError(t('Please enter the visitor name.'));
       return;
     }
-    const result = await create.run({ type, visitorName, vehicleNo: guidedVehicle.trim() || undefined });
+    const result = await create.run({ type, visitorName });
     if (result) {
-      setIssued({ ...result, visitorName });
+      setIssued({ ...result, visitorName, visitorGivesId: identityBy === 'VISITOR' });
       setGuidedOpen(false);
+      resetVisitor();
     }
   };
+  const guidedFieldError = Object.entries(create.fields).find(([key]) => STEP_OF[key] === stepId)?.[1];
 
   const [gateReport, setGateReport] = useState(false);
   const link = issued ? `${window.location.origin}/pass/${issued.token}` : '';
@@ -152,6 +205,7 @@ export default function TamuPage() {
               <Text>Report a gate problem</Text>
             </Button>
             <AksesReadAloud profile={akses.profile} text={spokenSummary} />
+            <ResidentTamuWalkthrough />
           </div>
         }
       />
@@ -165,11 +219,9 @@ export default function TamuPage() {
         {overview.data?.waiting.map((w) => (
           <Card key={w.id} className="animate-rise border-gold-300 bg-gold-50 p-5">
             <p className="text-sm font-semibold text-gold-700">{t('Someone is at the main gate')}</p>
-            <p className="mt-1 font-display text-xl font-bold text-ink-900">
-              {w.visitor_name}
-              {w.vehicle_no && <span className="ml-2 text-base font-medium text-ink-600">{w.vehicle_no}</span>}
-            </p>
-            <p className="text-sm text-ink-600"><Text>Arrived </Text><Text>{timeAgo(w.entered_at)}</Text><Text>. Are you expecting them?</Text></p>
+            <p className="mt-1 font-display text-xl font-bold text-ink-900">{w.visitor_name}</p>
+            <VisitorDetailsSummary details={w.details} vehicleNo={w.vehicle_no} tone="onColour" className="mt-1.5" />
+            <p className="mt-1.5 text-sm text-ink-600"><Text>Arrived </Text><Text>{timeAgo(w.entered_at)}</Text><Text>. Are you expecting them?</Text></p>
             <div className="mt-4 flex flex-wrap gap-2">
               <Button onClick={() => reply.run(w.id, 'EXPECTED')} disabled={reply.pending}>
                 {t('Expected')}
@@ -187,7 +239,7 @@ export default function TamuPage() {
 
         <div className={akses.simple ? 'grid gap-6' : 'grid gap-6 lg:grid-cols-[1fr_1.1fr]'}>
           <Card>
-            <CardHeader title={t('New visitor pass')} description="No identity card is ever asked for: a name and, if they drive, a vehicle number." />
+            <CardHeader title={t('New visitor pass')} description="The gate needs your visitor’s citizenship, identity number, transport and reason for the visit. You can let your visitor give their identity on their pass link." />
             {akses.guided ? (
               <div className="p-5">
                 <Button size="lg" className="min-h-20 w-full text-xl" onClick={startGuidedPass}>
@@ -205,7 +257,16 @@ export default function TamuPage() {
                 ))}
               </Select>
               <Input name="visitorName" label={t('Visitor name')} placeholder="e.g. Puan Rahmah" required maxLength={80} error={create.fields.visitorName} />
-              <Input name="vehicleNo" label={t('Vehicle number (optional)')} placeholder="e.g. BKL 2408" maxLength={12} autoCapitalize="characters" error={create.fields.vehicleNo} />
+              <VisitorDetailsFields form={visitor} onChange={setVisitor} parts={['transport', 'reason']} errors={create.fields} />
+              <fieldset className="space-y-4 rounded-xl border border-ink-100 bg-ink-25 p-4">
+                <legend className="px-1 text-sm font-semibold text-ink-900"><Text>Visitor’s identity</Text></legend>
+                <Select label="Who gives it?" value={identityBy} onChange={(event) => setIdentityBy(event.target.value as IdentityBy)} hint={identityBy === 'VISITOR' ? 'Your visitor enters it on their pass link before they come. The guard fills it in at the gate if they did not.' : undefined}>
+                  <option value="HOST"><Text>I will enter it now</Text></option>
+                  <option value="VISITOR"><Text>My visitor enters it on their pass link</Text></option>
+                </Select>
+                {identityBy === 'HOST' && <VisitorDetailsFields form={visitor} onChange={setVisitor} parts={['identity', 'licence']} errors={create.fields} />}
+                <p className="text-xs text-ink-500"><Text>Only with your visitor’s permission. The number is stored encrypted, shown in full only to the guard at the gate, and deleted after 90 days. Your home sees its last 4 characters.</Text></p>
+              </fieldset>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Input type="datetime-local" label={t('From')} value={from} onChange={(event) => setFrom(event.target.value)} error={create.fields.validFrom} />
                 <Input type="datetime-local" label={t('Until')} value={until} onChange={(event) => setUntil(event.target.value)} error={create.fields.validUntil} hint={`Up to ${PASS_TYPE_INFO[type].maxDays} day${PASS_TYPE_INFO[type].maxDays === 1 ? '' : 's'} for this kind of pass.`} />
@@ -228,36 +289,41 @@ export default function TamuPage() {
                   </div>
                 ) : (
                   <ul className="divide-y divide-ink-100">
-                    {o.passes.map((p) => (
-                      <li key={p.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5">
-                        <div className="min-w-0">
-                          <p className="text-[15px] font-semibold text-ink-900">
-                            {p.visitorName} {p.vehicleNo && <span className="font-normal text-ink-500">· {p.vehicleNo}</span>}
-                          </p>
-                          <p className="text-sm text-ink-500">
-                            <Text>{PASS_TYPE_INFO[p.type].label}</Text> · <Text>{formatDateTime(p.validFrom)}</Text><Text> to </Text><Text>{formatDateTime(p.validUntil)}</Text>
-                            <Text>{p.lastEntryAt && ` · arrived ${timeAgo(p.lastEntryAt)}`}</Text>
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge tone={STATUS[p.status].tone}><Text>{STATUS[p.status].label}</Text></Badge>
-                          {(p.status === 'ACTIVE' || p.status === 'NOT_YET') && (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="secondary"
-                                pending={renew.pending}
-                                onClick={async () => {
-                                  const r = await renew.run(p);
-                                  if (r) setIssued({ ...r, visitorName: p.visitorName });
-                                }}
-                              ><Text>Share</Text></Button>
-                              <Button size="sm" variant="ghost" onClick={() => cancel.run(p.id)} disabled={cancel.pending}><Text>Cancel</Text></Button>
-                            </>
-                          )}
-                        </div>
-                      </li>
-                    ))}
+                    {o.passes.map((p) => {
+                      const live = p.status === 'ACTIVE' || p.status === 'NOT_YET';
+                      return (
+                        <li key={p.id} className="flex flex-wrap items-start justify-between gap-3 px-5 py-3.5">
+                          <div className="min-w-0 flex-1 basis-56">
+                            <p className="text-[15px] font-semibold text-ink-900">{p.visitorName}</p>
+                            <p className="text-sm text-ink-500">
+                              <Text>{PASS_TYPE_INFO[p.type].label}</Text> · <Text>{formatDateTime(p.validFrom)}</Text><Text> to </Text><Text>{formatDateTime(p.validUntil)}</Text>
+                              <Text>{p.lastEntryAt && ` · arrived ${timeAgo(p.lastEntryAt)}`}</Text>
+                            </p>
+                            <VisitorDetailsSummary details={p.details} vehicleNo={p.vehicleNo} className="mt-1" />
+                            {live && p.missing.length > 0 && (
+                              <p className="mt-1 text-xs font-medium text-gold-700"><Text>Waiting for your visitor’s details: they can give them on their link, or the guard fills them in at the gate.</Text></p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge tone={STATUS[p.status].tone}><Text>{STATUS[p.status].label}</Text></Badge>
+                            {live && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  pending={renew.pending}
+                                  onClick={async () => {
+                                    const r = await renew.run(p);
+                                    if (r) setIssued({ ...r, visitorName: p.visitorName, visitorGivesId: p.missing.includes('identity') });
+                                  }}
+                                ><Text>Share</Text></Button>
+                                <Button size="sm" variant="ghost" onClick={() => cancel.run(p.id)} disabled={cancel.pending}><Text>Cancel</Text></Button>
+                              </>
+                            )}
+                          </div>
+                        </li>
+                      );
+                    })}
                   </ul>
                 )
               }
@@ -266,7 +332,7 @@ export default function TamuPage() {
         </div>
 
         <Card>
-          <CardHeader title={t('Visit history')} description={`Name, vehicle and time only. Visitor records are deleted after ${overview.data?.retentionDays ?? 90} days.`} />
+          <CardHeader title={t('Visit history')} description={`Who came, how and why. Identity numbers show their last 4 characters only. Visitor records are deleted after ${overview.data?.retentionDays ?? 90} days.`} />
           <Async state={overview}>
             {(o) =>
               o.visits.length === 0 ? (
@@ -274,8 +340,8 @@ export default function TamuPage() {
               ) : (
                 <ul className="divide-y divide-ink-100">
                   {o.visits.map((v) => (
-                    <li key={v.id} className="flex items-center justify-between gap-3 px-5 py-3">
-                      <span className="flex min-w-0 items-center gap-3">
+                    <li key={v.id} className="flex items-start justify-between gap-3 px-5 py-3">
+                      <span className="flex min-w-0 items-start gap-3">
                         <span className="grid size-9 shrink-0 place-items-center rounded-full bg-ink-100 text-ink-600">
                           <UserRound className="size-[18px]" aria-hidden />
                         </span>
@@ -285,6 +351,7 @@ export default function TamuPage() {
                             <Text>{v.kind === 'PASS' ? 'With a pass' : 'Walk-in'}</Text><Text> · in </Text><Text>{formatDateTime(v.entered_at)}</Text>
                             <Text>{v.exited_at && ` · out ${formatDateTime(v.exited_at)}`}</Text>
                           </span>
+                          <VisitorDetailsSummary details={v.details} vehicleNo={v.vehicle_no} className="mt-1" />
                         </span>
                       </span>
                       {v.host_reply && <Badge tone={v.host_reply === 'EXPECTED' ? 'success' : v.host_reply === 'NOT_EXPECTED' ? 'warning' : 'brand'}>{t(v.host_reply === 'EXPECTED' ? 'Expected' : v.host_reply === 'NOT_EXPECTED' ? 'Not expected' : 'Call me')}</Badge>}
@@ -304,6 +371,9 @@ export default function TamuPage() {
           <div className="flex flex-col items-center gap-4">
             <QrCode value={`KITAPASS:${issued.code}`} label={`Visitor pass ${issued.code}`} />
             <p className="visitor-pass-reveal font-display text-2xl font-bold tracking-[0.18em] text-ink-900"><Text>{issued.code}</Text></p>
+            {issued.visitorGivesId && (
+              <p className="w-full rounded-md bg-gold-50 px-3 py-2 text-sm text-gold-700"><Text>Your visitor gives their identity on this link before they come. If they do not, the guard fills it in at the gate.</Text></p>
+            )}
             <div className="grid w-full gap-2 sm:grid-cols-3">
               <Button href={`https://wa.me/?text=${encodeURIComponent(message)}`} variant="primary">
                 <MessageCircle className="size-4" aria-hidden />
@@ -321,7 +391,7 @@ export default function TamuPage() {
               />
             </div>
             <p className="w-full break-all rounded-md bg-ink-50 px-3 py-2 text-xs text-ink-600"><Text>{link}</Text></p>
-            <p className="text-xs text-ink-500"><Text>Sharing again later makes a new link and the old one stops working.</Text></p>
+            <p className="text-xs text-ink-500"><Text>WhatsApp and SMS open on your phone with the message ready: you send it yourself. Sharing again later makes a new link and the old one stops working.</Text></p>
           </div>
         )}
       </Modal>
@@ -335,23 +405,21 @@ export default function TamuPage() {
         className="guided-modal"
         onClose={() => setGuidedOpen(false)}
         title="New visitor pass"
-        description={t('Question {step} of {total}', { step: guidedStep + 1, total: 6 })}
+        description={t('Question {step} of {total}', { step: guidedStep + 1, total: steps.length })}
         footer={
           guidedStep > 0 ? (
             <>
-              <Button size="lg" variant="secondary" onClick={() => setGuidedStep((step) => step - 1)}><Text>Back</Text></Button>
-              {guidedStep < 5 ? (
-                <>
-                  {guidedStep === 3 && <Button size="lg" variant="ghost" onClick={() => { setGuidedError(''); setGuidedStep(4); }}><Text>Skip</Text></Button>}
-                  <Button size="lg" onClick={() => {
-                    if (guidedStep === 2 && !guidedName.trim()) {
-                      setGuidedError(t('Please enter the visitor name.'));
-                      return;
-                    }
-                    setGuidedError('');
-                    setGuidedStep((step) => step + 1);
-                  }}><Text>Next</Text></Button>
-                </>
+              <Button size="lg" variant="secondary" onClick={() => { setGuidedError(''); setGuidedStep((step) => step - 1); }}><Text>Back</Text></Button>
+              {guidedStep < steps.length - 1 ? (
+                <Button size="lg" onClick={() => {
+                  const problem = guidedProblem();
+                  if (problem) {
+                    setGuidedError(problem);
+                    return;
+                  }
+                  setGuidedError('');
+                  setGuidedStep((step) => step + 1);
+                }}><Text>Next</Text></Button>
               ) : (
                 <Button size="lg" pending={create.pending} onClick={() => void finishGuidedPass()}>
                   <Send className="size-5" aria-hidden /><Text>Create pass</Text>
@@ -364,7 +432,7 @@ export default function TamuPage() {
         }
       >
         <div className="flex min-h-64 flex-col justify-center gap-5">
-          {guidedStep === 0 ? (
+          {stepId === 'start' ? (
             <>
               <p className="text-center text-5xl font-bold text-ink-900"><Text>Is someone coming?</Text></p>
               <div className="grid gap-4 sm:grid-cols-2">
@@ -372,7 +440,7 @@ export default function TamuPage() {
                 <Button size="lg" variant="danger" className="min-h-32 text-4xl" onClick={() => setGuidedOpen(false)}><Text>No</Text></Button>
               </div>
             </>
-          ) : guidedStep === 1 ? (
+          ) : stepId === 'kind' ? (
             <Select label="Kind of visit" labelClassName="!text-3xl !font-semibold" value={type} onChange={(event) => onType(event.target.value as PassType)}>
               {PASS_TYPES.map((passType) => (
                 <option key={passType} value={passType}>
@@ -381,7 +449,7 @@ export default function TamuPage() {
                 </option>
               ))}
             </Select>
-          ) : guidedStep === 2 ? (
+          ) : stepId === 'name' ? (
             <Input
               label="Visitor name"
               labelClassName="!text-3xl !font-semibold"
@@ -392,18 +460,24 @@ export default function TamuPage() {
               maxLength={80}
               error={guidedError || create.fields.visitorName}
             />
-          ) : guidedStep === 3 ? (
-            <Input
-              label="Vehicle number (optional)"
-              labelClassName="!text-3xl !font-semibold"
-              value={guidedVehicle}
-              onChange={(event) => setGuidedVehicle(event.target.value)}
-              placeholder="e.g. BKL 2408"
-              maxLength={12}
-              autoCapitalize="characters"
-              error={create.fields.vehicleNo}
-            />
-          ) : guidedStep === 4 ? (
+          ) : stepId === 'transport' || stepId === 'reason' || stepId === 'identity' ? (
+            <>
+              <VisitorDetailsFields
+                form={visitor}
+                onChange={(next) => { setVisitor(next); setGuidedError(''); }}
+                parts={stepId === 'identity' ? ['identity', 'licence'] : [stepId]}
+                errors={create.fields}
+                size="large"
+              />
+              {(guidedError || guidedFieldError) && <p role="alert" className="text-base font-medium text-accent-700"><Text>{guidedError || guidedFieldError!}</Text></p>}
+            </>
+          ) : stepId === 'who' ? (
+            <Select label="Who gives the visitor’s identity?" labelClassName="!text-3xl !font-semibold" value={identityBy} onChange={(event) => setIdentityBy(event.target.value as IdentityBy)}
+              hint="If your visitor gives it, they enter it on their pass link. The guard fills it in at the gate if they did not.">
+              <option value="HOST"><Text>I will enter it now</Text></option>
+              <option value="VISITOR"><Text>My visitor enters it on their pass link</Text></option>
+            </Select>
+          ) : stepId === 'from' ? (
             <Input type="datetime-local" label="From" labelClassName="!text-3xl !font-semibold" value={from} onChange={(event) => setFrom(event.target.value)} error={create.fields.validFrom} />
           ) : (
             <Input

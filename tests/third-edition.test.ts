@@ -15,7 +15,8 @@ import { checkIn, createLoop, gerakOverview, listLoopsForStaff, setLoopActive } 
 import { claimGuestSession, createMachine, itemText, joinFromScreen, machineScreen, simulateFinish, simulateItem, simulateStart } from '@/server/modules/kitar/machine';
 import { createKiosk } from '@/server/modules/kitar/service';
 import { runJob } from '@/server/modules/admin/service';
-import { createPass, logWalkIn, publicPass, replyToWalkIn, scanPass, tamuOverview } from '@/server/modules/tamu/service';
+import { demoVisitorDetails } from '@/server/modules/tamu/demo-details';
+import { completePassDetails, createPass, insertPass, logWalkIn, publicPass, replyToWalkIn, scanPass, tamuOverview } from '@/server/modules/tamu/service';
 import { T0, at, closeCampaign, expectFloatBalanced, freshDb, makeCampaign, makeHome, makeResident, makeWorld, type World } from './helpers';
 
 /** The features added for the proposal's third edition, one business rule at a time. */
@@ -47,7 +48,7 @@ async function call(method: string, path: string, opts: { as?: Actor; body?: unk
 describe('Tamu: visitors and the guard (BR26, BR27)', () => {
   it('lets a guard scan a pass once, tells the host, and never gives XP', async () => {
     const host = await makeResident(w);
-    const pass = await createPass(db, host, { type: 'ONE_VISIT', visitorName: 'Mak Cik Rohani', vehicleNo: 'wxy 1234', validFrom: T0, validUntil: at(1) }, T0);
+    const pass = await createPass(db, host, { type: 'ONE_VISIT', visitorName: 'Mak Cik Rohani', ...demoVisitorDetails(T0, 'family'), vehicleNo: 'wxy 1234', validFrom: T0, validUntil: at(1) }, T0, { complete: { identityByVisitor: false } });
     expect(pass.token.length).toBeGreaterThan(30);
 
     const visitorView = await publicPass(db, pass.token, T0);
@@ -55,7 +56,7 @@ describe('Tamu: visitors and the guard (BR26, BR27)', () => {
     expect(JSON.stringify(visitorView)).not.toContain(host.fullName); // the host's name is never on the visitor's page
 
     const entry = await scanPass(db, guard, `KITAPASS:${pass.code}`, at(0.1));
-    expect(entry).toMatchObject({ visitorName: 'Mak Cik Rohani', vehicleNo: 'WXY 1234' });
+    expect(entry).toMatchObject({ outcome: 'LET_IN', visitorName: 'Mak Cik Rohani', vehicleNo: 'WXY 1234' });
     await expect(scanPass(db, guard, pass.code, at(0.2))).rejects.toMatchObject({ code: 'PASS_USED' });
     const inbox = await db.query<{ title: string }>('SELECT title FROM notifications WHERE user_id = $1', [host.id]);
     expect(inbox.some((n) => n.title.startsWith('Mak Cik Rohani arrived at'))).toBe(true);
@@ -70,15 +71,20 @@ describe('Tamu: visitors and the guard (BR26, BR27)', () => {
     await expect(createPass(db, host, { type: 'ONE_VISIT', visitorName: 'Too long', validFrom: T0, validUntil: at(5) }, T0)).rejects.toMatchObject({ code: 'PASS_TOO_LONG' });
   });
 
-  it('asks the household about a walk-in visitor and shows the guard the answer, with no identity card stored', async () => {
+  it('asks the household about a walk-in visitor and shows the guard the answer, with the identity number kept encrypted', async () => {
     const homeId = await makeHome(w);
     const host = await makeResident(w, { homeId });
-    const walkIn = await logWalkIn(db, guard, { visitorName: 'Unknown Contractor', vehicleNo: 'ABC123', homeId }, T0);
+    const walkIn = await logWalkIn(db, guard, { visitorName: 'Unknown Contractor', homeId, ...demoVisitorDetails(T0, 'rider'), vehicleNo: 'ABC123' }, T0);
     expect(walkIn.notified).toBe(1);
     expect((await tamuOverview(db, host, T0)).waiting).toHaveLength(1);
     await replyToWalkIn(db, host, walkIn.entryId, 'NOT_EXPECTED', T0);
+    // The number is never stored readable: only encrypted, and its last 4 characters for the household.
+    const stored = await one<{ id_number_enc: string; id_last4: string }>(db, 'SELECT id_number_enc, id_last4 FROM visitor_entries WHERE id = $1', [walkIn.entryId]);
+    expect(stored!.id_last4).toBe('7713');
+    expect(stored!.id_number_enc).not.toContain('990117007713');
     const columns = await db.query<{ column_name: string }>(`SELECT column_name FROM information_schema.columns WHERE table_name = 'visitor_entries'`);
-    expect(columns.map((c) => c.column_name).some((c) => /(^|_)(ic|nric|mykad|identity|passport)(_|$)/i.test(c))).toBe(false);
+    expect(columns.map((c) => c.column_name).filter((c) => /(^|_)(ic|nric|mykad|identity|passport|id_number)(_|$)/i.test(c))).toEqual(['id_number_enc']);
+    expect(JSON.stringify(await tamuOverview(db, host, T0))).not.toContain('990117007713');
   });
 
   it('deletes visitor records after 90 days in the daily cleanup', async () => {
@@ -499,5 +505,101 @@ describe('public Challenges page', () => {
     expect(card).toMatchObject({ reward_points: 250, funder: 'Sime Darby Property', activity: 'KITAR_DROPOFF' });
     expect(Object.keys(card)).not.toContain('budget_sen');
     expect(res.data.everyday.some((a: { activity: string; xp: number }) => a.activity === 'KITAR_DROPOFF' && a.xp > 0)).toBe(true);
+  });
+});
+
+describe('Tamu: visitor details (BR26, revised)', () => {
+  const day = (d: Date) => new Date(d.getTime() + 8 * 3_600_000).toISOString().slice(0, 10);
+  const fieldsOf = async (p: Promise<unknown>) => {
+    const error = await p.then(() => null, (e: { code?: string; details?: { fields?: Record<string, string> } }) => e);
+    expect(error?.code).toBe('VALIDATION_FAILED');
+    return Object.keys(error!.details!.fields!);
+  };
+
+  it('checks every detail on a walk-in, and refuses an expired driving licence', async () => {
+    const homeId = await makeHome(w);
+    await makeResident(w, { homeId });
+    expect(await fieldsOf(logWalkIn(db, guard, { visitorName: 'No Details', homeId }, T0))).toEqual(expect.arrayContaining(['idNumber', 'transport', 'reason']));
+    // A car needs its number and a licence that has not expired; walking needs neither.
+    const car = { ...demoVisitorDetails(T0, 'family'), vehicleNo: '', licenceExpiry: undefined };
+    expect(await fieldsOf(logWalkIn(db, guard, { visitorName: 'Driver', homeId, ...car }, T0))).toEqual(expect.arrayContaining(['vehicleNo', 'licenceExpiry']));
+    expect(await fieldsOf(logWalkIn(db, guard, { visitorName: 'Driver', homeId, ...demoVisitorDetails(T0, 'family'), licenceExpiry: day(at(-1)) }, T0))).toEqual(['licenceExpiry']);
+    expect(await fieldsOf(logWalkIn(db, guard, { visitorName: 'Bad Number', homeId, ...demoVisitorDetails(T0, 'family'), idNumber: '12345' }, T0))).toEqual(['idNumber']);
+    expect(await fieldsOf(logWalkIn(db, guard, { visitorName: 'Other', homeId, ...demoVisitorDetails(T0, 'helper'), reason: 'OTHER' }, T0))).toEqual(['reasonOther']);
+    const walker = await logWalkIn(db, guard, { visitorName: 'Walker', homeId, ...demoVisitorDetails(T0, 'helper'), vehicleNo: 'IGNORED 1' }, T0);
+    expect(await one(db, 'SELECT vehicle_no, licence_expiry, citizenship, transport FROM visitor_entries WHERE id = $1', [walker.entryId])).toEqual({ vehicle_no: null, licence_expiry: null, citizenship: 'NON_MALAYSIAN', transport: 'ON_FOOT' });
+  });
+
+  it('needs the identity on a pass unless the resident leaves it for the visitor, who gives it on their link', async () => {
+    const host = await makeResident(w);
+    const base = { type: 'ONE_VISIT' as const, visitorName: 'Encik Hafiz', transport: 'CAR' as const, vehicleNo: 'BKL 1', reason: 'VISITING' as const, validFrom: T0, validUntil: at(1) };
+    expect(await fieldsOf(createPass(db, host, base, T0, { complete: { identityByVisitor: false } }))).toEqual(expect.arrayContaining(['idNumber', 'licenceExpiry']));
+    expect(await fieldsOf(createPass(db, host, { ...base, transport: 'MOTORCYCLE', vehicleNo: undefined }, T0, { complete: { identityByVisitor: true } }))).toEqual(['vehicleNo']);
+    const pass = await createPass(db, host, base, T0, { complete: { identityByVisitor: true } });
+    expect((await publicPass(db, pass.token, T0)).missing).toEqual(['identity', 'licenceExpiry']);
+    // The visitor cannot skip what is missing, and gives it with their agreement (checked by the API).
+    expect(await fieldsOf(completePassDetails(db, pass.token, { citizenship: 'MALAYSIAN', idNumber: '880923-00-6031' }, T0))).toEqual(['licenceExpiry']);
+    const view = await completePassDetails(db, pass.token, { citizenship: 'MALAYSIAN', idNumber: '880923-00-6031', licenceExpiry: day(at(400)), transport: 'ON_FOOT' }, T0);
+    expect(view.missing).toEqual([]);
+    expect(view.details).toMatchObject({ citizenship: 'MALAYSIAN', idLast4: '6031', transport: 'CAR' }); // what the host gave stays
+    expect(JSON.stringify(view)).not.toContain('880923006031');
+    await expect(completePassDetails(db, pass.token, { citizenship: 'MALAYSIAN', idNumber: '880923-00-6031' }, T0)).rejects.toMatchObject({ code: 'DETAILS_GIVEN' });
+    expect(await one(db, 'SELECT details_by FROM visitor_passes WHERE id = $1', [pass.id])).toEqual({ details_by: 'VISITOR' });
+    // The guard sees the whole number, to compare with the card.
+    const entry = await scanPass(db, guard, pass.code, at(0.1));
+    expect(entry).toMatchObject({ outcome: 'LET_IN', details: { idNumber: '880923006031', licenceExpiry: day(at(400)) } });
+  });
+
+  it('asks the guard for what a pass SimeTown made is missing before letting anyone in', async () => {
+    const homeId = await makeHome(w);
+    const host = await makeResident(w, { homeId });
+    const pass = await insertPass(db, { townshipId: w.townshipId, homeId, hostUserId: host.id, type: 'CONTRACTOR', visitorName: 'Collector', validFrom: T0, validUntil: at(1) }, T0);
+    const first = await scanPass(db, guard, pass.code, T0);
+    expect(first).toMatchObject({ outcome: 'NEEDS_DETAILS', missing: ['identity', 'transport', 'reason'] });
+    expect(await one<{ n: number }>(db, 'SELECT count(*)::int AS n FROM visitor_entries WHERE pass_id = $1', [pass.id])).toEqual({ n: 0 });
+    expect(await fieldsOf(scanPass(db, guard, pass.code, T0, { transport: 'LORRY', vehicleNo: 'BKL 7071' }))).toEqual(expect.arrayContaining(['idNumber', 'licenceExpiry', 'reason']));
+    const second = await scanPass(db, guard, pass.code, T0, demoVisitorDetails(T0));
+    expect(second).toMatchObject({ outcome: 'LET_IN', vehicleNo: 'BKL 7071', details: { idNumber: '850315005521', reason: 'CONTRACTOR' } });
+    expect(await one(db, 'SELECT details_by, id_last4 FROM visitor_passes WHERE id = $1', [pass.id])).toEqual({ details_by: 'GUARD', id_last4: '5521' });
+  });
+
+  it('blocks a driver whose licence has expired since the pass was made, until a valid licence date is given', async () => {
+    const host = await makeResident(w);
+    const pass = await createPass(db, host, { type: 'CARER', visitorName: 'Carer', ...demoVisitorDetails(T0, 'family'), licenceExpiry: day(at(1)), validFrom: T0, validUntil: at(30) }, T0, { complete: { identityByVisitor: false } });
+    const blocked = await scanPass(db, guard, pass.code, at(3));
+    expect(blocked).toMatchObject({ outcome: 'NEEDS_DETAILS', licenceExpired: true, missing: ['licenceExpiry'] });
+    expect(await fieldsOf(scanPass(db, guard, pass.code, at(3), { licenceExpiry: day(at(2)) }))).toEqual(['licenceExpiry']);
+    expect(await scanPass(db, guard, pass.code, at(3), { licenceExpiry: day(at(700)) })).toMatchObject({ outcome: 'LET_IN' });
+  });
+
+  it('emails the household who came, never the identity number, unless they turned visitor emails off', async () => {
+    const homeId = await makeHome(w);
+    const host = await makeResident(w, { homeId });
+    const other = await makeResident(w, { homeId });
+    await db.query('UPDATE users SET visitor_emails = false WHERE id = $1', [other.id]);
+    const pass = await createPass(db, host, { type: 'ONE_VISIT', visitorName: 'Puan Rahmah', ...demoVisitorDetails(T0, 'family'), validFrom: T0, validUntil: at(1) }, T0, { complete: { identityByVisitor: false } });
+    await scanPass(db, guard, pass.code, at(0.1));
+    await logWalkIn(db, guard, { visitorName: 'Rider', homeId, ...demoVisitorDetails(T0, 'rider') }, at(0.2));
+    const mail = await db.query<{ user_id: string; kind: string; html: string; body_text: string }>('SELECT user_id, kind, html, body_text FROM email_outbox WHERE user_id = ANY($1::uuid[]) ORDER BY id', [[host.id, other.id]]);
+    expect(mail.map((m) => [m.user_id, m.kind])).toEqual([[host.id, 'VISITOR_ARRIVED'], [host.id, 'VISITOR_AT_GATE']]);
+    for (const m of mail) {
+      for (const secret of ['580412005122', '580412-00-5122', '990117007713', '5122', '7713']) {
+        expect(m.html).not.toContain(secret);
+        expect(m.body_text).not.toContain(secret);
+      }
+    }
+    expect(mail[0]!.body_text).toContain('Puan Rahmah');
+    expect(mail[0]!.body_text).toContain('Visiting family or friends');
+  });
+
+  it('takes the visitor’s details from their link only with their agreement', async () => {
+    const host = await makeResident(w);
+    const pass = await createPass(db, host, { type: 'ONE_VISIT', visitorName: 'Guest', transport: 'ON_FOOT', reason: 'VISITING', validFrom: T0, validUntil: at(1) }, T0, { complete: { identityByVisitor: true } });
+    const body = { citizenship: 'NON_MALAYSIAN', idNumber: 'DEMOX12345' };
+    expect((await call('POST', `/passes/${pass.token}/details`, { body })).status).toBe(400);
+    const ok = await call('POST', `/passes/${pass.token}/details`, { body: { ...body, consent: true } });
+    expect(ok.status).toBe(200);
+    expect(ok.data).toMatchObject({ missing: [], details: { idLast4: '2345' } });
+    expect(JSON.stringify(ok.data)).not.toContain('DEMOX12345');
   });
 });

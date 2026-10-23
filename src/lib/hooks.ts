@@ -57,6 +57,8 @@ interface ActionOptions<R> {
   /** Shown as a success toast. Return null to stay quiet. */
   success?: string | ((result: R) => string | null);
   onSuccess?: (result: R) => void;
+  /** Called with the error after it is shown, for example to move a step-by-step form back to the field at fault. */
+  onError?: (error: ApiError) => void;
 }
 
 /**
@@ -82,6 +84,7 @@ export function useAction<A extends unknown[], R>(fn: (...args: A) => Promise<R>
         const apiError = error instanceof ApiError ? error : new ApiError(0, 'UNKNOWN', 'Something went wrong. Please try again.');
         setFields(apiError.fields);
         if (apiError.status !== 401 || options.showUnauthorizedError) toast.show(apiError.message, 'error');
+        options.onError?.(apiError);
         return undefined;
       } finally {
         setPending(false);

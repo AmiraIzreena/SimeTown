@@ -11,6 +11,7 @@ import { audit } from '../audit';
 import { notify } from '../notifications';
 import { getSettings } from '../settings';
 import { createPass, insertPass } from '../tamu/service';
+import { reasonOnly } from '../tamu/visitor-data';
 import { HOME_ADDRESS_COLUMNS } from '../townships';
 
 /**
@@ -90,7 +91,7 @@ async function issueVisitPass(
 ): Promise<string> {
   const pass = await insertPass(
     tx,
-    { townshipId: b.township_id, homeId: b.home_id, hostUserId: b.resident_id, type: 'CONTRACTOR', visitorName: `${workerName} (${b.merchant_name})`.slice(0, 80), ...visitPassWindow(b.scheduled_at, now) },
+    { townshipId: b.township_id, homeId: b.home_id, hostUserId: b.resident_id, type: 'CONTRACTOR', visitorName: `${workerName} (${b.merchant_name})`.slice(0, 80), ...visitPassWindow(b.scheduled_at, now), details: reasonOnly('MAINTENANCE') },
     now,
   );
   await tx.query('UPDATE service_bookings SET pass_id = $2 WHERE id = $1', [b.id, pass.id]);
@@ -676,7 +677,7 @@ export async function sendGatePass(db: Db, actor: Actor, id: string, now: Date) 
   if (b.pass_id && b.pass_live) throw conflict('PASS_SENT', 'A gate pass for this visit is already active.');
   const { validFrom, validUntil } = visitPassWindow(b.scheduled_at!, now);
   const visitorName = `${b.worker_name} (${b.merchant_name})`.slice(0, 80);
-  const pass = await createPass(db, resident, { type: 'CONTRACTOR', visitorName, validFrom, validUntil }, now);
+  const pass = await createPass(db, resident, { type: 'CONTRACTOR', visitorName, reason: 'MAINTENANCE', validFrom, validUntil }, now);
   const linked = await db.tx(async (tx) => {
     const rows = await tx.query(
       `UPDATE service_bookings SET pass_id = $3, updated_at = $4 WHERE id = $1 AND resident_id = $2 AND worker_id = $5 AND status = ANY($6::text[])

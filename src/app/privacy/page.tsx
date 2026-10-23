@@ -45,11 +45,12 @@ const sections: LegalSection[] = [
             <Row what="Home (residents)" details="The address you choose from the township’s property record, whether you are the owner or a tenant, and whether your home has been confirmed." />
             <Row what="Shop (shops)" details="Business name, registration number, type and business address, and the contact person’s name, email and phone number." />
             <Row what="Points and activity" details="Points earned and spent and who funded them; purchases at member shops (shop, amount, points); recycling drop-offs (material and weight); trail check-ins; monthly electricity and water readings; Impact XP and badges." />
+            <Row what="Visitors to your home (Tamu)" details="Your visitor’s name, citizenship, identity number, how they travel (vehicle number and, when they drive, their driving licence’s expiry), the reason for the visit, the times they came and left, and your home’s reply. See “Visitors” below." />
             <Row what="What you post" details="Community posts and responses, and reports with their description, the location you type and an optional photo." />
             <Row what="Technical" details="A sign-in cookie, records of requests (time, page, result and account), and your internet address to limit repeated attempts." />
           </tbody>
         </table>
-        <p><Text>We do </Text><strong><Text>not</Text></strong><Text> collect your MyKad number, bank or card details, precise GPS location, contacts or biometric data. Photos you take to check a recycling material are checked and then discarded, not stored.</Text></p>
+        <p><Text>We do </Text><strong><Text>not</Text></strong><Text> collect your own MyKad number, bank or card details, precise GPS location, contacts or biometric data. Photos you take to check a recycling material are checked and then discarded, not stored. The only identity numbers SimeTown keeps are those of visitors at the main gate, as explained below.</Text></p>
       </>
     ),
   },
@@ -71,6 +72,26 @@ const sections: LegalSection[] = [
           ]}
         />
         <p><Text>We do not sell your personal data, and we do not use it for advertising.</Text></p>
+      </>
+    ),
+  },
+  {
+    id: 'visitors',
+    title: 'Visitors',
+    body: (
+      <>
+        <p><Text>For the township’s security, the main gate records who comes in. This applies to visitors with a pass and to visitors without one.</Text></p>
+        <Bullets
+          items={[
+            <><strong><Text>What is recorded:</Text></strong><Text> the visitor’s name; citizenship; identity number (a MyKad or MyKid number for Malaysians, or a passport, identity card or driving licence number for others); how they travel, with the vehicle number and, when they drive, the expiry date of their driving licence; the reason for the visit; the home they visit; and when they came and left.</Text></>,
+            <><strong><Text>Who gives it:</Text></strong><Text> the resident who invites them, with the visitor’s permission; or the visitor on their own pass link, with their agreement; or the guard at the gate, from the visitor’s identity card. The guard checks the card and hands it straight back. Guards never keep, copy or photograph it.</Text></>,
+            <><strong><Text>Why:</Text></strong><Text> to know who is in the township, to let the household know their visitor has arrived, and to make sure anyone driving in holds a valid driving licence. A visitor whose licence has expired cannot be recorded to drive in.</Text></>,
+            <><strong><Text>Who sees the identity number:</Text></strong><Text> only the guard at the gate sees it in full. The household and the visitor’s own pass page show its last 4 characters. It is never sent by email, and the AI Assistant never receives it.</Text></>,
+            <><strong><Text>How it is protected:</Text></strong><Text> the identity number is stored encrypted, with a key kept outside the database.</Text></>,
+            <><strong><Text>How long:</Text></strong><Text> visitor records, with every detail in them, are deleted after 90 days.</Text></>,
+            <><strong><Text>Visitors’ rights:</Text></strong><Text> a visitor may ask us what we hold about them, to correct it or to delete it, by email to </Text><Text>{mail}</Text><Text>.</Text></>,
+          ]}
+        />
       </>
     ),
   },
@@ -107,6 +128,7 @@ const sections: LegalSection[] = [
           'Your account details, for as long as your account is open.',
           'When you delete your account: your name, contact details, posts, report descriptions and photos are removed at once. Records of points transactions are kept in anonymised form, because financial records must stay complete.',
           'Sign-in sessions end after 7 days or when you sign out. Set-password links expire after 7 days. Internet addresses used to limit repeated attempts are kept for no more than a day.',
+          'Visitor records at the main gate, including visitors’ identity numbers, are deleted after 90 days.',
         ]}
       />
     ),
@@ -178,7 +200,7 @@ export default function PrivacyPage() {
       summary={
         <>
           <p className="font-semibold"><Text>In short</Text></p>
-          <p className="mt-1"><Text>We collect what SimeTown needs to work: your contact details, your address in the township, and what you do in the app. Shops see only your first name and initial; sponsors see grouped totals only. We never sell your data or use it for advertising. You can download or delete your data at any time from your Account page.</Text></p>
+          <p className="mt-1"><Text>We collect what SimeTown needs to work: your contact details, your address in the township, and what you do in the app. For security, the main gate also records your visitors’ details, including their identity number, which is encrypted, shown in full only to the guard and deleted after 90 days. Shops see only your first name and initial; sponsors see grouped totals only. We never sell your data or use it for advertising. You can download or delete your data at any time from your Account page.</Text></p>
         </>
       }
       sections={sections}

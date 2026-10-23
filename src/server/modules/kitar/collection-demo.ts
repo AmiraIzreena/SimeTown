@@ -5,6 +5,7 @@ import { getConfig, type Config } from '../../config';
 import { conflict, forbidden, notFound, ruleViolation } from '../../errors';
 import { audit } from '../audit';
 import { getSettings, todayIn } from '../settings';
+import { demoVisitorDetails } from '../tamu/demo-details';
 import { scanPass } from '../tamu/service';
 import { testEntryEnabled } from './test-entry';
 
@@ -85,8 +86,10 @@ export async function demoGateScan(db: Db, actor: Actor, id: string, now: Date, 
   );
   if (!guardRow) throw ruleViolation('NO_GUARD', 'This township has no guard account to stand in for the gate.');
   const guard = toActor(guardRow);
-  // The real scan: refuses a pass that is not valid yet, records the entry and tells the household.
-  const entry = await scanPass(db, guard, x.pass_code, now);
+  // The real scan: refuses a pass that is not valid yet, records the entry and tells the household. The guard types
+  // the collector's details, made up for the demo, as the gate asks for them on a pass SimeTown made.
+  const entry = await scanPass(db, guard, x.pass_code, now, demoVisitorDetails(now));
+  if (entry.outcome !== 'LET_IN') throw ruleViolation('GATE_DETAILS', 'The gate could not record the collector.');
   await audit(db, resident.id, 'KITAR_DEMO_COLLECTION', 'recycling_collection', id, { step: 'GATE_SCAN', entryId: entry.entryId, guardId: guard.id });
   return { scanned: true as const };
 }

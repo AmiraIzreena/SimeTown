@@ -24,7 +24,7 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | GET | `/me` | Any signed-in user | The signed-in account, with any required details still missing |
 | PATCH | `/me` | Any signed-in user | Update name and phone (both required) |
 | POST | `/me/language` | Any signed-in user | Choose English or Bahasa Malaysia |
-| POST | `/me/email-preferences` | Any signed-in user | Switch parcel emails on or off (residents; security alerts are always sent) |
+| POST | `/me/email-preferences` | Any signed-in user | Switch parcel or visitor emails on or off (residents; security alerts are always sent) |
 | POST | `/me/terms` | Any signed-in user | Accept the Terms of Use and Privacy Notice now in force |
 | POST | `/me/home` | RESIDENT | Set or change my address (a new home is confirmed again) |
 | POST | `/me/password` | Any signed-in user | Change password (signs out other devices) |
@@ -159,15 +159,16 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | Method | Path | Who | What it does |
 | --- | --- | --- | --- |
 | GET | `/tamu` | RESIDENT | My home's visitor passes, visits and walk-ins waiting for an answer |
-| POST | `/tamu/passes` | RESIDENT | Create a visitor pass; the link is returned once |
+| POST | `/tamu/passes` | RESIDENT | Create a visitor pass with the visitor’s details (the identity may be left for the visitor); the link is returned once |
 | POST | `/tamu/passes/:passId/link` | RESIDENT | A fresh link for a pass (the old link stops working) |
 | POST | `/tamu/passes/:passId/cancel` | RESIDENT | Cancel a pass |
 | POST | `/tamu/entries/:entryId/reply` | RESIDENT | Answer the guard about a walk-in visitor |
 | POST | `/tamu/sos` | RESIDENT | SOS to the guardhouse |
 | GET | `/passes/:token` | Public | A visitor's pass from their link (no sign-in; street only, never the house) |
+| POST | `/passes/:token/details` | Public | The visitor gives the details their host left for them, from their link (no sign-in) |
 | GET | `/guard` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN | The guard's screen: today's gate log, SOS calls, patrol and flood tasks |
-| POST | `/guard/scan` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN | Scan a visitor's pass; the host is told at once |
-| POST | `/guard/walk-ins` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN | Log a visitor without a pass (name, vehicle, house; never an IC) |
+| POST | `/guard/scan` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN | Scan a visitor's pass; if details are missing or the licence has expired, scan again with them. The host is told at once |
+| POST | `/guard/walk-ins` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN | Log a visitor without a pass, with their details and the house (an expired driving licence is refused) |
 | POST | `/guard/entries/:entryId/exit` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN | Log that a visitor has left |
 | POST | `/guard/sos/:sosId` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN | Acknowledge or close an SOS call |
 | POST | `/guard/patrol` | GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN | Scan a patrol point on a round |

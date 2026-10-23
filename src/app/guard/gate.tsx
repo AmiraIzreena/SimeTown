@@ -7,9 +7,13 @@ import { useCallback, useState, type FormEvent } from 'react';
 import { AccessWorkCard } from '@/components/features/access-bits';
 import { AddressPicker } from '@/components/features/address';
 import { CameraScan } from '@/components/features/camera-scan';
+import {
+  detailsBody, emptyVisitorForm, partsMissing, VisitorDetailsFields, VisitorDetailsSummary, type DetailPart, type VisitorDetailsView, type VisitorForm,
+} from '@/components/features/visitor-details';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, PageHeader } from '@/components/ui/card';
 import { GuardFloodWalkthrough } from '@/components/features/banjir-walkthroughs';
+import { GuardGateWalkthrough } from '@/components/features/tamu-walkthroughs';
 import { Async, EmptyState, SkeletonList } from '@/components/ui/feedback';
 import { Input } from '@/components/ui/field';
 import { api, ApiError } from '@/lib/api';
@@ -17,6 +21,7 @@ import { cn } from '@/lib/cn';
 import { formatDateTime, timeAgo } from '@/lib/format';
 import { useAction, useApi } from '@/lib/hooks';
 import type { Me } from '@/lib/types';
+import type { VisitorDetail } from '@/shared/domain';
 
 interface GateEntry {
   id: string;
@@ -28,6 +33,7 @@ interface GateEntry {
   exited_at: string | null;
   pass_type: string | null;
   house: string;
+  details: VisitorDetailsView;
 }
 interface GateOverview {
   township: string;
@@ -38,12 +44,25 @@ interface GateOverview {
   floodTasks: { zone: string; level: 'WARNING' | 'DANGER'; task: string }[];
   helpTasks: { id: string; full_name: string; phone: string | null; note: string | null; reason: 'PRIORITY' | 'NEED_HELP'; zone_name: string; priority_note: string | null; address: string; created_at: string }[];
 }
-interface ScanResult {
+interface ScanBase {
+  passId: string;
   visitorName: string;
-  vehicleNo: string | null;
   typeLabel: string;
   house: string;
+  /** Everything known, with the full identity number to compare with the card. */
+  details: VisitorDetailsView;
 }
+type LetIn = ScanBase & { outcome: 'LET_IN'; vehicleNo: string | null };
+type NeedsDetails = ScanBase & { outcome: 'NEEDS_DETAILS'; missing: VisitorDetail[]; licenceExpired: boolean };
+
+const WALK_IN_PARTS: DetailPart[] = ['identity', 'transport', 'licence', 'reason'];
+/** Starts the gate form from what the pass already has, so the vehicle and licence questions fit the transport. */
+const formFrom = (d: VisitorDetailsView, licenceExpired: boolean): VisitorForm => ({
+  ...emptyVisitorForm(),
+  transport: d.transport ?? '',
+  vehicleNo: d.vehicleNo ?? '',
+  licenceExpiry: licenceExpired ? '' : d.licenceExpiry ?? '',
+});
 
 const REPLY = {
   EXPECTED: { label: 'Expected', tone: 'success' as const },
@@ -55,24 +74,47 @@ export function GateScreen({ initialPatrol }: { initialPatrol: string }) {
   const me = useApi<Me>('/me');
   const gate = useApi<GateOverview>('/guard', { refreshInterval: 5_000 });
   const [code, setCode] = useState('');
-  const [result, setResult] = useState<{ ok: true; pass: ScanResult } | { ok: false; message: string } | null>(null);
+  const [result, setResult] = useState<{ ok: true; pass: LetIn } | { ok: false; message: string } | null>(null);
+  const [needs, setNeeds] = useState<{ code: string; scan: NeedsDetails } | null>(null);
+  const [needsForm, setNeedsForm] = useState<VisitorForm>(emptyVisitorForm());
+  const [needsFields, setNeedsFields] = useState<Record<string, string>>({});
+  const [needsPending, setNeedsPending] = useState(false);
+  const [walkInForm, setWalkInForm] = useState<VisitorForm>(emptyVisitorForm());
   const [patrolCode, setPatrolCode] = useState(initialPatrol);
 
+  /** Scans a pass. With details, it is the second scan that completes what the pass was missing. */
   const scan = useCallback(
-    async (raw: string) => {
+    async (raw: string, details?: Record<string, string>) => {
       setResult(null);
+      if (details) setNeedsPending(true);
+      else setNeeds(null);
       try {
-        const pass = await api.post<ScanResult>('/guard/scan', { code: raw.trim() });
-        setResult({ ok: true, pass });
+        const outcome = await api.post<LetIn | NeedsDetails>('/guard/scan', { code: raw.trim(), ...(details ? { details } : {}) });
+        if (outcome.outcome === 'NEEDS_DETAILS') {
+          setNeeds({ code: raw.trim(), scan: outcome });
+          setNeedsForm(formFrom(outcome.details, outcome.licenceExpired));
+          setNeedsFields({});
+          return;
+        }
+        setNeeds(null);
+        setResult({ ok: true, pass: outcome });
         setCode('');
         void gate.mutate();
       } catch (error) {
+        // A detail the guard typed is wrong: keep the form open and show which.
+        if (details && error instanceof ApiError && Object.keys(error.fields).length > 0) {
+          setNeedsFields(error.fields);
+          return;
+        }
+        setNeeds(null);
         setResult({ ok: false, message: error instanceof ApiError ? (error.status === 404 ? 'No such pass for this township.' : error.message) : 'Please try again.' });
+      } finally {
+        setNeedsPending(false);
       }
     },
     [gate],
   );
-  const walkIn = useAction((body: { visitorName: string; vehicleNo?: string; homeId: string }) => api.post<{ house: string; notified: number }>('/guard/walk-ins', body), {
+  const walkIn = useAction((body: { visitorName: string; homeId: string }) => api.post<{ house: string; notified: number }>('/guard/walk-ins', { ...body, ...detailsBody(walkInForm, WALK_IN_PARTS) }), {
     onSuccess: () => void gate.mutate(),
     success: (r) => (r.notified ? `Logged. ${r.notified} resident${r.notified === 1 ? '' : 's'} at ${r.house} asked to reply.` : `Logged. Nobody at ${r.house} has the app: call the house.`),
   });
@@ -93,15 +135,17 @@ export function GateScreen({ initialPatrol }: { initialPatrol: string }) {
     const form = new FormData(formElement);
     const done = await walkIn.run({
       visitorName: String(form.get('visitorName') ?? '').trim(),
-      vehicleNo: String(form.get('vehicleNo') ?? '').trim() || undefined,
       homeId: String(form.get('homeId') ?? ''),
     });
-    if (done) formElement.reset();
+    if (done) {
+      formElement.reset();
+      setWalkInForm(emptyVisitorForm());
+    }
   };
 
   return (
     <>
-      <PageHeader action={<GuardFloodWalkthrough />} title={gate.data?.gate ?? 'Main gate'} description="Scan visitor passes, log walk-ins and answer SOS calls. Record a name, vehicle number and house only: never an identity card." />
+      <PageHeader action={<div className="flex flex-wrap gap-2"><GuardGateWalkthrough /><GuardFloodWalkthrough /></div>} title={gate.data?.gate ?? 'Main gate'} description="Scan visitor passes, log walk-ins and answer SOS calls. Check the visitor’s identity card against their details and hand it straight back: never keep the card." />
       <div className="space-y-6">
         {gate.data?.sos.map((s) => (
           <Card key={s.id} role="alert" className={cn('flex flex-wrap items-center justify-between gap-4 p-5', s.status === 'OPEN' ? 'border-accent-300 bg-accent-50' : 'border-warning-600/30 bg-warning-50')}>
@@ -179,6 +223,37 @@ export function GateScreen({ initialPatrol }: { initialPatrol: string }) {
                 <Button type="submit" disabled={code.trim().length < 6}>
                   <ScanLine className="size-4" aria-hidden /><Text>Check pass</Text></Button>
               </form>
+              {needs && (
+                <form
+                  method="post"
+                  noValidate
+                  aria-live="polite"
+                  className="animate-rise space-y-4 rounded-lg border border-gold-300 bg-gold-50 p-5"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void scan(needs.code, detailsBody(needsForm, partsMissing(needs.scan.missing)));
+                  }}
+                >
+                  <div className="flex items-start gap-3">
+                    <TriangleAlert className="size-7 shrink-0 text-gold-700" aria-hidden />
+                    <div className="min-w-0">
+                      <p className="font-display text-xl font-bold text-ink-900"><Text>Details needed: </Text>{needs.scan.visitorName}</p>
+                      <p className="text-[15px] text-ink-800"><Text>{needs.scan.typeLabel}</Text><Text> · to </Text><Text>{needs.scan.house}</Text></p>
+                      <VisitorDetailsSummary details={needs.scan.details} tone="onColour" className="mt-1.5" />
+                      <p className="mt-1.5 text-sm text-ink-700">
+                        <Text>{needs.scan.licenceExpired
+                          ? 'The visitor’s driving licence has expired. They cannot drive in until a valid licence is shown: enter its expiry date.'
+                          : 'Fill in what this pass is missing, from the visitor’s identity card. Then hand the card straight back.'}</Text>
+                      </p>
+                    </div>
+                  </div>
+                  <VisitorDetailsFields form={needsForm} onChange={setNeedsForm} parts={partsMissing(needs.scan.missing)} errors={needsFields} prefix="details." />
+                  <div className="flex flex-wrap gap-2">
+                    <Button type="submit" pending={needsPending}><CheckCircle2 className="size-4" aria-hidden /><Text>Let in</Text></Button>
+                    <Button variant="ghost" onClick={() => setNeeds(null)} disabled={needsPending}><Text>Cancel</Text></Button>
+                  </div>
+                </form>
+              )}
               {result && (
                 <div aria-live="polite" className={cn('animate-rise rounded-lg p-5', result.ok ? 'bg-success-50' : 'bg-accent-50')}>
                   {result.ok ? (
@@ -188,9 +263,9 @@ export function GateScreen({ initialPatrol }: { initialPatrol: string }) {
                         <p className="font-display text-xl font-bold text-success-700"><Text>Let in: </Text>{result.pass.visitorName}</p>
                         <p className="text-[15px] text-ink-800">
                           <Text>{result.pass.typeLabel}</Text><Text> · to </Text><Text>{result.pass.house}</Text>
-                          {result.pass.vehicleNo && ` · ${result.pass.vehicleNo}`}
                         </p>
-                        <p className="mt-1 text-sm text-ink-600"><Text>The host has been told they arrived.</Text></p>
+                        <VisitorDetailsSummary details={result.pass.details} vehicleNo={result.pass.vehicleNo} tone="onColour" className="mt-1.5" />
+                        <p className="mt-1.5 text-sm text-ink-600"><Text>The host has been told they arrived. Hand the identity card straight back.</Text></p>
                       </div>
                     </div>
                   ) : (
@@ -208,12 +283,10 @@ export function GateScreen({ initialPatrol }: { initialPatrol: string }) {
           </Card>
 
           <Card>
-            <CardHeader title="Walk-in visitor" description="No pass? Record name, vehicle and house. The household replies in SimeTown." />
+            <CardHeader title="Walk-in visitor" description="No pass? Record the visitor’s details from their identity card, and the house. The household replies in SimeTown." />
             <form method="post" onSubmit={submitWalkIn} className="space-y-4 p-5" noValidate>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Input name="visitorName" label="Visitor name" required maxLength={80} error={walkIn.fields.visitorName} />
-                <Input name="vehicleNo" label="Vehicle number" maxLength={12} autoCapitalize="characters" error={walkIn.fields.vehicleNo} />
-              </div>
+              <Input name="visitorName" label="Visitor name" required maxLength={80} error={walkIn.fields.visitorName} />
+              <VisitorDetailsFields form={walkInForm} onChange={setWalkInForm} parts={WALK_IN_PARTS} errors={walkIn.fields} />
               <AddressPicker key={me.data?.townshipId ?? 'none'} townshipId={me.data?.townshipId ?? null} error={walkIn.fields.homeId} />
               <Button type="submit" pending={walkIn.pending}>
                 <UserPlus className="size-4" aria-hidden /><Text>Ask the household</Text></Button>
@@ -235,12 +308,13 @@ export function GateScreen({ initialPatrol }: { initialPatrol: string }) {
                     <li key={e.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
                       <div className="min-w-0">
                         <p className="text-[15px] font-semibold text-ink-900">
-                          {e.visitor_name} {e.vehicle_no && <span className="font-normal text-ink-500">· {e.vehicle_no}</span>}
+                          {e.visitor_name}
                         </p>
                         <p className="text-sm text-ink-500">
                           <Text>{e.kind === 'PASS' ? 'Pass' : 'Walk-in'}</Text> · <Text>{e.house}</Text><Text> · in </Text><Text>{formatDateTime(e.entered_at)}</Text>
                           <Text>{e.exited_at && ` · out ${formatDateTime(e.exited_at)}`}</Text>
                         </p>
+                        <VisitorDetailsSummary details={e.details} vehicleNo={e.vehicle_no} className="mt-1" />
                       </div>
                       <div className="flex items-center gap-2">
                         {e.kind === 'WALK_IN' && (e.host_reply ? <Badge tone={REPLY[e.host_reply].tone}><Text>{REPLY[e.host_reply].label}</Text></Badge> : <Badge tone="gold"><Text>Waiting for the host</Text></Badge>)}
