@@ -567,7 +567,7 @@ export const walkthroughsMalay: Record<string, string> = {
   '1. Main gate': '1. Pintu utama',
 };
 
-/** Akses+ and SimeTown Home: residents. */
+/** Akses+, SimeTown Home and the Assistant: residents. */
 export const aksesHomeWalkthroughsMalay: Record<string, string> = {
   // Akses+: residents.
   'How Akses+ works': 'Cara Akses+ berfungsi',
@@ -644,6 +644,36 @@ export const aksesHomeWalkthroughsMalay: Record<string, string> = {
   'When the company says the work is finished, confirm only if you are happy. It goes into your home logbook. Something wrong? Report it privately: only the township team sees it.':
     'Apabila syarikat mengatakan kerja telah selesai, sahkan hanya jika anda berpuas hati. Ia dimasukkan ke dalam buku log rumah anda. Ada masalah? Laporkannya secara peribadi: hanya pasukan perbandaran yang melihatnya.',
   'Added to your home logbook': 'Ditambah ke buku log rumah anda',
+
+  // Assistant: residents. "Yes, make the pass", "Yes, send it" and "Past chats" are the real screen's words.
+  'How the Assistant works': 'Cara Pembantu berfungsi',
+  'What it can answer, what it can do for you, and what it never does.': 'Apa yang boleh dijawabnya, apa yang boleh dilakukannya untuk anda, dan apa yang tidak sekali-kali dilakukannya.',
+  'Ask in English or Bahasa Malaysia': 'Tanya dalam Bahasa Inggeris atau Bahasa Malaysia',
+  'Type a question, or tap one of the suggestions. Ask about City of Elmina, Sime Darby Property, local services or your own SimeTown account.':
+    'Taip soalan, atau ketik salah satu cadangan. Tanya tentang City of Elmina, Sime Darby Property, perkhidmatan tempatan atau akaun SimeTown anda sendiri.',
+  'Answers from your data and checked facts': 'Jawapan daripada data anda dan fakta yang disemak',
+  'It answers from your own SimeTown data, such as your points or your zone, and from checked facts about the township. Tap Sources to see where an answer came from.':
+    'Ia menjawab daripada data SimeTown anda sendiri, seperti mata atau zon anda, dan daripada fakta yang disemak tentang perbandaran. Ketik Sumber untuk melihat dari mana jawapan itu datang.',
+  'You have 1,240 points, worth RM12.40.': 'Anda ada 1,240 mata, bernilai RM12.40.',
+  'Sources (checked)': 'Sumber (disemak)',
+  'It acts only after you say Yes': 'Ia bertindak hanya selepas anda berkata Ya',
+  'Ask it to make a visitor pass and it fills one in for you to check. Nothing happens until you tap Yes. You can change the details first, or say no.':
+    'Minta ia membuat pas pelawat dan ia mengisinya untuk anda semak. Tiada apa berlaku sehingga anda ketik Ya. Anda boleh mengubah butirannya dahulu, atau menolak.',
+  'Visitor pass for Ali': 'Pas pelawat untuk Ali',
+  'Tomorrow · Main gate': 'Esok · Pagar utama',
+  'Check the name and day': 'Semak nama dan hari',
+  'Not sure? It asks the township office': 'Tidak pasti? Ia bertanya kepada pejabat perbandaran',
+  'When it cannot answer, it offers to pass your question to the township office. Tap Yes, send it. Their reply comes back in the same chat, and you are notified.':
+    'Apabila ia tidak dapat menjawab, ia menawarkan untuk menghantar soalan anda kepada pejabat perbandaran. Ketik Ya, hantar. Balasan mereka kembali dalam sembang yang sama, dan anda dimaklumkan.',
+  'The playground reopens on Monday.': 'Taman permainan dibuka semula pada hari Isnin.',
+  'Never decides a safety alert': 'Tidak sekali-kali menentukan amaran keselamatan',
+  'Flood alerts come from the Banjir rules, never from the Assistant. In danger, call 999. Answers can be wrong, so check anything important.':
+    'Amaran banjir datang daripada peraturan Banjir, tidak sekali-kali daripada Pembantu. Dalam bahaya, hubungi 999. Jawapan boleh salah, jadi semak apa-apa yang penting.',
+  'Flood alerts come from the Banjir rules': 'Amaran banjir datang daripada peraturan Banjir',
+  'In danger, call 999': 'Dalam bahaya, hubungi 999',
+  'Your chats, kept private': 'Sembang anda, kekal peribadi',
+  'Past chats are saved to your account for 90 days after your last message, and only you can see them. Tap Read aloud to hear an answer. Delete a chat, or all of them, at any time.':
+    'Sembang lalu disimpan dalam akaun anda selama 90 hari selepas mesej terakhir anda, dan hanya anda yang boleh melihatnya. Ketik Baca dengan kuat untuk mendengar jawapan. Padam satu sembang, atau semuanya, pada bila-bila masa.',
 };
 
 export const walkthroughsTemplates: readonly (readonly [string, string])[] = [
