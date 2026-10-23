@@ -104,6 +104,11 @@ export const homeServiceRoutes = [
     handler: (c) => home.updateServiceAbout(c.db, c.actor, c.body.about),
   }),
   route({
+    method: 'POST', path: '/merchant/services/trades', tag: TAG, summary: 'The kinds of home service the company does', auth: 'session', roles: ['MERCHANT'],
+    body: z.object({ trades: z.array(z.enum(SERVICE_CATEGORIES)).max(SERVICE_CATEGORIES.length), licence: zText(300, 0).optional() }),
+    handler: (c) => home.setOwnTrades(c.db, c.actor, c.body, c.now),
+  }),
+  route({
     method: 'POST', path: '/merchant/services/listings', tag: TAG, summary: 'Add or update the listing for a category, with its pricing', auth: 'session', roles: ['MERCHANT'],
     body: z.object({
       category: z.enum(SERVICE_CATEGORIES), description: zText(600, 5), pricing: z.enum(SERVICE_PRICING),
@@ -184,5 +189,15 @@ export const homeServiceRoutes = [
     method: 'POST', path: '/admin/merchants/:merchantId/kind', tag: TAG, summary: 'Set what a business offers: shop, home services or both', auth: 'session', roles: ADMINS,
     body: z.object({ kind: z.enum(MERCHANT_KINDS) }),
     handler: (c) => home.setMerchantKind(c.db, c.actor, c.params.merchantId!, c.body.kind),
+  }),
+  route({
+    method: 'POST', path: '/admin/merchants/:merchantId/trades', tag: TAG, summary: 'Set which kinds of home service a company may offer', auth: 'session', roles: ADMINS,
+    body: z.object({ trades: z.array(z.enum(SERVICE_CATEGORIES)).max(SERVICE_CATEGORIES.length) }),
+    handler: (c) => home.setServiceTrades(c.db, c.actor, c.params.merchantId!, c.body.trades, c.now),
+  }),
+  route({
+    method: 'POST', path: '/admin/trade-requests/:requestId', tag: TAG, summary: 'Approve or decline a company’s request for licensed work (the company is told)', auth: 'session', roles: ADMINS,
+    body: z.object({ approve: z.boolean(), reason: zText(300, 0).optional() }),
+    handler: (c) => home.decideTradeRequest(c.db, c.actor, c.params.requestId!, c.body, c.now),
   }),
 ];

@@ -27,6 +27,7 @@ const tomorrow = '2026-11-03';
 async function makeServiceCompany(kind: 'SERVICES' | 'BOTH' = 'SERVICES') {
   const merchant = await makeMerchant(w);
   await home.setMerchantKind(db, w.admin, merchant.merchantId!, kind);
+  await home.setServiceTrades(db, w.admin, merchant.merchantId!, ['PLUMBING', 'AIRCON'], T0);
   const listing = await home.saveListing(db, merchant, { category: 'PLUMBING', description: 'Leaks, blocked drains and water heaters.', pricing: 'INSPECTION', calloutFeeSen: 3000, priceNote: 'RM30 inspection, credited to the repair' }, T0);
   const worker = await home.addWorker(db, merchant, { fullName: 'Ahmad Faizal' });
   const worker2 = await home.addWorker(db, merchant, { fullName: 'Ravi Kumar' });
@@ -197,6 +198,62 @@ describe('rules that keep bookings honest', () => {
     await expect(home.reviewBooking(db, resident, id, { rating: 2 }, T0)).rejects.toMatchObject({ code: 'BOOKING_STATE' });
   });
 
+  it('lets a company list only what it does, which it picks itself and staff can take away', async () => {
+    const { merchant, listingId } = await makeServiceCompany();
+    const cleaning = { category: 'CLEANING', description: 'Home cleaning by the hour.', pricing: 'FIXED', calloutFeeSen: null, priceNote: 'RM35 an hour' } as const;
+    await expect(home.saveListing(db, merchant, cleaning, T0)).rejects.toMatchObject({ status: 403 });
+    expect((await home.serviceSetup(db, merchant)).merchant.trades).toEqual(['PLUMBING', 'AIRCON']);
+
+    // The company adds Cleaning itself and drops Plumbing, so its plumbing listing is hidden.
+    await home.setOwnTrades(db, merchant, { trades: ['CLEANING', 'AIRCON'] }, T0);
+    await home.saveListing(db, merchant, cleaning, T0);
+    const listingActive = async () => ((await home.serviceSetup(db, merchant)).listings.find((l) => (l as { id: string }).id === listingId) as { active: boolean }).active;
+    expect(await listingActive()).toBe(false);
+
+    // Staff take Cleaning away again.
+    await home.setServiceTrades(db, w.admin, merchant.merchantId!, ['AIRCON'], T0);
+    await expect(home.saveListing(db, merchant, cleaning, T0)).rejects.toMatchObject({ status: 403 });
+  });
+
+  it('adds licensed work only after staff check the licence, and tells the company the answer', async () => {
+    const { merchant, listingId } = await makeServiceCompany();
+    await home.setOwnTrades(db, merchant, { trades: ['AIRCON'] }, T0);
+
+    // Plumbing is licensed work: a licence number is needed, and it waits for staff.
+    await expect(home.setOwnTrades(db, merchant, { trades: ['AIRCON', 'PLUMBING'] }, T0)).rejects.toMatchObject({ code: 'LICENCE_NEEDED' });
+    const sent = await home.setOwnTrades(db, merchant, { trades: ['AIRCON', 'PLUMBING', 'CLEANING'], licence: 'SPAN-12345' }, T0);
+    expect(sent).toEqual({ trades: ['AIRCON', 'CLEANING'], requested: ['PLUMBING'] });
+    await expect(home.setListingActive(db, merchant, listingId, true, T0)).rejects.toMatchObject({ status: 403 });
+    const waiting = (await home.serviceSetup(db, merchant)).requests;
+    expect(waiting).toMatchObject([{ category: 'PLUMBING', status: 'PENDING', note: 'SPAN-12345' }]);
+
+    // Asking again while it waits does not make a second request.
+    await home.setOwnTrades(db, merchant, { trades: ['AIRCON', 'PLUMBING', 'CLEANING'], licence: 'SPAN-12345' }, T0);
+    expect((await home.serviceSetup(db, merchant)).requests).toHaveLength(1);
+
+    // A decline needs a reason, and the company sees it.
+    await expect(home.decideTradeRequest(db, w.admin, waiting[0]!.id, { approve: false }, T0)).rejects.toMatchObject({ code: 'REASON_NEEDED' });
+    await home.decideTradeRequest(db, w.admin, waiting[0]!.id, { approve: false, reason: 'The licence number does not match SPAN records.' }, T0);
+    expect((await home.serviceSetup(db, merchant)).requests).toMatchObject([{ category: 'PLUMBING', status: 'DECLINED', decline_reason: 'The licence number does not match SPAN records.' }]);
+    await expect(home.decideTradeRequest(db, w.admin, waiting[0]!.id, { approve: true }, T0)).rejects.toMatchObject({ code: 'REQUEST_DECIDED' });
+
+    // Asked again with the right number, and approved: the company can list it again.
+    await home.setOwnTrades(db, merchant, { trades: ['AIRCON', 'PLUMBING', 'CLEANING'], licence: 'SPAN-67890' }, T0);
+    const again = (await home.serviceSetup(db, merchant)).requests[0]!;
+    await home.decideTradeRequest(db, w.admin, again.id, { approve: true }, T0);
+    const setup = await home.serviceSetup(db, merchant);
+    expect(setup.merchant.trades).toEqual(['PLUMBING', 'AIRCON', 'CLEANING']);
+    expect(setup.requests).toHaveLength(0);
+    await home.setListingActive(db, merchant, listingId, true, T0);
+    const titles = (await db.query<{ title: string }>('SELECT title FROM notifications WHERE user_id = $1 ORDER BY id', [merchant.id])).map((n) => n.title);
+    expect(titles).toEqual(expect.arrayContaining(['Plumbing not approved', 'Plumbing approved']));
+
+    // Staff ticking the work directly approves a waiting request too.
+    await home.setOwnTrades(db, merchant, { trades: ['AIRCON', 'PLUMBING', 'CLEANING', 'ELECTRICAL'], licence: 'ST-PW2-555' }, T0);
+    await home.setServiceTrades(db, w.admin, merchant.merchantId!, ['AIRCON', 'PLUMBING', 'CLEANING', 'ELECTRICAL'], T0);
+    expect((await home.serviceSetup(db, merchant)).requests).toHaveLength(0);
+  });
+
   it('lists only approved companies with home services switched on, in the resident’s township', async () => {
     const resident = await makeResident(w);
     const pendingApp = await applyAsMerchant(db, {
@@ -206,6 +263,7 @@ describe('rules that keep bookings honest', () => {
     const pendingUser = await one<Actor & { merchant_id: string }>(db, 'SELECT id, merchant_id FROM users WHERE id = $1', [pendingApp.userId]);
     const pendingActor = { ...resident, id: pendingUser!.id, role: 'MERCHANT', merchantId: pendingUser!.merchant_id, homeId: null } as Actor;
     // It can set up before approval, but is not listed until approved.
+    await home.setServiceTrades(db, w.admin, pendingApp.merchantId, ['ELECTRICAL'], T0);
     const pendingListing = await home.saveListing(db, pendingActor, { category: 'ELECTRICAL', description: 'Wiring and sockets.', pricing: 'QUOTE', calloutFeeSen: null, priceNote: 'Quote after a site visit' }, T0);
     expect((await home.listProviders(db, resident, 'ELECTRICAL')).map((p) => p.listing_id)).not.toContain(pendingListing.id);
     await expect(book(resident, pendingListing.id)).rejects.toMatchObject({ status: 404 });

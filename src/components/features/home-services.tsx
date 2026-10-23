@@ -2,12 +2,13 @@
 
 import { Text } from '@/components/ui/localized-text';
 
-import { Droplets, Hammer, Paintbrush, Sparkles, Star, Wind, Zap, type LucideIcon } from 'lucide-react';
+import { Clock, Droplets, Hammer, Paintbrush, Sparkles, Star, Wind, Zap, type LucideIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/card';
 import { LocalizedImg } from '@/components/ui/localized-elements';
+import { cn } from '@/lib/cn';
 import { formatDateTime } from '@/lib/format';
 import {
-  BOOKING_STATUS_LABELS, SERVICE_PRICING_LABELS, formatRM,
+  BOOKING_STATUS_LABELS, SERVICE_CATEGORIES, SERVICE_CATEGORY_LABELS, SERVICE_PRICING_LABELS, formatRM,
   type BookingStatus, type ServiceCategory, type ServicePricing, type ServiceReportStatus, type ServiceSlot,
 } from '@/shared/domain';
 
@@ -125,3 +126,37 @@ export function BookingTimeline({ events, showPassCode = false }: { events: Book
 
 export const REPORT_STATUS_LABELS: Record<ServiceReportStatus, string> = { NEW: 'Received', REVIEWING: 'Under review', CLOSED: 'Closed' };
 export const REPORT_STATUS_TONES: Record<ServiceReportStatus, 'gold' | 'brand' | 'neutral'> = { NEW: 'gold', REVIEWING: 'brand', CLOSED: 'neutral' };
+
+/**
+ * Tap-to-pick the kinds of home service a company does. Used by the company and by township staff.
+ * `waiting` are kinds of work sent for a licence check: shown, but not tappable until staff answer.
+ */
+export function TradePicker({ value, onChange, label, waiting = [] }: { value: readonly ServiceCategory[]; onChange: (next: ServiceCategory[]) => void; label: string; waiting?: readonly ServiceCategory[] }) {
+  return (
+    <fieldset>
+      <legend className="sr-only"><Text>{label}</Text></legend>
+      <div className="flex flex-wrap gap-2">
+        {SERVICE_CATEGORIES.map((c) => {
+          const on = value.includes(c);
+          const Icon = SERVICE_ICONS[c];
+          if (waiting.includes(c) && !on) {
+            return (
+              <span key={c} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-dashed border-gold-500 bg-gold-50 px-3 text-sm font-semibold text-gold-700">
+                <Clock className="size-4" aria-hidden /><Text>{SERVICE_CATEGORY_LABELS[c]}</Text>
+                <span className="text-xs font-medium"><Text>Waiting</Text></span>
+              </span>
+            );
+          }
+          return (
+            <button key={c} type="button" aria-pressed={on} onClick={() => onChange(on ? value.filter((x) => x !== c) : [...value, c])} className={cn('inline-flex min-h-11 items-center gap-2 rounded-md border px-3 text-sm font-semibold transition-[background-color,border-color,color,scale] duration-200 ease-soft active:scale-[0.97] active:duration-100 motion-reduce:transition-none', on ? 'border-brand-600 bg-brand-50 text-brand-800' : 'border-ink-200 text-ink-500')}>
+              <Icon className="size-4" aria-hidden /><Text>{SERVICE_CATEGORY_LABELS[c]}</Text>
+            </button>
+          );
+        })}
+      </div>
+    </fieldset>
+  );
+}
+
+/** True when two picks hold different services. */
+export const tradesDiffer = (a: readonly ServiceCategory[], b: readonly ServiceCategory[]) => SERVICE_CATEGORIES.some((c) => a.includes(c) !== b.includes(c));

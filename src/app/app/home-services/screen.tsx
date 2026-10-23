@@ -171,8 +171,8 @@ export function HomeServicesScreen({ initialBooking }: { initialBooking: string 
               const Icon = SERVICE_ICONS[c.category];
               return (
                 <Link key={c.category} href={serviceCategoryHref(c.category)} className="category-tile group relative overflow-hidden rounded-xl border border-ink-200 bg-white text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600">
-                  <span className="relative block h-20 overflow-hidden">
-                    <Image src={SERVICE_CATEGORY_PAGE[c.category].card} alt="" fill sizes="(min-width: 640px) 33vw, 50vw" className="category-tile-img object-cover" />
+                  <span className="relative block h-32 overflow-hidden sm:h-40">
+                    <Image src={SERVICE_CATEGORY_PAGE[c.category].card} alt="" fill sizes="(min-width: 640px) 33vw, 50vw" className="category-tile-img object-cover" style={{ objectPosition: SERVICE_CATEGORY_PAGE[c.category].focus }} />
                     <span aria-hidden className="absolute inset-0 bg-gradient-to-t from-brand-950/55 to-transparent" />
                     <span className="absolute bottom-2 left-3 grid size-8 place-items-center rounded-lg bg-white/95 text-brand-700 shadow-sm"><Icon className="size-4" aria-hidden /></span>
                   </span>

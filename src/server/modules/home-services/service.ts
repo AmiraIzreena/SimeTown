@@ -1,5 +1,5 @@
 import {
-  formatAddress, OPEN_BOOKING_STATUSES, SERVICE_CATEGORIES, SERVICE_CATEGORY_LABELS, SERVICE_DUE_SOON_DAYS, SERVICE_REMINDER_DAYS,
+  formatAddress, OPEN_BOOKING_STATUSES, SERVICE_CATEGORIES, SERVICE_CATEGORY_LABELS, SERVICE_DUE_SOON_DAYS, SERVICE_LICENSED_TRADES, SERVICE_REMINDER_DAYS,
   type BookingStatus, type HomeAddress, type MerchantKind, type ServiceCategory, type ServicePricing, type ServiceReportCategory,
   type ServiceReportStatus, type ServiceSlot,
 } from '@/shared/domain';
@@ -113,6 +113,7 @@ interface ServiceMerchant {
   offers_retail: boolean;
   offers_services: boolean;
   service_about: string | null;
+  service_trades: ServiceCategory[];
 }
 
 /** The signed-in business, which must offer home services. Approval is checked by the actions that need it. */
@@ -120,7 +121,7 @@ async function serviceMerchant(q: Queryable, actor: Actor, opts: { active?: bool
   if (actor.role !== 'MERCHANT' || !actor.merchantId) throw forbidden();
   const m = await one<ServiceMerchant>(
     q,
-    `SELECT id, name, status, township_id, offers_retail, offers_services, service_about FROM merchants WHERE id = $1${opts.lock ? ' FOR UPDATE' : ''}`,
+    `SELECT id, name, status, township_id, offers_retail, offers_services, service_about, service_trades FROM merchants WHERE id = $1${opts.lock ? ' FOR UPDATE' : ''}`,
     [actor.merchantId],
   );
   if (!m) throw notFound('Business');
@@ -129,10 +130,21 @@ async function serviceMerchant(q: Queryable, actor: Actor, opts: { active?: bool
   return m;
 }
 
+/** A request for licensed work, as the company sees it. */
+export interface TradeRequest {
+  id: string;
+  category: ServiceCategory;
+  note: string;
+  status: 'PENDING' | 'APPROVED' | 'DECLINED';
+  decline_reason: string | null;
+  created_at: string;
+  decided_at: string | null;
+}
+
 /** What the company has set up: its description, listings and workers. */
 export async function serviceSetup(db: Db, actor: Actor) {
   const m = await serviceMerchant(db, actor);
-  const [listings, workers] = await Promise.all([
+  const [listings, workers, requests] = await Promise.all([
     db.query(
       `SELECT id, category, description, pricing, callout_fee_sen, price_note, active, updated_at
          FROM service_listings WHERE merchant_id = $1 ORDER BY active DESC, category`,
@@ -145,8 +157,16 @@ export async function serviceSetup(db: Db, actor: Actor) {
          FROM service_workers w WHERE w.merchant_id = $1 ORDER BY w.active DESC, w.full_name`,
       [m.id],
     ),
+    // The latest request for each kind of work, while it is waiting or was declined.
+    db.query<TradeRequest>(
+      `SELECT * FROM (
+         SELECT DISTINCT ON (category) id, category, note, status, decline_reason, created_at, decided_at
+           FROM service_trade_requests WHERE merchant_id = $1 ORDER BY category, (status = 'PENDING') DESC, created_at DESC
+       ) r WHERE status <> 'APPROVED' AND NOT (category = ANY($2::text[])) ORDER BY created_at DESC`,
+      [m.id, m.service_trades],
+    ),
   ]);
-  return { merchant: { name: m.name, status: m.status, about: m.service_about, offersRetail: m.offers_retail }, listings, workers };
+  return { merchant: { name: m.name, status: m.status, about: m.service_about, offersRetail: m.offers_retail, trades: m.service_trades }, listings, workers, requests };
 }
 
 export async function updateServiceAbout(db: Db, actor: Actor, about: string) {
@@ -163,9 +183,12 @@ export interface ListingInput {
   priceNote: string;
 }
 
-/** One listing per category: saving a category the company already lists updates it. */
+const NOT_IN_TRADES = 'Add this service to What we do first.';
+
+/** One listing per category, only in the trades the company does. Saving a category already listed updates it. */
 export async function saveListing(db: Db, actor: Actor, input: ListingInput, now: Date) {
   const m = await serviceMerchant(db, actor);
+  if (!m.service_trades.includes(input.category)) throw forbidden(NOT_IN_TRADES);
   const row = await one<{ id: string }>(
     db,
     `INSERT INTO service_listings (merchant_id, category, description, pricing, callout_fee_sen, price_note, active, created_at, updated_at)
@@ -182,8 +205,10 @@ export async function saveListing(db: Db, actor: Actor, input: ListingInput, now
 /** Hiding a listing stops new bookings; bookings already made carry on. */
 export async function setListingActive(db: Db, actor: Actor, listingId: string, active: boolean, now: Date) {
   const m = await serviceMerchant(db, actor);
-  const rows = await db.query('UPDATE service_listings SET active = $3, updated_at = $4 WHERE id = $1 AND merchant_id = $2 RETURNING id', [listingId, m.id, active, now]);
-  if (rows.length === 0) throw notFound('Listing');
+  const listing = await one<{ category: ServiceCategory }>(db, 'SELECT category FROM service_listings WHERE id = $1 AND merchant_id = $2', [listingId, m.id]);
+  if (!listing) throw notFound('Listing');
+  if (active && !m.service_trades.includes(listing.category)) throw forbidden(NOT_IN_TRADES);
+  await db.query('UPDATE service_listings SET active = $2, updated_at = $3 WHERE id = $1', [listingId, active, now]);
   return { ok: true };
 }
 
@@ -975,5 +1000,113 @@ export async function setMerchantKind(db: Db, actor: Actor, merchantId: string, 
     await tx.query('UPDATE merchants SET offers_retail = $2, offers_services = $3 WHERE id = $1', [merchantId, offersRetail, offersServices]);
     await audit(tx, actor.id, 'MERCHANT_KIND', 'merchant', merchantId, { kind });
     return { kind };
+  });
+}
+
+/**
+ * The kinds of home service a company does. Listings outside the new trades are hidden at once; bookings
+ * already made carry on.
+ */
+async function writeTrades(tx: Queryable, actor: Actor, merchantId: string, trades: readonly ServiceCategory[], now: Date) {
+  const picked = SERVICE_CATEGORIES.filter((c) => trades.includes(c));
+  await tx.query('UPDATE merchants SET service_trades = $2 WHERE id = $1', [merchantId, picked]);
+  await tx.query(
+    'UPDATE service_listings SET active = false, updated_at = $3 WHERE merchant_id = $1 AND active AND NOT (category = ANY($2::text[]))',
+    [merchantId, picked, now],
+  );
+  await audit(tx, actor.id, 'MERCHANT_TRADES', 'merchant', merchantId, { trades: picked });
+  return picked;
+}
+
+async function townshipStaffIds(q: Queryable, townshipId: string) {
+  return (await q.query<{ id: string }>(
+    `SELECT id FROM users WHERE township_id = $1 AND role IN ('TOWNSHIP_STAFF', 'TOWNSHIP_ADMIN') AND status = 'ACTIVE'`,
+    [townshipId],
+  )).map((u) => u.id);
+}
+
+const labelList = (trades: readonly ServiceCategory[]) => trades.map((c) => SERVICE_CATEGORY_LABELS[c]).join(', ');
+
+/**
+ * The company sets what it does. Most kinds of work are added at once. Licensed work (plumbing, electrical,
+ * air-conditioning) is sent to township staff with the licence number, and added only when they approve it.
+ */
+export async function setOwnTrades(db: Db, actor: Actor, input: { trades: ServiceCategory[]; licence?: string }, now: Date) {
+  return db.tx(async (tx) => {
+    const m = await serviceMerchant(tx, actor, { lock: true });
+    const added = input.trades.filter((c) => !m.service_trades.includes(c));
+    const toCheck = added.filter((c) => SERVICE_LICENSED_TRADES.includes(c));
+    const licence = input.licence?.trim() ?? '';
+    if (toCheck.length > 0 && licence.length < 3) {
+      throw ruleViolation('LICENCE_NEEDED', 'Give your licence or registration number so the township office can check it.');
+    }
+    const requested: ServiceCategory[] = [];
+    for (const category of toCheck) {
+      const row = await one(
+        tx,
+        `INSERT INTO service_trade_requests (merchant_id, category, note, requested_by, created_at) VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (merchant_id, category) WHERE status = 'PENDING' DO NOTHING RETURNING id`,
+        [m.id, category, licence, actor.id, now],
+      );
+      if (row) requested.push(category);
+    }
+    if (requested.length > 0) {
+      await audit(tx, actor.id, 'TRADE_REQUESTED', 'merchant', m.id, { trades: requested });
+      await notify(tx, await townshipStaffIds(tx, m.township_id), {
+        title: 'Home service to check',
+        body: `${m.name} asks to offer ${labelList(requested)}. Check their licence before approving.`,
+        link: '/console/shops',
+      });
+    }
+    const trades = await writeTrades(tx, actor, m.id, input.trades.filter((c) => !toCheck.includes(c)), now);
+    return { trades, requested };
+  });
+}
+
+/** Township staff set what a company may offer. Ticking a kind of work approves any request waiting for it. */
+export async function setServiceTrades(db: Db, actor: Actor, merchantId: string, trades: ServiceCategory[], now: Date) {
+  return db.tx(async (tx) => {
+    const m = await one<{ township_id: string }>(tx, 'SELECT township_id FROM merchants WHERE id = $1 FOR UPDATE', [merchantId]);
+    if (!m) throw notFound('Business');
+    assertTownshipAccess(actor, m.township_id);
+    const picked = await writeTrades(tx, actor, merchantId, trades, now);
+    await tx.query(
+      `UPDATE service_trade_requests SET status = 'APPROVED', decided_by = $3, decided_at = $4
+        WHERE merchant_id = $1 AND status = 'PENDING' AND category = ANY($2::text[])`,
+      [merchantId, picked, actor.id, now],
+    );
+    return { trades: picked };
+  });
+}
+
+/** Staff approve or decline a request for licensed work. The company is told either way. */
+export async function decideTradeRequest(db: Db, actor: Actor, requestId: string, input: { approve: boolean; reason?: string }, now: Date) {
+  return db.tx(async (tx) => {
+    const r = await one<{ merchant_id: string; category: ServiceCategory; status: string; township_id: string; service_trades: ServiceCategory[] }>(
+      tx,
+      `SELECT r.merchant_id, r.category, r.status, m.township_id, m.service_trades
+         FROM service_trade_requests r JOIN merchants m ON m.id = r.merchant_id WHERE r.id = $1 FOR UPDATE OF r, m`,
+      [requestId],
+    );
+    if (!r) throw notFound('Request');
+    assertTownshipAccess(actor, r.township_id);
+    if (r.status !== 'PENDING') throw conflict('REQUEST_DECIDED', 'This request has already been answered.');
+    const label = SERVICE_CATEGORY_LABELS[r.category];
+    const reason = input.reason?.trim() ?? '';
+    if (input.approve) {
+      await writeTrades(tx, actor, r.merchant_id, [...r.service_trades, r.category], now);
+      await tx.query(`UPDATE service_trade_requests SET status = 'APPROVED', decided_by = $2, decided_at = $3 WHERE id = $1`, [requestId, actor.id, now]);
+    } else {
+      if (reason.length < 3) throw ruleViolation('REASON_NEEDED', 'Say why, so the company knows what to fix.');
+      await tx.query(
+        `UPDATE service_trade_requests SET status = 'DECLINED', decline_reason = $2, decided_by = $3, decided_at = $4 WHERE id = $1`,
+        [requestId, reason, actor.id, now],
+      );
+    }
+    await audit(tx, actor.id, input.approve ? 'TRADE_APPROVED' : 'TRADE_DECLINED', 'merchant', r.merchant_id, { category: r.category, reason: reason || undefined });
+    await notify(tx, await merchantUserIds(tx, r.merchant_id), input.approve
+      ? { title: `${label} approved`, body: `The township office checked your licence. You can now add a ${label.toLowerCase()} service for residents to book.`, link: '/merchant/services' }
+      : { title: `${label} not approved`, body: `The township office did not approve ${label.toLowerCase()}: ${reason}`, link: '/merchant/services' });
+    return { status: input.approve ? 'APPROVED' : 'DECLINED' };
   });
 }

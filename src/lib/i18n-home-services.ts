@@ -356,6 +356,35 @@ export const homeServicesMalay: Record<string, string> = {
   'No reply from the township team yet.': 'Belum ada balasan daripada pasukan perbandaran.',
   'Waiting for the township team to pick it up. You will be notified when they do.': 'Menunggu pasukan perbandaran mengambilnya. Anda akan dimaklumkan apabila mereka berbuat demikian.',
   'The township team is looking into it. You will be notified of each update.': 'Pasukan perbandaran sedang menelitinya. Anda akan dimaklumkan setiap kemas kini.',
+  // What a company does (its trades)
+  'What we do': 'Apa yang kami buat',
+  'Tap every kind of work your company does. You can add a service only for these. Plumbing, electrical and air-conditioning work need a licence check by the township office first.':
+    'Ketik setiap jenis kerja yang syarikat anda buat. Anda hanya boleh menambah perkhidmatan untuk ini. Kerja paip, elektrik dan penghawa dingin perlu semakan lesen oleh pejabat perbandaran dahulu.',
+  'Not listed yet:': 'Belum disenaraikan:',
+  'Every service you do is listed below. Tap another kind of work to offer more.': 'Setiap perkhidmatan yang anda buat disenaraikan di bawah. Ketik jenis kerja lain untuk menawarkan lebih banyak.',
+  'Services you untick are hidden from residents.':'Perkhidmatan yang anda nyahtanda disembunyikan daripada penduduk.',
+  'Tap what your company does above, then add a service.': 'Ketik apa yang syarikat anda buat di atas, kemudian tambah perkhidmatan.',
+  'Hidden: not in What we do': 'Disembunyikan: tiada dalam Apa yang kami buat',
+  'The company can list only these. It adds most itself; plumbing, electrical and air-conditioning work come to you as a licence check first. Untick any it should not offer: its listing is hidden, and bookings already made carry on.':
+    'Syarikat hanya boleh menyenaraikan ini. Kebanyakannya ditambah sendiri; kerja paip, elektrik dan penghawa dingin datang kepada anda untuk semakan lesen dahulu. Nyahtanda mana-mana yang tidak sepatutnya ditawarkan: senaraiannya disembunyikan, dan tempahan yang sudah dibuat diteruskan.',
+  // Licence checks for licensed work
+  'Licence to check': 'Lesen perlu disemak',
+  'Licence or registration no.:': 'No. lesen atau pendaftaran:',
+  'Why not?': 'Mengapa tidak?',
+  'e.g. The number does not match SPAN records.': 'cth. Nombor tidak sepadan dengan rekod SPAN.',
+  'The company sees this.': 'Syarikat akan melihat ini.',
+  'Declined. The company has been told why.': 'Ditolak. Syarikat telah diberitahu sebabnya.',
+  'Tap it above to ask again.': 'Ketik di atas untuk memohon semula.',
+  'Licence or registration number': 'Nombor lesen atau pendaftaran',
+  'e.g. SPAN or Suruhanjaya Tenaga registration no.': 'cth. No. pendaftaran SPAN atau Suruhanjaya Tenaga',
+  'Waiting': 'Menunggu',
+  'Send for checking': 'Hantar untuk semakan',
+  'Sent to the township office. We will tell you when they have checked it.': 'Dihantar ke pejabat perbandaran. Kami akan memberitahu anda apabila ia telah disemak.',
+  'Give your licence or registration number so the township office can check it.': 'Berikan nombor lesen atau pendaftaran anda supaya pejabat perbandaran boleh menyemaknya.',
+  'Home service to check': 'Perkhidmatan rumah untuk disemak',
+  'Say why, so the company knows what to fix.': 'Nyatakan sebabnya, supaya syarikat tahu apa yang perlu dibetulkan.',
+  'This request has already been answered.': 'Permohonan ini telah pun dijawab.',
+  'Add this service to What we do first.': 'Tambah perkhidmatan ini dalam Apa yang kami buat dahulu.',
 };
 
 /** Templates: the values in braces (names, amounts, counts) stay as they are. */
@@ -388,4 +417,15 @@ export const homeServicesTemplates: readonly (readonly [string, string])[] = [
     'Salam! Here is the City of Elmina gate pass for {0} ({1}). Show the QR code at the main gate: {2}',
     'Salam! Ini pas pintu masuk City of Elmina untuk {0} ({1}). Tunjukkan kod QR di pintu masuk utama: {2}',
   ],
+  ['Wants to offer {0}', 'Mahu menawarkan {0}'],
+  ['Asked {0}', 'Dipohon {0}'],
+  ['Not approved: {0}', 'Tidak diluluskan: {0}'],
+  ['{0}: the township office checks this before residents can book.', '{0}: pejabat perbandaran menyemak ini sebelum penduduk boleh menempah.'],
+  ['Waiting for the township office to check licence {0}.', 'Menunggu pejabat perbandaran menyemak lesen {0}.'],
+  ['{0} approved. The company has been told.', '{0} diluluskan. Syarikat telah diberitahu.'],
+  ['{0} approved', '{0} diluluskan'],
+  ['{0} not approved', '{0} tidak diluluskan'],
+  ['{0} asks to offer {1}. Check their licence before approving.', '{0} memohon untuk menawarkan {1}. Semak lesen mereka sebelum meluluskan.'],
+  ['The township office checked your licence. You can now add a {0} service for residents to book.', 'Pejabat perbandaran telah menyemak lesen anda. Anda kini boleh menambah perkhidmatan {0} untuk ditempah oleh penduduk.'],
+  ['The township office did not approve {0}: {1}', 'Pejabat perbandaran tidak meluluskan {0}: {1}'],
 ];
