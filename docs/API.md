@@ -450,6 +450,7 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | POST | `/admin/banjir/zones/:zoneId/signals` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Prototype: a signal from the sensor simulator (signed readings from the zone's simulated sensors), a camera test picture or the rain gauge |
 | POST | `/admin/banjir/zones/:zoneId/camera-photo` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | A drain photo (a CCTV stand-in, multipart field "photo") read by the camera reader (your model server or the hosted AI) and recorded as the camera signal. The photo is not stored |
 | POST | `/admin/banjir/drafts/:messageId` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | One tap: send (optionally edited) or cancel a one-signal draft; a cancel or an edit needs a reason (BR21) |
+| POST | `/admin/banjir/zones/:zoneId/second-check` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | A second staff member confirms a warning raised on one signal, so residents see it as confirmed (never the person who raised it) |
 | POST | `/flood/readings` | Signed device (own HMAC key) | A sensor (or its gateway) posts signed readings: signature checked, duplicates dropped, stored, and the agent woken |
 | GET | `/admin/banjir/sensors` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Every sensor: battery, signal strength, last seen, health, open ticket and maintenance log |
 | POST | `/admin/banjir/sensors` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Register a sensor; its signing key is shown once |

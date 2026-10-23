@@ -39,6 +39,7 @@ const STEP_MEANING: Record<string, string> = {
   DRAFT_DROPPED: 'The draft was withdrawn before anyone was told.',
   OFFICER_CONFIRMED: 'The duty officer sent the draft.',
   OFFICER_CANCELLED: 'The duty officer stopped the draft; residents were not told.',
+  SECOND_CHECK: 'A second signal or a second staff member backed the warning, so residents now see it as confirmed.',
   ESCALATED: 'Nobody answered within 3 minutes and the water was still rising, so it was sent.',
   UNANSWERED: 'Nobody confirmed within 5 minutes, so the township admins were told.',
   UPDATE_SENT: 'Scheduled update to residents, as promised in the last message.',

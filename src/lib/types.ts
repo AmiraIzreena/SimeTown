@@ -116,6 +116,8 @@ export interface BanjirOverview {
     todo: string | null;
     next_update_at: string | null;
     sent_at: string | null;
+    /** A warning raised on one signal, still waiting for a second check: shown amber, not red. */
+    unconfirmed: boolean;
     /** The last reading from a healthy sensor, or a level the duty officer set. */
     verified_at: string | null;
     verified_by: 'SENSOR' | 'MANUAL' | null;

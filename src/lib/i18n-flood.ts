@@ -255,6 +255,26 @@ export const floodMalay: Record<string, string> = {
   'Flood event reviewed': 'Kejadian banjir disemak',
   'Flood help assigned': 'Bantuan banjir ditugaskan',
   'Flood help reached': 'Bantuan banjir sampai',
+  'Flood second check': 'Semakan kedua banjir',
+
+  // A warning on one signal waits for a second check (amber until then)
+  'Unconfirmed flood warning': 'Amaran banjir belum disahkan',
+  'Unconfirmed warning': 'Amaran belum disahkan',
+  'Only one check so far. Be ready, and check your safe route. It turns red once a second check confirms it.':
+    'Baru satu semakan setakat ini. Bersedia, dan semak laluan selamat anda. Ia bertukar merah sebaik sahaja semakan kedua mengesahkannya.',
+  'Unconfirmed flood warning in your area. Be ready to move.': 'Amaran banjir belum disahkan di kawasan anda. Bersedia untuk berpindah.',
+  'Warning waiting for a second check': 'Amaran menunggu semakan kedua',
+  'Raised on one signal.': 'Dinaikkan berdasarkan satu isyarat.',
+  'Residents see it in amber until a second signal agrees or another staff member confirms it.':
+    'Penduduk melihatnya berwarna jingga sehingga isyarat kedua bersetuju atau kakitangan lain mengesahkannya.',
+  'You raised this warning. A different staff member must do the second check.': 'Anda yang menaikkan amaran ini. Kakitangan lain mesti membuat semakan kedua.',
+  'Confirm the warning': 'Sahkan amaran',
+  'Confirmed. Residents now see the warning in red.': 'Disahkan. Penduduk kini melihat amaran berwarna merah.',
+  'Second check: warning confirmed': 'Semakan kedua: amaran disahkan',
+  'A second signal or a second staff member backed the warning, so residents now see it as confirmed.':
+    'Isyarat kedua atau kakitangan kedua menyokong amaran, jadi penduduk kini melihatnya sebagai disahkan.',
+  'There is no flood alert open in this zone.': 'Tiada amaran banjir yang terbuka di zon ini.',
+  'This alert has already had its second check.': 'Amaran ini sudah melalui semakan kedua.',
 };
 
 /** Messages with values filled in by the app. Placeholders keep their numbers. */
@@ -274,4 +294,5 @@ export const floodTemplates: readonly (readonly [string, string])[] = [
   ['{0} of {1} events reviewed', '{0} daripada {1} kejadian disemak'],
   ['{0} of {1} sensors faulty now', '{0} daripada {1} sensor rosak sekarang'],
   ['Rise {0} cm in 10 minutes; battery below {1}%.', 'Kenaikan {0} cm dalam 10 minit; bateri di bawah {1}%.'],
+  ['Raised on one signal by {0}.', 'Dinaikkan berdasarkan satu isyarat oleh {0}.'],
 ];

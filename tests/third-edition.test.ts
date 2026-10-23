@@ -6,7 +6,7 @@ import { one, type Db } from '@/server/db/client';
 import { routes } from '@/server/http/api';
 import { createRouter } from '@/server/http/router';
 import { deleteAccessProfile, getAccessProfile, inviteCarer, respondToCarerInvite, saveAccessProfile } from '@/server/modules/akses/service';
-import { decideDraft, runAgentClock, simulateSignal } from '@/server/modules/banjir/agent';
+import { decideDraft, runAgentClock, secondCheck, simulateSignal } from '@/server/modules/banjir/agent';
 import { recordLevel } from '@/server/modules/banjir/service';
 import { listCampaigns } from '@/server/modules/campaigns/service';
 import { setSponsorTier } from '@/server/modules/campaigns/tiers';
@@ -358,6 +358,8 @@ describe('Banjir agent (BR28)', () => {
     const msg = await one<{ what: string; todo: string; next_update_at: Date; decision: string }>(db, `SELECT what, todo, next_update_at, decision FROM flood_messages WHERE zone_id = $1 AND status = 'SENT' ORDER BY sent_at DESC LIMIT 1`, [zoneId]);
     expect(msg).toMatchObject({ decision: 'TWO_SIGNALS' });
     expect(msg!.next_update_at).toBeTruthy(); // every alert states the time of the next update
+    // Two signals agreed, so it needs no second check: residents see it in red at once.
+    expect(await one(db, 'SELECT 1 FROM flood_alerts WHERE zone_id = $1 AND ended_at IS NULL AND confirmed_at IS NOT NULL', [zoneId])).toBeTruthy();
   });
 
   it('sends a one-signal Danger after 3 minutes with no answer while the water still rises', async () => {
@@ -400,6 +402,33 @@ describe('Banjir agent (BR28)', () => {
     await runAgentClock(db, new Date(t.getTime() + 20 * 60_000));
     expect((await one<{ status: string }>(db, 'SELECT status FROM flood_messages WHERE id = $1', [draft!.id]))!.status).toBe('CANCELLED');
     expect((await one<{ status: string }>(db, 'SELECT status FROM flood_zones WHERE id = $1', [zone]))!.status).toBe('WARNING');
+  });
+
+  it('shows a warning raised on one signal as unconfirmed until a second staff member or a second signal backs it', async () => {
+    const newZone = async (name: string) => (await one<{ id: string }>(db, `INSERT INTO flood_zones (township_id, name, safe_route, assembly_point) VALUES ($1, $2, 'Go north', 'Mosque') RETURNING id`, [w.townshipId, name]))!.id;
+    const unconfirmed = async (zone: string) => (await call('GET', '/banjir', { as: w.staff })).data.zones.find((z: { id: string }) => z.id === zone).unconfirmed;
+    const raise = async (zone: string, t: Date) => {
+      await simulateSignal(db, w.staff, zone, { source: 'RAIN', rainMmHr: 45 }, t);
+      const draft = await one<{ id: string }>(db, `SELECT id FROM flood_messages WHERE zone_id = $1 AND status = 'DRAFT'`, [zone]);
+      await decideDraft(db, w.staff, draft!.id, { action: 'SEND' }, new Date(t.getTime() + 1_000));
+    };
+
+    // A second staff member: never the one who raised it.
+    const byStaff = await newZone('Check Zone A');
+    await raise(byStaff, at(2));
+    expect(await unconfirmed(byStaff)).toBe(true);
+    await expect(secondCheck(db, w.staff, byStaff, at(2.001))).rejects.toMatchObject({ code: 'SECOND_PERSON_NEEDED' });
+    expect((await call('POST', `/admin/banjir/zones/${byStaff}/second-check`, { as: w.admin })).status).toBe(200);
+    expect(await unconfirmed(byStaff)).toBe(false);
+    await expect(secondCheck(db, w.admin2, byStaff, at(2.002))).rejects.toMatchObject({ code: 'ALREADY_CONFIRMED' });
+
+    // A second, independent signal agreeing.
+    const bySignal = await newZone('Check Zone B');
+    await raise(bySignal, at(3));
+    expect(await unconfirmed(bySignal)).toBe(true);
+    await simulateSignal(db, w.staff, bySignal, { source: 'CAMERA', pictureId: 'day-78' }, new Date(at(3).getTime() + 60_000));
+    expect(await unconfirmed(bySignal)).toBe(false);
+    expect(await one(db, `SELECT 1 FROM flood_agent_log WHERE zone_id = $1 AND step = 'SECOND_CHECK'`, [bySignal])).toBeTruthy();
   });
 
   it('serves the public status page with no sign-in and no personal data', async () => {

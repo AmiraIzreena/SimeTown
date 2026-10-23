@@ -1577,6 +1577,18 @@ html[data-signed-in] { scroll-behavior: smooth; scroll-padding-top: 5.5rem; scro
 .zone-card.is-warning .water-col .water-fill { background: linear-gradient(180deg, #f0735f, var(--color-accent-500)); }
 .zone-card.is-warning .water-col .water-wave path { fill: #f0735f; }
 
+/* A warning raised on one signal, before its second check: amber and still, so only a confirmed alert is red. */
+.zone-card.is-unconfirmed { box-shadow: 0 0 0 1px rgb(168 101 12 / 0.14), 0 12px 30px rgb(168 101 12 / 0.10); }
+.zone-card.is-unconfirmed .zone-alert-band { background-image: linear-gradient(100deg, var(--color-warning-700) 0%, var(--color-warning-600) 100%); }
+.zone-card.is-unconfirmed .zone-alert-dot { animation: none; }
+.zone-card.is-unconfirmed .water-col .water-fill { background: linear-gradient(180deg, #d9a33a, var(--color-warning-600)); }
+.zone-card.is-unconfirmed .water-col .water-wave path { fill: #d9a33a; }
+@media (hover: hover) and (pointer: fine) {
+  .zone-card.is-unconfirmed:hover { box-shadow: 0 0 0 1px rgb(168 101 12 / 0.2), 0 22px 44px rgb(168 101 12 / 0.16); }
+  .zone-card.is-unconfirmed .zone-message:hover { box-shadow: 0 8px 20px rgb(168 101 12 / 0.10); }
+  .zone-card.is-unconfirmed .zone-route:hover { background-color: var(--color-warning-50); }
+}
+
 /*
  * --- Banjir, the resident page (app/banjir/page.tsx): colour by meaning -----------------------------
  * Deep red is danger and red-orange a warning (as above). A normal zone keeps SimeTown's own brand colours. Green is safety: the all clear,

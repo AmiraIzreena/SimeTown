@@ -12,10 +12,12 @@ export async function banjirOverview(db: Db, actor: Actor, now: Date) {
   const s = await getSettings(db);
   const rows = await db.query<{ id: string } & Record<string, unknown>>(
     `SELECT z.id, z.name, z.level_pct, z.status, z.safe_route, z.assembly_point, z.updated_at,
-            m.kind AS message_kind, m.what, m.where_text, m.todo, m.next_update_at, m.sent_at, m.level AS message_level, m.signals, ${VERIFIED_COLUMNS}
+            m.kind AS message_kind, m.what, m.where_text, m.todo, m.next_update_at, m.sent_at, m.level AS message_level, m.signals, ${VERIFIED_COLUMNS},
+            (fa.id IS NOT NULL AND fa.confirmed_at IS NULL) AS unconfirmed
        FROM flood_zones z
        LEFT JOIN LATERAL (SELECT kind, what, where_text, todo, next_update_at, sent_at, level, signals FROM flood_messages
                            WHERE zone_id = z.id AND status = 'SENT' ORDER BY sent_at DESC LIMIT 1) m ON true
+       LEFT JOIN flood_alerts fa ON fa.zone_id = z.id AND fa.ended_at IS NULL
        ${VERIFIED_JOIN}
       WHERE ($1::uuid IS NULL OR z.township_id = $1) ORDER BY z.name`,
     [actor.townshipId],
