@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
 import { SERVICE_CATEGORY_PAGE, serviceCategoryHref } from '@/components/features/home-service-categories';
 import { BookingPhoto, BookingStatusBadge, BookingTimeline, PriceLine, Rating, REPORT_STATUS_LABELS, REPORT_STATUS_TONES, SERVICE_ICONS, SLOT_SHORT, Stars, type BookingEvent } from '@/components/features/home-services';
+import { ResidentHomeServiceWalkthrough } from '@/components/features/home-service-walkthroughs';
 import { PreviewBadge, SimulatedNote } from '@/components/features/preview';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, PageHeader } from '@/components/ui/card';
@@ -129,7 +130,7 @@ export function HomeServicesScreen({ initialBooking }: { initialBooking: string 
 
   return (
     <>
-      <PageHeader title="SimeTown Home" description="Book a township service company. You see who is coming before they arrive, and you agree the price with them in person before any work starts." />
+      <PageHeader title="SimeTown Home" description="Book a township service company. You see who is coming before they arrive, and you agree the price with them in person before any work starts." action={<ResidentHomeServiceWalkthrough />} />
       <div className="space-y-6">
         <SimulatedNote><Text>The companies, workers and reviews here are demo data. SimeTown takes no payment: you pay the company directly.</Text></SimulatedNote>
 

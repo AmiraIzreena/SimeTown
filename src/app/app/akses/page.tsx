@@ -6,6 +6,7 @@ import { Accessibility, Bell, BellOff, HeartHandshake, Lock, MapPin, Plus, Trash
 import { useState, type FormEvent } from 'react';
 import { AvailabilityBadge, IncidentStatusBadge, PhotoField, VerificationBadge, availabilityHint, categoryLabel, formWith } from '@/components/features/access-bits';
 import { AksesWizard, useAksesMode, type AksesProfile } from '@/components/features/akses-mode';
+import { ResidentAksesWalkthrough } from '@/components/features/akses-walkthroughs';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, PageHeader } from '@/components/ui/card';
 import { ConfirmDialog, Modal } from '@/components/ui/dialog';
@@ -179,7 +180,7 @@ export default function AksesPage() {
 
   return (
     <>
-      <PageHeader title="Akses+" description="Tell the app what helps you, once. Every feature adapts: Simple Mode, read-aloud, flashing alerts, step-free places, and a priority help list for floods." />
+      <PageHeader title="Akses+" description="Tell the app what helps you, once. Every feature adapts: Simple Mode, read-aloud, flashing alerts, step-free places, and a priority help list for floods." action={<ResidentAksesWalkthrough />} />
       <div className="space-y-6">
         <Async state={profile}>
           {() =>
