@@ -221,6 +221,9 @@ describe('rules that keep bookings honest', () => {
 
     // Plumbing is licensed work: a licence number is needed, and it waits for staff.
     await expect(home.setOwnTrades(db, merchant, { trades: ['AIRCON', 'PLUMBING'] }, T0)).rejects.toMatchObject({ code: 'LICENCE_NEEDED' });
+    await expect(home.setOwnTrades(db, merchant, { trades: ['AIRCON', 'RENOVATION'] }, T0)).rejects.toMatchObject({ code: 'LICENCE_NEEDED' });
+    // Repairs needs no licence: added at once.
+    expect(await home.setOwnTrades(db, merchant, { trades: ['AIRCON', 'REPAIRS'] }, T0)).toEqual({ trades: ['AIRCON', 'REPAIRS'], requested: [] });
     const sent = await home.setOwnTrades(db, merchant, { trades: ['AIRCON', 'PLUMBING', 'CLEANING'], licence: 'SPAN-12345' }, T0);
     expect(sent).toEqual({ trades: ['AIRCON', 'CLEANING'], requested: ['PLUMBING'] });
     await expect(home.setListingActive(db, merchant, listingId, true, T0)).rejects.toMatchObject({ status: 403 });

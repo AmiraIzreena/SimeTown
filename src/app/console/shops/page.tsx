@@ -398,7 +398,7 @@ function ShopPanel({ id, onClose, onDeposit, onChanged }: { id: string | null; o
                 <TradePicker label="Home services" value={pickedTrades} onChange={setTrades} />
                 <Button type="submit" size="sm" variant="secondary" disabled={!tradesChanged} pending={saveTrades.pending}><Text>Save</Text></Button>
               </form>
-              <p className="mt-1.5 text-xs text-ink-500"><Text>The company can list only these. It adds most itself; plumbing, electrical and air-conditioning work come to you as a licence check first. Untick any it should not offer: its listing is hidden, and bookings already made carry on.</Text></p>
+              <p className="mt-1.5 text-xs text-ink-500"><Text>The company can list only these. It adds cleaning and repairs itself; plumbing, electrical, air-conditioning and renovation work come to you as a licence check first. Untick any it should not offer: its listing is hidden, and bookings already made carry on.</Text></p>
             </section>
           )}
 

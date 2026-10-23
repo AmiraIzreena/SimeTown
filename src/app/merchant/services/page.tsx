@@ -94,7 +94,7 @@ export default function ServicesPage() {
             )}
 
             <Card>
-              <CardHeader title="What we do" description="Tap every kind of work your company does. You can add a service only for these. Plumbing, electrical and air-conditioning work need a licence check by the township office first." />
+              <CardHeader title="What we do" description="Tap every kind of work your company does. You can add a service only for these. Plumbing, electrical, air-conditioning and renovation work need a licence check by the township office first." />
               <form
                 method="post"
                 className="space-y-3 px-5 pb-5"
@@ -128,7 +128,7 @@ export default function ServicesPage() {
                         onChange={(event) => setLicence(event.target.value)}
                         maxLength={300}
                         required
-                        placeholder="e.g. SPAN or Suruhanjaya Tenaga registration no."
+                        placeholder="e.g. SPAN, Suruhanjaya Tenaga or CIDB registration no."
                         hint={`${labelList(toCheck)}: the township office checks this before residents can book.`}
                         error={saveTrades.fields.licence}
                       />
