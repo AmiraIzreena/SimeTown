@@ -1115,7 +1115,7 @@ interface ConfigData {
 }
 
 const CHANNEL_LABEL = (p: Pick<Party, 'integration'>) => (p.integration === 'SIMULATED' ? 'External system' : 'SimeTown app');
-const ROLE_NAMES: Record<string, string> = { GUARD: 'Guard', TOWNSHIP_STAFF: 'Township staff', TOWNSHIP_ADMIN: 'Township admin' };
+const ROLE_NAMES: Record<string, string> = { GUARD: 'Guard', GUARDHOUSE: 'Guardhouse staff', TOWNSHIP_STAFF: 'Township staff', TOWNSHIP_ADMIN: 'Township admin' };
 
 /** Minutes as people say them: 30 min, 4 hours, 3 working days. */
 function duration(minutes: number, working: boolean): string {

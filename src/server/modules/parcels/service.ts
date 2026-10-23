@@ -9,7 +9,7 @@ import { createIncident } from '../incidents/engine';
 import { notify } from '../notifications';
 import { HOME_ADDRESS_COLUMNS } from '../townships';
 import { getSettings } from '../settings';
-import { getPolicy, guardsOf, inQuietHours, staffOf, WEEK_MS } from '../lockers/core';
+import { getPolicy, guardhouseOf, inQuietHours, staffOf, WEEK_MS } from '../lockers/core';
 import { emailShelfArrival, emailShelfReminder } from '../email/parcels';
 
 /**
@@ -150,12 +150,12 @@ export async function myParcels(db: Db, actor: Actor, now: Date) {
   };
 }
 
-const GATE_ROLES = ['GUARD', 'TOWNSHIP_STAFF', 'TOWNSHIP_ADMIN', 'HQ_ADMIN'];
+const COUNTER_ROLES = ['GUARDHOUSE', 'TOWNSHIP_STAFF', 'TOWNSHIP_ADMIN', 'HQ_ADMIN'];
 
-/** The parcel's photo: for its household and for the gate. */
+/** The parcel's photo: for its household and for the guardhouse counter. */
 export async function parcelPhoto(db: Db, actor: Actor, id: string): Promise<Response> {
   const p = await one<{ home_id: string; township_id: string; photo_id: string | null }>(db, 'SELECT home_id, township_id, photo_id FROM parcels WHERE id = $1', [id]);
-  const allowed = p && (GATE_ROLES.includes(actor.role) ? actor.role === 'HQ_ADMIN' || p.township_id === actor.townshipId : actor.homeId === p.home_id && actor.residencyStatus === 'VERIFIED');
+  const allowed = p && (COUNTER_ROLES.includes(actor.role) ? actor.role === 'HQ_ADMIN' || p.township_id === actor.townshipId : actor.homeId === p.home_id && actor.residencyStatus === 'VERIFIED');
   if (!allowed || !p.photo_id) throw notFound('Photo');
   const upload = await one<{ mime: string; bytes: Uint8Array }>(db, 'SELECT mime, bytes FROM uploads WHERE id = $1', [p.photo_id]);
   if (!upload) throw notFound('Photo');
@@ -364,7 +364,7 @@ export async function runShelfRules(db: Db, now: Date) {
           title: 'Please call a household about a parcel',
           body: `A parcel from ${p.courier} has been on shelf ${p.shelf} at the guardhouse for ${plural(days, 'day')}. Call the household, then add a note to the parcel.`,
         };
-        await notify(tx, await guardsOf(tx, township_id), { ...call, link: '/guard/parcels', dedupeKey: `guard-call:${id}` });
+        await notify(tx, await guardhouseOf(tx, township_id), { ...call, link: '/guardhouse', dedupeKey: `guard-call:${id}` });
         await notify(tx, await staffOf(tx, township_id), { ...call, link: '/console/operations?tab=guardhouse', dedupeKey: `guard-call:${id}` });
         counts.calls++;
       }

@@ -270,7 +270,7 @@ export function GateScreen({ initialPatrol }: { initialPatrol: string }) {
                         <span className="block text-sm font-semibold text-ink-900">
                           <Text>{p.seq}</Text>. {p.name}
                         </span>
-                        <span className="block text-xs text-ink-500"><Text>{p.last_scan_today ? `Checked ${timeAgo(p.last_scan_today)}` : 'Not yet today'}</Text></span>
+                        <span className="block text-xs text-ink-600"><Text>{p.last_scan_today ? `Checked ${timeAgo(p.last_scan_today)}` : 'Not yet today'}</Text></span>
                       </span>
                     </li>
                   ))}

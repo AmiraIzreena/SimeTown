@@ -9,7 +9,7 @@ import { createRouter } from '@/server/http/router';
 import { notify } from '@/server/modules/notifications';
 import { createKiosk } from '@/server/modules/kitar/service';
 import { createLoop, listLoopsForStaff } from '@/server/modules/gerak/service';
-import { T0, expectFloatBalanced, freshDb, makeCampaign, makeHome, makeMerchant, makeResident, makeSponsorUser, makeWorld, reportPhotoFile, sell, walletOf, type World } from './helpers';
+import { T0, expectFloatBalanced, freshDb, makeCampaign, makeHome, makeMerchant, makeResident, makeSponsorUser, makeGateWorker, makeWorld, reportPhotoFile, sell, walletOf, type World } from './helpers';
 
 /** These tests go through the real router: sign-in, roles, the origin check, validation and each feature's rules. */
 
@@ -222,6 +222,29 @@ describe('access control', () => {
     expect((await call('POST', '/campaigns', { as: shop, body: {} })).status).toBe(403);
     expect((await call('PATCH', '/admin/settings', { as: w.admin, body: { issuance_fee_bps: 0 } })).status).toBe(403); // HQ only
     expect((await call('PATCH', '/admin/settings', { as: w.hq, body: { min_group_size: 10 } })).status).toBe(200);
+  });
+
+  it('keeps gate guards to the gate and guardhouse staff to the parcel counter', async () => {
+    const guard = await makeGateWorker(w, 'GUARD');
+    const counter = await makeGateWorker(w, 'GUARDHOUSE');
+    // Guards run the gate, not parcels.
+    expect((await call('GET', '/guard', { as: guard })).status).toBe(200);
+    expect((await call('GET', '/guard/parcels', { as: guard })).status).toBe(403);
+    expect((await call('POST', '/guard/parcels/check', { as: guard, body: { code: 'ABC123' } })).status).toBe(403);
+    expect((await call('GET', '/admin/lockers/overflow', { as: guard })).status).toBe(403);
+    // Guardhouse staff run parcels, not the gate.
+    expect((await call('GET', '/guard/parcels', { as: counter })).status).toBe(200);
+    expect((await call('GET', '/admin/lockers/overflow', { as: counter })).status).toBe(200);
+    expect((await call('GET', '/guard', { as: counter })).status).toBe(403);
+    expect((await call('POST', '/guard/patrol', { as: counter, body: { code: 'R123456789' } })).status).toBe(403);
+    // Township staff still cover both.
+    expect((await call('GET', '/guard', { as: w.staff })).status).toBe(200);
+    expect((await call('GET', '/guard/parcels', { as: w.staff })).status).toBe(200);
+    // Township admins can create both kinds of account.
+    for (const role of ['GUARD', 'GUARDHOUSE']) {
+      const made = await call('POST', '/admin/accounts', { as: w.admin, body: { email: `new-${role.toLowerCase()}@kita.test`, fullName: `New ${role}`, role } });
+      expect(made.status).toBe(200);
+    }
   });
 
   it('refuses state-changing requests from another origin (CSRF)', async () => {

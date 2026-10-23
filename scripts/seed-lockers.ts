@@ -230,7 +230,8 @@ async function seedParcelShowcase(db: Db, input: { passwordHash: string; now: Da
   const admin = await actorByEmail(db, 'admin');
   const staff = await actorByEmail(db, 'staff');
   if (!admin?.townshipId || !staff) return log('Parcels: demo accounts missing; showcase skipped.');
-  const guard = (await actorByEmail(db, 'guard')) ?? staff;
+  // The parcel counter is the guardhouse staff's job.
+  const guard = (await actorByEmail(db, 'guardhouse')) ?? staff;
   const people = await Promise.all(['aisyah', 'daniel', 'priya', 'hafiz', 'meiling', 'siti', 'arjun', 'karyan', 'zainab'].map((l) => actorByEmail(db, l)));
   if (people.some((p) => !p)) return log('Parcels: demo residents missing; showcase skipped.');
   type Nine = [Actor, Actor, Actor, Actor, Actor, Actor, Actor, Actor, Actor];

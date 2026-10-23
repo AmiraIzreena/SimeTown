@@ -83,7 +83,7 @@ const DROP_OFFS = '/admin/lockers/storage/deliveries';
 /** After a change at the guardhouse, every view of it catches up. */
 export const refreshCounter = () => Promise.all([mutate(LOCATIONS), mutate(HELD), mutate(DROP_OFFS), mutate((key) => typeof key === 'string' && key.startsWith('/admin/guardhouse'))]);
 
-const ROLE_LABELS: Record<string, string> = { GUARD: 'Guard', TOWNSHIP_STAFF: 'Township staff', TOWNSHIP_ADMIN: 'Township admin', HQ_ADMIN: 'HQ admin' };
+const ROLE_LABELS: Record<string, string> = { GUARD: 'Guard', GUARDHOUSE: 'Guardhouse staff', TOWNSHIP_STAFF: 'Township staff', TOWNSHIP_ADMIN: 'Township admin', HQ_ADMIN: 'HQ admin' };
 
 /** Parcels a courier is bringing because they could not go into the home's door. Received only once handed over. */
 export function CounterDropOffs() {

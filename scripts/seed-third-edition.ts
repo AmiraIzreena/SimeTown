@@ -276,6 +276,15 @@ export async function seedThirdEdition(
     );
     log(`Account: guard@${DOMAIN} (main gate guard).`);
   }
+  // The guardhouse parcel counter has its own account: the guard looks after the gate only.
+  if (!(await actorByEmail(db, "guardhouse"))) {
+    await db.query(
+      `INSERT INTO users (email, password_hash, full_name, role, township_id, phone, terms_version, terms_accepted_at)
+       VALUES ($1, $2, 'Nur Aina (Guardhouse)', 'GUARDHOUSE', $3, '+60123009002', $4, $5)`,
+      [`guardhouse@${DOMAIN}`, input.passwordHash, township.id, LEGAL.version, now],
+    );
+    log(`Account: guardhouse@${DOMAIN} (guardhouse parcel counter).`);
+  }
   if (
     !(await one(db, "SELECT 1 FROM patrol_points WHERE township_id = $1", [
       township.id,

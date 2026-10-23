@@ -371,7 +371,13 @@ export async function staffOf(q: Queryable, townshipId: string): Promise<string[
   return rows.map((r) => r.id);
 }
 
-/** Guards of the township: they hold parcels at the guardhouse. */
+/** Guardhouse staff of the township: they hold parcels at the guardhouse counter. */
+export async function guardhouseOf(q: Queryable, townshipId: string): Promise<string[]> {
+  const rows = await q.query<{ id: string }>(`SELECT id FROM users WHERE township_id = $1 AND role = 'GUARDHOUSE' AND status = 'ACTIVE'`, [townshipId]);
+  return rows.map((r) => r.id);
+}
+
+/** Gate guards of the township: security, such as a locker door forced open beside the guardhouse. */
 export async function guardsOf(q: Queryable, townshipId: string): Promise<string[]> {
   const rows = await q.query<{ id: string }>(`SELECT id FROM users WHERE township_id = $1 AND role = 'GUARD' AND status = 'ACTIVE'`, [townshipId]);
   return rows.map((r) => r.id);

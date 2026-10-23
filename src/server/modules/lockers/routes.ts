@@ -14,8 +14,8 @@ import * as hardware from './hardware';
 import * as incidents from './incidents';
 import * as overflow from './overflow';
 
-/** People who work the guardhouse: guards, township staff and admins. */
-const COUNTER: Role[] = ['GUARD', 'TOWNSHIP_STAFF', 'TOWNSHIP_ADMIN', 'HQ_ADMIN'];
+/** People who work the guardhouse counter: guardhouse staff, township staff and admins. Gate guards do not. */
+const COUNTER: Role[] = ['GUARDHOUSE', 'TOWNSHIP_STAFF', 'TOWNSHIP_ADMIN', 'HQ_ADMIN'];
 const zKey = z.string().trim().min(8).max(80).regex(/^[A-Za-z0-9_-]+$/, 'Check the request key.');
 const zTracking = z.string().trim().min(6).max(40).regex(/^[A-Za-z0-9-]+$/, 'Letters, numbers and dashes only.');
 const zCredential = z.string().trim().min(6).max(120);

@@ -2772,7 +2772,11 @@ export const extraMalay: Record<string, string> = {
   'residents': 'penduduk',
   // People → Accounts
   'Staff & admins': 'Kakitangan & pentadbir',
-  'Who can sign in besides residents: your team, shops, couriers, guards and sponsors. Each person sets their own password from a one-time link.': 'Siapa yang boleh log masuk selain penduduk: pasukan anda, kedai, kurier, pengawal dan penaja. Setiap orang menetapkan kata laluan sendiri melalui pautan sekali guna.',
+  'Who can sign in besides residents: your team, shops, couriers, gate guards, guardhouse staff and sponsors. Each person sets their own password from a one-time link.': 'Siapa yang boleh log masuk selain penduduk: pasukan anda, kedai, kurier, pengawal pintu masuk, kakitangan pondok pengawal dan penaja. Setiap orang menetapkan kata laluan sendiri melalui pautan sekali guna.',
+  'Guardhouse staff': 'Kakitangan pondok pengawal',
+  'Starting the camera…': 'Memulakan kamera…',
+  'The scanner could not start. Type the code printed under the QR or barcode instead.': 'Pengimbas tidak dapat dimulakan. Taip kod yang dicetak di bawah QR atau kod bar.',
+  'The parcel, its shelf and how long it waited show here. Hand it over only when the code is right.': 'Bungkusan, raknya dan berapa lama ia menunggu dipaparkan di sini. Serahkan hanya apabila kod betul.',
   'Resident verification': 'Pengesahan penduduk',
   'Staff & partner access': 'Akses kakitangan & rakan kongsi',
   'Verify residents’ homes, and manage who else can sign in: your team and partners.': 'Sahkan rumah penduduk, dan urus siapa lagi yang boleh log masuk: pasukan anda dan rakan kongsi.',

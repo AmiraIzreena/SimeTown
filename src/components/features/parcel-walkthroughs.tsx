@@ -10,7 +10,7 @@ import { cn } from '@/lib/cn';
 import { ScreenButton, ScreenCard, ScreenRow, ScreenStats, ScreenTitle, Walkthrough, type WalkStep } from './walkthrough';
 
 /**
- * How Parcels works, for each role that uses it: residents, guards, couriers, and staff, admins and HQ in the
+ * How Parcels works, for each role that uses it: residents, guardhouse staff, couriers, and staff, admins and HQ in the
  * console. Pictures only: the names are the demo township's, and every rule shown is the one the app applies.
  */
 
@@ -100,7 +100,7 @@ export function ResidentParcelWalkthrough() {
 
 const GUARD: WalkStep[] = [
   {
-    key: 'log', icon: PackagePlus, who: 'Guard', title: 'A courier leaves a parcel with you',
+    key: 'log', icon: PackagePlus, who: 'Guardhouse staff', title: 'A courier leaves a parcel with you',
     text: 'Choose the house, the courier and the shelf, and take a photo. The household is told at once and gets a collection code.',
     screen: <div className="space-y-3"><ScreenTitle>Log a parcel</ScreenTitle>
       <ScreenRow label="House" value="No. 5, Jalan Metafasa" i={0} />
@@ -110,7 +110,7 @@ const GUARD: WalkStep[] = [
     </div>,
   },
   {
-    key: 'dropoff', icon: Truck, who: 'Guard', title: 'A courier brings a locker parcel',
+    key: 'dropoff', icon: Truck, who: 'Guardhouse staff', title: 'A courier brings a locker parcel',
     text: 'Parcels too big for a home’s door come to you. Check the parcel and tap Confirm receipt, so the household knows it is here.',
     screen: <div className="space-y-3"><ScreenTitle>Couriers bringing parcels</ScreenTitle>
       <ScreenCard icon={Truck} title="J&T Express · JT208F96D0E7" note="Too big for door A02 · No. 1, Jalan Metafasa" i={0} />
@@ -118,7 +118,7 @@ const GUARD: WalkStep[] = [
     </div>,
   },
   {
-    key: 'handover', icon: ScanLine, who: 'Guard', title: 'Hand over against the code',
+    key: 'handover', icon: ScanLine, who: 'Guardhouse staff', title: 'Hand over against the code',
     text: 'The resident shows a code or QR. Scan it or type it in Check code. It works for every parcel at the guardhouse. For locker parcels, check their ID too.',
     screen: <div className="space-y-3"><ScreenTitle>Hand over a parcel</ScreenTitle>
       <CodeBox code="605 721" label="Code" i={0} />
@@ -128,7 +128,7 @@ const GUARD: WalkStep[] = [
     </div>,
   },
   {
-    key: 'call', icon: PhoneCall, who: 'Guard', title: 'Call when a parcel waits 14 days',
+    key: 'call', icon: PhoneCall, who: 'Guardhouse staff', title: 'Call when a parcel waits 14 days',
     text: 'The register marks Call due. Call the household, then add a note so everyone knows. Parcels are never sent back just for waiting.',
     screen: <div className="space-y-3"><ScreenTitle>Guardhouse register</ScreenTitle>
       <ScreenCard icon={PhoneCall} title="Call due · 15 days" note="SHOW0003 · No. 5, Jalan Metafasa" i={0} tone="alert" />
@@ -136,7 +136,7 @@ const GUARD: WalkStep[] = [
     </div>,
   },
   {
-    key: 'register', icon: ClipboardList, who: 'Guard', title: 'Every parcel in one register',
+    key: 'register', icon: ClipboardList, who: 'Guardhouse staff', title: 'Every parcel in one register',
     text: 'Search by tracking number, house or courier, and filter by status. Open any parcel to see its whole history: when it came, reminders, calls and who collected it.',
     screen: <div className="space-y-3"><ScreenTitle>Guardhouse register</ScreenTitle>
       <ScreenStats items={[{ label: 'Held now', value: '13' }, { label: 'Overdue', value: '4', tone: 'warn' }, { label: 'Calls', value: '2', tone: 'alert' }]} />

@@ -69,7 +69,7 @@ const STATUS: Record<Status, { label: string; tone: 'brand' | 'warning' | 'succe
   RETURNED: { label: 'Returned to the courier', tone: 'neutral' },
 };
 const SOURCE: Record<Source, string> = { SHELF: 'Left at the guardhouse', LOCKER: 'From a smart locker' };
-const ROLE: Record<string, string> = { GUARD: 'Guard', TOWNSHIP_STAFF: 'Township staff', TOWNSHIP_ADMIN: 'Township admin', HQ_ADMIN: 'HQ admin', RESIDENT: 'Resident', COURIER: 'Courier' };
+const ROLE: Record<string, string> = { GUARD: 'Guard', GUARDHOUSE: 'Guardhouse staff', TOWNSHIP_STAFF: 'Township staff', TOWNSHIP_ADMIN: 'Township admin', HQ_ADMIN: 'HQ admin', RESIDENT: 'Resident', COURIER: 'Courier' };
 
 /** The figures above the register. */
 export function GuardhouseOverview() {
@@ -348,7 +348,8 @@ type Match =
  * parcel left with the guard, or the pickup code of a smart locker parcel kept there. The code must match, and
  * for a locker parcel the person's ID is checked; the code then stops working.
  */
-export function GuardhouseHandover() {
+/** Hand over a parcel. In a two-column layout it fills its column, so the result area sits beside the Log a parcel form. */
+export function GuardhouseHandover({ fill = false }: { fill?: boolean }) {
   const [code, setCode] = useState('');
   const [matches, setMatches] = useState<Match[] | null>(null);
   const [collectedBy, setCollectedBy] = useState('');
@@ -362,9 +363,9 @@ export function GuardhouseHandover() {
     onSuccess: () => { reset(); setCode(''); void refreshGuardhouse(); },
   });
   return (
-    <Card>
+    <Card className={cn('ops-panel', fill && 'flex h-full flex-col')}>
       <CardHeader title="Hand over a parcel" description="Scan the resident’s QR code or type the code they show you. It works for parcels left at the guardhouse and for smart locker parcels kept here." />
-      <div className="space-y-4 p-5">
+      <div className={cn('space-y-4 p-5', fill && 'flex flex-1 flex-col')}>
         <CameraScan onCode={(text) => { setCode(text); reset(); void check.run(text); }} label="Scan the QR code" />
         <form method="post" className="flex flex-wrap items-end gap-3" onSubmit={(e: FormEvent) => { e.preventDefault(); reset(); void check.run(code); }}>
           <Input label="Code" value={code} onChange={(e) => { setCode(e.target.value); reset(); }} maxLength={120} autoComplete="off" inputMode="text" className="min-w-0 flex-1 basis-40" />
@@ -394,6 +395,16 @@ export function GuardhouseHandover() {
               </div>
             ))}
           </LocalizedDiv>
+        )}
+        {!matches && (
+          // Where the parcel appears once a code is checked: the shelf, the household and how long it waited.
+          <div className={cn('handover-waiting grid place-items-center rounded-xl border border-dashed border-brand-200 bg-brand-50/40 px-5 py-8 text-center', fill && 'flex-1')}>
+            <div className="max-w-xs">
+              <span className="handover-waiting-icon mx-auto grid size-12 place-items-center rounded-2xl bg-white text-brand-600 shadow-sm ring-1 ring-brand-100"><ScanLine className="size-6" aria-hidden /></span>
+              <p className="mt-3 font-semibold text-ink-900"><Text>Waiting for a code</Text></p>
+              <p className="mt-1 text-sm text-ink-600"><Text>The parcel, its shelf and how long it waited show here. Hand it over only when the code is right.</Text></p>
+            </div>
+          </div>
         )}
       </div>
     </Card>

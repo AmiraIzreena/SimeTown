@@ -30,7 +30,7 @@ async function actorByLogin(db: Db, login: string): Promise<Actor | undefined> {
 export async function seedShowcase(db: Db, input: { now: Date; log: (line: string) => void }) {
   const { now, log } = input;
   if (await one(db, 'SELECT 1 FROM notifications WHERE dedupe_key LIKE $1', [`${MARKER}:marker%`])) return log('Showcase: demo data already there.');
-  const logins = ['aisyah', 'daniel', 'staff', 'admin', 'hq', 'kafe', 'plumber', 'bengkel', 'courier', 'guard', 'sponsor'] as const;
+  const logins = ['aisyah', 'daniel', 'staff', 'admin', 'hq', 'kafe', 'plumber', 'bengkel', 'courier', 'guard', 'guardhouse', 'sponsor'] as const;
   const people = Object.fromEntries(await Promise.all(logins.map(async (l) => [l, await actorByLogin(db, l)] as const))) as Record<(typeof logins)[number], Actor | undefined>;
   const { aisyah, daniel, staff, admin } = people;
   if (!aisyah || !daniel || !staff || !admin) return log('Showcase: demo accounts missing; skipped.');
@@ -118,7 +118,7 @@ export async function seedShowcase(db: Db, input: { now: Date; log: (line: strin
   ]);
   await send(people.bengkel, 'bengkel', [{ title: 'Your application is being checked', body: 'The township office is checking your business registration. You will be told when it is approved.', link: '/merchant/account', category: 'ACCOUNT' }]);
   await send(people.courier, 'courier', [{ title: 'Locker door A04 reserved', body: 'Your shipment for Elmina Valley Locker A is ready to drop.', link: '/courier', category: 'PARCELS' }]);
-  await send(people.guard, 'guard', [{ title: 'Two parcels waiting on the shelf', body: 'Residents have been told. Check the codes when they collect.', link: '/guard/parcels', category: 'PARCELS' }]);
+  await send(people.guardhouse, 'guardhouse', [{ title: 'Two parcels waiting on the shelf', body: 'Residents have been told. Check the codes when they collect.', link: '/guardhouse', category: 'PARCELS' }]);
   await send(people.sponsor, 'sponsor', [{ title: 'Your campaign is live', body: 'Residents can now earn rewards from your challenge. You see grouped results only.', link: '/sponsor', category: 'ACCOUNT' }]);
   await db.query(`UPDATE notifications SET read_at = $1 WHERE dedupe_key LIKE $2 AND read_at IS NULL`, [now, `${MARKER}:%:read:%`]);
   log('Showcase: notifications in every category (Kitar and Gerak included) for residents, staff, shops, courier, guard and sponsor.');

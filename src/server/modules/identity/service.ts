@@ -227,8 +227,8 @@ export async function issueInvite(tx: Queryable, userId: string, createdBy: stri
 /** Which roles each admin level may create and manage. Residents always register themselves. */
 const CAN_CREATE: Partial<Record<Role, Role[]>> = {
   // Sponsors are not tied to one township, so only HQ manages their logins.
-  TOWNSHIP_ADMIN: ['TOWNSHIP_STAFF', 'GUARD', 'MERCHANT'],
-  HQ_ADMIN: ['TOWNSHIP_STAFF', 'TOWNSHIP_ADMIN', 'HQ_ADMIN', 'GUARD', 'MERCHANT', 'SPONSOR'],
+  TOWNSHIP_ADMIN: ['TOWNSHIP_STAFF', 'GUARD', 'GUARDHOUSE', 'MERCHANT'],
+  HQ_ADMIN: ['TOWNSHIP_STAFF', 'TOWNSHIP_ADMIN', 'HQ_ADMIN', 'GUARD', 'GUARDHOUSE', 'MERCHANT', 'SPONSOR'],
 };
 const ADMIN_ROLES: readonly Role[] = ['TOWNSHIP_ADMIN', 'HQ_ADMIN'];
 

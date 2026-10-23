@@ -18,8 +18,9 @@ let guard: Actor;
 beforeAll(async () => {
   db = await freshDb();
   w = await makeWorld(db);
-  const row = await one<{ id: string }>(db, `INSERT INTO users (email, full_name, role, township_id) VALUES ('gate@kita.test', 'Gate Guard', 'GUARD', $1) RETURNING id`, [w.townshipId]);
-  guard = { ...w.staff, id: row!.id, role: 'GUARD', fullName: 'Gate Guard', email: 'gate@kita.test' };
+  const row = await one<{ id: string }>(db, `INSERT INTO users (email, full_name, role, township_id) VALUES ('counter@kita.test', 'Counter Staff', 'GUARDHOUSE', $1) RETURNING id`, [w.townshipId]);
+  // The guardhouse parcel counter (gate guards no longer handle parcels).
+  guard = { ...w.staff, id: row!.id, role: 'GUARDHOUSE', fullName: 'Counter Staff', email: 'counter@kita.test' };
 });
 afterAll(() => db.close());
 

@@ -4,7 +4,7 @@ import { requireArea, merchantOffers } from '@/server/auth/guard';
 import { ROLES, type Role } from '@/shared/domain';
 import { notificationCategoriesFor } from '@/shared/notifications';
 import NotificationsCenter from './screen';
-const AREAS: Record<Role, Area> = { RESIDENT: 'resident', MERCHANT: 'merchant', SPONSOR: 'sponsor', GUARD: 'guard', COURIER: 'courier', TOWNSHIP_STAFF: 'console', TOWNSHIP_ADMIN: 'console', HQ_ADMIN: 'console' };
+const AREAS: Record<Role, Area> = { RESIDENT: 'resident', MERCHANT: 'merchant', SPONSOR: 'sponsor', GUARD: 'guard', GUARDHOUSE: 'guardhouse', COURIER: 'courier', TOWNSHIP_STAFF: 'console', TOWNSHIP_ADMIN: 'console', HQ_ADMIN: 'console' };
 export default async function NotificationsPage() {
   const actor = await requireArea(ROLES);
   const offers = actor.role === 'MERCHANT' ? await merchantOffers(actor) : undefined;

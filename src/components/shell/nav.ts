@@ -4,7 +4,7 @@ import {
 } from 'lucide-react';
 import { ADMINS, type Role } from '@/shared/domain';
 
-export type Area = 'resident' | 'merchant' | 'sponsor' | 'guard' | 'courier' | 'console';
+export type Area = 'resident' | 'merchant' | 'sponsor' | 'guard' | 'guardhouse' | 'courier' | 'console';
 
 export interface NavItem {
   href: string;
@@ -69,8 +69,14 @@ export const NAV: Record<Area, { title: string; items: NavItem[] }> = {
     title: 'Main gate',
     items: [
       { href: '/guard', label: 'Gate', icon: DoorOpen, primary: true },
-      { href: '/guard/parcels', label: 'Parcels', icon: Package, primary: true },
       { href: '/guard/account', label: 'Account', icon: UserRound, primary: true },
+    ],
+  },
+  guardhouse: {
+    title: 'Guardhouse',
+    items: [
+      { href: '/guardhouse', label: 'Parcels', icon: Package, primary: true },
+      { href: '/guardhouse/account', label: 'Account', icon: UserRound, primary: true },
     ],
   },
   courier: {

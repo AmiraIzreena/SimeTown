@@ -30,7 +30,7 @@ export async function seedTomorrow(db: Db, input: { now: Date; log: (line: strin
   const township = await one<{ id: string }>(db, `SELECT id FROM townships WHERE name IN ('City of Elmina (demo data)', 'Taman KITA (demo township)', 'Taman SimeTown (demo township)') LIMIT 1`);
   if (!township) return log('No demo township found; the brief features need the main seed first.');
   if (await one(db, 'SELECT 1 FROM recycling_collectors WHERE township_id = $1 LIMIT 1', [township.id])) return log('Brief features: demo data already there.');
-  const people = await Promise.all(['aisyah', 'daniel', 'priya', 'hafiz', 'meiling', 'zainab', 'staff', 'admin', 'guard'].map((login) => actorByEmail(db, login)));
+  const people = await Promise.all(['aisyah', 'daniel', 'priya', 'hafiz', 'meiling', 'zainab', 'staff', 'admin', 'guardhouse'].map((login) => actorByEmail(db, login)));
   const [aisyah, daniel, priya, hafiz, meiling, zainab, staff, admin, guard] = people;
   if (!aisyah || !daniel || !priya || !hafiz || !meiling || !zainab || !staff || !admin || !guard) return log('Some demo accounts are missing; the brief features were not seeded.');
   const ago = (days: number, hours = 0) => new Date(now.getTime() - days * DAY - hours * 3_600_000);
@@ -89,7 +89,7 @@ export async function seedTomorrow(db: Db, input: { now: Date; log: (line: strin
  */
 export async function seedRequestShowcase(db: Db, input: { now: Date; log: (line: string) => void }) {
   const { now, log } = input;
-  const [daniel, staff, guard] = await Promise.all(['daniel', 'staff', 'guard'].map((login) => actorByEmail(db, login)));
+  const [daniel, staff, guard] = await Promise.all(['daniel', 'staff', 'guardhouse'].map((login) => actorByEmail(db, login)));
   if (!daniel || !staff || !guard) return log('My requests showcase: demo accounts missing; skipped.');
   const FIRST = 'Broken swing seat at the playground';
   if (await one(db, 'SELECT 1 FROM reports WHERE reporter_id = $1 AND description = $2', [daniel.id, FIRST])) return log('My requests showcase: already there.');

@@ -10,7 +10,7 @@ import { notifyProviders } from '../carriers/providers';
 import { courierContext, logScan, refusal, shipmentRow, verifyShipment } from '../carriers/verification';
 import { getSettings } from '../settings';
 import { completeDeposit, createUnlock, dispatch, RESERVATION_MS, type CompartmentRow, type StationRow } from './hardware';
-import { custody, getPolicy, guardsOf, householdOf, issueCredential, recordEvent, staffOf, SYSTEM, tell, transition, userActor, type ParcelRow } from './core';
+import { custody, getPolicy, guardhouseOf, householdOf, issueCredential, recordEvent, staffOf, SYSTEM, tell, transition, userActor, type ParcelRow } from './core';
 import { courierAccountOf, COURIER_STATIONS_SQL, requireCourierAt, type CourierAccount } from './couriers';
 import { raiseIncident } from './incidents';
 import { emailParcelAtCounter } from '../email/parcels';
@@ -470,7 +470,7 @@ export async function warnIfNearlyFull(tx: Queryable, locationId: string, now: D
     [locationId],
   );
   if (!o || o.held < Math.ceil(o.capacity * 0.8)) return;
-  const people = [...(await staffOf(tx, o.township_id)), ...(await guardsOf(tx, o.township_id))];
+  const people = [...(await staffOf(tx, o.township_id)), ...(await guardhouseOf(tx, o.township_id))];
   await tell(tx, people, {
     priority: o.held >= o.capacity ? 'URGENT' : 'NORMAL',
     title: o.held >= o.capacity ? `${o.name} is full` : `${o.name} is nearly full`,

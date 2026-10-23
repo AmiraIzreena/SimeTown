@@ -54,12 +54,13 @@ interface Account {
   created_at: string;
 }
 /** Role chips on the Accounts list: staff and admins together, then each outside role. */
-type RoleGroup = 'ALL' | 'STAFF' | 'MERCHANT' | 'COURIER' | 'GUARD' | 'SPONSOR';
+type RoleGroup = 'ALL' | 'STAFF' | 'MERCHANT' | 'COURIER' | 'GUARD' | 'GUARDHOUSE' | 'SPONSOR';
 const ROLE_GROUPS: Record<Exclude<RoleGroup, 'ALL'>, { label: string; roles: Role[] }> = {
   STAFF: { label: 'Staff & admins', roles: ['TOWNSHIP_STAFF', 'TOWNSHIP_ADMIN', 'HQ_ADMIN'] },
   MERCHANT: { label: 'Shops', roles: ['MERCHANT'] },
   COURIER: { label: 'Couriers', roles: ['COURIER'] },
   GUARD: { label: 'Guards', roles: ['GUARD'] },
+  GUARDHOUSE: { label: 'Guardhouse staff', roles: ['GUARDHOUSE'] },
   SPONSOR: { label: 'Sponsors', roles: ['SPONSOR'] },
 };
 const inGroup = (a: Account, g: RoleGroup) => g === 'ALL' || ROLE_GROUPS[g].roles.includes(a.role);
@@ -404,14 +405,15 @@ function Accounts({ hq, meId }: { hq: boolean; meId?: string }) {
     void create.run({ email: form.email, fullName: form.fullName, role, merchantId: form.merchantId || undefined, sponsorId: form.sponsorId || undefined });
   };
   // Sponsor logins and admin accounts are HQ's to create; admin accounts also need a second HQ admin.
-  const roles: Role[] = hq ? ['TOWNSHIP_STAFF', 'TOWNSHIP_ADMIN', 'HQ_ADMIN', 'MERCHANT', 'SPONSOR'] : ['TOWNSHIP_STAFF', 'MERCHANT'];
+  // Guards work the gate; guardhouse staff run the parcel counter.
+  const roles: Role[] = hq ? ['TOWNSHIP_STAFF', 'TOWNSHIP_ADMIN', 'HQ_ADMIN', 'GUARD', 'GUARDHOUSE', 'MERCHANT', 'SPONSOR'] : ['TOWNSHIP_STAFF', 'GUARD', 'GUARDHOUSE', 'MERCHANT'];
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="font-display text-xl font-bold text-ink-900"><Text>Staff & partner access</Text></h2>
-          <p className="mt-1 text-sm text-ink-500"><Text>Who can sign in besides residents: your team, shops, couriers, guards and sponsors. Each person sets their own password from a one-time link.</Text></p>
+          <p className="mt-1 text-sm text-ink-500"><Text>Who can sign in besides residents: your team, shops, couriers, gate guards, guardhouse staff and sponsors. Each person sets their own password from a one-time link.</Text></p>
         </div>
         <Button onClick={() => setCreating(true)}>
           <Plus className="size-4" aria-hidden /><Text>New account</Text></Button>

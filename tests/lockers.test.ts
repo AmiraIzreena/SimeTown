@@ -99,7 +99,7 @@ beforeAll(async () => {
   })).id;
   courier = await makeCourier([stationA.id, stationB.id]);
   guard = toActor((await one<Parameters<typeof toActor>[0]>(
-    db, `INSERT INTO users AS u (email, full_name, role, township_id) VALUES ($1, 'Guard Rahman', 'GUARD', $2) RETURNING ${ACTOR_COLUMNS}`, [`guard-${randomUUID().slice(0, 8)}@kita.test`, w.townshipId],
+    db, `INSERT INTO users AS u (email, full_name, role, township_id) VALUES ($1, 'Guard Rahman', 'GUARDHOUSE', $2) RETURNING ${ACTOR_COLUMNS}`, [`guard-${randomUUID().slice(0, 8)}@kita.test`, w.townshipId],
   ))!);
 });
 afterAll(() => db.close());
@@ -345,7 +345,7 @@ describe('Scenario C: parcels that wait', () => {
     expect((await one<{ n: number }>(db, `SELECT count(*)::int AS n FROM locker_commands WHERE parcel_id = $1 AND purpose <> 'DEPOSIT'`, [id]))!.n).toBe(0);
   });
 
-  it('a parcel at the counter is overdue after 7 days, reminded weekly, and the guard asked to call at 14 days; it is never sent back by itself', async () => {
+  it('a parcel at the counter is overdue after 7 days, reminded weekly, and guardhouse staff asked to call at 14 days; it is never sent back by itself', async () => {
     const resident = await makeResident(w);
     await db.query('UPDATE users SET phone = $2 WHERE id = $1', [resident.id, '+60123334444']);
     const id = await toCounter(resident);
@@ -375,7 +375,7 @@ describe('Scenario C: parcels that wait', () => {
     await expect(addParcelNote(db, guard, id, '   ', at(14.1))).rejects.toMatchObject({ code: 'NOTE_EMPTY' });
     await addParcelNote(db, guard, id, 'Called the household: collecting tomorrow evening.', at(14.1));
     expect(await listStoredParcels(db, guard, at(14.1))).toContainEqual(expect.objectContaining({ id, call_due: false, phone: null, notes: 1, last_note: 'Called the household: collecting tomorrow evening.' }));
-    expect(await parcelNotes(db, w.staff, id)).toEqual([expect.objectContaining({ body: 'Called the household: collecting tomorrow evening.', author: 'Guard Rahman', author_role: 'GUARD' })]);
+    expect(await parcelNotes(db, w.staff, id)).toEqual([expect.objectContaining({ body: 'Called the household: collecting tomorrow evening.', author: 'Guard Rahman', author_role: 'GUARDHOUSE' })]);
     expect((await lockerOverview(db, w.staff, at(14.1))).overflow.find((o) => o.id === counterId)!.calls_due).toBe(callsDue - 1);
     // The household sees how long it has waited.
     expect(await pinOf(resident, id, at(14.1))).toMatchObject({ days: 14, overdue: true });
@@ -411,7 +411,7 @@ describe('Scenario C: parcels that wait', () => {
     expect(await lastTitle(resident.id)).toBe('Parcel returned to the courier');
   });
 
-  it('keeps opening hours and room: staff and guards hear when a counter is full, and a full counter is not offered', async () => {
+  it('keeps opening hours and room: staff and guardhouse staff hear when a counter is full, and a full counter is not offered', async () => {
     await expect(createOverflow(db, w.admin, { name: 'Backwards counter', kind: 'COUNTER', location: 'Gate', openFromHour: 22, openToHour: 8, instructions: 'Bring your code.', capacity: 5, acceptsDeliveries: true }))
       .rejects.toMatchObject({ code: 'HOURS' });
     const small = (await createOverflow(db, w.admin, { name: 'Small counter', kind: 'COUNTER', location: 'Block B', openFromHour: 9, openToHour: 17, instructions: 'Bring your code and IC.', capacity: 2, acceptsDeliveries: true })).id;

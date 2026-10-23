@@ -1373,6 +1373,7 @@
                       "MERCHANT",
                       "SPONSOR",
                       "GUARD",
+                      "GUARDHOUSE",
                       "COURIER",
                       "TOWNSHIP_STAFF",
                       "TOWNSHIP_ADMIN",
@@ -9969,7 +9970,7 @@
           "Parcels"
         ],
         "summary": "The parcel's photo (its household and the gate)",
-        "description": "Signed-in RESIDENT, GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "description": "Signed-in RESIDENT, GUARDHOUSE, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
         "operationId": "getParcelsParcelIdPhoto",
         "parameters": [
           {
@@ -10089,7 +10090,7 @@
           "Parcels"
         ],
         "summary": "Every parcel waiting at the guardhouse, oldest first",
-        "description": "Signed-in GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN.",
+        "description": "Signed-in GUARDHOUSE, TOWNSHIP_STAFF, TOWNSHIP_ADMIN.",
         "operationId": "getGuardParcels",
         "parameters": [],
         "security": [
@@ -10124,7 +10125,7 @@
           "Parcels"
         ],
         "summary": "Log a parcel (multipart form; optional photo). The household gets its code",
-        "description": "Signed-in GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN.",
+        "description": "Signed-in GUARDHOUSE, TOWNSHIP_STAFF, TOWNSHIP_ADMIN.",
         "operationId": "postGuardParcels",
         "parameters": [],
         "security": [
@@ -10167,7 +10168,7 @@
           "Parcels"
         ],
         "summary": "Check the code a resident shows: which parcel and shelf",
-        "description": "Signed-in GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN.",
+        "description": "Signed-in GUARDHOUSE, TOWNSHIP_STAFF, TOWNSHIP_ADMIN.",
         "operationId": "postGuardParcelsCheck",
         "parameters": [],
         "requestBody": {
@@ -10235,7 +10236,7 @@
           "Parcels"
         ],
         "summary": "Hand a parcel over against its code (the code then stops working)",
-        "description": "Signed-in GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN.",
+        "description": "Signed-in GUARDHOUSE, TOWNSHIP_STAFF, TOWNSHIP_ADMIN.",
         "operationId": "postGuardParcelsParcelIdCollect",
         "parameters": [
           {
@@ -10317,7 +10318,7 @@
           "Parcels"
         ],
         "summary": "Send a parcel back to the courier, when the household or the courier asks (with the reason)",
-        "description": "Signed-in GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN.",
+        "description": "Signed-in GUARDHOUSE, TOWNSHIP_STAFF, TOWNSHIP_ADMIN.",
         "operationId": "postGuardParcelsParcelIdReturn",
         "parameters": [
           {
@@ -10394,7 +10395,7 @@
           "Parcels"
         ],
         "summary": "Add a note to a parcel's history, for example after calling the household",
-        "description": "Signed-in GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN.",
+        "description": "Signed-in GUARDHOUSE, TOWNSHIP_STAFF, TOWNSHIP_ADMIN.",
         "operationId": "postGuardParcelsParcelIdNotes",
         "parameters": [
           {
@@ -10471,7 +10472,7 @@
           "Parcels"
         ],
         "summary": "The guardhouse register: every parcel held there, searchable and filtered, a page at a time",
-        "description": "Signed-in GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "description": "Signed-in GUARDHOUSE, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
         "operationId": "getAdminGuardhouseParcels",
         "parameters": [
           {
@@ -10599,7 +10600,7 @@
           "Parcels"
         ],
         "summary": "The guardhouse at a glance: held, overdue, calls due, collected, average days held, room",
-        "description": "Signed-in GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "description": "Signed-in GUARDHOUSE, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
         "operationId": "getAdminGuardhouseOverview",
         "parameters": [],
         "security": [
@@ -10636,7 +10637,7 @@
           "Parcels"
         ],
         "summary": "One parcel's full history at the guardhouse",
-        "description": "Signed-in GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "description": "Signed-in GUARDHOUSE, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
         "operationId": "getAdminGuardhouseParcelsSourceParcelId",
         "parameters": [
           {
@@ -10691,7 +10692,7 @@
           "Parcels"
         ],
         "summary": "Check any code shown at the guardhouse: a shelf collection code or a smart locker pickup code",
-        "description": "Signed-in GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN.",
+        "description": "Signed-in GUARDHOUSE, TOWNSHIP_STAFF, TOWNSHIP_ADMIN.",
         "operationId": "postAdminGuardhouseCheck",
         "parameters": [],
         "requestBody": {
@@ -13121,7 +13122,7 @@
           "Smart lockers"
         ],
         "summary": "Receive a parcel a courier brought to the counter because the lockers were full",
-        "description": "Signed-in GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "description": "Signed-in GUARDHOUSE, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
         "operationId": "postAdminLockersParcelsParcelIdReceive",
         "parameters": [
           {
@@ -13190,7 +13191,7 @@
           "Smart lockers"
         ],
         "summary": "Mark a parcel to go back to the courier, when the household or the courier asks",
-        "description": "Signed-in GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "description": "Signed-in GUARDHOUSE, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
         "operationId": "postAdminLockersParcelsParcelIdReturn",
         "parameters": [
           {
@@ -13267,7 +13268,7 @@
           "Smart lockers"
         ],
         "summary": "Keep a parcel at the guardhouse instead of sending it back",
-        "description": "Signed-in GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "description": "Signed-in GUARDHOUSE, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
         "operationId": "postAdminLockersParcelsParcelIdKeep",
         "parameters": [
           {
@@ -13336,7 +13337,7 @@
           "Smart lockers"
         ],
         "summary": "Staff and guards' notes on a parcel",
-        "description": "Signed-in GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "description": "Signed-in GUARDHOUSE, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
         "operationId": "getAdminLockersParcelsParcelIdNotes",
         "parameters": [
           {
@@ -13381,7 +13382,7 @@
           "Smart lockers"
         ],
         "summary": "Add a note to a parcel, for example after calling the household",
-        "description": "Signed-in GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "description": "Signed-in GUARDHOUSE, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
         "operationId": "postAdminLockersParcelsParcelIdNotes",
         "parameters": [
           {
@@ -13458,7 +13459,7 @@
           "Smart lockers"
         ],
         "summary": "The courier has taken the parcel back",
-        "description": "Signed-in GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "description": "Signed-in GUARDHOUSE, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
         "operationId": "postAdminLockersParcelsParcelIdReturned",
         "parameters": [
           {
@@ -13618,7 +13619,7 @@
           "Smart lockers"
         ],
         "summary": "Guardhouses, how full each is, and whether each is open now",
-        "description": "Signed-in GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "description": "Signed-in GUARDHOUSE, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
         "operationId": "getAdminLockersOverflow",
         "parameters": [],
         "security": [
@@ -13762,7 +13763,7 @@
           "Smart lockers"
         ],
         "summary": "Parcels at the counters: days waited, overdue, calls due and notes",
-        "description": "Signed-in GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "description": "Signed-in GUARDHOUSE, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
         "operationId": "getAdminLockersStorageParcels",
         "parameters": [],
         "security": [
@@ -13799,7 +13800,7 @@
           "Smart lockers"
         ],
         "summary": "Parcels a courier is bringing to a counter, and why",
-        "description": "Signed-in GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "description": "Signed-in GUARDHOUSE, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
         "operationId": "getAdminLockersStorageDeliveries",
         "parameters": [],
         "security": [
@@ -14006,7 +14007,7 @@
           "Smart lockers"
         ],
         "summary": "Check the pickup code a resident shows at the counter",
-        "description": "Signed-in GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "description": "Signed-in GUARDHOUSE, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
         "operationId": "postAdminLockersOverflowLocationIdCheck",
         "parameters": [
           {
@@ -14083,7 +14084,7 @@
           "Smart lockers"
         ],
         "summary": "Hand the parcel over after checking the code and ID",
-        "description": "Signed-in GUARD, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
+        "description": "Signed-in GUARDHOUSE, TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN.",
         "operationId": "postAdminLockersOverflowLocationIdHandover",
         "parameters": [
           {
@@ -29132,6 +29133,7 @@
                 "TOWNSHIP_ADMIN",
                 "TOWNSHIP_STAFF",
                 "GUARD",
+                "GUARDHOUSE",
                 "MERCHANT",
                 "COURIER",
                 "RESIDENT",

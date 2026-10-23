@@ -59,6 +59,16 @@
   .ops-kpi:hover, .ops-kpi:active { transform: none; }
 }
 
+/* --- Guardhouse counter: where a checked parcel will appear ----------------------------- */
+/* While staff type or scan a code, the waiting area lights up a little, so it is clear where the parcel will show. */
+.handover-waiting { transition: border-color 220ms var(--ease-soft), background-color 220ms var(--ease-soft); }
+.handover-waiting-icon { transition: transform 220ms var(--ease-soft), color 220ms var(--ease-soft), box-shadow 220ms var(--ease-soft); }
+.ops-panel:focus-within .handover-waiting { border-color: var(--color-brand-300); background-color: rgb(255 247 240 / 0.8); }
+.ops-panel:focus-within .handover-waiting-icon { transform: translateY(-2px); box-shadow: 0 6px 16px rgb(79 28 8 / 0.1); }
+@media (prefers-reduced-motion: reduce) {
+  .ops-panel:focus-within .handover-waiting-icon { transform: none; }
+}
+
 /* --- Today: queue rows ---------------------------------------------------------- */
 .ops-row { transition: background-color 200ms var(--ease-soft), opacity 200ms var(--ease-soft), transform 200ms var(--ease-soft); }
 .ops-rail { transition: transform 220ms var(--ease-soft); transform-origin: left; }

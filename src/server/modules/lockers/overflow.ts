@@ -7,7 +7,7 @@ import { audit } from '../audit';
 import { getSettings } from '../settings';
 import { HOME_ADDRESS_COLUMNS, resolveTownship } from '../townships';
 import {
-  custody, DEFAULT_POLICY, getPolicy, guardsOf, householdOf, inQuietHours, issueCredential, recordEvent, resolveCredential, revokeCredentials, staffOf, SYSTEM, tell,
+  custody, DEFAULT_POLICY, getPolicy, guardhouseOf, householdOf, inQuietHours, issueCredential, recordEvent, resolveCredential, revokeCredentials, staffOf, SYSTEM, tell,
   transition, spendCredential, userActor, WEEK_MS, type ParcelRow, type Policy,
 } from './core';
 import { warnIfNearlyFull } from './delivery';
@@ -112,7 +112,7 @@ export async function runExpiry(db: Db, now: Date) {
             ? `${p.tracking_no} has been at ${counter.name} for ${waited}. Call the household, then add a note to the parcel.`
             : `${p.tracking_no} has been at the guardhouse for ${waited}. Call the household, then add a note to the parcel.`,
         };
-        await tell(tx, await guardsOf(tx, p.township_id), { ...call, link: '/guard/parcels' }, `counter-call:${p.id}`);
+        await tell(tx, await guardhouseOf(tx, p.township_id), { ...call, link: '/guardhouse' }, `counter-call:${p.id}`);
         await tell(tx, await staffOf(tx, p.township_id), { ...call, link: '/console/operations?tab=guardhouse' }, `counter-call:${p.id}`);
         counts.calls++;
       }

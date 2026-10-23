@@ -179,3 +179,6 @@ export async function reportPhotoFile(width = 640, height = 480): Promise<File> 
   const bytes = await sharp({ create: { width, height, channels: 3, background: { r: 120, g: 120, b: 110 } } }).jpeg().toBuffer();
   return new File([new Uint8Array(bytes)], 'photo.jpg', { type: 'image/jpeg' });
 }
+
+/** A gate guard (visitors, patrol, SOS) or a guardhouse staff member (the parcel counter) in the world's township. */
+export const makeGateWorker = (w: World, role: 'GUARD' | 'GUARDHOUSE') => insertUser(w.db, role, { township_id: w.townshipId });

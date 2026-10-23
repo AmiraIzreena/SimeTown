@@ -41,7 +41,7 @@ export const AREA_ENTITIES: Record<Exclude<AuditArea, 'RULES'>, readonly string[
 };
 
 /** Who made the change. SYSTEM is the app itself (scheduled jobs, automatic decisions). */
-export const AUDIT_ACTORS = ['HQ_ADMIN', 'TOWNSHIP_ADMIN', 'TOWNSHIP_STAFF', 'GUARD', 'MERCHANT', 'COURIER', 'RESIDENT', 'SYSTEM'] as const;
+export const AUDIT_ACTORS = ['HQ_ADMIN', 'TOWNSHIP_ADMIN', 'TOWNSHIP_STAFF', 'GUARD', 'GUARDHOUSE', 'MERCHANT', 'COURIER', 'RESIDENT', 'SYSTEM'] as const;
 export type AuditActor = (typeof AUDIT_ACTORS)[number];
 
 export const AUDIT_PERIODS = ['24h', '7d', '30d', '90d'] as const;

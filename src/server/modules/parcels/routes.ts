@@ -6,10 +6,10 @@ import { readForm, readPhoto } from '../../http/uploads';
 import * as parcels from './service';
 import * as guardhouse from './guardhouse';
 
-/** Guards work the guardhouse; township staff and admins can cover for them. */
-const GATE: Role[] = ['GUARD', 'TOWNSHIP_STAFF', 'TOWNSHIP_ADMIN'];
-/** Reading the guardhouse register: the gate, and HQ across townships. */
-const REGISTER_READERS: Role[] = [...GATE, 'HQ_ADMIN'];
+/** Guardhouse staff run the parcel counter; township staff and admins can cover for them. Gate guards do not handle parcels. */
+const COUNTER: Role[] = ['GUARDHOUSE', 'TOWNSHIP_STAFF', 'TOWNSHIP_ADMIN'];
+/** Reading the guardhouse register: the counter, and HQ across townships. */
+const REGISTER_READERS: Role[] = [...COUNTER, 'HQ_ADMIN'];
 const zDate = z.string().regex(/^d{4}-d{2}-d{2}$/, 'Choose a date.');
 const zParcelCode = z.string().trim().min(6).max(20).regex(/^[A-Za-z0-9: ]+$/, 'Check the code.');
 
@@ -27,7 +27,7 @@ export const parcelRoutes = [
     handler: (c) => parcels.myParcels(c.db, c.actor, c.now),
   }),
   route({
-    method: 'GET', path: '/parcels/:parcelId/photo', tag: 'Parcels', summary: "The parcel's photo (its household and the gate)", auth: 'session', roles: ['RESIDENT', ...GATE, 'HQ_ADMIN'],
+    method: 'GET', path: '/parcels/:parcelId/photo', tag: 'Parcels', summary: "The parcel's photo (its household and the gate)", auth: 'session', roles: ['RESIDENT', ...COUNTER, 'HQ_ADMIN'],
     handler: (c) => parcels.parcelPhoto(c.db, c.actor, c.params.parcelId!),
   }),
   route({
@@ -36,11 +36,11 @@ export const parcelRoutes = [
     handler: (c) => parcels.reportParcelProblem(c.db, c.actor, c.params.parcelId!, c.body.note, c.now),
   }),
   route({
-    method: 'GET', path: '/guard/parcels', tag: 'Parcels', summary: 'Every parcel waiting at the guardhouse, oldest first', auth: 'session', roles: GATE,
+    method: 'GET', path: '/guard/parcels', tag: 'Parcels', summary: 'Every parcel waiting at the guardhouse, oldest first', auth: 'session', roles: COUNTER,
     handler: (c) => parcels.guardParcels(c.db, c.actor, c.now),
   }),
   route({
-    method: 'POST', path: '/guard/parcels', tag: 'Parcels', summary: 'Log a parcel (multipart form; optional photo). The household gets its code', auth: 'session', roles: GATE,
+    method: 'POST', path: '/guard/parcels', tag: 'Parcels', summary: 'Log a parcel (multipart form; optional photo). The household gets its code', auth: 'session', roles: COUNTER,
     rateLimit: { limit: 300, windowSec: 3600, by: 'user' },
     handler: async (c) => {
       const form = await readForm(c.req);
@@ -54,24 +54,24 @@ export const parcelRoutes = [
     },
   }),
   route({
-    method: 'POST', path: '/guard/parcels/check', tag: 'Parcels', summary: 'Check the code a resident shows: which parcel and shelf', auth: 'session', roles: GATE,
+    method: 'POST', path: '/guard/parcels/check', tag: 'Parcels', summary: 'Check the code a resident shows: which parcel and shelf', auth: 'session', roles: COUNTER,
     rateLimit: { limit: 60, windowSec: 600, by: 'user' },
     body: z.object({ code: zParcelCode }),
     handler: (c) => parcels.checkParcelCode(c.db, c.actor, c.body.code),
   }),
   route({
-    method: 'POST', path: '/guard/parcels/:parcelId/collect', tag: 'Parcels', summary: 'Hand a parcel over against its code (the code then stops working)', auth: 'session', roles: GATE,
+    method: 'POST', path: '/guard/parcels/:parcelId/collect', tag: 'Parcels', summary: 'Hand a parcel over against its code (the code then stops working)', auth: 'session', roles: COUNTER,
     rateLimit: { limit: 60, windowSec: 600, by: 'user' },
     body: z.object({ code: zParcelCode, collectedBy: z.string().trim().max(80).optional() }),
     handler: (c) => parcels.handOverParcel(c.db, c.actor, c.params.parcelId!, c.body, c.now),
   }),
   route({
-    method: 'POST', path: '/guard/parcels/:parcelId/return', tag: 'Parcels', summary: 'Send a parcel back to the courier, when the household or the courier asks (with the reason)', auth: 'session', roles: GATE,
+    method: 'POST', path: '/guard/parcels/:parcelId/return', tag: 'Parcels', summary: 'Send a parcel back to the courier, when the household or the courier asks (with the reason)', auth: 'session', roles: COUNTER,
     body: z.object({ reason: zText(300, 3) }),
     handler: (c) => parcels.returnParcel(c.db, c.actor, c.params.parcelId!, c.body.reason, c.now),
   }),
   route({
-    method: 'POST', path: '/guard/parcels/:parcelId/notes', tag: 'Parcels', summary: "Add a note to a parcel's history, for example after calling the household", auth: 'session', roles: GATE,
+    method: 'POST', path: '/guard/parcels/:parcelId/notes', tag: 'Parcels', summary: "Add a note to a parcel's history, for example after calling the household", auth: 'session', roles: COUNTER,
     rateLimit: { limit: 60, windowSec: 600, by: 'user' },
     body: z.object({ body: zText(500, 1) }),
     handler: (c) => parcels.addShelfNote(c.db, c.actor, c.params.parcelId!, c.body.body, c.now),
@@ -103,7 +103,7 @@ export const parcelRoutes = [
     },
   }),
   route({
-    method: 'POST', path: '/admin/guardhouse/check', tag: 'Parcels', summary: 'Check any code shown at the guardhouse: a shelf collection code or a smart locker pickup code', auth: 'session', roles: GATE,
+    method: 'POST', path: '/admin/guardhouse/check', tag: 'Parcels', summary: 'Check any code shown at the guardhouse: a shelf collection code or a smart locker pickup code', auth: 'session', roles: COUNTER,
     rateLimit: { limit: 60, windowSec: 600, by: 'user' },
     body: z.object({ code: z.string().trim().min(6).max(120) }),
     handler: (c) => guardhouse.checkGuardhouseCode(c.db, c.actor, c.body.code, c.now),

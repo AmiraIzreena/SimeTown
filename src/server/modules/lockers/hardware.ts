@@ -6,7 +6,7 @@ import { log } from '../../logger';
 import { notifyProviders } from '../carriers/providers';
 import { getSettings } from '../settings';
 import {
-  custody, DEVICE, guardsOf, householdOf, issueCredential, staffOf, SYSTEM, tell, transition, spendCredential, type LockerActor, type ParcelRow,
+  custody, DEVICE, guardhouseOf, guardsOf, householdOf, issueCredential, staffOf, SYSTEM, tell, transition, spendCredential, type LockerActor, type ParcelRow,
 } from './core';
 import { raiseIncident } from './incidents';
 import { emailDoorForced, emailParcelInLocker } from '../email/parcels';
@@ -364,7 +364,7 @@ async function handleDoorEvent(
       // A door that opens with no unlock just sent may have been forced.
       const expected = await one(tx, `SELECT 1 FROM locker_commands WHERE compartment_id = $1 AND status = 'ACKED' AND acked_at > $2::timestamptz - interval '10 minutes'`, [comp.id, now]);
       if (!expected) {
-        await tell(tx, [...(await staffOf(tx, station.township_id)), ...(await guardsOf(tx, station.township_id))], { priority: 'URGENT', title: `Door ${comp.label} opened without an unlock`, body: `${station.name}: check the locker.`, link: '/console/lockers' }, `door-forced:${input.eventId}`);
+        await tell(tx, [...(await staffOf(tx, station.township_id)), ...(await guardsOf(tx, station.township_id)), ...(await guardhouseOf(tx, station.township_id))], { priority: 'URGENT', title: `Door ${comp.label} opened without an unlock`, body: `${station.name}: check the locker.`, link: '/console/lockers' }, `door-forced:${input.eventId}`);
         // A private door: its own household is told at once too. Security alerts are sent at any hour.
         if (comp.home_id) {
           const household = await householdOf(tx, comp.home_id);

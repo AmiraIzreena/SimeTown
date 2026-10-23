@@ -25,7 +25,9 @@ export function proxy(request: NextRequest) {
   const googleMaps = Boolean(process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY);
   const csp = [
     `default-src 'self'`,
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${dev ? ` 'unsafe-eval'` : ''}`,
+    // 'wasm-unsafe-eval' lets the camera scanner's barcode reader (WebAssembly, served from our own /vendor) run on
+    // browsers without a reader of their own. It allows compiling WebAssembly only, never eval() of scripts.
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'wasm-unsafe-eval'${dev ? ` 'unsafe-eval'` : ''}`,
     // Stylesheets are our own files. Inline style *attributes* are allowed for computed widths (progress bars, charts).
     dev ? `style-src 'self' 'unsafe-inline'${googleMaps ? ' https://fonts.googleapis.com' : ''}` : `style-src 'self' 'nonce-${nonce}'${googleMaps ? ' https://fonts.googleapis.com' : ''}`,
     `style-src-attr 'unsafe-inline'`,

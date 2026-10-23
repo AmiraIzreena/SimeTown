@@ -1,8 +1,6 @@
-import type { Metadata } from 'next';
-import { ParcelDesk } from './desk';
+import { redirect } from 'next/navigation';
 
-export const metadata: Metadata = { title: 'Parcels' };
-
+/** Parcels moved to the guardhouse counter; old links and bookmarks land there. Guards no longer see it. */
 export default function GuardParcelsPage() {
-  return <ParcelDesk />;
+  redirect('/guardhouse');
 }
