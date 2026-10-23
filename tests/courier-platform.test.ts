@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Actor } from '@/server/auth/actor';
-import { ACTOR_COLUMNS, actorFromToken, COURIER_SESSION_HOURS, createSession, toActor } from '@/server/auth/session';
+import { ACTOR_COLUMNS, actorFromToken, COURIER_SESSION_HOURS, createSession, markActive, toActor } from '@/server/auth/session';
 import { one, type Db } from '@/server/db/client';
 import { trackingFromScan } from '@/server/modules/carriers/barcode';
 import { decideCompany, inviteRepresentative, onboardCompany, setCompanyStations, setSimulatedOutage } from '@/server/modules/carriers/companies';
@@ -149,7 +149,10 @@ describe('Company-level authorisation', () => {
 
   it('expires courier sessions after a shift, and pauses couriers their company stops reconfirming', async () => {
     const token = await createSession(db, faizal.id, T0, COURIER_SESSION_HOURS);
+    // A courier working all shift (taps within the 30-minute inactivity limit) is still signed out at its end.
+    await markActive(db, token, new Date(T0.getTime() + 10.9 * 3_600_000));
     expect(await actorFromToken(db, token, new Date(T0.getTime() + 11 * 3_600_000))).not.toBeNull();
+    await markActive(db, token, new Date(T0.getTime() + 12.9 * 3_600_000));
     expect(await actorFromToken(db, token, new Date(T0.getTime() + 13 * 3_600_000))).toBeNull();
     const stale = await actorOf((await inviteCourier(db, manager, { fullName: 'Stale Courier', email: 'stale@jnt.test', employeeRef: 'JT-1500' }, new Date(T0.getTime() - 100 * 86_400_000))).id);
     await revalidateCouriers(db, T0);

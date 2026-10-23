@@ -37,7 +37,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   if (!response.ok) {
     // A session that ended elsewhere: send the person back to sign in, once.
     if (response.status === 401 && !path.startsWith('/auth/') && typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
-      reloadTo(`/login?next=${encodeURIComponent(window.location.pathname)}`);
+      reloadTo(`/login?next=${encodeURIComponent(window.location.pathname)}&reason=ended`);
     }
     throw new ApiError(response.status, payload?.error?.code ?? 'UNKNOWN', payload?.error?.message ?? 'Something went wrong. Please try again.', payload?.error?.details);
   }

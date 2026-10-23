@@ -2,7 +2,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { Actor } from '@/server/auth/actor';
-import { actorFromToken, createSession, destroySession, hashToken } from '@/server/auth/session';
+import { actorFromToken, createSession, destroySession, hashToken, markActive } from '@/server/auth/session';
 import { invalidateSessionCache, lookupSession, storeSession } from '@/server/auth/session-cache';
 import { setRedisForTests, upstashClient, type RedisClient, type RedisCommand } from '@/server/cache/redis';
 import { parseConfig } from '@/server/config';
@@ -200,13 +200,14 @@ describe('session cache', () => {
   it('never caches past the end of the session, and refuses an expired session', async () => {
     const redis = useFake();
     const resident = await makeResident(w);
-    const ending = new Date(T0.getTime() + 2000 * 3_600_000 - 30_000); // 30 seconds before the session ends
+    const ending = new Date(T0.getTime() + 12 * 3_600_000 - 30_000); // 30 seconds before the session ends (12 hours at most)
     const token = await createSession(db, resident.id, T0);
+    await markActive(db, token, new Date(ending.getTime() - 60_000)); // still active, so only the end applies
     await actorFromToken(db, token, ending);
     await actorFromToken(db, token, ending);
     const entry = redis.store.get(`kita:development:session:${hashToken(token)}`)!;
     expect(entry.expiresAt! - Date.now()).toBeLessThanOrEqual(30_000);
-    expect(await actorFromToken(db, token, new Date(T0.getTime() + 2000 * 3_600_000 + 1))).toBeNull();
+    expect(await actorFromToken(db, token, new Date(T0.getTime() + 12 * 3_600_000 + 1))).toBeNull();
   });
 
   it('still updates last_seen_at: a stale entry sends the lookup back to the database', async () => {
@@ -262,7 +263,7 @@ describe('session cache', () => {
     // ...the database is read here with the old values, and then a change commits:
     await invalidateSessionCache();
     const stale = { ...resident, role: 'HQ_ADMIN' as const };
-    await storeSession(tokenHash, genBefore, { actor: stale, sessionId: 'x', lastSeenAt: T0.getTime(), expiresAt: T0.getTime() + 3_600_000 }, T0);
+    await storeSession(tokenHash, genBefore, { actor: stale, sessionId: 'x', lastSeenAt: T0.getTime(), lastActiveAt: T0.getTime(), expiresAt: T0.getTime() + 3_600_000 }, T0);
     expect((await lookupSession(tokenHash, T0))?.hit).toBeNull();
     expect((await actorFromToken(db, token, T0))?.role).toBe('RESIDENT');
   });

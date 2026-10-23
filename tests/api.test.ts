@@ -28,9 +28,11 @@ interface CallOptions {
 }
 
 const sessions = new Map<string, string>();
+/** One sign-in per person and moment: when a test moves the clock on, the person signs in again (sign-ins time out). */
 async function cookieFor(actor: Actor): Promise<string> {
-  if (!sessions.has(actor.id)) sessions.set(actor.id, `kita_session=${await createSession(db, actor.id, clock.now)}`);
-  return sessions.get(actor.id)!;
+  const key = `${actor.id}:${clock.now.getTime()}`;
+  if (!sessions.has(key)) sessions.set(key, `kita_session=${await createSession(db, actor.id, clock.now)}`);
+  return sessions.get(key)!;
 }
 
 async function call(method: string, path: string, opts: CallOptions = {}) {

@@ -22,6 +22,8 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | POST | `/auth/accept-invite` | Public | Set a password from an invitation link |
 | POST | `/auth/forgot-password` | Public | Email a single-use link to reset a forgotten password (same answer whether or not the account exists) |
 | POST | `/auth/reset-password` | Public | Set a new password from the emailed link (signs out every device) |
+| GET | `/me/session` | Any signed-in user | This sign-in: its inactivity limit for the role, the last activity and when it ends |
+| POST | `/me/activity` | Any signed-in user | The person acted (tap, key, scroll or Stay signed in): restart the inactivity timeout |
 | POST | `/auth/logout` | Any signed-in user | Sign out |
 | GET | `/me` | Any signed-in user | The signed-in account, with any required details still missing |
 | PATCH | `/me` | Any signed-in user | Update name and phone (both required) |

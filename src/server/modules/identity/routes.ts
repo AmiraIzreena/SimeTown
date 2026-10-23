@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { ADMINS, ROLES, STAFF } from '@/shared/domain';
 import { FIELD_MESSAGES } from '@/shared/validation';
-import { destroySession, readSessionToken, sessionCookie } from '../../auth/session';
+import { destroySession, markActive, readSessionToken, sessionCookie, sessionState } from '../../auth/session';
 import { recordCourierLogin } from '../carriers/team';
 import { pageQuery } from '../../http/pagination';
 import { emptyBody, json, route, zAcceptTerms, zChoice, zEmail, zFullName, zId, zPassword, zPhone, zText } from '../../http/router';
@@ -81,6 +81,15 @@ export const identityRoutes = [
       const { token, actor } = await identity.resetPassword(c.db, c.body, c.now);
       return signedIn(actor, token);
     },
+  }),
+  route({
+    method: 'GET', path: '/me/session', tag: 'SimeTown ID', summary: 'This sign-in: its inactivity limit for the role, the last activity and when it ends', auth: 'session',
+    handler: (c) => sessionState(c.db, readSessionToken(c.req.headers.get('cookie')), c.now),
+  }),
+  route({
+    method: 'POST', path: '/me/activity', tag: 'SimeTown ID', summary: 'The person acted (tap, key, scroll or Stay signed in): restart the inactivity timeout', auth: 'session',
+    rateLimit: { limit: 120, windowSec: 3600, by: 'user' }, body: emptyBody,
+    handler: (c) => markActive(c.db, readSessionToken(c.req.headers.get('cookie')), c.now),
   }),
   route({
     method: 'POST', path: '/auth/logout', tag: 'SimeTown ID', summary: 'Sign out', auth: 'session', body: emptyBody,

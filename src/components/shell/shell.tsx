@@ -20,6 +20,7 @@ import { NAV, type Area, type NavItem } from './nav';
 import { NotificationsPreview } from './notification-preview';
 import type { NotificationList } from '@/shared/notifications';
 import { ProfileCompletion } from './profile-completion';
+import { SessionTimeout } from './session-timeout';
 import { reloadTo } from '@/lib/navigate';
 import { AccountLanguage, persistLanguage } from '@/components/ui/language';
 import { AksesModesProvider, useAksesMode } from '@/components/features/akses-mode';
@@ -263,6 +264,7 @@ function ShellFrame({ area, user, children }: { area: Area; user: ShellUser; chi
 
       <main id="main" className={cn('mx-auto w-full max-w-7xl px-4 pb-28 pt-7 sm:px-6 md:pb-14 md:pt-9 lg:px-10 lg:pt-10', accessible && 'akses-view')}>
         <ProfileCompletion accountHref={`${root}/account`} />
+        <SessionTimeout />
         {/* A short fade-and-rise when moving between screens. */}
         <div key={transitionKey(pathname)} className={cn('animate-rise', motion)}>
           <Text>{children}</Text>

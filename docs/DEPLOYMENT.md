@@ -47,7 +47,7 @@ A wrong or missing value stops the app at start-up with a message naming the var
 | `DB_POOL_MAX` | 10 | size to the plan | size to the plan and instance count |
 | `TRUST_PROXY` | `none` | `cloudflare`, or `forwarded` on a host without Cloudflare | `cloudflare` |
 | `TRUSTED_PROXY_HOPS` | – | with `forwarded`: the number of proxies in front of the app (usually 1) | – |
-| `SESSION_TTL_HOURS` | 168 | 168 | decide with SDP |
+| `SESSION_TTL_HOURS` | 12 | 12 | at most 12 (capped); inactivity timeouts by role in `src/shared/session.ts` |
 | `CRON_SECRET` | optional | set | set |
 | `SENSOR_INGEST_TOKEN` | optional | set if testing sensors | set when sensors exist |
 | `AI_PROVIDER`, `AI_API_URL`, `AI_API_KEY`, `AI_MODEL` | `none` | optional | optional |

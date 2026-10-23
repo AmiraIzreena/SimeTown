@@ -128,7 +128,7 @@ const sections: LegalSection[] = [
         items={[
           'Your account details, for as long as your account is open.',
           'When you delete your account: your name, contact details, posts, report descriptions and photos are removed at once. Records of points transactions are kept in anonymised form, because financial records must stay complete.',
-          'Sign-in sessions end after 7 days or when you sign out. Set-password links expire after 7 days. Internet addresses used to limit repeated attempts are kept for no more than a day.',
+          'You are signed out after 15 minutes without activity if you are township staff, an admin or HQ, after 30 minutes otherwise (guards and guardhouse staff stay signed in during their shift), and after 12 hours in any case, or when you sign out. Set-password links expire after 7 days. Internet addresses used to limit repeated attempts are kept for no more than a day.',
           'Visitor records at the main gate, including visitors’ identity numbers, are deleted after 90 days.',
         ]}
       />
@@ -171,7 +171,7 @@ const sections: LegalSection[] = [
     id: 'cookies',
     title: 'Cookies and browser storage',
     body: (
-      <p><Text>SimeTown uses one essential cookie, which keeps you signed in. It cannot be read by scripts and is deleted when you sign out or after 7 days. Your browser also remembers, for the current visit only, whether you have already seen a flood warning or a reminder to complete your details. We use no analytics, advertising or third-party cookies.</Text></p>
+      <p><Text>SimeTown uses one essential cookie, which keeps you signed in. It cannot be read by scripts and is deleted when you sign out, after a time without activity, or after 12 hours at most. Your browser also keeps a few settings on your device: your language and display choices, whether you have already seen a flood warning or a reminder, and when you last acted, so that open tabs agree on when to sign you out. Because this cookie is needed to sign in, and we use no analytics, advertising or third-party cookies, there is nothing to switch off and no cookie banner.</Text></p>
     ),
   },
   {

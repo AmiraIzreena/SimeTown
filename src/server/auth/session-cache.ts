@@ -28,6 +28,8 @@ export interface CachedSession {
   sessionId: string;
   /** Epoch milliseconds. */
   lastSeenAt: number;
+  /** When the person last acted (epoch milliseconds), for the inactivity timeout. */
+  lastActiveAt: number;
   expiresAt: number;
 }
 
@@ -58,7 +60,7 @@ export async function lookupSession(tokenHash: string, now: Date): Promise<Looku
     entry.gen === current &&
     entry.expiresAt > now.getTime() &&
     now.getTime() - entry.lastSeenAt <= LAST_SEEN_EVERY_MS;
-  if (fresh) return { hit: { actor: entry.actor, sessionId: entry.sessionId, lastSeenAt: entry.lastSeenAt, expiresAt: entry.expiresAt } };
+  if (fresh) return { hit: { actor: entry.actor, sessionId: entry.sessionId, lastSeenAt: entry.lastSeenAt, lastActiveAt: entry.lastActiveAt, expiresAt: entry.expiresAt } };
   return { hit: null, gen: current };
 }
 
@@ -98,6 +100,7 @@ function parse(raw: unknown): Entry | null {
       typeof value.gen === 'string' &&
       typeof value.sessionId === 'string' &&
       typeof value.lastSeenAt === 'number' &&
+      typeof value.lastActiveAt === 'number' &&
       typeof value.expiresAt === 'number' &&
       typeof value.actor?.id === 'string' &&
       typeof value.actor.role === 'string';

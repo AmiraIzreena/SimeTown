@@ -10,10 +10,18 @@ import { ROLE_HOME } from '@/shared/domain';
 
 export const metadata: Metadata = { title: 'Sign in' };
 
-export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string; sso?: string; message?: string }> }) {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string; sso?: string; message?: string; reason?: string }> }) {
   const actor = await currentActor();
   if (actor) redirect(ROLE_HOME[actor.role]);
-  const { next, sso, message } = await searchParams;
+  const { next, sso, message, reason } = await searchParams;
+  // Why the person was signed out, if a timeout ended their sign-in (shared/session.ts).
+  const ended = reason === 'idle'
+    ? 'You were signed out because you were away for a while. This keeps your account safe. Please sign in again.'
+    : reason === 'expired'
+      ? 'A sign-in lasts up to 12 hours. Please sign in again.'
+      : reason === 'ended'
+        ? 'Your sign-in has ended. Please sign in again.'
+        : null;
   const ssoError = sso === 'failed' ? (message?.slice(0, 200) || 'The sign-in could not be completed.') : sso === 'cancelled' ? 'The sign-in was cancelled.' : null;
   return (
     <AuthFrame
@@ -30,6 +38,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         </>
       }
     >
+      {ended && <p role="status" className="mb-5 rounded-lg border border-gold-300 bg-gold-50 px-4 py-3 text-sm text-gold-700"><Text>{ended}</Text></p>}
       <LoginForm next={next} />
       <CourierSignIn next={next} error={ssoError} />
     </AuthFrame>

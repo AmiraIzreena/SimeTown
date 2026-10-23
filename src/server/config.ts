@@ -12,7 +12,8 @@ const schema = z
     DATABASE_URL: z.string().min(1),
     DB_POOL_MAX: z.coerce.number().int().min(1).max(100).default(10),
     DB_SSL: z.enum(['require', 'disable']).optional(),
-    SESSION_TTL_HOURS: z.coerce.number().int().min(1).max(24 * 90).default(168),
+    // The longest a sign-in lasts. Capped at 12 hours in shared/session.ts: a larger value has no effect.
+    SESSION_TTL_HOURS: z.coerce.number().int().min(1).max(24 * 90).default(12),
     TRUST_PROXY: z.enum(['none', 'cloudflare', 'forwarded']).default('none'),
     // With TRUST_PROXY=forwarded: how many proxies you run in front of the app. Each appends one address.
     TRUSTED_PROXY_HOPS: z.coerce.number().int().min(1).max(5).default(1),
