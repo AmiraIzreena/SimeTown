@@ -9,6 +9,7 @@ import { LocalizedLink as Link } from '@/components/ui/localized-elements';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { AssistantActionCard, type AssistantAction } from '@/components/features/assistant-action';
 import { AksesPage, useAksesMode } from '@/components/features/akses-mode';
+import { ResidentAssistantWalkthrough } from '@/components/features/assistant-walkthroughs';
 import { PreviewBadge } from '@/components/features/preview';
 import { Button } from '@/components/ui/button';
 import { Card, PageHeader } from '@/components/ui/card';
@@ -181,7 +182,10 @@ export default function AssistantPage() {
       <PageHeader
         title="SimeTown Assistant"
         description="Ask about City of Elmina, Sime Darby Property and your own SimeTown account, in English or Bahasa Malaysia. It acts only after you confirm, and hands over to the township office when unsure."
-        action={DEMO_MODE && s ? <PreviewBadge><Text>{s.mode === 'AI' ? `AI · ${s.provider}` : 'Rule-based answers'}</Text></PreviewBadge> : undefined}
+        action={<>
+          <ResidentAssistantWalkthrough />
+          {DEMO_MODE && s && <PreviewBadge><Text>{s.mode === 'AI' ? `AI · ${s.provider}` : 'Rule-based answers'}</Text></PreviewBadge>}
+        </>}
       />
       <div className="mb-3 flex items-center justify-between gap-2 lg:hidden">
         <Button variant="secondary" size="sm" onClick={() => setShowHistory((v) => !v)} aria-expanded={showHistory}>
