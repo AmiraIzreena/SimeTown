@@ -41,7 +41,7 @@ export async function banjirOverview(db: Db, actor: Actor, now: Date) {
 /** Open alerts that concern this person: their own zone for a resident, the whole township for staff. */
 export async function activeAlerts(db: Db, actor: Actor) {
   const rows = await db.query<{ message_level: FloodStatus | null; signals: unknown } & Record<string, unknown>>(
-    `SELECT a.id, a.level, a.started_at, a.next_update_at, z.id AS zone_id, z.name AS zone_name, z.level_pct, z.safe_route, z.assembly_point,
+    `SELECT a.id, a.level, a.started_at, a.next_update_at, (a.level = 'WARNING' AND a.confirmed_at IS NULL) AS unconfirmed, z.id AS zone_id, z.name AS zone_name, z.level_pct, z.safe_route, z.assembly_point,
             m.level AS message_level, m.signals, ${VERIFIED_COLUMNS}
        FROM flood_alerts a JOIN flood_zones z ON z.id = a.zone_id
        LEFT JOIN LATERAL (SELECT level, signals FROM flood_messages
