@@ -24,7 +24,7 @@ import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { timeAgo } from '@/lib/format';
 import { useAction, useApi, usePaged } from '@/lib/hooks';
-import { shrinkPhoto } from '@/lib/image';
+import { PHOTO_ACCEPT, PHOTO_HINT, shrinkPhoto, usePhotoPick } from '@/lib/image';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 import type { BanjirOverview } from '@/lib/types';
 import { REPORT_CATEGORIES, REPORT_CATEGORY_LABELS, type ReportCategory, type Urgency } from '@/shared/domain';
@@ -317,6 +317,7 @@ function NewReport({ open, guided, onClose, onCreated }: { open: boolean; guided
   const zones = useApi<BanjirOverview>(open ? '/banjir' : null);
   const [photoName, setPhotoName] = useState<string | null>(null);
   const [photo, setPhoto] = useState<File | null>(null);
+  const pickPhoto = usePhotoPick();
   const [step, setStep] = useState(0);
   const [description, setDescription] = useState('');
   const [locationText, setLocationText] = useState('');
@@ -442,8 +443,8 @@ function NewReport({ open, guided, onClose, onCreated }: { open: boolean; guided
           {similar}
           <label className="flex min-h-24 cursor-pointer items-center gap-4 rounded-xl border-2 border-dashed border-ink-300 px-6 py-5 text-2xl font-semibold text-ink-700 hover:border-brand-500 hover:bg-brand-50/40">
             <Camera className="size-8 shrink-0 text-ink-500" aria-hidden />
-            <span className="min-w-0 flex-1"><Text>{photoName ?? 'Add a photo (optional)'}</Text></span>
-            <LocalizedInput type="file" accept="image/jpeg,image/png,image/webp" capture="environment" className="sr-only" onChange={(event) => { const file = event.target.files?.[0] ?? null; setPhoto(file); setPhotoName(file?.name ?? null); }} />
+            <span className="min-w-0 flex-1"><Text>{photoName ?? 'Add a photo (optional)'}</Text><span className="mt-1 block text-lg font-normal text-ink-500"><Text>{PHOTO_HINT}</Text></span></span>
+            <LocalizedInput type="file" accept={PHOTO_ACCEPT} capture="environment" className="sr-only" onChange={(event) => { const file = pickPhoto(event.target); setPhoto(file); setPhotoName(file?.name ?? null); }} />
           </label>
         </>}
         <p className="text-lg text-ink-600"><Text>If someone is in immediate danger, call 999 first.</Text></p>
@@ -478,8 +479,8 @@ function NewReport({ open, guided, onClose, onCreated }: { open: boolean; guided
           </div>
           {similar}
           <label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-md border border-dashed border-ink-300 px-4 py-3 text-[15px] text-ink-700 transition-colors duration-200 hover:border-brand-500 hover:bg-brand-50/40 focus-within:border-brand-500">
-            <Camera className="size-5 shrink-0 text-ink-500" aria-hidden /><span className="min-w-0 flex-1 truncate"><Text>{photoName ?? 'Add a photo (optional)'}</Text></span>
-            <LocalizedInput type="file" name="photo" accept="image/jpeg,image/png,image/webp" capture="environment" className="sr-only" onChange={(event) => { const file = event.target.files?.[0] ?? null; setPhoto(file); setPhotoName(file?.name ?? null); }} />
+            <Camera className="size-5 shrink-0 text-ink-500" aria-hidden /><span className="min-w-0 flex-1"><span className="block truncate"><Text>{photoName ?? 'Add a photo (optional)'}</Text></span><span className="block text-xs text-ink-500"><Text>{PHOTO_HINT}</Text></span></span>
+            <LocalizedInput type="file" name="photo" accept={PHOTO_ACCEPT} capture="environment" className="sr-only" onChange={(event) => { const file = pickPhoto(event.target); setPhoto(file); setPhotoName(file?.name ?? null); }} />
           </label>
         </form>
       </Modal>

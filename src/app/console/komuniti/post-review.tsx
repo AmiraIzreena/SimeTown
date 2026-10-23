@@ -2,7 +2,7 @@
 
 import { Text } from '@/components/ui/localized-text';
 
-import { CalendarDays, MapPin } from 'lucide-react';
+import { CalendarDays, ImageOff, MapPin } from 'lucide-react';
 import { useState } from 'react';
 import { KINDS } from '@/components/features/komuniti/model';
 import { PostPhoto } from '@/components/features/komuniti/post-card';
@@ -37,6 +37,7 @@ interface Detail {
   status: PostStatus;
   created_at: string;
   has_photo: boolean;
+  photo_held: boolean;
   township_name: string;
   author_id: string;
   author_name: string;
@@ -65,13 +66,14 @@ export function PostReview({ id, canSuspend, onClose, onChanged }: { id: string 
           <div className="space-y-5">
             <div className="flex flex-wrap items-center gap-2">
               <Badge tone={STATUS_TONES[p.status]}><Text>{STATUS_LABELS[p.status]}</Text></Badge>
+              {p.photo_held && (p.status === 'OPEN' || p.status === 'CLOSED') && <Badge tone="warning"><ImageOff className="size-3.5" aria-hidden /><Text>Photo held, 2 reports</Text></Badge>}
               <Badge><Text>{KINDS[p.type].group}</Text> · <Text>{KINDS[p.type].label}</Text></Badge>
               <span className="text-sm text-ink-500">{p.township_name} · <Text>{formatDateTime(p.created_at)}</Text></span>
             </div>
             <div>
               <h3 className="text-[17px] font-semibold text-ink-900">{p.title}</h3>
               <p className="mt-1 whitespace-pre-line text-[15px] text-ink-700">{p.body}</p>
-              {p.has_photo && <PostPhoto postId={p.id} className="mt-3 max-h-96 w-full object-contain" />}
+              {p.has_photo && <PostPhoto postId={p.id} className="mt-3 sm:max-w-sm" />}
               <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-ink-500">
                 {p.starts_at && <span className="inline-flex items-center gap-1.5"><CalendarDays className="size-4" aria-hidden /><Text>{formatDateTime(p.starts_at)}</Text></span>}
                 {p.location && <span className="inline-flex items-center gap-1.5"><MapPin className="size-4" aria-hidden />{p.location}</span>}

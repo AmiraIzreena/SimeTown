@@ -16,6 +16,7 @@ const lines = [
   '- Money is in whole sen. 1 SimeTown Point = 1 sen.',
   '- Sign-in sets an HttpOnly session cookie. Every POST, PATCH and DELETE must send an `Origin` header equal to the app origin.',
   '- Lists that can grow take `?cursor=&limit=` and return `{ items, nextCursor }`.',
+  '- Photos are sent as multipart field `photo`: JPEG or PNG only (the type is read from the file itself), at most 10 MB; a form is read up to 10.25 MB. Anything else gets 400, a larger photo 413 `PHOTO_TOO_LARGE`.',
   '',
 ];
 for (const tag of [...new Set(routes.map((r) => r.tag))]) {

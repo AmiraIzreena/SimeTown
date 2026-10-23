@@ -6,7 +6,7 @@ import { decodeCursor, toPage, type PageQuery } from '../../http/pagination';
 import { audit } from '../audit';
 import { notify } from '../notifications';
 import { getSettings } from '../settings';
-import { localDate, lockPost } from './common';
+import { PHOTO_HOLD_REPORTS, localDate, lockPost, photoHeldSql } from './common';
 
 /**
  * Keeping Komuniti safe. Residents report posts; once enough different
@@ -60,7 +60,18 @@ export async function flagPost(db: Db, actor: Actor, postId: string, input: { ca
         link: '/console/komuniti',
       });
     }
-    return { hidden: hide };
+    // At the second report a photo is held from other residents until staff decide (see PHOTO_HOLD_REPORTS).
+    const hasPhoto = Boolean((await one<{ photo_id: string | null }>(tx, 'SELECT photo_id FROM posts WHERE id = $1', [postId]))?.photo_id);
+    const photoHeld = hasPhoto && flags!.n >= PHOTO_HOLD_REPORTS;
+    if (hasPhoto && !hide && flags!.n === PHOTO_HOLD_REPORTS && (post.status === 'OPEN' || post.status === 'CLOSED')) {
+      await audit(tx, null, 'POST_PHOTO_HELD', 'post', postId, { flags: flags!.n });
+      await notify(tx, await townshipTeam(tx, post.township_id), {
+        title: `A Komuniti photo was held: "${post.title}"`,
+        body: 'Two residents reported the post. Other residents cannot see its photo until you review it.',
+        link: '/console/komuniti',
+      });
+    }
+    return { hidden: hide, photoHeld };
   });
 }
 
@@ -91,7 +102,7 @@ export async function listReports(db: Db, actor: Actor, filter: { townshipId?: s
   const townshipId = scopeOf(actor, filter.townshipId);
   return db.query(
     `SELECT p.id, p.type, p.title, p.body, p.status, p.created_at, (p.photo_id IS NOT NULL) AS has_photo, t.name AS township_name, a.full_name AS author_name,
-            count(*)::int AS open_reports,
+            count(*)::int AS open_reports, (p.photo_id IS NOT NULL AND count(*) >= $2::int) AS photo_held,
             bool_or(f.category IN ('SCAM', 'UNSAFE')) AS urgent,
             json_agg(json_build_object('category', f.category, 'reason', f.reason, 'created_at', f.created_at) ORDER BY f.created_at) AS reports,
             max(f.created_at) AS last_reported_at
@@ -103,7 +114,7 @@ export async function listReports(db: Db, actor: Actor, filter: { townshipId?: s
       GROUP BY p.id, t.id, a.id
       ORDER BY (p.status = 'HIDDEN') DESC, bool_or(f.category IN ('SCAM', 'UNSAFE')) DESC, count(*) DESC, max(f.created_at) DESC
       LIMIT 100`,
-    [townshipId],
+    [townshipId, PHOTO_HOLD_REPORTS],
   );
 }
 
@@ -140,12 +151,13 @@ export async function listPosts(
 export async function getPost(db: Db, actor: Actor, postId: string, now: Date) {
   const post = await one<{ township_id: string; author_id: string }>(
     db,
-    `SELECT p.id, p.type, p.title, p.body, p.location, p.starts_at, p.capacity, p.status, p.created_at, (p.photo_id IS NOT NULL) AS has_photo, p.township_id, t.name AS township_name,
+    `SELECT p.id, p.type, p.title, p.body, p.location, p.starts_at, p.capacity, p.status, p.created_at, (p.photo_id IS NOT NULL) AS has_photo,
+            ${photoHeldSql('$2')} AS photo_held, p.township_id, t.name AS township_name,
             p.author_id, a.full_name AS author_name, (a.role <> 'RESIDENT') AS by_township,
             p.moderated_at, p.moderation_note, m.full_name AS moderated_by_name
        FROM posts p JOIN users a ON a.id = p.author_id JOIN townships t ON t.id = p.township_id LEFT JOIN users m ON m.id = p.moderated_by
       WHERE p.id = $1`,
-    [postId],
+    [postId, PHOTO_HOLD_REPORTS],
   );
   if (!post) throw notFound('Post');
   assertTownshipAccess(actor, post.township_id);

@@ -2,7 +2,7 @@
 
 import { Text } from '@/components/ui/localized-text';
 
-import { AlertTriangle, Camera, EyeOff, Flag, Repeat2, ShieldCheck, UserX, Users } from 'lucide-react';
+import { AlertTriangle, Camera, EyeOff, Flag, ImageOff, Repeat2, ShieldCheck, UserX, Users } from 'lucide-react';
 import { useState } from 'react';
 import { KINDS } from '@/components/features/komuniti/model';
 import { PostPhoto } from '@/components/features/komuniti/post-card';
@@ -38,6 +38,7 @@ interface ReportedPost {
   status: PostStatus;
   created_at: string;
   has_photo: boolean;
+  photo_held: boolean;
   township_name: string;
   author_name: string;
   open_reports: number;
@@ -164,6 +165,7 @@ function ReportsQueue({ state, hq, onOpen, onChanged }: { state: ReturnType<type
                   <div className="flex flex-wrap items-center gap-2">
                     {post.urgent && <Badge tone="danger"><AlertTriangle className="size-3.5" aria-hidden /><Text>Scam or safety</Text></Badge>}
                     <Badge tone={STATUS_TONES[post.status]}><Text>{STATUS_LABELS[post.status]}</Text></Badge>
+                    {post.photo_held && (post.status === 'OPEN' || post.status === 'CLOSED') && <Badge tone="warning"><ImageOff className="size-3.5" aria-hidden /><Text>Photo held, 2 reports</Text></Badge>}
                     <Badge><Text>{KINDS[post.type].label}</Text></Badge>
                     <span className="text-sm text-ink-500">
                       {post.author_name}{hq && <> · {post.township_name}</>} · <Text>{timeAgo(post.created_at)}</Text>
@@ -171,7 +173,7 @@ function ReportsQueue({ state, hq, onOpen, onChanged }: { state: ReturnType<type
                   </div>
                   <h2 className="mt-3 text-[17px] font-semibold">{post.title}</h2>
                   <p className="mt-1 line-clamp-3 whitespace-pre-line text-[15px] text-ink-600">{post.body}</p>
-                  {post.has_photo && <PostPhoto postId={post.id} className="mt-3 max-h-48 w-full object-cover sm:w-auto sm:max-w-sm" />}
+                  {post.has_photo && <PostPhoto postId={post.id} className="mt-3 sm:max-w-sm" />}
                   <div className="mt-3 rounded-lg bg-ink-50 p-3 text-sm text-ink-700">
                     <p className="font-semibold"><Text>{post.open_reports === 1 ? '1 report' : `${post.open_reports} reports`}</Text></p>
                     <ul className="mt-1 list-disc pl-5">

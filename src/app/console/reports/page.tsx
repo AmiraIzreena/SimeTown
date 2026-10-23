@@ -18,7 +18,7 @@ import { TabPanel, Tabs } from '@/components/ui/tabs';
 import { api } from '@/lib/api';
 import { timeAgo } from '@/lib/format';
 import { useAction, useApi, usePaged } from '@/lib/hooks';
-import { shrinkPhoto } from '@/lib/image';
+import { PHOTO_ACCEPT, PHOTO_HINT, shrinkPhoto, usePhotoPick } from '@/lib/image';
 import { REPORT_CATEGORIES, REPORT_CATEGORY_LABELS, REPORT_STATUSES, URGENCIES, type ReportCategory, type ReportStatus } from '@/shared/domain';
 import { NeedsAttention, type Attention } from './attention';
 
@@ -77,6 +77,7 @@ function ParcelCases() {
 const isStatus = (value: string | null): value is ReportStatus => (REPORT_STATUSES as readonly string[]).includes(value ?? '');
 
 function CommunityReports({ onChanged }: { onChanged: () => void }) {
+  const pickPhoto = usePhotoPick();
   // The status pill is part of the address, so a refresh or Back keeps the list you were on.
   const params = useSearchParams();
   const asked = params.get('status');
@@ -259,14 +260,14 @@ function CommunityReports({ onChanged }: { onChanged: () => void }) {
             <FixedPhoto report={open} />
             <label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-md border border-dashed border-ink-300 px-4 py-3 text-[15px] text-ink-700 transition-colors duration-200 hover:border-brand-500 hover:bg-brand-50/40 focus-within:border-brand-500">
               <Camera className="size-5 shrink-0 text-ink-500" aria-hidden />
-              <span className="min-w-0 flex-1"><Text>{fixedPhoto.pending ? 'Uploading…' : open.fixed_photo_id ? 'Replace the photo of the fix' : 'Add a photo of the fix'}</Text></span>
+              <span className="min-w-0 flex-1"><Text>{fixedPhoto.pending ? 'Uploading…' : open.fixed_photo_id ? 'Replace the photo of the fix' : 'Add a photo of the fix'}</Text><span className="block text-xs text-ink-500"><Text>{PHOTO_HINT}</Text></span></span>
               <LocalizedInput
                 type="file"
-                accept="image/jpeg,image/png,image/webp"
+                accept={PHOTO_ACCEPT}
                 capture="environment"
                 className="sr-only"
                 onChange={(event) => {
-                  const file = event.target.files?.[0];
+                  const file = pickPhoto(event.target);
                   if (file) void fixedPhoto.run(open.id, file);
                 }}
               />

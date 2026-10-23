@@ -587,6 +587,60 @@ describe('Komuniti moderation (township staff, township admins and HQ)', () => {
     expect(all).toContain(id);
   });
 
+  it('holds a photo from other residents after two reports, until staff keep the post', async () => {
+    const author = await makeResident(w);
+    const neighbour = await makeResident(w);
+    const form = new FormData();
+    form.set('type', 'GIVE');
+    form.set('title', 'Photo hold test: sofa');
+    form.set('body', 'Free to collect.');
+    form.set('photo', new File([PNG], 'sofa.png', { type: 'image/png' }));
+    const id = (await call('POST', '/posts/with-photo', { as: author, form })).data.id as string;
+    const photo = async (as: Actor) => (await call('GET', `/posts/${id}/photo`, { as })).status;
+    const inFeed = async (as: Actor) => (await call('GET', '/posts?type=GIVE', { as })).data.items.find((p: { id: string }) => p.id === id);
+
+    // One report changes nothing.
+    expect((await report(id, await makeResident(w))).data).toEqual({ hidden: false, photoHeld: false });
+    expect(await photo(neighbour)).toBe(200);
+
+    // The second holds the photo: other residents get a note instead, the author and staff still see it, and staff are told.
+    expect((await report(id, await makeResident(w), { category: 'OFFENSIVE' })).data).toEqual({ hidden: false, photoHeld: true });
+    expect(await photo(neighbour)).toBe(404);
+    expect(await inFeed(neighbour)).toMatchObject({ has_photo: true, photo_held: true, photo_shown: false, status: 'OPEN' });
+    expect(await photo(author)).toBe(200);
+    expect(await inFeed(author)).toMatchObject({ photo_held: true, photo_shown: true });
+    expect(await photo(w.staff)).toBe(200);
+    expect(await photo(w.hq)).toBe(200);
+    expect((await lastNotice(w.staff))!.title).toBe('A Komuniti photo was held: "Photo hold test: sofa"');
+    const queued = (await call('GET', '/admin/komuniti/reports', { as: w.staff })).data.find((p: { id: string }) => p.id === id);
+    expect(queued).toMatchObject({ photo_held: true, open_reports: 2 });
+    expect((await call('GET', `/admin/komuniti/posts/${id}`, { as: w.admin })).data.photo_held).toBe(true);
+
+    // Keep releases it.
+    expect((await call('POST', `/admin/komuniti/posts/${id}/moderate`, { as: w.staff, body: { action: 'KEEP' } })).status).toBe(200);
+    expect(await photo(neighbour)).toBe(200);
+    expect(await inFeed(neighbour)).toMatchObject({ photo_held: false, photo_shown: true });
+
+    // New reports hold it again, and the third hides the whole post, as before.
+    await report(id, await makeResident(w));
+    expect((await report(id, await makeResident(w))).data.photoHeld).toBe(true);
+    expect((await report(id, await makeResident(w))).data.hidden).toBe(true);
+    expect(await inFeed(neighbour)).toBeUndefined();
+    expect(await photo(author)).toBe(200);
+
+    // Remove works as before: only staff see the photo.
+    expect((await call('POST', `/admin/komuniti/posts/${id}/moderate`, { as: w.admin, body: { action: 'REMOVE', note: 'Not suitable for Komuniti.' } })).status).toBe(200);
+    expect(await photo(author)).toBe(404);
+    expect(await photo(w.staff)).toBe(200);
+  });
+
+  it('holds nothing and tells nobody about a photo when the reported post has none', async () => {
+    const post = await call('POST', '/posts', { as: await makeResident(w), body: { type: 'HELP', title: 'No photo hold test', body: 'Ten minutes.' } });
+    await report(post.data.id, await makeResident(w));
+    expect((await report(post.data.id, await makeResident(w))).data).toEqual({ hidden: false, photoHeld: false });
+    expect((await lastNotice(w.staff))!.title).not.toContain('photo was held');
+  });
+
   it('lets township admins and HQ suspend a resident from Komuniti, but not township staff', async () => {
     const resident = await makeResident(w);
     const post = await call('POST', '/posts', { as: await makeResident(w), body: { type: 'HELP', title: 'Help with groceries', body: 'Two bags from the car.' } });

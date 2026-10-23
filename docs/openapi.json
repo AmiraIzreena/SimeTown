@@ -3,7 +3,7 @@
   "info": {
     "title": "SimeTown API",
     "version": "1.0.0",
-    "description": "One API for the resident, shop, sponsor and SDP views. Amounts of money are whole sen; 1 SimeTown Point = 1 sen. State-changing requests must carry an Origin header equal to the app origin. Lists use `cursor` and `limit`."
+    "description": "One API for the resident, shop, sponsor and SDP views. Amounts of money are whole sen; 1 SimeTown Point = 1 sen. State-changing requests must carry an Origin header equal to the app origin. Lists use `cursor` and `limit`. Photos are sent as multipart field `photo`: JPEG or PNG only (the type is read from the file itself), at most 10 MB; a form is read up to 10.25 MB. Anything else gets 400, a larger photo 413 `PHOTO_TOO_LARGE`."
   },
   "paths": {
     "/api/v1/townships": {

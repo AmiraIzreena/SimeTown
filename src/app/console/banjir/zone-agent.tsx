@@ -16,6 +16,7 @@ import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { timeAgo } from '@/lib/format';
 import { useAction } from '@/lib/hooks';
+import { PHOTO_ACCEPT, PHOTO_HINT, usePhotoPick } from '@/lib/image';
 import { FLOOD_SOURCE_LABELS, FLOOD_TEST_PICTURES, type FloodStatus } from '@/shared/domain';
 import { DECISION_WORDS, STEP_WORDS, type Agent, type AgentZone } from './types';
 
@@ -58,6 +59,7 @@ const READER_NAME = { HOSTED_AI: 'hosted AI', MODEL_SERVER: 'your water-level mo
  */
 function CameraPhoto({ zoneId, reader, onDone }: { zoneId: string; reader: 'HOSTED_AI' | 'MODEL_SERVER' | null; onDone: () => void }) {
   const input = useRef<HTMLInputElement>(null);
+  const pickPhoto = usePhotoPick();
   const [result, setResult] = useState<{ reading: { levelPct: number | null; confidence: number; reader: string }; trusted: boolean } | null>(null);
   const upload = useAction(
     (file: File) => {
@@ -75,14 +77,14 @@ function CameraPhoto({ zoneId, reader, onDone }: { zoneId: string; reader: 'HOST
       </p>
       {reader ? (
         <>
-          <p className="mt-1 text-xs text-ink-500"><Text>A photo of the measuring post, as a CCTV camera would take it. The reading becomes this zone’s camera signal; the rules decide what it means. The photo is not stored.</Text></p>
+          <p className="mt-1 text-xs text-ink-500"><Text>A photo of the measuring post, as a CCTV camera would take it. The reading becomes this zone’s camera signal; the rules decide what it means. The photo is not stored.</Text> <Text>{PHOTO_HINT}</Text>.</p>
           <LocalizedInput
             ref={input}
             type="file"
-            accept="image/jpeg,image/png,image/webp"
+            accept={PHOTO_ACCEPT}
             disabled={upload.pending}
             onChange={(event) => {
-              const file = event.target.files?.[0];
+              const file = pickPhoto(event.target);
               if (file) void upload.run(file).finally(() => { if (input.current) input.current.value = ''; });
             }}
             className="mt-2 block w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-brand-50 file:px-3 file:py-2 file:font-semibold file:text-brand-700 hover:file:bg-brand-100"

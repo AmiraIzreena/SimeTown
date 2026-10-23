@@ -28,7 +28,10 @@ function useDialog(open: boolean, onClose: () => void) {
   }, [open]);
   return {
     ref,
-    onClose,
+    // React passes a nested dialog's close up to this one too; only our own dialog closing counts.
+    onClose: (event: React.SyntheticEvent<HTMLDialogElement>) => {
+      if (event.target === ref.current) onClose();
+    },
     // A click on the backdrop lands on the dialog element itself.
     onClick: (event: React.MouseEvent<HTMLDialogElement>) => {
       if (event.target === ref.current) onClose();

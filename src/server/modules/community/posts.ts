@@ -6,7 +6,7 @@ import { forbidden, notFound, ruleViolation } from '../../errors';
 import { decodeCursor, toPage, type PageQuery } from '../../http/pagination';
 import { photoResponse, storeUpload } from '../../http/uploads';
 import { resolveTownship } from '../townships';
-import { assertNotSuspended, isStaff, lockPost } from './common';
+import { PHOTO_HOLD_REPORTS, assertNotSuspended, isStaff, lockPost, photoHeldSql } from './common';
 
 /** The feed: what residents post, what they see, and their own community record. */
 
@@ -46,17 +46,20 @@ export async function createPost(db: Db, actor: Actor, input: PostInput, now: Da
 
 /**
  * A post's photo follows the post itself: OPEN and CLOSED posts are seen by their township,
- * a HIDDEN one only by its author and staff, a REMOVED one only by staff. Staff see their own
+ * a HIDDEN one only by its author and staff, a REMOVED one only by staff. A held photo (reported
+ * by PHOTO_HOLD_REPORTS residents) is seen only by its author and staff. Staff see their own
  * township, HQ every township. Anything else is "not found", whether or not it exists.
  */
 export async function getPostPhoto(db: Db, actor: Actor, postId: string): Promise<Response> {
-  const post = await one<{ township_id: string; author_id: string; status: string; mime: string | null; bytes: Uint8Array | null }>(
+  const post = await one<{ township_id: string; author_id: string; status: string; photo_held: boolean; mime: string | null; bytes: Uint8Array | null }>(
     db,
-    'SELECT p.township_id, p.author_id, p.status, u.mime, u.bytes FROM posts p LEFT JOIN uploads u ON u.id = p.photo_id WHERE p.id = $1',
-    [postId],
+    `SELECT p.township_id, p.author_id, p.status, ${photoHeldSql('$2')} AS photo_held, u.mime, u.bytes
+       FROM posts p LEFT JOIN uploads u ON u.id = p.photo_id WHERE p.id = $1`,
+    [postId, PHOTO_HOLD_REPORTS],
   );
+  const mine = post?.author_id === actor.id;
   const visible = post && canAccessTownship(actor, post.township_id) && (
-    isStaff(actor) || post.status === 'OPEN' || post.status === 'CLOSED' || (post.status === 'HIDDEN' && post.author_id === actor.id)
+    isStaff(actor) || (mine && post.status !== 'REMOVED') || ((post.status === 'OPEN' || post.status === 'CLOSED') && !post.photo_held)
   );
   if (!visible || !post.mime || !post.bytes) throw notFound('Photo');
   return photoResponse({ mime: post.mime, bytes: post.bytes });
@@ -66,6 +69,8 @@ interface PostRow {
   id: string;
   created_at: Date;
   is_mine: boolean;
+  has_photo: boolean;
+  photo_held: boolean;
 }
 
 export async function listPosts(db: Db, actor: Actor, filter: { type?: PostType[]; q?: string; mine?: boolean } & PageQuery) {
@@ -73,6 +78,7 @@ export async function listPosts(db: Db, actor: Actor, filter: { type?: PostType[
   const townshipId = isStaff(actor) ? actor.townshipId : townshipOf(actor);
   const rows = await db.query<PostRow>(
     `SELECT p.id, p.type, p.title, p.body, p.location, p.starts_at, p.capacity, p.status, p.created_at, (p.photo_id IS NOT NULL) AS has_photo,
+            ${photoHeldSql('$9')} AS photo_held,
             split_part(a.full_name, ' ', 1) AS author_name, (a.role <> 'RESIDENT') AS by_township, (p.author_id = $1) AS is_mine,
             (SELECT count(*)::int FROM post_responses r WHERE r.post_id = p.id AND r.status <> 'DECLINED') AS responses,
             (SELECT r.status FROM post_responses r WHERE r.post_id = p.id AND r.user_id = $1) AS my_response,
@@ -84,7 +90,7 @@ export async function listPosts(db: Db, actor: Actor, filter: { type?: PostType[
         AND ($5::timestamptz IS NULL OR (p.created_at, p.id) < ($5::timestamptz, $6::uuid))
         AND ($8::text IS NULL OR p.title ILIKE '%' || $8 || '%' OR p.body ILIKE '%' || $8 || '%' OR p.location ILIKE '%' || $8 || '%')
       ORDER BY p.created_at DESC, p.id DESC LIMIT $7`,
-    [actor.id, filter.type?.length ? filter.type : null, townshipId, filter.mine ?? false, after, afterId, filter.limit + 1, filter.q ? filter.q.replace(/[\\%_]/g, '\\$&') : null],
+    [actor.id, filter.type?.length ? filter.type : null, townshipId, filter.mine ?? false, after, afterId, filter.limit + 1, filter.q ? filter.q.replace(/[\\%_]/g, '\\$&') : null, PHOTO_HOLD_REPORTS],
   );
   const page = toPage(rows, filter.limit, (r) => [r.created_at, r.id]);
 
@@ -98,7 +104,12 @@ export async function listPosts(db: Db, actor: Actor, filter: { type?: PostType[
       )
     : [];
   return {
-    items: page.items.map((p) => ({ ...p, responders: responders.filter((r) => r.post_id === p.id) })),
+    items: page.items.map((p) => ({
+      ...p,
+      // Whether this viewer gets the picture itself: a held photo only for its author and staff.
+      photo_shown: p.has_photo && (!p.photo_held || p.is_mine || isStaff(actor)),
+      responders: responders.filter((r) => r.post_id === p.id),
+    })),
     nextCursor: page.nextCursor,
   };
 }

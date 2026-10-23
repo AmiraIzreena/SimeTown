@@ -13,7 +13,7 @@ import { Textarea } from '@/components/ui/field';
 import { api } from '@/lib/api';
 import { timeAgo } from '@/lib/format';
 import { useAction, useApi } from '@/lib/hooks';
-import { shrinkPhoto } from '@/lib/image';
+import { PHOTO_ACCEPT, PHOTO_HINT, shrinkPhoto, usePhotoPick } from '@/lib/image';
 import {
   ACCESS_CATEGORY_INFO, ACCESS_STATUS_LABELS, AVAILABILITY_HINTS, AVAILABILITY_LABELS, VERIFICATION_LABELS,
   type AccessCategory, type AccessIncidentStatus, type Availability, type Verification,
@@ -69,11 +69,12 @@ export const kindLabel = (k: PlaceKind) => PLACE_KIND_LABELS[k];
 
 /** A photo picker that shows the chosen file's name. The photo is shrunk before upload. */
 export function PhotoField({ label, onChange, name }: { label: string; onChange: (file: File | null) => void; name: string | null }) {
+  const pickPhoto = usePhotoPick();
   return (
     <label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-lg border border-dashed border-ink-300 px-4 py-3 text-[15px] text-ink-700 hover:border-brand-500 hover:bg-brand-50/40 focus-within:ring-2 focus-within:ring-brand-500">
       <Camera className="size-5 shrink-0 text-ink-500" aria-hidden />
-      <span className="min-w-0 flex-1 truncate">{name ?? <Text>{label}</Text>}</span>
-      <LocalizedInput type="file" accept="image/jpeg,image/png,image/webp" capture="environment" className="sr-only" aria-label={label} onChange={(event) => onChange(event.target.files?.[0] ?? null)} />
+      <span className="min-w-0 flex-1"><span className="block truncate">{name ?? <Text>{label}</Text>}</span><span className="block text-xs text-ink-500"><Text>{PHOTO_HINT}</Text></span></span>
+      <LocalizedInput type="file" accept={PHOTO_ACCEPT} capture="environment" className="sr-only" aria-label={label} onChange={(event) => onChange(pickPhoto(event.target))} />
     </label>
   );
 }

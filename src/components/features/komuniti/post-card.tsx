@@ -1,9 +1,10 @@
 'use client';
 
 import { Text } from '@/components/ui/localized-text';
-import { LocalizedImg } from '@/components/ui/localized-elements';
+import { LocalizedButton, LocalizedDialog, LocalizedImg } from '@/components/ui/localized-elements';
 
-import { CalendarDays, Flag, MapPin, Users } from 'lucide-react';
+import { CalendarDays, EyeOff, Flag, MapPin, Users, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge, Card } from '@/components/ui/card';
 import { api } from '@/lib/api';
@@ -48,7 +49,14 @@ export function PostCard({ post, index, large, onChanged, onLend, onReport }: {
       </div>
       <h3 className={`mt-3 font-semibold ${large ? 'text-xl' : 'text-[17px]'}`}>{post.title}</h3>
       <p className={`mt-1 flex-1 whitespace-pre-line text-ink-600 ${large ? 'text-lg' : 'text-[15px]'}`}>{post.body}</p>
-      {post.has_photo && <PostPhoto postId={post.id} className="mt-3 max-h-72 w-full object-cover" />}
+      {post.has_photo && (post.photo_shown ? (
+        <>
+          <PostPhoto postId={post.id} className="mt-3" />
+          {post.photo_held && <p className="mt-1.5 flex items-center gap-1.5 text-xs text-ink-500"><EyeOff className="size-3.5" aria-hidden /><Text>Photo hidden while staff check it</Text></p>}
+        </>
+      ) : (
+        <p className="mt-3 flex items-center gap-2 rounded-lg border border-dashed border-ink-300 bg-ink-50 px-3 py-4 text-sm text-ink-600"><EyeOff className="size-4 shrink-0" aria-hidden /><Text>Photo hidden while staff check it</Text></p>
+      ))}
       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-ink-500">
         {post.starts_at && (
           <span className="inline-flex items-center gap-1.5">
@@ -193,7 +201,51 @@ function MyResponse({ post, kind, full, size, onChanged }: { post: Post; kind: P
   );
 }
 
-/** A post's optional photo. The server decides who may see it (township, author, staff), so the same address works everywhere. */
+/**
+ * A post's optional photo: every photo has the same 16:9 shape, cropped from the centre; a click opens the
+ * whole picture. The server decides who may see it (township, author, staff), so the same address works everywhere.
+ */
 export function PostPhoto({ postId, className }: { postId: string; className?: string }) {
-  return <LocalizedImg src={`/api/v1/posts/${postId}/photo`} alt="Photo attached to this post" loading="lazy" className={cn('rounded-lg border border-ink-200', className)} />;
+  const [open, setOpen] = useState(false);
+  const src = `/api/v1/posts/${postId}/photo`;
+  const alt = 'Photo attached to this post';
+  return (
+    <>
+      <LocalizedButton type="button" onClick={() => setOpen(true)} className={cn('block aspect-video w-full cursor-zoom-in overflow-hidden rounded-lg border border-ink-200 bg-ink-100', className)}>
+        <LocalizedImg src={src} alt={alt} loading="lazy" className="size-full object-cover object-center" />
+        <span className="sr-only"><Text>Open larger</Text></span>
+      </LocalizedButton>
+      <PhotoViewer open={open} src={src} alt={alt} onClose={() => setOpen(false)} />
+    </>
+  );
+}
+
+/** The whole photo, uncropped, over the page. Native <dialog>: Escape, focus trapping and returning focus come free. */
+function PhotoViewer({ open, src, alt, onClose }: { open: boolean; src: string; alt: string; onClose: () => void }) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dialog = ref.current;
+    if (!dialog) return;
+    if (open && !dialog.open) dialog.showModal();
+    if (!open && dialog.open) dialog.close();
+  }, [open]);
+  return (
+    <LocalizedDialog
+      ref={ref}
+      className="photo-viewer"
+      aria-label="Photo"
+      // Only this dialog's own close, and a click on the dark area around the photo.
+      onClose={(event) => event.target === ref.current && onClose()}
+      onClick={(event) => event.target === ref.current && onClose()}
+    >
+      {open && (
+        <>
+          <LocalizedImg src={src} alt={alt} className="max-h-[calc(100dvh-5rem)] max-w-full object-contain" />
+          <Button variant="secondary" size="sm" onClick={onClose} className="absolute top-4 right-4">
+            <X className="size-4" aria-hidden /><Text>Close</Text>
+          </Button>
+        </>
+      )}
+    </LocalizedDialog>
+  );
 }

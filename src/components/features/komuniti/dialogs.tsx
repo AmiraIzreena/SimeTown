@@ -12,7 +12,7 @@ import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { useAction } from '@/lib/hooks';
 import { useT } from '@/lib/i18n';
-import { shrinkPhoto } from '@/lib/image';
+import { PHOTO_ACCEPT, PHOTO_HINT, shrinkPhoto, usePhotoPick } from '@/lib/image';
 import { POST_FLAG_CATEGORIES, POST_FLAG_CATEGORY_LABELS, type PostFlagCategory, type PostType } from '@/shared/domain';
 import { KINDS, addDays, today, type Post, type PostKind, type Responder } from './model';
 
@@ -95,6 +95,7 @@ export function CreatePost({ kind, accessible, onClose, onCreated }: { kind: Pos
   // One optional photo, shrunk in the browser before it is sent (as in Lapor).
   const [photo, setPhoto] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const pickPhoto = usePhotoPick();
   useEffect(() => () => {
     if (preview) URL.revokeObjectURL(preview);
   }, [preview]);
@@ -184,9 +185,9 @@ export function CreatePost({ kind, accessible, onClose, onCreated }: { kind: Pos
                 <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-brand-50 text-brand-700"><ImagePlus className="size-4" aria-hidden /></span>
                 <span>
                   <span className="block font-semibold text-ink-900"><Text>Add a photo</Text></span>
-                  <Text>It helps neighbours see what you mean. JPEG, PNG or WebP.</Text>
+                  <Text>It helps neighbours see what you mean.</Text> <Text>{PHOTO_HINT}</Text>.
                 </span>
-                <LocalizedInput type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(event) => choosePhoto(event.target.files?.[0] ?? null)} />
+                <LocalizedInput type="file" accept={PHOTO_ACCEPT} className="sr-only" onChange={(event) => choosePhoto(pickPhoto(event.target))} />
               </label>
             )}
             <p className={accessible ? 'text-base text-ink-600' : 'text-xs text-ink-500'}><Text>Don’t include faces, car plates or house numbers.</Text></p>

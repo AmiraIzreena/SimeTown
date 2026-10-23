@@ -23,7 +23,7 @@ import { cn } from '@/lib/cn';
 import { formatDate, formatDateTime } from '@/lib/format';
 import { useAction, useApi } from '@/lib/hooks';
 import { useT } from '@/lib/i18n';
-import { shrinkPhoto } from '@/lib/image';
+import { PHOTO_ACCEPT, PHOTO_HINT, shrinkPhoto, usePhotoPick } from '@/lib/image';
 import {
   formatPhone, SERVICE_CATEGORY_LABELS, SERVICE_REPORT_CATEGORIES, SERVICE_REPORT_CATEGORY_LABELS, SERVICE_SLOTS, SERVICE_SLOT_LABELS,
   type BookingStatus, type ServiceCategory, type ServicePricing, type ServiceReportStatus, type ServiceSlot,
@@ -359,6 +359,7 @@ export function ProviderProfile({ merchantId, onClose }: { merchantId: string | 
 
 export function BookForm({ provider, onClose, onBooked }: { provider: Bookable | null; onClose: () => void; onBooked: (id: string) => void }) {
   const [photoName, setPhotoName] = useState<string | null>(null);
+  const pickPhoto = usePhotoPick();
   const create = useAction(
     async (data: FormData) => {
       const photo = data.get('photo');
@@ -404,8 +405,8 @@ export function BookForm({ provider, onClose, onBooked }: { provider: Bookable |
             </Select>
           </div>
           <label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-md border border-dashed border-ink-300 px-4 py-3 text-[15px] text-ink-700 transition-colors duration-200 hover:border-brand-500 hover:bg-brand-50/40 focus-within:border-brand-500">
-            <Camera className="size-5 shrink-0 text-ink-500" aria-hidden /><span className="min-w-0 flex-1 truncate"><Text>{photoName ?? 'Add a photo of the problem (optional)'}</Text></span>
-            <LocalizedInput type="file" name="photo" accept="image/jpeg,image/png,image/webp" capture="environment" className="sr-only" onChange={(event) => setPhotoName(event.target.files?.[0]?.name ?? null)} />
+            <Camera className="size-5 shrink-0 text-ink-500" aria-hidden /><span className="min-w-0 flex-1"><span className="block truncate"><Text>{photoName ?? 'Add a photo of the problem (optional)'}</Text></span><span className="block text-xs text-ink-500"><Text>{PHOTO_HINT}</Text></span></span>
+            <LocalizedInput type="file" name="photo" accept={PHOTO_ACCEPT} capture="environment" className="sr-only" onChange={(event) => setPhotoName(pickPhoto(event.target)?.name ?? null)} />
           </label>
           <p className="text-sm text-ink-500"><Text>The company sees your first name and the problem. Your address and phone number are shared only once it accepts.</Text></p>
         </form>

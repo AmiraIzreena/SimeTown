@@ -137,11 +137,16 @@ export const komunitiMalay: Record<string, string> = {
   'Komuniti suspension lifted': 'Penggantungan Komuniti ditarik balik',
   // A post's optional photo
   'Add a photo': 'Tambah foto', // native review
-  'It helps neighbours see what you mean. JPEG, PNG or WebP.': 'Ia membantu jiran memahami maksud anda. JPEG, PNG atau WebP.', // native review
+  'It helps neighbours see what you mean.': 'Ia membantu jiran memahami maksud anda.', // native review
   'The photo you chose': 'Foto yang anda pilih', // native review
   'Don’t include faces, car plates or house numbers.': 'Jangan sertakan wajah, nombor plat kereta atau nombor rumah.', // native review
   'Photo attached to this post': 'Foto yang dilampirkan pada siaran ini', // native review
   'Has a photo': 'Ada foto', // native review
+  'Open larger': 'Buka lebih besar', // native review
+  'Photo hidden while staff check it': 'Foto disembunyikan semasa kakitangan menyemaknya', // native review
+  'Photo held, 2 reports': 'Foto ditahan, 2 laporan', // native review
+  'Two residents reported the post. Other residents cannot see its photo until you review it.':
+    'Dua penduduk telah melaporkan siaran ini. Penduduk lain tidak dapat melihat fotonya sehingga anda menyemaknya.', // native review
   'Create a post with one optional photo (multipart form: the same fields as POST /posts, plus "photo")':
     'Cipta siaran dengan satu foto pilihan (borang berbilang bahagian: medan yang sama seperti POST /posts, serta "photo")', // native review
   "A post's photo: its township while open or closed, the author and staff while hidden, staff only once removed":
@@ -172,6 +177,7 @@ export const komunitiTemplates: readonly (readonly [string, string])[] = [
   ["You cannot post or respond in Komuniti until {0}. Township staff have sent you the reason.", "Anda tidak boleh menyiarkan atau memberi respons dalam Komuniti sehingga {0}. Kakitangan perbandaran telah menghantar sebabnya kepada anda."],
   ["You cannot post or respond until {0}. Reason: {1}", "Anda tidak boleh menyiarkan atau memberi respons sehingga {0}. Sebab: {1}"],
   ["A Komuniti post was hidden: \"{0}\"", "Satu siaran Komuniti disembunyikan: \"{0}\""],
+  ["A Komuniti photo was held: \"{0}\"", "Satu foto Komuniti ditahan: \"{0}\""], // native review
   ["We reviewed \"{0}\"", "Kami telah menyemak \"{0}\""],
   ["Your post \"{0}\" is visible again", "Siaran anda \"{0}\" boleh dilihat semula"],
   ["Your post \"{0}\" is hidden for now", "Siaran anda \"{0}\" disembunyikan buat masa ini"],
