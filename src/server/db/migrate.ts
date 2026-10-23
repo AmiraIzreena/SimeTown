@@ -13,6 +13,7 @@ export async function listMigrations(): Promise<string[]> {
 const RENAMED: Record<string, string> = {
   '028_kitar_collection_automation.sql': '029_kitar_collection_automation.sql',
   '040_account_emails.sql': '043_account_emails.sql',
+  '043_flood_alert_second_check.sql': '044_flood_alert_second_check.sql',
 };
 
 export async function migrate(db: Db): Promise<string[]> {
