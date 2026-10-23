@@ -88,8 +88,10 @@ function ZoneCard({ zone, mine, warningPct, dangerPct, index }: { zone: Zone; mi
   const allClear = zone.message_kind === 'ALL_CLEAR';
   return (
     <article
+      id={mine ? 'my-zone' : undefined}
+      tabIndex={mine ? -1 : undefined}
       className={cn(
-        'zone-card banjir-zone relative flex flex-col overflow-hidden rounded-3xl border bg-white shadow-sm',
+        'zone-card banjir-zone relative flex flex-col overflow-hidden rounded-3xl border bg-white shadow-sm scroll-mt-28 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500',
         danger && 'is-danger is-alert border-accent-300',
         zone.status === 'WARNING' && 'is-warning is-alert border-accent-200',
         !alert && 'is-normal border-white/80',
@@ -244,7 +246,7 @@ export default function BanjirPage() {
                   const checkinText = o.myCheckin === 'SAFE' ? 'You checked in safe.' : o.myCheckin === 'NEED_HELP' ? 'You asked for help. The team has been told.' : 'Let the township team know how you are.';
                   const spoken = `${isMine ? t(statusText) : `${zone.name}: ${t(zone.status)}`}. ${t('Safe route')}: ${zone.safe_route}. ${t('Assembly point')}: ${zone.assembly_point}.`;
                   return (
-                    <Card key={zone.id} className={cn('space-y-4 p-6', zone.status === 'DANGER' && 'border-accent-300 bg-accent-50', zone.id === o.myZoneId && zone.status !== 'DANGER' && 'border-brand-300')} aria-live={isMine ? 'polite' : undefined}>
+                    <Card key={zone.id} id={isMine ? 'my-zone' : undefined} tabIndex={isMine ? -1 : undefined} className={cn('scroll-mt-28 space-y-4 p-6 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500',zone.status === 'DANGER' && 'border-accent-300 bg-accent-50', zone.id === o.myZoneId && zone.status !== 'DANGER' && 'border-brand-300')} aria-live={isMine ? 'polite' : undefined}>
                       <div className="flex flex-wrap items-center gap-3">
                         <h2 className="text-2xl font-bold">{zone.name}</h2>
                         {isMine && <Badge tone="brand"><Text>Your zone</Text></Badge>}
