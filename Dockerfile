@@ -27,6 +27,7 @@ ENV NODE_ENV=production HOSTNAME=0.0.0.0
 RUN addgroup -S kita && adduser -S kita -G kita
 COPY --from=build --chown=kita:kita /app/.next/standalone ./
 COPY --from=build --chown=kita:kita /app/.next/static ./.next/static
+COPY --from=build --chown=kita:kita /app/public ./public
 USER kita
 # The server listens on $PORT (3000 if unset). EXPOSE only documents the default.
 EXPOSE 3000
