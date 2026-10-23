@@ -16,7 +16,8 @@ import { claimGuestSession, createMachine, itemText, joinFromScreen, machineScre
 import { createKiosk } from '@/server/modules/kitar/service';
 import { runJob } from '@/server/modules/admin/service';
 import { demoVisitorDetails } from '@/server/modules/tamu/demo-details';
-import { completePassDetails, createPass, insertPass, logWalkIn, publicPass, replyToWalkIn, scanPass, tamuOverview } from '@/server/modules/tamu/service';
+import { cleanupEmails } from '@/server/modules/email/outbox';
+import { completePassDetails, createPass, insertPass, logWalkIn, publicPass, renewPassLink, replyToWalkIn, scanPass, tamuOverview } from '@/server/modules/tamu/service';
 import { T0, at, closeCampaign, expectFloatBalanced, freshDb, makeCampaign, makeHome, makeResident, makeWorld, type World } from './helpers';
 
 /** The features added for the proposal's third edition, one business rule at a time. */
@@ -601,5 +602,44 @@ describe('Tamu: visitor details (BR26, revised)', () => {
     expect(ok.status).toBe(200);
     expect(ok.data).toMatchObject({ missing: [], details: { idLast4: '2345' } });
     expect(JSON.stringify(ok.data)).not.toContain('DEMOX12345');
+  });
+});
+
+describe('Tamu: the pass emailed to the visitor', () => {
+  it('emails the pass link when the resident gives an address, again when shared, and forgets the address after 30 days', async () => {
+    const host = await makeResident(w);
+    const pass = await createPass(db, host, { type: 'ONE_VISIT', visitorName: 'Puan Rahmah', visitorEmail: 'Rahmah@Example.com', ...demoVisitorDetails(T0, 'family'), validFrom: T0, validUntil: at(1) }, T0, { complete: { identityByVisitor: false } });
+    expect(pass.emailed).toBe(true);
+    const sent = () => db.query<{ user_id: string | null; to_email: string; kind: string; html: string; body_text: string }>(`SELECT user_id, to_email, kind, html, body_text FROM email_outbox WHERE kind = 'VISITOR_PASS' AND to_email = 'rahmah@example.com' ORDER BY id`);
+    const first = await sent();
+    expect(first).toHaveLength(1);
+    expect(first[0]).toMatchObject({ user_id: null, to_email: 'rahmah@example.com' });
+    expect(first[0]!.body_text).toContain(`/pass/${pass.token}`);
+    for (const secret of ['580412005122', '580412-00-5122', '5122', pass.code]) expect(first[0]!.html + first[0]!.body_text).not.toContain(secret);
+    expect((await tamuOverview(db, host, T0)).passes.find((p) => p.id === pass.id)?.visitorEmail).toBe('rahmah@example.com');
+
+    // Sharing again makes a new link: the visitor gets that one too.
+    const renewed = await renewPassLink(db, host, pass.id, at(0.1));
+    expect(renewed.emailed).toBe(true);
+    const second = await sent();
+    expect(second).toHaveLength(2);
+    expect(second[1]!.body_text).toContain(`/pass/${renewed.token}`);
+
+    // No address, no email.
+    const plain = await createPass(db, host, { type: 'ONE_VISIT', visitorName: 'No Email', ...demoVisitorDetails(T0, 'helper'), validFrom: T0, validUntil: at(1) }, T0, { complete: { identityByVisitor: false } });
+    expect(plain.emailed).toBe(false);
+
+    await cleanupEmails(db, at(31));
+    expect(await sent()).toHaveLength(0);
+  });
+
+  it('refuses an address that is not an email', async () => {
+    const host = await makeResident(w);
+    const res = await call('POST', '/tamu/passes', {
+      as: host,
+      body: { type: 'ONE_VISIT', visitorName: 'Guest', transport: 'ON_FOOT', reason: 'VISITING', identityByVisitor: true, visitorEmail: 'not-an-email', validFrom: T0, validUntil: at(1) },
+    });
+    expect(res.status).toBe(400);
+    expect(Object.keys(res.error.details.fields)).toEqual(['visitorEmail']);
   });
 });

@@ -130,6 +130,7 @@ const sections: LegalSection[] = [
           items={[
             'Enter your visitor’s details accurately, and only with their permission. Tell them that SimeTown keeps these details for township security and deletes them after 90 days, as our Privacy Notice explains. You may instead let your visitor give their identity on their own pass link.',
             'Do not use someone else’s identity number, or create a pass for anyone other than the visitor named on it.',
+            'Give a visitor’s email address only if it is theirs and they are happy to receive the pass by email. SimeTown uses it for nothing else.',
             'A visitor driving in must hold a valid driving licence. A visitor whose licence has expired cannot be recorded to drive in.',
             'The guard checks the visitor’s identity card and hands it straight back. Guards never keep, copy or photograph it.',
             '“Not expected” tells the guard; it never blocks lawful access on a public road.',

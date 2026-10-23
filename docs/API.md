@@ -159,8 +159,8 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | Method | Path | Who | What it does |
 | --- | --- | --- | --- |
 | GET | `/tamu` | RESIDENT | My home's visitor passes, visits and walk-ins waiting for an answer |
-| POST | `/tamu/passes` | RESIDENT | Create a visitor pass with the visitor’s details (the identity may be left for the visitor); the link is returned once |
-| POST | `/tamu/passes/:passId/link` | RESIDENT | A fresh link for a pass (the old link stops working) |
+| POST | `/tamu/passes` | RESIDENT | Create a visitor pass with the visitor’s details (the identity may be left for the visitor); the link is returned once, and emailed to the visitor if their address is given |
+| POST | `/tamu/passes/:passId/link` | RESIDENT | A fresh link for a pass (the old link stops working; an emailed visitor gets the new one) |
 | POST | `/tamu/passes/:passId/cancel` | RESIDENT | Cancel a pass |
 | POST | `/tamu/entries/:entryId/reply` | RESIDENT | Answer the guard about a walk-in visitor |
 | POST | `/tamu/sos` | RESIDENT | SOS to the guardhouse |

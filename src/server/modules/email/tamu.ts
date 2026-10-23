@@ -1,12 +1,16 @@
 import { translateMessage, type Lang } from '@/lib/i18n-core';
 import type { Queryable } from '../../db/client';
 import { describeDetails, type StoredDetails } from '../tamu/visitor-data';
-import { appLink, queueEmails } from './outbox';
+import { appLink, queueEmails, queueEmailTo } from './outbox';
 
 /**
  * The Tamu emails to the household, in the design every SimeTown email shares (docs/EMAIL_DESIGN.md). They say who
  * came, how and why, but never the visitor's identity number or the home's address: the app shows the rest. Each is
  * queued with the in-app notification for the same event, so it exists only if the event happened.
+ *
+ * The one email to a visitor, their pass, is sent only when the resident gives the visitor's address. It carries the
+ * pass link, because the visitor has no account: the link shows the QR code, and the
+ * guard still checks the visitor's identity card at the gate. No QR code, code or identity number is in the email.
  */
 
 const TZ = 'Asia/Kuala_Lumpur';
@@ -68,3 +72,27 @@ export function emailVisitorAtGate(q: Queryable, people: string[], v: Visit) {
     footer: FOOTER,
   }), `email-visitor-at-gate:${v.entryId}`, { preference: 'visitor' }, v.at);
 }
+
+/** The resident gave their visitor's email: SimeTown sends the pass link, in the resident's language. */
+export function emailVisitorPass(
+  q: Queryable,
+  p: { passId: string; token: string; address: string; lang: Lang; visitorName: string; township: string; street: string; gate: string | null; validFrom: Date; validUntil: Date; now: Date },
+) {
+  return queueEmailTo(q, p.address, p.lang, 'VISITOR_PASS', (lang) => ({
+    subject: `Your visitor pass for ${p.township}`,
+    preheader: 'Open your pass before you arrive and show its QR code at the main gate.',
+    bandLabel: 'Tamu',
+    status: { tone: 'info', label: 'Visitor pass' },
+    heading: 'Your visitor pass is ready',
+    intro: `you have been invited to ${p.township}. Open your pass before you arrive and show its QR code to the guard at the main gate.`,
+    facts: [
+      { label: 'Visitor', value: p.visitorName },
+      { label: 'Valid', value: `${when(p.validFrom, lang)} – ${when(p.validUntil, lang)}` },
+      { label: 'Going to', value: p.gate ? `${p.street} · ${p.gate}` : p.street },
+    ],
+    action: { label: 'Open my pass', url: appLink(`/pass/${p.token}`) },
+    note: 'Bring your identity card: the guard checks it and hands it straight back. If your host asked, add your details on the pass page before you come. This link is your pass, so please do not forward this email.',
+    footer: 'You received this because a SimeTown resident invited you. Your email address is used only to send this pass.',
+  }), `email-visitor-pass:${p.passId}:${p.token.slice(0, 12)}`, p.now);
+}
+

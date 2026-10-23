@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { CITIZENSHIPS, HOST_REPLIES, PASS_TYPES, STAFF, TRANSPORT_MODES, VISIT_REASONS, type Role } from '@/shared/domain';
 import { notFound } from '../../errors';
-import { emptyBody, route, zId, zText } from '../../http/router';
+import { emptyBody, route, zEmail, zId, zText } from '../../http/router';
 import * as tamu from './service';
 
 /** Guards work the gate; township staff and admins can cover for them. */
@@ -26,13 +26,17 @@ export const tamuRoutes = [
     handler: (c) => tamu.tamuOverview(c.db, c.actor, c.now),
   }),
   route({
-    method: 'POST', path: '/tamu/passes', tag: 'Tamu', summary: 'Create a visitor pass with the visitor’s details (the identity may be left for the visitor); the link is returned once', auth: 'session', roles: ['RESIDENT'],
+    method: 'POST', path: '/tamu/passes', tag: 'Tamu', summary: 'Create a visitor pass with the visitor’s details (the identity may be left for the visitor); the link is returned once, and emailed to the visitor if their address is given', auth: 'session', roles: ['RESIDENT'],
     rateLimit: { limit: 30, windowSec: 3600, by: 'user' },
-    body: z.object({ type: z.enum(PASS_TYPES), visitorName: zVisitor, validFrom: z.coerce.date(), validUntil: z.coerce.date(), ...zDetails, identityByVisitor: z.boolean().default(false) }),
+    body: z.object({
+      type: z.enum(PASS_TYPES), visitorName: zVisitor, validFrom: z.coerce.date(), validUntil: z.coerce.date(), ...zDetails, identityByVisitor: z.boolean().default(false),
+      // Optional: SimeTown emails the visitor their pass.
+      visitorEmail: zEmail.optional(),
+    }),
     handler: ({ body: { identityByVisitor, ...input }, ...c }) => tamu.createPass(c.db, c.actor, input, c.now, { complete: { identityByVisitor } }),
   }),
   route({
-    method: 'POST', path: '/tamu/passes/:passId/link', tag: 'Tamu', summary: 'A fresh link for a pass (the old link stops working)', auth: 'session', roles: ['RESIDENT'],
+    method: 'POST', path: '/tamu/passes/:passId/link', tag: 'Tamu', summary: 'A fresh link for a pass (the old link stops working; an emailed visitor gets the new one)', auth: 'session', roles: ['RESIDENT'],
     rateLimit: { limit: 30, windowSec: 3600, by: 'user' }, body: emptyBody,
     handler: (c) => tamu.renewPassLink(c.db, c.actor, c.params.passId!, c.now),
   }),

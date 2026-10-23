@@ -1,8 +1,8 @@
 'use client';
 
 import {
-  BadgeCheck, Bell, CircleX, Clock, DoorOpen, EyeOff, IdCard, Link2, Lock, LogOut, Mail, MessageCircle, Navigation, PhoneCall, QrCode, Route,
-  ScanLine, Send, ShieldCheck, Siren, Timer, Truck, UserPlus, UserRound,
+  BadgeCheck, Bell, CircleX, KeyRound, Clock, DoorOpen, EyeOff, IdCard, Link2, Lock, LogOut, Mail, MessageCircle, Navigation, PhoneCall, QrCode, Route,
+  ScanLine, ShieldCheck, Siren, Timer, Truck, UserPlus, UserRound,
 } from 'lucide-react';
 import { ScreenButton, ScreenCard, ScreenRow, ScreenTitle, Walkthrough, type WalkStep } from './walkthrough';
 
@@ -32,20 +32,21 @@ const RESIDENT: WalkStep[] = [
   {
     key: 'identity', icon: IdCard, who: 'You', title: 'Their identity: from you, or from them',
     text: 'The gate also needs your visitor’s citizenship and identity number, and a driver’s licence expiry. Enter them now, with your visitor’s permission, or let your visitor give them on their pass link. Your home only ever sees the last 4 characters.',
-    screen: <div className="space-y-2.5"><ScreenTitle>Visitor’s identity</ScreenTitle>
-      <ScreenRow label="Who gives it?" value="I will enter it now" i={0} />
+    screen: <div className="space-y-2.5"><ScreenTitle>Visitor’s IC or passport</ScreenTitle>
+      <ScreenRow label="Who fills it in?" value="I’ll fill it in now" i={0} />
       <ScreenRow icon={IdCard} label="Malaysian citizen" value="•••• 5122" i={1} />
       <ScreenRow icon={BadgeCheck} label="Driving licence expiry" value="Valid" i={2} tick />
       <ScreenButton i={3}>Create pass</ScreenButton>
     </div>,
   },
   {
-    key: 'send', icon: Send, who: 'You', title: 'Send the link by WhatsApp or SMS',
-    text: 'The pass is a link with a QR code. Your visitor needs no app and no account. WhatsApp and SMS open on your phone with the message ready: you send it yourself. Sharing again makes a new link, and the old one stops working.',
+    key: 'send', icon: Mail, who: 'You', title: 'SimeTown emails your visitor the pass',
+    text: 'Add your visitor’s email and SimeTown emails them the pass: a link with its QR code. Your visitor needs no app and no account. No email? Tell them the pass code: the guard can type it at the gate. Send again makes a new link, emailed to your visitor, and the old one stops working.',
     screen: <div className="space-y-2.5"><ScreenTitle>Pass for Puan Rahmah</ScreenTitle>
       <ScreenCard icon={QrCode} title="PAB12CD3" note="The code printed under the QR code" i={0} />
-      <ScreenRow icon={MessageCircle} label="Send by WhatsApp" i={1} tick />
-      <ScreenRow icon={Link2} label="Sharing again makes a new link" i={2} />
+      <ScreenRow icon={Mail} label="SimeTown has emailed the pass" i={1} tick />
+      <ScreenRow icon={KeyRound} label="No email? Tell them the pass code" i={2} />
+      <ScreenRow icon={Link2} label="Send again makes a new link" i={3} />
     </div>,
   },
   {

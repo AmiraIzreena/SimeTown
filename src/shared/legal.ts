@@ -8,10 +8,6 @@ export const LEGAL = {
   effectiveDate: '23 October 2026',
   /** Who runs the service and answers for the personal data in it. */
   operator: 'the SimeTown project team',
-  /**
-   * Where people send privacy requests and questions. Replace this placeholder
-   * (the .example domain cannot receive mail) with a real, monitored address
-   * before anyone outside the team uses the app.
-   */
-  contactEmail: 'privacy@kita-plus.example',
+  /** Where people send privacy requests and questions: the team's monitored address. */
+  contactEmail: '6bytestech@gmail.com',
 } as const;

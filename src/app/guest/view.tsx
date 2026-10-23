@@ -2,7 +2,7 @@
 
 import { Text } from '@/components/ui/localized-text';
 import { LocalizedAside, LocalizedLink as Link } from '@/components/ui/localized-elements';
-import { ArrowRight, BadgeCheck, Car, CheckCircle2, DoorOpen, Droplets, MessageCircle, QrCode, Recycle, ScanLine, UserPlus, type LucideIcon } from 'lucide-react';
+import { ArrowRight, BadgeCheck, Car, CheckCircle2, DoorOpen, Droplets, Mail, QrCode, Recycle, ScanLine, UserPlus, type LucideIcon } from 'lucide-react';
 import Image from 'next/image';
 import type { CSSProperties, ReactNode } from 'react';
 import { SiteFooter } from '@/components/shell/site-footer';
@@ -23,7 +23,7 @@ interface Group {
 }
 
 const ARRIVAL: { icon: LucideIcon; title: string; text: string }[] = [
-  { icon: MessageCircle, title: 'Your host sends a link', text: 'By WhatsApp or SMS. It holds your pass, valid for the day or the times your host chose.' },
+  { icon: Mail, title: 'Your pass comes by email', text: 'SimeTown emails it when your host invites you. It is valid for the day or the times your host chose. No email? Your host can give you the pass code instead.' },
   { icon: Car, title: 'Drive to the main gate', text: 'Open the link on your phone as you arrive. No app to download. Bring your identity card: the guard checks it and hands it straight back.' },
   { icon: ScanLine, title: 'The guard scans it', text: 'Your host is told the moment you arrive, and you are on your way in seconds.' },
 ];
@@ -144,7 +144,7 @@ export function GuestView() {
             <h2 className="mt-3 max-w-2xl text-3xl font-bold leading-tight tracking-tight sm:text-4xl"><Text>Three things you can do today</Text></h2>
           </Reveal>
           <div className="mt-10 grid gap-5 md:grid-cols-3">
-            <Journey index={0} icon={DoorOpen} title="Visitor pass" text="Your host sends you a link by WhatsApp or SMS. Open it, add your details if your host asks, and show the QR code at the main gate. No app needed." visual={<PassVisual />} />
+            <Journey index={0} icon={DoorOpen} title="Visitor pass" text="SimeTown emails you the pass your host made. Open it, add your details if your host asks, and show the QR code at the main gate. No app needed." visual={<PassVisual />} />
             <Journey index={1} icon={Recycle} title="Recycle as a guest" text="Tap “Recycle as guest” on the screen of any kiosk bin. You get a claim code: join SimeTown within 14 days to claim the Impact XP. Guests are not tracked." visual={<ClaimVisual />} />
             <Journey
               index={2}

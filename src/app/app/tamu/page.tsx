@@ -3,7 +3,7 @@
 import { Text } from '@/components/ui/localized-text';
 import { CopyButton } from '@/components/ui/copy-button';
 
-import { DoorOpen, Flag, LifeBuoy, MessageCircle, Send, ShieldCheck, UserRound } from 'lucide-react';
+import { DoorOpen, Flag, LifeBuoy, Send, ShieldCheck, UserRound } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { AksesPage, AksesReadAloud, useAksesMode } from '@/components/features/akses-mode';
 import { ReportProblemDialog } from '@/components/features/report-problem';
@@ -19,6 +19,7 @@ import { Input, Select } from '@/components/ui/field';
 import { QrCode } from '@/components/ui/qr';
 import { useToast } from '@/components/ui/toast';
 import { api } from '@/lib/api';
+import { cn } from '@/lib/cn';
 import { formatDateTime, timeAgo } from '@/lib/format';
 import { useAction, useApi } from '@/lib/hooks';
 import { useT } from '@/lib/i18n';
@@ -38,6 +39,7 @@ interface Pass {
   status: 'ACTIVE' | 'NOT_YET' | 'USED' | 'EXPIRED' | 'CANCELLED';
   details: VisitorDetailsView;
   missing: VisitorDetail[];
+  visitorEmail: string | null;
 }
 interface Overview {
   passes: Pass[];
@@ -50,6 +52,8 @@ interface Issued {
   id: string;
   code: string;
   token: string;
+  /** SimeTown emailed the link to the visitor. */
+  emailed: boolean;
 }
 type IdentityBy = 'HOST' | 'VISITOR';
 
@@ -76,9 +80,37 @@ type GuidedStep = 'start' | 'kind' | 'name' | 'transport' | 'reason' | 'who' | '
 const guidedSteps = (by: IdentityBy): GuidedStep[] => ['start', 'kind', 'name', 'transport', 'reason', 'who', ...(by === 'HOST' ? (['identity'] as const) : []), 'from', 'until'];
 /** Where each field is asked in Simple Mode, to go back to it when the server finds a problem. */
 const STEP_OF: Record<string, GuidedStep> = {
-  visitorName: 'name', transport: 'transport', vehicleNo: 'transport', reason: 'reason', reasonOther: 'reason',
+  visitorName: 'name', visitorEmail: 'name', transport: 'transport', vehicleNo: 'transport', reason: 'reason', reasonOther: 'reason',
   citizenship: 'identity', idNumber: 'identity', licenceExpiry: 'identity', validFrom: 'from', validUntil: 'until',
 };
+
+const IDENTITY_CHOICES: { value: IdentityBy; title: string; text: string }[] = [
+  { value: 'HOST', title: 'I’ll fill it in now', text: 'You have their IC or passport number with you.' },
+  { value: 'VISITOR', title: 'My visitor fills it in', text: 'They type it on their pass link before they come. If they don’t, the guard records it at the gate.' },
+];
+
+/** Who fills in the visitor's IC or passport number: two plain choices, each explained, instead of a dropdown. */
+function IdentityChoice({ value, onChange, large = false }: { value: IdentityBy; onChange: (next: IdentityBy) => void; large?: boolean }) {
+  return (
+    <div className="space-y-2">
+      <p id="identity-choice" className={cn('font-medium text-ink-800', large ? 'text-3xl font-semibold text-ink-900' : 'text-sm')}><Text>Who fills in the visitor’s IC or passport number?</Text></p>
+      <div role="radiogroup" aria-labelledby="identity-choice" className="grid gap-2 sm:grid-cols-2">
+        {IDENTITY_CHOICES.map((choice) => (
+          <label
+            key={choice.value}
+            className="flex cursor-pointer items-start gap-3 rounded-xl border border-ink-200 bg-white p-3.5 transition-colors duration-150 hover:border-ink-300 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-brand-600 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50"
+          >
+            <input type="radio" name="identityBy" value={choice.value} checked={value === choice.value} onChange={() => onChange(choice.value)} className="mt-1 size-4 shrink-0 accent-brand-700" />
+            <span className="min-w-0">
+              <span className={cn('block font-semibold text-ink-900', large ? 'text-xl' : 'text-[15px]')}><Text>{choice.title}</Text></span>
+              <span className={cn('block text-ink-600', large ? 'text-base' : 'text-sm')}><Text>{choice.text}</Text></span>
+            </span>
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function TamuPage() {
   const t = useT();
@@ -90,15 +122,16 @@ export default function TamuPage() {
   const [until, setUntil] = useState(() => localInput(new Date(Date.now() + DEFAULT_HOURS.ONE_VISIT * 3_600_000)));
   const [visitor, setVisitor] = useState<VisitorForm>(() => emptyVisitorForm(REASON_FOR_PASS_TYPE.ONE_VISIT));
   const [identityBy, setIdentityBy] = useState<IdentityBy>('HOST');
-  const [issued, setIssued] = useState<(Issued & { visitorName: string; visitorGivesId: boolean }) | null>(null);
+  const [issued, setIssued] = useState<(Issued & { visitorName: string; visitorGivesId: boolean; emailedTo: string | null }) | null>(null);
   const [askSos, setAskSos] = useState(false);
   const [guidedOpen, setGuidedOpen] = useState(false);
   const [guidedStep, setGuidedStep] = useState(0);
   const [guidedName, setGuidedName] = useState('');
+  const [guidedEmail, setGuidedEmail] = useState('');
   const [guidedError, setGuidedError] = useState('');
 
   const create = useAction(
-    (body: { type: PassType; visitorName: string }) =>
+    (body: { type: PassType; visitorName: string; visitorEmail?: string }) =>
       api.post<Issued>('/tamu/passes', { ...body, ...detailsBody(visitor, partsFor(identityBy)), identityByVisitor: identityBy === 'VISITOR', validFrom: fromLocalInput(from), validUntil: fromLocalInput(until) }),
     {
       onSuccess: () => void overview.mutate(),
@@ -131,9 +164,10 @@ export default function TamuPage() {
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
     const visitorName = String(form.get('visitorName') ?? '').trim();
-    const result = await create.run({ type, visitorName });
+    const visitorEmail = String(form.get('visitorEmail') ?? '').trim() || undefined;
+    const result = await create.run({ type, visitorName, visitorEmail });
     if (result) {
-      setIssued({ ...result, visitorName, visitorGivesId: identityBy === 'VISITOR' });
+      setIssued({ ...result, visitorName, visitorGivesId: identityBy === 'VISITOR', emailedTo: result.emailed ? visitorEmail ?? null : null });
       formElement.reset();
       resetVisitor();
     }
@@ -150,6 +184,7 @@ export default function TamuPage() {
   const startGuidedPass = () => {
     setGuidedStep(0);
     setGuidedName('');
+    setGuidedEmail('');
     resetVisitor();
     setGuidedError('');
     setGuidedOpen(true);
@@ -173,9 +208,10 @@ export default function TamuPage() {
       setGuidedError(t('Please enter the visitor name.'));
       return;
     }
-    const result = await create.run({ type, visitorName });
+    const visitorEmail = guidedEmail.trim() || undefined;
+    const result = await create.run({ type, visitorName, visitorEmail });
     if (result) {
-      setIssued({ ...result, visitorName, visitorGivesId: identityBy === 'VISITOR' });
+      setIssued({ ...result, visitorName, visitorGivesId: identityBy === 'VISITOR', emailedTo: result.emailed ? visitorEmail ?? null : null });
       setGuidedOpen(false);
       resetVisitor();
     }
@@ -184,7 +220,6 @@ export default function TamuPage() {
 
   const [gateReport, setGateReport] = useState(false);
   const link = issued ? `${window.location.origin}/pass/${issued.token}` : '';
-  const message = issued ? t(`Salam! Here is your visitor pass for City of Elmina. Show the QR code at the main gate: ${link}`) : '';
   const spokenSummary = overview.data
     ? `${overview.data.waiting.length} ${t('Someone is at the main gate')}. ${overview.data.passes.length} ${t('visitor passes')}. ${overview.data.sos ? t('An SOS is active with the guardhouse.') : ''}`
     : t('Visitor passes and the guardhouse');
@@ -257,13 +292,12 @@ export default function TamuPage() {
                 ))}
               </Select>
               <Input name="visitorName" label={t('Visitor name')} placeholder="e.g. Puan Rahmah" required maxLength={80} error={create.fields.visitorName} />
+              <Input name="visitorEmail" type="email" autoComplete="off" label="Visitor’s email (optional)" maxLength={254} error={create.fields.visitorEmail}
+                hint="SimeTown emails them the pass. No email? Give them the pass code: the guard can type it at the gate." />
               <VisitorDetailsFields form={visitor} onChange={setVisitor} parts={['transport', 'reason']} errors={create.fields} />
               <fieldset className="space-y-4 rounded-xl border border-ink-100 bg-ink-25 p-4">
-                <legend className="px-1 text-sm font-semibold text-ink-900"><Text>Visitor’s identity</Text></legend>
-                <Select label="Who gives it?" value={identityBy} onChange={(event) => setIdentityBy(event.target.value as IdentityBy)} hint={identityBy === 'VISITOR' ? 'Your visitor enters it on their pass link before they come. The guard fills it in at the gate if they did not.' : undefined}>
-                  <option value="HOST"><Text>I will enter it now</Text></option>
-                  <option value="VISITOR"><Text>My visitor enters it on their pass link</Text></option>
-                </Select>
+                <legend className="px-1 text-sm font-semibold text-ink-900"><Text>Visitor’s IC or passport</Text></legend>
+                <IdentityChoice value={identityBy} onChange={setIdentityBy} />
                 {identityBy === 'HOST' && <VisitorDetailsFields form={visitor} onChange={setVisitor} parts={['identity', 'licence']} errors={create.fields} />}
                 <p className="text-xs text-ink-500"><Text>Only with your visitor’s permission. The number is stored encrypted, shown in full only to the guard at the gate, and deleted after 90 days. Your home sees its last 4 characters.</Text></p>
               </fieldset>
@@ -300,6 +334,7 @@ export default function TamuPage() {
                               <Text>{p.lastEntryAt && ` · arrived ${timeAgo(p.lastEntryAt)}`}</Text>
                             </p>
                             <VisitorDetailsSummary details={p.details} vehicleNo={p.vehicleNo} className="mt-1" />
+                            {p.visitorEmail && <p className="mt-1 break-all text-xs text-ink-500"><Text>Pass emailed to </Text>{p.visitorEmail}</p>}
                             {live && p.missing.length > 0 && (
                               <p className="mt-1 text-xs font-medium text-gold-700"><Text>Waiting for your visitor’s details: they can give them on their link, or the guard fills them in at the gate.</Text></p>
                             )}
@@ -314,9 +349,9 @@ export default function TamuPage() {
                                   pending={renew.pending}
                                   onClick={async () => {
                                     const r = await renew.run(p);
-                                    if (r) setIssued({ ...r, visitorName: p.visitorName, visitorGivesId: p.missing.includes('identity') });
+                                    if (r) setIssued({ ...r, visitorName: p.visitorName, visitorGivesId: p.missing.includes('identity'), emailedTo: r.emailed ? p.visitorEmail : null });
                                   }}
-                                ><Text>Share</Text></Button>
+                                ><Text>Send again</Text></Button>
                                 <Button size="sm" variant="ghost" onClick={() => cancel.run(p.id)} disabled={cancel.pending}><Text>Cancel</Text></Button>
                               </>
                             )}
@@ -366,23 +401,21 @@ export default function TamuPage() {
           <ShieldCheck className="size-4" aria-hidden /><Text>Tamu gives no points and no XP. It follows the published rules for guarded neighbourhoods.</Text></p>
       </div>
 
-      <Modal open={issued !== null} onClose={() => setIssued(null)} title={`Pass for ${issued?.visitorName ?? ''}`} description="Send this link. The visitor opens it and shows the QR code at the gate.">
+      <Modal open={issued !== null} onClose={() => setIssued(null)} title={`Pass for ${issued?.visitorName ?? ''}`} description={issued?.emailedTo ? 'Your visitor opens the email and shows the QR code at the gate.' : 'Give your visitor the pass code, or copy the link for them.'}>
         {issued && (
           <div className="flex flex-col items-center gap-4">
             <QrCode value={`KITAPASS:${issued.code}`} label={`Visitor pass ${issued.code}`} />
             <p className="visitor-pass-reveal font-display text-2xl font-bold tracking-[0.18em] text-ink-900"><Text>{issued.code}</Text></p>
+            {issued.emailedTo && (
+              <p className="w-full break-all rounded-md bg-success-50 px-3 py-2 text-sm text-success-700"><Text>SimeTown has emailed the pass to </Text>{issued.emailedTo}<Text>.</Text></p>
+            )}
+            {!issued.emailedTo && (
+              <p className="w-full rounded-md bg-ink-50 px-3 py-2 text-sm text-ink-700"><Text>No email was given. Tell your visitor the pass code above: the guard can type it at the gate. Or copy the link and pass it on.</Text></p>
+            )}
             {issued.visitorGivesId && (
               <p className="w-full rounded-md bg-gold-50 px-3 py-2 text-sm text-gold-700"><Text>Your visitor gives their identity on this link before they come. If they do not, the guard fills it in at the gate.</Text></p>
             )}
-            <div className="grid w-full gap-2 sm:grid-cols-3">
-              <Button href={`https://wa.me/?text=${encodeURIComponent(message)}`} variant="primary">
-                <MessageCircle className="size-4" aria-hidden />
-                {t('Send by WhatsApp')}
-              </Button>
-              <Button href={`sms:?&body=${encodeURIComponent(message)}`} variant="secondary">
-                <Send className="size-4" aria-hidden />
-                {t('Send by SMS')}
-              </Button>
+            <div className="grid w-full gap-2">
               <CopyButton
                 variant="secondary"
                 text={link}
@@ -391,7 +424,7 @@ export default function TamuPage() {
               />
             </div>
             <p className="w-full break-all rounded-md bg-ink-50 px-3 py-2 text-xs text-ink-600"><Text>{link}</Text></p>
-            <p className="text-xs text-ink-500"><Text>WhatsApp and SMS open on your phone with the message ready: you send it yourself. Sharing again later makes a new link and the old one stops working.</Text></p>
+            <p className="text-xs text-ink-500"><Text>Send again makes a new link and the old one stops working. If you gave an email, SimeTown emails the new link.</Text></p>
           </div>
         )}
       </Modal>
@@ -450,16 +483,29 @@ export default function TamuPage() {
               ))}
             </Select>
           ) : stepId === 'name' ? (
-            <Input
-              label="Visitor name"
-              labelClassName="!text-3xl !font-semibold"
-              value={guidedName}
-              onChange={(event) => { setGuidedName(event.target.value); setGuidedError(''); }}
-              placeholder="e.g. Puan Rahmah"
-              required
-              maxLength={80}
-              error={guidedError || create.fields.visitorName}
-            />
+            <>
+              <Input
+                label="Visitor name"
+                labelClassName="!text-3xl !font-semibold"
+                value={guidedName}
+                onChange={(event) => { setGuidedName(event.target.value); setGuidedError(''); }}
+                placeholder="e.g. Puan Rahmah"
+                required
+                maxLength={80}
+                error={guidedError || create.fields.visitorName}
+              />
+              <Input
+                type="email"
+                autoComplete="off"
+                label="Visitor’s email (optional)"
+                labelClassName="!text-2xl !font-semibold"
+                value={guidedEmail}
+                onChange={(event) => setGuidedEmail(event.target.value)}
+                maxLength={254}
+                hint="SimeTown emails them the pass. No email? Give them the pass code: the guard can type it at the gate."
+                error={create.fields.visitorEmail}
+              />
+            </>
           ) : stepId === 'transport' || stepId === 'reason' || stepId === 'identity' ? (
             <>
               <VisitorDetailsFields
@@ -472,11 +518,7 @@ export default function TamuPage() {
               {(guidedError || guidedFieldError) && <p role="alert" className="text-base font-medium text-accent-700"><Text>{guidedError || guidedFieldError!}</Text></p>}
             </>
           ) : stepId === 'who' ? (
-            <Select label="Who gives the visitor’s identity?" labelClassName="!text-3xl !font-semibold" value={identityBy} onChange={(event) => setIdentityBy(event.target.value as IdentityBy)}
-              hint="If your visitor gives it, they enter it on their pass link. The guard fills it in at the gate if they did not.">
-              <option value="HOST"><Text>I will enter it now</Text></option>
-              <option value="VISITOR"><Text>My visitor enters it on their pass link</Text></option>
-            </Select>
+            <IdentityChoice value={identityBy} onChange={setIdentityBy} large />
           ) : stepId === 'from' ? (
             <Input type="datetime-local" label="From" labelClassName="!text-3xl !font-semibold" value={from} onChange={(event) => setFrom(event.target.value)} error={create.fields.validFrom} />
           ) : (

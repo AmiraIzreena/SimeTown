@@ -62,6 +62,13 @@ export const tamuMalay: Record<string, string> = {
   'The gate needs your visitor’s citizenship, identity number, transport and reason for the visit. You can let your visitor give their identity on their pass link.':
     'Pintu masuk memerlukan kewarganegaraan, nombor pengenalan diri, pengangkutan dan sebab lawatan pelawat anda. Anda boleh membiarkan pelawat memberikan pengenalan diri mereka melalui pautan pas mereka.',
   'Visitor’s identity': 'Pengenalan diri pelawat',
+  'Visitor’s IC or passport': 'IC atau pasport pelawat',
+  'Who fills in the visitor’s IC or passport number?': 'Siapa yang mengisi nombor IC atau pasport pelawat?',
+  'I’ll fill it in now': 'Saya isi sekarang',
+  'You have their IC or passport number with you.': 'Anda ada nombor IC atau pasport mereka.',
+  'My visitor fills it in': 'Pelawat saya yang isi',
+  'They type it on their pass link before they come. If they don’t, the guard records it at the gate.': 'Mereka menaipnya di pautan pas sebelum datang. Jika tidak, pengawal merekodkannya di pintu masuk.',
+  'Who fills it in?': 'Siapa yang isi?',
   'Who gives it?': 'Siapa yang memberikannya?',
   'Your visitor enters it on their pass link before they come. The guard fills it in at the gate if they did not.':
     'Pelawat anda memasukkannya melalui pautan pas sebelum datang. Pengawal mengisinya di pintu masuk jika mereka tidak berbuat demikian.',
@@ -109,6 +116,48 @@ export const tamuMalay: Record<string, string> = {
     'Tuan rumah anda menghantar pautan melalui WhatsApp atau SMS. Bukanya, tambah butiran anda jika diminta oleh tuan rumah, dan tunjukkan kod QR di pintu utama. Tiada aplikasi diperlukan.',
   'Open the link on your phone as you arrive. No app to download. Bring your identity card: the guard checks it and hands it straight back.':
     'Buka pautan di telefon anda semasa tiba. Tiada aplikasi untuk dimuat turun. Bawa kad pengenalan anda: pengawal menyemaknya dan memulangkannya serta-merta.',
+
+  // The visitor's email: SimeTown sends the pass.
+  'Visitor’s email (optional)': 'E-mel pelawat (pilihan)',
+  'SimeTown emails them the pass. Leave it empty to send the link yourself by WhatsApp or SMS.':
+    'SimeTown menghantar pas kepada mereka melalui e-mel. Biarkan kosong untuk menghantar pautan sendiri melalui WhatsApp atau SMS.',
+  'Pass emailed to': 'Pas dihantar melalui e-mel kepada',
+  'SimeTown has emailed the pass to': 'SimeTown telah menghantar pas melalui e-mel kepada',
+  '. You can also send the link yourself below.': '. Anda juga boleh menghantar pautan sendiri di bawah.',
+  'Open your pass before you arrive and show its QR code at the main gate.': 'Buka pas anda sebelum tiba dan tunjukkan kod QR-nya di pintu utama.',
+  'Your visitor pass is ready': 'Pas pelawat anda sudah sedia',
+  'Open my pass': 'Buka pas saya',
+  'Bring your identity card: the guard checks it and hands it straight back. If your host asked, add your details on the pass page before you come. This link is your pass, so please do not forward this email.':
+    'Bawa kad pengenalan anda: pengawal menyemaknya dan memulangkannya serta-merta. Jika diminta oleh tuan rumah, tambah butiran anda di halaman pas sebelum datang. Pautan ini ialah pas anda, jadi sila jangan majukan e-mel ini.',
+  'You received this because a SimeTown resident invited you. Your email address is used only to send this pass.':
+    'Anda menerima ini kerana seorang penduduk SimeTown menjemput anda. Alamat e-mel anda hanya digunakan untuk menghantar pas ini.',
+  'SimeTown emails your visitor the pass': 'SimeTown menghantar pas kepada pelawat anda melalui e-mel',
+  'Add your visitor’s email and SimeTown emails them the pass: a link with its QR code. No email? Send the link yourself by WhatsApp or SMS from your phone. Your visitor needs no app and no account. Sharing again makes a new link: an emailed visitor gets it too, and the old one stops working.':
+    'Tambah e-mel pelawat anda dan SimeTown menghantar pas kepada mereka: pautan dengan kod QR-nya. Tiada e-mel? Hantar pautan sendiri melalui WhatsApp atau SMS dari telefon anda. Pelawat anda tidak memerlukan aplikasi atau akaun. Berkongsi semula membuat pautan baharu: pelawat yang menerima e-mel turut mendapatnya, dan pautan lama berhenti berfungsi.',
+  'SimeTown has emailed the pass': 'SimeTown telah menghantar pas melalui e-mel',
+  'Or send by WhatsApp or SMS': 'Atau hantar melalui WhatsApp atau SMS',
+
+  // No WhatsApp or SMS: SimeTown emails the pass, or the resident gives the pass code.
+  'SimeTown emails them the pass. No email? Give them the pass code: the guard can type it at the gate.':
+    'SimeTown menghantar pas kepada mereka melalui e-mel. Tiada e-mel? Berikan kod pas: pengawal boleh menaipnya di pintu masuk.',
+  'Send again': 'Hantar semula',
+  'Your visitor opens the email and shows the QR code at the gate.': 'Pelawat anda membuka e-mel dan menunjukkan kod QR di pintu masuk.',
+  'Give your visitor the pass code, or copy the link for them.': 'Berikan kod pas kepada pelawat anda, atau salin pautan untuk mereka.',
+  'No email was given. Tell your visitor the pass code above: the guard can type it at the gate. Or copy the link and pass it on.':
+    'Tiada e-mel diberikan. Beritahu pelawat anda kod pas di atas: pengawal boleh menaipnya di pintu masuk. Atau salin pautan dan sampaikan kepada mereka.',
+  'Send again makes a new link and the old one stops working. If you gave an email, SimeTown emails the new link.':
+    'Hantar semula membuat pautan baharu dan pautan lama berhenti berfungsi. Jika anda memberikan e-mel, SimeTown menghantar pautan baharu melalui e-mel.',
+  'Your pass comes by email': 'Pas anda dihantar melalui e-mel',
+  'SimeTown emails it when your host invites you. It is valid for the day or the times your host chose. No email? Your host can give you the pass code instead.':
+    'SimeTown menghantarnya melalui e-mel apabila tuan rumah menjemput anda. Ia sah untuk hari itu atau masa yang dipilih tuan rumah. Tiada e-mel? Tuan rumah boleh memberikan kod pas kepada anda.',
+  'SimeTown emails you the pass your host made. Open it, add your details if your host asks, and show the QR code at the main gate. No app needed.':
+    'SimeTown menghantar pas yang dibuat oleh tuan rumah anda melalui e-mel. Bukanya, tambah butiran anda jika diminta oleh tuan rumah, dan tunjukkan kod QR di pintu utama. Tiada aplikasi diperlukan.',
+  'Add your visitor’s email and SimeTown emails them the pass: a link with its QR code. Your visitor needs no app and no account. No email? Tell them the pass code: the guard can type it at the gate. Send again makes a new link, emailed to your visitor, and the old one stops working.':
+    'Tambah e-mel pelawat anda dan SimeTown menghantar pas kepada mereka: pautan dengan kod QR-nya. Pelawat anda tidak memerlukan aplikasi atau akaun. Tiada e-mel? Beritahu mereka kod pas: pengawal boleh menaipnya di pintu masuk. Hantar semula membuat pautan baharu, dihantar kepada pelawat melalui e-mel, dan pautan lama berhenti berfungsi.',
+  'No email? Tell them the pass code': 'Tiada e-mel? Beritahu mereka kod pas',
+  'Send again makes a new link': 'Hantar semula membuat pautan baharu',
+  'The company sees this pass in its bookings. The worker shows the QR code, or tells the guard the code, at the main gate.':
+    'Syarikat melihat pas ini dalam tempahannya. Pekerja menunjukkan kod QR, atau memberitahu kod itu kepada pengawal, di pintu utama.',
 
   // Account: emails.
   'Parcel and visitor news in your inbox, in the language you use in SimeTown. Pickup codes and visitors’ identity numbers are never sent by email.':
@@ -181,8 +230,13 @@ export const tamuMalay: Record<string, string> = {
 
   // Privacy Notice: visitors.
   'Visitors to your home (Tamu)': 'Pelawat ke rumah anda (Tamu)',
-  'Your visitor’s name, citizenship, identity number, how they travel (vehicle number and, when they drive, their driving licence’s expiry), the reason for the visit, the times they came and left, and your home’s reply. See “Visitors” below.':
-    'Nama, kewarganegaraan, nombor pengenalan diri pelawat anda, cara mereka datang (nombor kenderaan dan, jika mereka memandu, tarikh tamat lesen memandu), sebab lawatan, masa mereka datang dan pergi, dan jawapan rumah anda. Lihat “Pelawat” di bawah.',
+  'Your visitor’s name, citizenship, identity number, how they travel (vehicle number and, when they drive, their driving licence’s expiry), the reason for the visit, their email address if you give it so SimeTown can send them the pass, the times they came and left, and your home’s reply. See “Visitors” below.':
+    'Nama, kewarganegaraan, nombor pengenalan diri pelawat anda, cara mereka datang (nombor kenderaan dan, jika mereka memandu, tarikh tamat lesen memandu), sebab lawatan, alamat e-mel mereka jika anda memberikannya supaya SimeTown boleh menghantar pas, masa mereka datang dan pergi, dan jawapan rumah anda. Lihat “Pelawat” di bawah.',
+  'Email address:': 'Alamat e-mel:',
+  'if the resident gives the visitor’s email address, SimeTown uses it only to send the pass link, and again if the pass is shared again. Only the resident’s household sees it. It is deleted with the pass, and the record of each email after 30 days.':
+    'jika penduduk memberikan alamat e-mel pelawat, SimeTown menggunakannya hanya untuk menghantar pautan pas, dan sekali lagi jika pas dikongsi semula. Hanya isi rumah penduduk itu yang melihatnya. Ia dipadam bersama pas, dan rekod setiap e-mel selepas 30 hari.',
+  'Give a visitor’s email address only if it is theirs and they are happy to receive the pass by email. SimeTown uses it for nothing else.':
+    'Berikan alamat e-mel pelawat hanya jika ia milik mereka dan mereka bersetuju menerima pas melalui e-mel. SimeTown tidak menggunakannya untuk tujuan lain.',
   'collect your own MyKad number, bank or card details, precise GPS location, contacts or biometric data. Photos you take to check a recycling material are checked and then discarded, not stored. The only identity numbers SimeTown keeps are those of visitors at the main gate, as explained below.':
     'mengumpul nombor MyKad anda sendiri, butiran bank atau kad, lokasi GPS yang tepat, kenalan atau data biometrik. Foto yang anda ambil untuk menyemak bahan kitar semula disemak dan kemudian dibuang, tidak disimpan. Satu-satunya nombor pengenalan diri yang disimpan SimeTown ialah nombor pelawat di pintu utama, seperti yang diterangkan di bawah.',
   'Visitors': 'Pelawat',
@@ -231,6 +285,11 @@ export const tamuMalay: Record<string, string> = {
 };
 
 export const tamuTemplates: readonly (readonly [string, string])[] = [
+  ['Your visitor pass for {0}', 'Pas pelawat anda untuk {0}'],
+  [
+    'you have been invited to {0}. Open your pass before you arrive and show its QR code to the guard at the main gate.',
+    'anda telah dijemput ke {0}. Buka pas anda sebelum tiba dan tunjukkan kod QR-nya kepada pengawal di pintu utama.',
+  ],
   ['{0} was let in at the main gate.', '{0} telah dibenarkan masuk di pintu utama.'],
   ['{0} was let in at the main gate with the pass you sent.', '{0} telah dibenarkan masuk di pintu utama dengan pas yang anda hantar.'],
   ['{0} is at the main gate. Are you expecting them?', '{0} berada di pintu utama. Adakah anda menjangka kedatangan mereka?'],

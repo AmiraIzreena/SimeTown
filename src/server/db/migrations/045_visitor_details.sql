@@ -34,9 +34,16 @@ ALTER TABLE visitor_entries
   ADD CONSTRAINT visitor_entries_identity_check CHECK ((id_number_enc IS NULL) = (id_last4 IS NULL) AND (id_number_enc IS NULL) = (citizenship IS NULL)),
   ADD CONSTRAINT visitor_entries_other_reason_check CHECK (reason_other IS NULL OR reason = 'OTHER');
 
+-- The visitor's email, if the resident gives it: SimeTown emails them the pass link (and the new link when the pass is
+-- shared again). Deleted with the pass. An email to a visitor belongs to no account, so the outbox allows no user; those
+-- rows are deleted after 30 days.
+ALTER TABLE visitor_passes ADD COLUMN visitor_email text CHECK (length(visitor_email) <= 254);
+ALTER TABLE email_outbox ALTER COLUMN user_id DROP NOT NULL;
+
 -- Visitor emails to the household: on unless the resident switches them off in Account.
 ALTER TABLE users ADD COLUMN visitor_emails boolean NOT NULL DEFAULT true;
 
+-- Keeps every kind added before this one (043_account_emails: ACCOUNT_CREATED, PASSWORD_RESET).
 ALTER TABLE email_outbox DROP CONSTRAINT email_outbox_kind_check;
 ALTER TABLE email_outbox ADD CONSTRAINT email_outbox_kind_check
-  CHECK (kind IN ('LOCKER_READY', 'COUNTER_READY', 'COUNTER_REMINDER', 'DOOR_FORCED', 'VISITOR_ARRIVED', 'VISITOR_AT_GATE'));
+  CHECK (kind IN ('LOCKER_READY', 'COUNTER_READY', 'COUNTER_REMINDER', 'DOOR_FORCED', 'ACCOUNT_CREATED', 'PASSWORD_RESET', 'VISITOR_ARRIVED', 'VISITOR_AT_GATE', 'VISITOR_PASS'));

@@ -4,7 +4,7 @@ import { Text } from '@/components/ui/localized-text';
 import { CopyButton } from '@/components/ui/copy-button';
 import { LocalizedInput } from '@/components/ui/localized-elements';
 
-import { ArrowRight, BellRing, Building, Camera, ChevronRight, ClipboardList, DoorOpen, House, KeyRound, MessageCircle, Phone, ShieldCheck, Star, UserRound } from 'lucide-react';
+import { ArrowRight, BellRing, Building, Camera, ChevronRight, ClipboardList, DoorOpen, House, KeyRound, Phone, ShieldCheck, Star, UserRound } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
@@ -440,7 +440,6 @@ function BookingDetailModal({ id, onClose, onChanged }: { id: string | null; onC
 
   const d = detail.data;
   const link = issued ? `${typeof window === 'undefined' ? '' : window.location.origin}/pass/${issued.token}` : '';
-  const message = issued && d ? t(`Salam! Here is the City of Elmina gate pass for ${d.worker?.name ?? t('your worker')} (${d.merchantName}). Show the QR code at the main gate: ${link}`) : '';
 
   return (
     <>
@@ -598,14 +597,13 @@ function BookingDetailModal({ id, onClose, onChanged }: { id: string | null; onC
         <p><Text>The company is told at once. Any gate pass for the visit stops working.</Text></p>
       </ConfirmDialog>
 
-      <Modal open={issued !== null} onClose={() => setIssued(null)} title="Gate pass for the worker" description="Send this link to the company. The worker shows the QR code at the guardhouse.">
+      <Modal open={issued !== null} onClose={() => setIssued(null)} title="Gate pass for the worker" description="The company sees this pass in its bookings. The worker shows the QR code, or tells the guard the code, at the main gate.">
         {issued && (
           <div className="flex flex-col items-center gap-4">
             <QrCode value={`KITAPASS:${issued.code}`} label={`Visitor pass ${issued.code}`} />
             <p className="font-display text-2xl font-bold tracking-[0.18em] text-ink-900"><Text>{issued.code}</Text></p>
             <p className="text-sm text-ink-600"><Text>Valid until </Text><Text>{formatDateTime(issued.validUntil)}</Text><Text>. The company can also see the code in its bookings.</Text></p>
-            <div className="grid w-full gap-2 sm:grid-cols-2">
-              <Button href={`https://wa.me/?text=${encodeURIComponent(message)}`}><MessageCircle className="size-4" aria-hidden />{t('Send by WhatsApp')}</Button>
+            <div className="grid w-full gap-2">
               <CopyButton
                 variant="secondary"
                 text={link}

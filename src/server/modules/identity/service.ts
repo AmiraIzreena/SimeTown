@@ -677,7 +677,7 @@ export async function deleteAccount(db: Db, actor: Actor, password: string, now:
     await tx.query(`UPDATE carer_links SET status = 'REVOKED', revoked_at = $2 WHERE (resident_id = $1 OR carer_id = $1) AND status <> 'REVOKED'`, [id, now]);
     await tx.query(
       `UPDATE visitor_passes SET status = 'CANCELLED', visitor_name = '[removed]', vehicle_no = NULL, citizenship = NULL, id_number_enc = NULL, id_last4 = NULL,
-              transport = NULL, licence_expiry = NULL, reason = NULL, reason_other = NULL WHERE host_user_id = $1`,
+              transport = NULL, licence_expiry = NULL, reason = NULL, reason_other = NULL, visitor_email = NULL WHERE host_user_id = $1`,
       [id],
     );
     await tx.query(

@@ -6831,7 +6831,7 @@
         "tags": [
           "Tamu"
         ],
-        "summary": "Create a visitor pass with the visitor’s details (the identity may be left for the visitor); the link is returned once",
+        "summary": "Create a visitor pass with the visitor’s details (the identity may be left for the visitor); the link is returned once, and emailed to the visitor if their address is given",
         "description": "Signed-in RESIDENT.",
         "operationId": "postTamuPasses",
         "parameters": [],
@@ -6917,6 +6917,12 @@
                   "identityByVisitor": {
                     "default": false,
                     "type": "boolean"
+                  },
+                  "visitorEmail": {
+                    "type": "string",
+                    "maxLength": 254,
+                    "format": "email",
+                    "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
                   }
                 },
                 "required": [
@@ -6971,7 +6977,7 @@
         "tags": [
           "Tamu"
         ],
-        "summary": "A fresh link for a pass (the old link stops working)",
+        "summary": "A fresh link for a pass (the old link stops working; an emailed visitor gets the new one)",
         "description": "Signed-in RESIDENT.",
         "operationId": "postTamuPassesPassIdLink",
         "parameters": [

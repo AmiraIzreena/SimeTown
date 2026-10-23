@@ -15,6 +15,9 @@ Preview of the parcel emails: the *Parcel lockers: emails and screens* artifact 
 2. **The app holds anything sensitive.** Never put a pickup PIN, QR code, password, one-time code,
    IC number or full address in an email. Link to the app instead. A forwarded or stolen email
    must not open a door or an account.
+   *The one exception is the Tamu visitor pass, sent to a visitor who has no account: it carries the pass
+   link, never the QR code, gate code or identity number, and the guard
+   still checks the visitor's identity card at the gate.*
 3. **Plain, professional wording.** It should sound like a premium property developer's township
    office: courteous, short sentences, no slang, no exclamation marks, no emoji.
 4. **Works everywhere.** Gmail (web and app), Outlook, Apple Mail; phones first. Use table layout and

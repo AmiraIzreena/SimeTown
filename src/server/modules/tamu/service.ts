@@ -5,7 +5,7 @@ import { hashToken, newToken } from '../../auth/session';
 import { conflict, fieldErrors, notFound, ruleViolation } from '../../errors';
 import { audit } from '../audit';
 import { myHelpTasks } from '../banjir/events';
-import { emailVisitorArrived, emailVisitorAtGate } from '../email/tamu';
+import { emailVisitorArrived, emailVisitorAtGate, emailVisitorPass } from '../email/tamu';
 import { randomCode } from '../identity/service';
 import { onCollectionGateEntry } from '../kitar/collection-gate';
 import { notify } from '../notifications';
@@ -44,6 +44,8 @@ function passStatus(p: { status: string; valid_from: Date; valid_until: Date; ma
 export interface PassInput extends DetailsInput {
   type: PassType;
   visitorName: string;
+  /** If given, SimeTown emails the visitor their pass link (and the new link when the pass is shared again). */
+  visitorEmail?: string;
   validFrom: Date;
   validUntil: Date;
 }
@@ -71,11 +73,14 @@ export async function createPass(db: Db, actor: Actor, input: PassInput, now: Da
     await tx.query('SELECT id FROM homes WHERE id = $1 FOR UPDATE', [resident.homeId]);
     const live = await one<{ n: number }>(tx, `SELECT count(*)::int AS n FROM visitor_passes WHERE home_id = $1 AND status = 'ACTIVE' AND valid_until > $2`, [resident.homeId, now]);
     if (live!.n >= MAX_LIVE_PASSES_PER_HOME) throw ruleViolation('TOO_MANY_PASSES', 'Your home has many live passes. Cancel some you no longer need first.');
-    return insertPass(tx, {
+    const visitorEmail = input.visitorEmail?.trim().toLowerCase() || null;
+    const pass = await insertPass(tx, {
       townshipId: resident.townshipId, homeId: resident.homeId, hostUserId: resident.id,
       type: input.type, visitorName: input.visitorName, validFrom: input.validFrom, validUntil: input.validUntil,
-      details, detailsBy: details.id_number_enc ? 'HOST' : null,
+      details, detailsBy: details.id_number_enc ? 'HOST' : null, visitorEmail,
     }, now);
+    const emailed = visitorEmail ? await sendPassByEmail(tx, pass.id, pass.token, now) : false;
+    return { ...pass, emailed };
   });
 }
 
@@ -86,7 +91,7 @@ export async function createPass(db: Db, actor: Actor, input: PassInput, now: Da
  */
 export async function insertPass(
   tx: Queryable,
-  input: { type: PassType; visitorName: string; vehicleNo?: string; validFrom: Date; validUntil: Date; townshipId: string; homeId: string; hostUserId: string; details?: StoredDetails; detailsBy?: 'HOST' | null },
+  input: { type: PassType; visitorName: string; vehicleNo?: string; validFrom: Date; validUntil: Date; townshipId: string; homeId: string; hostUserId: string; details?: StoredDetails; detailsBy?: 'HOST' | null; visitorEmail?: string | null },
   now: Date,
 ): Promise<{ id: string; code: string; token: string }> {
   const info = PASS_TYPE_INFO[input.type];
@@ -98,12 +103,12 @@ export async function insertPass(
     const row = await one<{ id: string }>(
       tx,
       `INSERT INTO visitor_passes (township_id, home_id, host_user_id, type, visitor_name, vehicle_no, code, token_hash, valid_from, valid_until, max_entries, created_at,
-                                   citizenship, id_number_enc, id_last4, transport, licence_expiry, reason, reason_other, details_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20) ON CONFLICT (code) DO NOTHING RETURNING id`,
+                                   citizenship, id_number_enc, id_last4, transport, licence_expiry, reason, reason_other, details_by, visitor_email)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21) ON CONFLICT (code) DO NOTHING RETURNING id`,
       [
         input.townshipId, input.homeId, input.hostUserId, input.type, input.visitorName, (d ? d.vehicle_no : input.vehicleNo?.toUpperCase()) || null, code, hashToken(token),
         input.validFrom, input.validUntil, info.entries, now,
-        d?.citizenship ?? null, d?.id_number_enc ?? null, d?.id_last4 ?? null, d?.transport ?? null, d?.licence_expiry ?? null, d?.reason ?? null, d?.reason_other ?? null, input.detailsBy ?? null,
+        d?.citizenship ?? null, d?.id_number_enc ?? null, d?.id_last4 ?? null, d?.transport ?? null, d?.licence_expiry ?? null, d?.reason ?? null, d?.reason_other ?? null, input.detailsBy ?? null, input.visitorEmail ?? null,
       ],
     );
     if (row) return { id: row.id, code, token };
@@ -120,7 +125,26 @@ export async function renewPassLink(db: Db, actor: Actor, passId: string, now: D
     [passId, resident.homeId, hashToken(token), now],
   );
   if (rows.length === 0) throw notFound('Pass');
-  return { id: passId, code: rows[0]!.code, token };
+  // The old link stops working, so a visitor who was emailed gets the new one.
+  const emailed = await sendPassByEmail(db, passId, token, now);
+  return { id: passId, code: rows[0]!.code, token, emailed };
+}
+
+/** Emails the pass link to the visitor, if the resident gave their address, in the resident's language. */
+async function sendPassByEmail(q: Queryable, passId: string, token: string, now: Date): Promise<boolean> {
+  const p = await one<{ visitor_email: string | null; visitor_name: string; valid_from: Date; valid_until: Date; street: string; township: string; gate_name: string | null; language: string }>(
+    q,
+    `SELECT p.visitor_email, p.visitor_name, p.valid_from, p.valid_until, h.street, t.name AS township, t.gate_name, u.language
+       FROM visitor_passes p JOIN homes h ON h.id = p.home_id JOIN townships t ON t.id = p.township_id JOIN users u ON u.id = p.host_user_id
+      WHERE p.id = $1`,
+    [passId],
+  );
+  if (!p?.visitor_email) return false;
+  await emailVisitorPass(q, {
+    passId, token, address: p.visitor_email, lang: p.language === 'ms' ? 'ms' : 'en', visitorName: p.visitor_name,
+    township: p.township, street: p.street, gate: p.gate_name, validFrom: p.valid_from, validUntil: p.valid_until, now,
+  });
+  return true;
 }
 
 export async function cancelPass(db: Db, actor: Actor, passId: string) {
@@ -132,6 +156,7 @@ export async function cancelPass(db: Db, actor: Actor, passId: string) {
 
 interface PassRow extends StoredDetails {
   id: string;
+  visitor_email: string | null;
   type: PassType;
   visitor_name: string;
   code: string;
@@ -145,7 +170,7 @@ interface PassRow extends StoredDetails {
 }
 
 const PASS_COLUMNS = `p.id, p.type, p.visitor_name, p.code, p.valid_from, p.valid_until, p.max_entries, p.status, p.created_at,
-  p.citizenship, p.id_number_enc, p.id_last4, p.transport, p.vehicle_no, p.licence_expiry::text AS licence_expiry, p.reason, p.reason_other`;
+  p.citizenship, p.id_number_enc, p.id_last4, p.transport, p.vehicle_no, p.licence_expiry::text AS licence_expiry, p.reason, p.reason_other, p.visitor_email`;
 
 /** The home's passes, its visit history and any walk-in visitor waiting for an answer. */
 export async function tamuOverview(db: Db, actor: Actor, now: Date) {
@@ -187,6 +212,7 @@ export async function tamuOverview(db: Db, actor: Actor, now: Date) {
       status: passStatus(p, now),
       details: maskedDetails(p),
       missing: missingOf(p),
+      visitorEmail: p.visitor_email,
     })),
     visits: visits.map((v) => ({ id: v.id, kind: v.kind, visitor_name: v.visitor_name, vehicle_no: v.vehicle_no, host_reply: v.host_reply, entered_at: v.entered_at, exited_at: v.exited_at, details: maskedDetails(v) })),
     waiting: waiting.map((w) => ({ id: w.id, visitor_name: w.visitor_name, vehicle_no: w.vehicle_no, entered_at: w.entered_at, details: maskedDetails(w) })),

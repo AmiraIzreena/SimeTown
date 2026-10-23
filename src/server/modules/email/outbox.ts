@@ -13,7 +13,7 @@ import { LOGO_CID, renderEmail, type EmailContent } from './layout';
  * sent to.
  */
 
-export type EmailKind = 'LOCKER_READY' | 'COUNTER_READY' | 'COUNTER_REMINDER' | 'DOOR_FORCED' | 'VISITOR_ARRIVED' | 'VISITOR_AT_GATE';
+export type EmailKind = 'LOCKER_READY' | 'COUNTER_READY' | 'COUNTER_REMINDER' | 'DOOR_FORCED' | 'VISITOR_ARRIVED' | 'VISITOR_AT_GATE' | 'VISITOR_PASS';
 
 /** What the outbox needs from a mail service. Real sending uses nodemailer; tests pass their own. */
 export interface Mailer {
@@ -111,6 +111,28 @@ export async function queueEmails(
   return queued;
 }
 
+/**
+ * Queues one email to an address that belongs to no account: a visitor's pass, sent because a resident gave their
+ * address. Same frame, same outbox, same once-per-event rule; the row keeps no user and is deleted after 30 days.
+ */
+export async function queueEmailTo(
+  q: Queryable,
+  address: string,
+  lang: Lang,
+  kind: EmailKind,
+  build: (lang: Lang) => Omit<EmailContent, 'lang' | 'firstName'>,
+  dedupe: string,
+  now: Date = new Date(),
+): Promise<number> {
+  const email = renderEmail({ ...build(lang), lang, firstName: null });
+  const row = await q.query(
+    `INSERT INTO email_outbox (user_id, to_email, kind, subject, html, body_text, dedupe_key, created_at, next_attempt_at)
+     VALUES (NULL, $1, $2, $3, $4, $5, $6, $7, $7) ON CONFLICT (dedupe_key) DO NOTHING RETURNING id`,
+    [address, kind, email.subject.slice(0, 200), email.html, email.text, dedupe, now],
+  );
+  return row.length;
+}
+
 /** Sends what is due, a batch at a time. Safe to run often and twice at once (rows are claimed with SKIP LOCKED). */
 export async function sendQueuedEmails(db: Db, now: Date) {
   const counts = { sent: 0, failed: 0, retrying: 0, skipped: 0, waiting: 0, configured: false };
@@ -163,9 +185,11 @@ export async function sendQueuedEmails(db: Db, now: Date) {
   return counts;
 }
 
-/** Privacy: an email's words are kept 30 days, the record of it 180 days. */
+/** Privacy: an email's words are kept 30 days, the record of it 180 days (30 days for an email to a visitor). */
 export async function cleanupEmails(q: Queryable, now: Date) {
   const cleared = await q.query(`UPDATE email_outbox SET html = NULL, body_text = NULL WHERE html IS NOT NULL AND created_at < $1 AND status <> 'QUEUED' RETURNING id`, [new Date(now.getTime() - 30 * 86_400_000)]);
   const removed = await q.query(`DELETE FROM email_outbox WHERE created_at < $1 RETURNING id`, [new Date(now.getTime() - 180 * 86_400_000)]);
+  // Emails to visitors (no account): the address too is gone after 30 days.
+  removed.push(...(await q.query(`DELETE FROM email_outbox WHERE user_id IS NULL AND created_at < $1 RETURNING id`, [new Date(now.getTime() - 30 * 86_400_000)])));
   return { emailBodiesCleared: cleared.length, emailsRemoved: removed.length };
 }
