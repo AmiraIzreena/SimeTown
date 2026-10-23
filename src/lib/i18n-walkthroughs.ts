@@ -146,8 +146,12 @@ export const walkthroughsMalay: Record<string, string> = {
   'Warning sent': 'Amaran dihantar',
   'Two signals agreed': 'Dua isyarat sepakat',
   'A warning appears on every page': 'Amaran muncul di setiap halaman',
-  'A red band shows at the top of the app with your zone and the water level. Tap See safe route to see the way out and where to gather.':
-    'Jalur merah muncul di bahagian atas aplikasi dengan zon anda dan paras air. Ketik Lihat laluan selamat untuk melihat jalan keluar dan tempat berkumpul.',
+  'A band shows at the top of the app with your zone and the water level: red once the warning is confirmed. Tap See safe route to see the way out and where to gather.':
+    'Jalur muncul di bahagian atas aplikasi dengan zon anda dan paras air: merah sebaik sahaja amaran disahkan. Ketik Lihat laluan selamat untuk melihat jalan keluar dan tempat berkumpul.',
+  'One check so far? It shows amber': 'Baru satu semakan? Ia berwarna jingga',
+  'If a warning goes out on one signal, the band is amber and says Unconfirmed. Be ready and check your safe route. It turns red once a second signal agrees, or a second staff member confirms it.':
+    'Jika amaran dihantar berdasarkan satu isyarat, jalur berwarna jingga dan tertulis Belum disahkan. Bersedia dan semak laluan selamat anda. Ia bertukar merah sebaik sahaja isyarat kedua bersetuju, atau kakitangan kedua mengesahkannya.',
+  'Waiting for a second check': 'Menunggu semakan kedua',
   'Water level is at 78%. Get ready to move and check your safe route.': 'Paras air pada 78%. Bersedia untuk berpindah dan semak laluan selamat anda.',
   'Water level is at 92%. Move to safety now.': 'Paras air pada 92%. Pindah ke tempat selamat sekarang.',
   'At danger, the alert fills your screen': 'Pada tahap bahaya, amaran memenuhi skrin anda',
@@ -209,6 +213,13 @@ export const walkthroughsMalay: Record<string, string> = {
   'Confirm a warning alert?': 'Sahkan amaran?',
   'Time left to confirm': 'Masa untuk mengesahkan',
   'Cancel needs a reason': 'Batal memerlukan sebab',
+  'A second staff member': 'Kakitangan kedua',
+  'Second check: amber turns red': 'Semakan kedua: jingga bertukar merah',
+  'A warning sent on one signal shows amber to residents. It turns red when a second signal agrees, or when a different staff member taps Confirm the warning. The person who raised it cannot confirm it.':
+    'Amaran yang dihantar berdasarkan satu isyarat ditunjukkan berwarna jingga kepada penduduk. Ia bertukar merah apabila isyarat kedua bersetuju, atau apabila kakitangan lain mengetik Sahkan amaran. Orang yang menaikkannya tidak boleh mengesahkannya.',
+  'Raised on one signal by Ravi Kumar': 'Dinaikkan berdasarkan satu isyarat oleh Ravi Kumar',
+  'Confirmed: residents now see red': 'Disahkan: penduduk kini melihat merah',
+  'Second check by Mei Chen': 'Semakan kedua oleh Mei Chen',
   'Every message says the same four things': 'Setiap mesej menyatakan empat perkara yang sama',
   'What is happening, where, what to do, and when the next update comes. Updates follow at least every 15 minutes until the all clear.':
     'Apa yang berlaku, di mana, apa yang perlu dilakukan, dan bila kemas kini seterusnya. Kemas kini menyusul sekurang-kurangnya setiap 15 minit sehingga keadaan selamat.',

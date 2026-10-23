@@ -812,6 +812,8 @@ html[data-signed-in] .field:focus-within > label { color: var(--color-brand-700)
  */
 .flood-banner { --pulse: 1.8s; --ring: rgb(255 255 255 / 0.55); }
 .flood-banner.is-warning { background-color: var(--color-accent-600); background-image: linear-gradient(100deg, var(--color-accent-700) 0%, var(--color-accent-600) 100%); }
+/* A warning raised on one signal, before its second check: amber, so only a confirmed alert is red. */
+.flood-banner.is-unconfirmed { --pulse: 2.6s; background-color: var(--color-warning-600); background-image: linear-gradient(100deg, var(--color-warning-700) 0%, var(--color-warning-600) 100%); }
 .flood-banner.is-danger { --pulse: 1.1s; background-color: var(--color-accent-700); background-image: linear-gradient(100deg, #800d1c 0%, var(--color-accent-700) 100%); }
 /* The band's glow: a soft light that swells and fades across the red, like an alarm lamp. */
 .flood-banner::after {
