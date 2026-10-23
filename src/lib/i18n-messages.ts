@@ -2129,6 +2129,19 @@ export const malay: Record<string, string> = {
   "Enter the 5-digit postcode.": "Masukkan poskod 5 digit.",
   "The photo is too large. Please use one under 10 MB.": "Foto terlalu besar. Sila guna foto di bawah 10 MB.", // native review
   "JPG or PNG, up to 10 MB": "JPG atau PNG, maksimum 10 MB", // native review
+  // Field messages (src/shared/validation.ts)
+  "Please fill in this field.": "Sila isi medan ini.", // native review
+  "Please check this field.": "Sila semak medan ini.", // native review
+  "Please choose one of the options.": "Sila pilih salah satu pilihan.", // native review
+  "Please enter a number.": "Sila masukkan nombor.", // native review
+  "Please enter a larger number.": "Sila masukkan nombor yang lebih besar.", // native review
+  "Please enter a smaller number.": "Sila masukkan nombor yang lebih kecil.", // native review
+  "Please enter a full web address, starting with https://.": "Sila masukkan alamat web penuh, bermula dengan https://.", // native review
+  "Please enter your full name (at least 2 characters).": "Sila masukkan nama penuh anda (sekurang-kurangnya 2 aksara).", // native review
+  "Please enter a valid email address.": "Sila masukkan alamat e-mel yang sah.", // native review
+  "Please choose your township.": "Sila pilih perbandaran anda.", // native review
+  "Please choose your address.": "Sila pilih alamat anda.", // native review
+  "Please choose owner or tenant.": "Sila pilih pemilik atau penyewa.", // native review
   "This file is not a JPG or PNG photo. Please choose another one.": "Fail ini bukan foto JPG atau PNG. Sila pilih foto lain.", // native review
   "This photo is larger than 10 MB. Please choose a smaller one.": "Foto ini melebihi 10 MB. Sila pilih foto yang lebih kecil.", // native review
   "Enter a number other than zero.": "Masukkan nombor selain sifar.",

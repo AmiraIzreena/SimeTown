@@ -977,6 +977,8 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
   ...homeServicesTemplates,
   ...komunitiTemplates,
   ["Reported {0}", "Dilaporkan {0}"],
+  ["Please enter at least {0} characters.", "Sila masukkan sekurang-kurangnya {0} aksara."], // native review
+  ["Please keep this to {0} characters or fewer.", "Sila hadkan kepada {0} aksara atau kurang."], // native review
   ["To be fixed by {0}", "Dijangka dibaiki pada {0}"],
   ["See all {0} reports", "Lihat kesemua {0} laporan"],
   ["{0} of {1} shown", "{0} daripada {1} dipaparkan"],

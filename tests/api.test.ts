@@ -60,6 +60,49 @@ beforeAll(async () => {
 });
 afterAll(() => db.close());
 
+describe('Sign-up messages people can read', () => {
+  const RAW = /expected|received|too small|too big|invalid input|invalid option|[<>]=/i;
+
+  it('answers an empty sign-up with one friendly sentence per field', async () => {
+    const res = await call('POST', '/auth/register', { body: {} });
+    expect(res.status).toBe(400);
+    expect(res.error!.details.fields).toEqual({
+      fullName: 'Please enter your full name (at least 2 characters).',
+      email: 'Please enter a valid email address.',
+      phone: 'Enter a valid phone number, such as 012-345 6789.',
+      password: 'Use at least 10 characters.',
+      townshipId: 'Please choose your township.',
+      homeId: 'Please choose your address.',
+      occupancy: 'Please choose owner or tenant.',
+      acceptTerms: 'Please read and accept the Terms of Use and Privacy Notice.',
+    });
+  });
+
+  it('words a filled-in but wrong sign-up the same way', async () => {
+    const res = await call('POST', '/auth/register', {
+      body: { fullName: 'A', email: 'aisyah@', phone: '12', password: 'short', townshipId: '', homeId: 'not-an-id', occupancy: 'LANDLORD', acceptTerms: false },
+    });
+    const fields = res.error!.details.fields as Record<string, string>;
+    expect(fields).toMatchObject({ fullName: 'Please enter your full name (at least 2 characters).', email: 'Please enter a valid email address.', townshipId: 'Please choose your township.', homeId: 'Please choose your address.', occupancy: 'Please choose owner or tenant.' });
+    for (const message of Object.values(fields)) expect(message).not.toMatch(RAW);
+  });
+
+  it('words the shop application and other forms plainly too', async () => {
+    const shop = (await call('POST', '/merchants/apply', { body: {} })).error!.details.fields as Record<string, string>;
+    expect(shop).toMatchObject({ businessName: 'Please fill in this field.', townshipId: 'Please choose your township.', contactName: 'Please enter your full name (at least 2 characters).', postcode: 'Enter the 5-digit postcode.', state: 'Choose a state.' });
+    for (const message of Object.values(shop)) expect(message).not.toMatch(RAW);
+    const post = (await call('POST', '/posts', { as: await makeResident(w), body: { type: 'NOPE', title: 'ab', body: 'x'.repeat(1001), capacity: 'ten' } })).error!.details.fields as Record<string, string>;
+    expect(post).toEqual({ type: 'Please choose one of the options.', title: 'Please enter at least 3 characters.', body: 'Please keep this to 1000 characters or fewer.', capacity: 'Please enter a number.' });
+  });
+
+  it('answers a value checked inside a handler with a friendly 400, not a server error', async () => {
+    const res = await call('GET', '/incident-photos/not-a-reference', { as: await makeResident(w) });
+    expect(res.status).toBe(400);
+    expect(res.error!.code).toBe('VALIDATION_FAILED');
+    for (const message of Object.values(res.error!.details.fields as Record<string, string>)) expect(message).not.toMatch(RAW);
+  });
+});
+
 describe('notification API ownership and validation', () => {
   it('requires a session and restricts read and dismiss to the notification owner', async () => {
     const resident = await makeResident(w);

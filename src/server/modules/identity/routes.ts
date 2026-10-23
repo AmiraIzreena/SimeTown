@@ -1,15 +1,16 @@
 import { z } from 'zod';
 import { ADMINS, ROLES, STAFF } from '@/shared/domain';
+import { FIELD_MESSAGES } from '@/shared/validation';
 import { destroySession, readSessionToken, sessionCookie } from '../../auth/session';
 import { recordCourierLogin } from '../carriers/team';
 import { pageQuery } from '../../http/pagination';
-import { emptyBody, json, route, zAcceptTerms, zEmail, zId, zPassword, zPhone, zText } from '../../http/router';
+import { emptyBody, json, route, zAcceptTerms, zChoice, zEmail, zFullName, zId, zPassword, zPhone, zText } from '../../http/router';
 import { addressOptions, homesOnStreet, listTownships } from '../townships';
 import * as identity from './service';
 
 const signedIn = (data: unknown, token: string | null) => json({ data }, { headers: { 'Set-Cookie': sessionCookie(token) } });
 const preSignIn = (limit: number, windowSec: number) => ({ limit, windowSec, by: 'ip' as const });
-const zOccupancy = z.enum(['OWNER', 'TENANT']);
+const zOccupancy = z.enum(['OWNER', 'TENANT'], { error: FIELD_MESSAGES.occupancy });
 
 export const identityRoutes = [
   route({
@@ -31,8 +32,8 @@ export const identityRoutes = [
     method: 'POST', path: '/auth/register', tag: 'SimeTown ID', summary: 'Register as a resident (starts unverified)', auth: 'public',
     rateLimit: preSignIn(10, 3600),
     body: z.object({
-      email: zEmail, password: zPassword, fullName: zText(100, 2), phone: zPhone,
-      townshipId: zId, homeId: zId, occupancy: zOccupancy, acceptTerms: zAcceptTerms,
+      email: zEmail, password: zPassword, fullName: zFullName(), phone: zPhone,
+      townshipId: zChoice(FIELD_MESSAGES.township), homeId: zChoice(FIELD_MESSAGES.address), occupancy: zOccupancy, acceptTerms: zAcceptTerms,
     }),
     handler: async (c) => {
       const { token, actor } = await identity.registerResident(c.db, c.body, c.now);
@@ -76,7 +77,7 @@ export const identityRoutes = [
   }),
   route({
     method: 'PATCH', path: '/me', tag: 'SimeTown ID', summary: 'Update name and phone (both required)', auth: 'session',
-    body: z.object({ fullName: zText(100, 2), phone: zPhone }),
+    body: z.object({ fullName: zFullName(), phone: zPhone }),
     handler: (c) => identity.updateProfile(c.db, c.actor, c.body, c.now),
   }),
   route({
@@ -97,7 +98,7 @@ export const identityRoutes = [
   route({
     method: 'POST', path: '/me/home', tag: 'SimeTown ID', summary: 'Set or change my address (a new home is confirmed again)', auth: 'session', roles: ['RESIDENT'],
     rateLimit: { limit: 10, windowSec: 3600, by: 'user' },
-    body: z.object({ homeId: zId, occupancy: zOccupancy }),
+    body: z.object({ homeId: zChoice(FIELD_MESSAGES.address), occupancy: zOccupancy }),
     handler: (c) => identity.changeHome(c.db, c.actor, c.body, c.now),
   }),
   route({

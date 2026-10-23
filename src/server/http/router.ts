@@ -1,6 +1,8 @@
 import { randomUUID, timingSafeEqual } from 'node:crypto';
 import { z, type ZodType } from 'zod';
 import { MALAYSIAN_STATES, normalizePhone, type Role } from '@/shared/domain';
+import { FIELD_MESSAGES, friendlyFieldMessage, friendlyFields } from '@/shared/validation';
+import './zod-messages';
 import type { Actor } from '../auth/actor';
 import { actorFromToken, readSessionToken } from '../auth/session';
 import { getConfig, type Config } from '../config';
@@ -149,16 +151,25 @@ function validate<T>(schema: ZodType<T>, value: unknown, where: string): T {
   const result = schema.safeParse(value);
   if (result.success) return result.data;
   const fields: Record<string, string> = {};
-  for (const issue of result.error.issues) fields[issue.path.join('.') || where] ??= issue.message;
+  for (const issue of result.error.issues) fields[issue.path.join('.') || where] ??= friendlyFieldMessage(issue.message);
   throw new AppError(400, 'VALIDATION_FAILED', 'Please check the highlighted fields.', { fields });
 }
 
 function errorResponse(error: unknown, requestId: string): Response {
+  // A schema checked inside a handler (schema.parse) is a bad request too, worded like any other.
+  if (error instanceof z.ZodError) {
+    const fields: Record<string, string> = {};
+    for (const issue of error.issues) fields[issue.path.join('.') || 'request'] ??= friendlyFieldMessage(issue.message);
+    return json({ error: { code: 'VALIDATION_FAILED', message: 'Please check the highlighted fields.', details: { fields }, requestId } }, { status: 400 });
+  }
   if (error instanceof AppError) {
     const headers: Record<string, string> = {};
     const retry = (error.details as { retryAfterSec?: number } | undefined)?.retryAfterSec;
     if (retry) headers['Retry-After'] = String(retry);
-    return json({ error: { code: error.code, message: error.message, details: error.details, requestId } }, { status: error.status, headers });
+    // Field messages built by hand in a route pass the same last check as the router's own.
+    const raw = error.details as { fields?: Record<string, string> } | undefined;
+    const details = raw?.fields ? { ...raw, fields: friendlyFields(raw.fields) } : error.details;
+    return json({ error: { code: error.code, message: error.message, details, requestId } }, { status: error.status, headers });
   }
   const code = (error as { code?: string }).code;
   // Database constraint errors that slipped past a service check: answer politely instead of with a 500.
@@ -265,21 +276,25 @@ export const zId = z.uuid();
 export const zText = (max: number, min = 1) => z.string().trim().min(min).max(max);
 /** An amount of money in whole sen. */
 export const zSen = (max = 100_000_000) => z.number().int().positive().max(max);
-export const zEmail = z.email().max(254).transform((v) => v.toLowerCase());
-export const zPassword = z.string().min(10, 'Use at least 10 characters.').max(200);
+export const zEmail = z.email({ error: FIELD_MESSAGES.email }).max(254).transform((v) => v.toLowerCase());
+export const zPassword = z.string({ error: FIELD_MESSAGES.password }).min(10, FIELD_MESSAGES.password).max(200);
+/** A person's full name, as on their MyKad or passport. */
+export const zFullName = (max = 100) => z.string({ error: FIELD_MESSAGES.fullName }).trim().min(2, FIELD_MESSAGES.fullName).max(max);
+/** An id picked from a list (a township, an address…), with the message to show when none is picked. */
+export const zChoice = (message: string) => z.uuid({ error: message });
 export const emptyBody = z.object({}).strict();
 /** A phone number, checked and stored in international form ("+60123456789"). */
 export const zPhone = z
-  .string()
+  .string({ error: FIELD_MESSAGES.phone })
   .trim()
   .max(30)
   .transform((value, ctx) => {
     const phone = normalizePhone(value);
     if (phone) return phone;
-    ctx.addIssue({ code: 'custom', message: 'Enter a valid phone number, such as 012-345 6789.' });
+    ctx.addIssue({ code: 'custom', message: FIELD_MESSAGES.phone });
     return z.NEVER;
   });
 /** The person ticked "I accept the Terms of Use and Privacy Notice". */
-export const zAcceptTerms = z.literal(true, { error: 'Please read and accept the Terms of Use and Privacy Notice.' });
-export const zPostcode = z.string().trim().regex(/^\d{5}$/, 'Enter the 5-digit postcode.');
-export const zState = z.enum(MALAYSIAN_STATES, { error: 'Choose a state.' });
+export const zAcceptTerms = z.literal(true, { error: FIELD_MESSAGES.terms });
+export const zPostcode = z.string({ error: FIELD_MESSAGES.postcode }).trim().regex(/^\d{5}$/, FIELD_MESSAGES.postcode);
+export const zState = z.enum(MALAYSIAN_STATES, { error: FIELD_MESSAGES.state });
