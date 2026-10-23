@@ -9,6 +9,9 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 FROM deps AS build
+# Google Maps settings are baked into the browser code at build time, so they come in as build args.
+ARG NEXT_PUBLIC_GOOGLE_MAPS_API_KEY NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID
+ENV NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=$NEXT_PUBLIC_GOOGLE_MAPS_API_KEY NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID=$NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID
 COPY . .
 RUN npm run build
 
