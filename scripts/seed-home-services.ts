@@ -2,7 +2,7 @@ import type { Actor } from '../src/server/auth/actor';
 import { ACTOR_COLUMNS, toActor } from '../src/server/auth/session';
 import { one, type Db } from '../src/server/db/client';
 import {
-  acceptBooking, addWorker, confirmCompleted, createBooking, markWorkDone, reviewBooking, saveListing, setMerchantKind, startVisit, updateServiceAbout,
+  acceptBooking, addWorker, confirmCompleted, createBooking, markWorkDone, reviewBooking, saveListing, setMerchantKind, setOwnTrades, setServiceTrades, startVisit, updateServiceAbout,
   type ListingInput,
 } from '../src/server/modules/home-services/service';
 import { setMerchantStatus } from '../src/server/modules/merchant/admin';
@@ -90,6 +90,7 @@ export async function seedHomeServices(db: Db, input: { passwordHash: string; no
     );
     await setMerchantStatus(db, admin, merchant!.id, 'ACTIVE', new Date(now.getTime() - 200 * DAY));
     await setMerchantKind(db, admin, merchant!.id, c.kind);
+    await setServiceTrades(db, admin, merchant!.id, c.listings.map((l) => l.category), now);
     const row = await one<Parameters<typeof toActor>[0]>(
       db,
       `INSERT INTO users AS u (email, password_hash, full_name, phone, role, township_id, merchant_id, terms_version, terms_accepted_at)
@@ -104,6 +105,9 @@ export async function seedHomeServices(db: Db, input: { passwordHash: string; no
     for (const name of c.workers) workers.push((await addWorker(db, actor, { fullName: name })).id);
     companies.push({ actor, listings, workers });
   }
+
+  // A licence check waiting for staff: the plumber asks to take electrical jobs too.
+  await setOwnTrades(db, companies[0]!.actor, { trades: [...COMPANIES[0]!.listings.map((l) => l.category), 'ELECTRICAL'], licence: 'ST-PW2-DEMO-0101' }, now);
 
   // Finished jobs from the past few weeks, each confirmed by the resident and reviewed.
   const history: [Actor, number, number, number, number, string, string][] = [

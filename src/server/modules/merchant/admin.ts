@@ -75,7 +75,7 @@ export interface MerchantFilter {
 const likeTerm = (q: string) => `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
 
 const ORDER_BY: Record<NonNullable<MerchantFilter['sort']>, string> = {
-  ACTION: `(m.status = 'PENDING') DESC, (m.status = 'SUSPENDED') DESC, lower(m.name)`,
+  ACTION: `(m.status = 'PENDING') DESC, (EXISTS (SELECT 1 FROM service_trade_requests r WHERE r.merchant_id = m.id AND r.status = 'PENDING')) DESC, (m.status = 'SUSPENDED') DESC, lower(m.name)`,
   NAME: 'lower(m.name)',
   POOL: 'pool_sen DESC, lower(m.name)',
   OWED: 'owed_sen DESC, lower(m.name)',
@@ -92,6 +92,7 @@ export async function listMerchantsForAdmin(db: Db, actor: Actor, filter: Mercha
   const kind = filter.kind ?? null;
   return db.query(
     `SELECT m.id, m.name, m.registration_no, m.category, m.status, m.plan, m.created_at, m.approved_at, m.offers_retail, m.offers_services,
+            (SELECT count(*)::int FROM service_trade_requests r WHERE r.merchant_id = m.id AND r.status = 'PENDING') AS trade_requests,
             concat_ws(', ', m.address_line, concat_ws(' ', m.postcode, m.city), m.state) AS address,
             coalesce(p.balance, 0) AS pool_sen, coalesce(o.balance, 0) AS owed_sen
        FROM merchants m
@@ -132,7 +133,7 @@ export async function merchantSummary(db: Db, actor: Actor, now: Date) {
 export async function merchantDetail(db: Db, actor: Actor, merchantId: string) {
   const m = await one<{ township_id: string }>(
     db,
-    `SELECT m.id, m.township_id, m.name, m.registration_no, m.category, m.status, m.plan, m.created_at, m.approved_at, m.offers_retail, m.offers_services,
+    `SELECT m.id, m.township_id, m.name, m.registration_no, m.category, m.status, m.plan, m.created_at, m.approved_at, m.offers_retail, m.offers_services, m.service_trades,
             concat_ws(', ', m.address_line, concat_ws(' ', m.postcode, m.city), m.state) AS address,
             coalesce(p.balance, 0) AS pool_sen, coalesce(o.balance, 0) AS owed_sen,
             (SELECT count(*)::int FROM shop_offers s WHERE s.merchant_id = m.id AND s.status = 'ACTIVE') AS live_offers
@@ -144,18 +145,20 @@ export async function merchantDetail(db: Db, actor: Actor, merchantId: string) {
   );
   if (!m) throw notFound('Shop');
   assertTownshipAccess(actor, m.township_id);
-  const [contacts, deposits, totals] = await Promise.all([
+  const [contacts, deposits, totals, tradeRequests] = await Promise.all([
     db.query(`SELECT full_name, email, phone, status FROM users WHERE merchant_id = $1 ORDER BY created_at`, [merchantId]),
     db.query(
       `SELECT d.amount_sen, d.bank_ref, d.created_at, u.full_name AS recorded_by FROM deposits d LEFT JOIN users u ON u.id = d.recorded_by
         WHERE d.merchant_id = $1 ORDER BY d.created_at DESC LIMIT 10`, [merchantId],
     ),
     one<{ count: number; total_sen: number }>(db, 'SELECT count(*)::int AS count, coalesce(sum(amount_sen), 0)::bigint AS total_sen FROM deposits WHERE merchant_id = $1', [merchantId]),
+    // Licensed work the company asked for, waiting for staff to check.
+    db.query(`SELECT id, category, note, created_at FROM service_trade_requests WHERE merchant_id = $1 AND status = 'PENDING' ORDER BY created_at`, [merchantId]),
   ]);
   // The township id is only for the access check; it is not part of what the screen shows.
   const merchant: Record<string, unknown> = { ...m };
   delete merchant.township_id;
-  return { merchant, contacts, deposits, depositTotals: totals };
+  return { merchant, contacts, deposits, depositTotals: totals, tradeRequests };
 }
 
 /** Approve, suspend or restore a shop. Its ledger accounts are opened on first approval. */

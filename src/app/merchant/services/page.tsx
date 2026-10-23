@@ -4,17 +4,18 @@ import { Text } from '@/components/ui/localized-text';
 
 import { CircleSlash, Clock, Plus, UserRound, Wrench } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
-import { PriceLine, SERVICE_ICONS } from '@/components/features/home-services';
+import { PriceLine, SERVICE_ICONS, TradePicker, tradesDiffer } from '@/components/features/home-services';
 import { Button } from '@/components/ui/button';
 import { Badge, Card, CardHeader, PageHeader } from '@/components/ui/card';
 import { Modal } from '@/components/ui/dialog';
 import { Async, EmptyState, Notice } from '@/components/ui/feedback';
 import { Input, Select, Textarea } from '@/components/ui/field';
 import { api } from '@/lib/api';
+import { cn } from '@/lib/cn';
 import { parseRM } from '@/lib/format';
 import { useAction, useApi } from '@/lib/hooks';
 import {
-  formatPhone, SERVICE_CATEGORIES, SERVICE_CATEGORY_LABELS, SERVICE_PRICING, SERVICE_PRICING_LABELS,
+  formatPhone, SERVICE_CATEGORIES, SERVICE_CATEGORY_LABELS, SERVICE_LICENSED_TRADES, SERVICE_PRICING, SERVICE_PRICING_LABELS,
   type ServiceCategory, type ServicePricing,
 } from '@/shared/domain';
 
@@ -35,17 +36,39 @@ interface Worker {
   open_jobs: number;
   completed_jobs: number;
 }
+interface TradeRequest {
+  id: string;
+  category: ServiceCategory;
+  note: string;
+  status: 'PENDING' | 'DECLINED';
+  decline_reason: string | null;
+}
 interface Setup {
-  merchant: { name: string; status: 'PENDING' | 'ACTIVE' | 'SUSPENDED'; about: string | null };
+  merchant: { name: string; status: 'PENDING' | 'ACTIVE' | 'SUSPENDED'; about: string | null; trades: ServiceCategory[] };
   listings: Listing[];
   workers: Worker[];
+  requests: TradeRequest[];
 }
+
+const labelList = (trades: readonly ServiceCategory[]) => trades.map((c) => SERVICE_CATEGORY_LABELS[c]).join(', ');
 
 export default function ServicesPage() {
   const setup = useApi<Setup>('/merchant/services');
   const [editing, setEditing] = useState<Listing | 'new' | null>(null);
   const [addingWorker, setAddingWorker] = useState(false);
+  const [trades, setTrades] = useState<ServiceCategory[] | null>(null);
+  const [licence, setLicence] = useState('');
   const reload = () => void setup.mutate();
+  const listed = setup.data?.listings.map((l) => l.category) ?? [];
+  const savedTrades = setup.data?.merchant.trades ?? [];
+  // Only what the company does, and not ones already listed.
+  const addable = SERVICE_CATEGORIES.filter((c) => savedTrades.includes(c) && !listed.includes(c));
+
+  const saveTrades = useAction((t: ServiceCategory[], licenceNo: string) => api.post('/merchant/services/trades', { trades: t, licence: licenceNo || undefined }), {
+    success: (r) => ((r as { requested: string[] }).requested.length > 0 ? 'Sent to the township office. We will tell you when they have checked it.' : 'Saved.'),
+    onSuccess: () => { setTrades(null); setLicence(''); reload(); },
+  });
+  const cancelTrades = () => { setTrades(null); setLicence(''); };
 
   const about = useAction((text: string) => api.patch('/merchant/services/about', { about: text }), { success: 'Saved.', onSuccess: reload });
   const toggleListing = useAction((id: string, active: boolean) => api.post(`/merchant/services/listings/${id}/active`, { active }), { success: 'Saved.', onSuccess: reload });
@@ -56,10 +79,13 @@ export default function ServicesPage() {
       <PageHeader
         title="Services and workers"
         description="What residents see when they choose a company, and the workers you can send. Residents see the worker’s name before the visit."
-        action={<Button onClick={() => setEditing('new')}><Plus className="size-4" aria-hidden /><Text>Add a service</Text></Button>}
       />
       <Async state={setup}>
-        {(data) => (
+        {(data) => {
+          const waiting = data.requests.filter((r) => r.status === 'PENDING').map((r) => r.category);
+          // Newly ticked licensed work goes to the township office with a licence number.
+          const toCheck = (trades ?? []).filter((c) => !data.merchant.trades.includes(c) && SERVICE_LICENSED_TRADES.includes(c));
+          return (
           <div className="space-y-6">
             {data.merchant.status !== 'ACTIVE' && (
               <Notice icon={data.merchant.status === 'PENDING' ? Clock : CircleSlash} title={data.merchant.status === 'PENDING' ? 'Your business is waiting for approval.' : 'Your business is suspended.'}>
@@ -68,29 +94,94 @@ export default function ServicesPage() {
             )}
 
             <Card>
+              <CardHeader title="What we do" description="Tap every kind of work your company does. You can add a service only for these. Plumbing, electrical and air-conditioning work need a licence check by the township office first." />
+              <form
+                method="post"
+                className="space-y-3 px-5 pb-5"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  if (trades) void saveTrades.run(trades, licence.trim());
+                }}
+              >
+                <TradePicker label="What we do" value={trades ?? data.merchant.trades} onChange={setTrades} waiting={waiting} />
+                {data.requests.length > 0 && (
+                  <ul className="space-y-2">
+                    {data.requests.map((r) => (
+                      <li key={r.id} className={cn('flex items-start gap-2.5 rounded-lg p-3 text-sm', r.status === 'PENDING' ? 'bg-gold-50 text-ink-700' : 'bg-accent-50 text-ink-700')}>
+                        {r.status === 'PENDING' ? <Clock className="mt-0.5 size-4 shrink-0 text-gold-700" aria-hidden /> : <CircleSlash className="mt-0.5 size-4 shrink-0 text-accent-700" aria-hidden />}
+                        <span>
+                          <strong className="font-semibold text-ink-900"><Text>{SERVICE_CATEGORY_LABELS[r.category]}</Text></strong>{' · '}
+                          {r.status === 'PENDING'
+                            ? <Text>{`Waiting for the township office to check licence ${r.note}.`}</Text>
+                            : <><Text>{`Not approved: ${r.decline_reason ?? ''}`}</Text>{' '}<Text>Tap it above to ask again.</Text></>}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {trades && tradesDiffer(trades, data.merchant.trades) ? (
+                  <div className="space-y-3">
+                    {toCheck.length > 0 && (
+                      <Input
+                        label="Licence or registration number"
+                        value={licence}
+                        onChange={(event) => setLicence(event.target.value)}
+                        maxLength={300}
+                        required
+                        placeholder="e.g. SPAN or Suruhanjaya Tenaga registration no."
+                        hint={`${labelList(toCheck)}: the township office checks this before residents can book.`}
+                        error={saveTrades.fields.licence}
+                      />
+                    )}
+                    <div className="flex flex-wrap items-center gap-2">
+                    <Button type="submit" size="sm" disabled={toCheck.length > 0 && licence.trim().length < 3} pending={saveTrades.pending}><Text>{toCheck.length > 0 ? 'Send for checking' : 'Save'}</Text></Button>
+                    <Button type="button" size="sm" variant="ghost" onClick={cancelTrades}><Text>Cancel</Text></Button>
+                    {data.listings.some((l) => l.active && !trades.includes(l.category)) && (
+                      <span className="text-xs text-ink-500"><Text>Services you untick are hidden from residents.</Text></span>
+                    )}
+                    </div>
+                  </div>
+                ) : addable.length > 0 ? (
+                  // The next step sits right under the picker, so it is seen straight after saving.
+                  <div className="flex flex-wrap items-center gap-3 rounded-lg bg-brand-50 p-3">
+                    <Button type="button" onClick={() => setEditing('new')}><Plus className="size-4" aria-hidden /><Text>Add a service</Text></Button>
+                    <span className="text-sm text-ink-700">
+                      <Text>Not listed yet:</Text>{' '}{addable.map((c, i) => <span key={c}>{i > 0 && ', '}<Text>{SERVICE_CATEGORY_LABELS[c]}</Text></span>)}
+                    </span>
+                  </div>
+                ) : data.merchant.trades.length > 0 && (
+                  <p className="text-sm text-ink-500"><Text>Every service you do is listed below. Tap another kind of work to offer more.</Text></p>
+                )}
+              </form>
+            </Card>
+
+            <Card>
               <CardHeader title="Services" description="One listing per type of service. Say how you price it, and any call-out fee, so residents know before they book." />
               {data.listings.length === 0 ? (
                 <div className="p-5">
-                  <EmptyState icon={Wrench} title="No services yet" action={<Button onClick={() => setEditing('new')}><Text>Add a service</Text></Button>}><Text>Add what you offer so residents can find you.</Text></EmptyState>
+                  <EmptyState icon={Wrench} title="No services yet" action={addable.length > 0 && <Button onClick={() => setEditing('new')}><Text>Add a service</Text></Button>}>
+                    <Text>{addable.length > 0 ? 'Add what you offer so residents can find you.' : 'Tap what your company does above, then add a service.'}</Text>
+                  </EmptyState>
                 </div>
               ) : (
                 <ul className="divide-y divide-ink-100">
                   {data.listings.map((l) => {
                     const Icon = SERVICE_ICONS[l.category];
+                    const approved = data.merchant.trades.includes(l.category);
                     return (
                       <li key={l.id} className="flex flex-wrap items-start gap-3 px-5 py-4">
                         <span className="grid size-10 shrink-0 place-items-center rounded-md bg-brand-50 text-brand-700"><Icon className="size-5" aria-hidden /></span>
                         <div className="min-w-0 flex-1">
                           <p className="flex flex-wrap items-center gap-2 text-[15px] font-semibold text-ink-900">
                             <Text>{SERVICE_CATEGORY_LABELS[l.category]}</Text>
-                            {!l.active && <Badge tone="neutral"><Text>Hidden</Text></Badge>}
+                            {!l.active && <Badge tone="neutral"><Text>{approved ? 'Hidden' : 'Hidden: not in What we do'}</Text></Badge>}
                           </p>
                           <p className="text-sm text-ink-700">{l.description}</p>
                           <PriceLine pricing={l.pricing} calloutFeeSen={l.callout_fee_sen} priceNote={l.price_note} />
                         </div>
                         <div className="flex gap-1">
-                          <Button size="sm" variant="secondary" onClick={() => setEditing(l)}><Text>Edit</Text></Button>
-                          <Button size="sm" variant="ghost" onClick={() => void toggleListing.run(l.id, !l.active)} disabled={toggleListing.pending}><Text>{l.active ? 'Hide' : 'Show'}</Text></Button>
+                          {approved && <Button size="sm" variant="secondary" onClick={() => setEditing(l)}><Text>Edit</Text></Button>}
+                          {(l.active || approved) && <Button size="sm" variant="ghost" onClick={() => void toggleListing.run(l.id, !l.active)} disabled={toggleListing.pending}><Text>{l.active ? 'Hide' : 'Show'}</Text></Button>}
                         </div>
                       </li>
                     );
@@ -143,16 +234,17 @@ export default function ServicesPage() {
               </form>
             </Card>
           </div>
-        )}
+          );
+        }}
       </Async>
 
-      <ListingForm listing={editing} taken={setup.data?.listings.map((l) => l.category) ?? []} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); reload(); }} />
+      <ListingForm listing={editing} addable={addable} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); reload(); }} />
       <WorkerForm open={addingWorker} onClose={() => setAddingWorker(false)} onSaved={() => { setAddingWorker(false); reload(); }} />
     </>
   );
 }
 
-function ListingForm({ listing, taken, onClose, onSaved }: { listing: Listing | 'new' | null; taken: ServiceCategory[]; onClose: () => void; onSaved: () => void }) {
+function ListingForm({ listing, addable, onClose, onSaved }: { listing: Listing | 'new' | null; addable: ServiceCategory[]; onClose: () => void; onSaved: () => void }) {
   const existing = listing && listing !== 'new' ? listing : null;
   const [fee, setFee] = useState('');
   const [feeKey, setFeeKey] = useState<string | null>(null);
@@ -175,7 +267,7 @@ function ListingForm({ listing, taken, onClose, onSaved }: { listing: Listing | 
     });
   };
   const f = save.fields;
-  const choices = SERVICE_CATEGORIES.filter((c) => c === existing?.category || !taken.includes(c));
+  const choices = existing ? [existing.category] : addable;
   return (
     <Modal
       open={listing !== null}

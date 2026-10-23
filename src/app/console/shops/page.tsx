@@ -19,7 +19,8 @@ import { formatDate, formatDateTime, parseRM, timeAgo } from '@/lib/format';
 import { useAction, useApi } from '@/lib/hooks';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 import { useMinLoading } from '@/lib/use-min-loading';
-import { formatRM, MERCHANT_KINDS, MERCHANT_KIND_LABELS, merchantKind, type MerchantKind } from '@/shared/domain';
+import { TradePicker, tradesDiffer } from '@/components/features/home-services';
+import { formatRM, MERCHANT_KINDS, MERCHANT_KIND_LABELS, merchantKind, SERVICE_CATEGORY_LABELS, type MerchantKind, type ServiceCategory } from '@/shared/domain';
 
 /**
  * Shops: approve businesses after checking their registration, set what each
@@ -39,15 +40,18 @@ interface Shop {
   owed_sen: number;
   offers_retail: boolean;
   offers_services: boolean;
+  /** Requests for licensed work waiting for staff to check. */
+  trade_requests: number;
   created_at: string;
   approved_at: string | null;
 }
 interface Summary { pending: number; active: number; suspended: number; pool_sen: number; owed_sen: number; active_unfunded: number; deposits_30d_sen: number }
 interface Detail {
-  merchant: Shop & { address: string | null; plan: string; live_offers: number };
+  merchant: Shop & { address: string | null; plan: string; live_offers: number; service_trades: ServiceCategory[] };
   contacts: { full_name: string; email: string; phone: string | null; status: string }[];
   deposits: { amount_sen: number; bank_ref: string; created_at: string; recorded_by: string | null }[];
   depositTotals: { count: number; total_sen: number };
+  tradeRequests: { id: string; category: ServiceCategory; note: string; created_at: string }[];
 }
 
 const STATUS: Record<Status, { label: string; tone: 'warning' | 'success' | 'danger' }> = {
@@ -239,7 +243,10 @@ function Row({ s, index, onOpen, onDeposit }: { s: Shop; index: number; onOpen: 
         </span>
         <span className="font-mono text-[13px] font-semibold text-ink-600">{s.registration_no}</span>
         <span className="text-ink-700"><Text>{MERCHANT_KIND_LABELS[kindOf(s)]}</Text></span>
-        <span><Badge tone={STATUS[s.status].tone}><Text>{STATUS[s.status].label}</Text></Badge></span>
+        <span className="flex flex-wrap gap-1.5">
+          <Badge tone={STATUS[s.status].tone}><Text>{STATUS[s.status].label}</Text></Badge>
+          {s.trade_requests > 0 && <Badge tone="gold"><Text>Licence to check</Text></Badge>}
+        </span>
         <span className="tabular-nums lg:text-right">
           <span className={cn('font-semibold', unfunded ? 'text-warning-700' : 'text-ink-900')}>{formatRM(s.pool_sen)}</span>
           {unfunded && <span className="block text-xs text-warning-700"><Text>Not funded yet</Text></span>}
@@ -258,12 +265,45 @@ function Row({ s, index, onOpen, onDeposit }: { s: Shop; index: number; onOpen: 
   );
 }
 
+/** One request for licensed work: the licence number to check, and approve or decline with a reason. */
+function TradeRequestItem({ request, onDone }: { request: Detail['tradeRequests'][number]; onDone: () => void }) {
+  const [declining, setDeclining] = useState(false);
+  const [reason, setReason] = useState('');
+  const label = SERVICE_CATEGORY_LABELS[request.category];
+  const decide = useAction((approve: boolean) => api.post(`/admin/trade-requests/${request.id}`, { approve, reason: approve ? undefined : reason.trim() }), {
+    onSuccess: onDone,
+    success: (r) => ((r as { status: string }).status === 'APPROVED' ? `${label} approved. The company has been told.` : 'Declined. The company has been told why.'),
+  });
+  return (
+    <li className="rounded-lg border border-gold-300 bg-gold-50 p-3">
+      <p className="font-semibold text-ink-900"><Text>{`Wants to offer ${label}`}</Text></p>
+      <p className="mt-0.5 text-ink-700"><Text>Licence or registration no.:</Text> <span className="font-mono font-semibold">{request.note}</span></p>
+      <p className="text-xs text-ink-500"><Text>{`Asked ${timeAgo(request.created_at)}`}</Text></p>
+      {declining ? (
+        <form method="post" className="mt-2 space-y-2" onSubmit={(event: FormEvent) => { event.preventDefault(); void decide.run(false); }}>
+          <Input label="Why not?" value={reason} onChange={(event) => setReason(event.target.value)} maxLength={300} required placeholder="e.g. The number does not match SPAN records." hint="The company sees this." error={decide.fields.reason} />
+          <div className="flex flex-wrap gap-2">
+            <Button type="submit" size="sm" variant="danger" disabled={reason.trim().length < 3} pending={decide.pending}><Text>Decline</Text></Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => { setDeclining(false); setReason(''); }}><Text>Cancel</Text></Button>
+          </div>
+        </form>
+      ) : (
+        <div className="mt-2 flex flex-wrap gap-2">
+          <Button size="sm" onClick={() => void decide.run(true)} pending={decide.pending}><Text>Approve</Text></Button>
+          <Button size="sm" variant="ghost" onClick={() => setDeclining(true)}><Text>Decline</Text></Button>
+        </div>
+      )}
+    </li>
+  );
+}
+
 /** One business: what to check, what it offers, its money, and the decision. */
 function ShopPanel({ id, onClose, onDeposit, onChanged }: { id: string | null; onClose: () => void; onDeposit: (s: Shop) => void; onChanged: () => void }) {
   const detail = useApi<Detail>(id ? `/admin/merchants/${id}` : null);
   const loading = useMinLoading(id ?? '', Boolean(id) && !detail.data);
   const [confirm, setConfirm] = useState<null | 'ACTIVE' | 'SUSPENDED'>(null);
   const [offers, setOffers] = useState<MerchantKind | null>(null);
+  const [trades, setTrades] = useState<ServiceCategory[] | null>(null);
   const done = () => {
     void detail.mutate();
     onChanged();
@@ -273,10 +313,14 @@ function ShopPanel({ id, onClose, onDeposit, onChanged }: { id: string | null; o
     success: (r) => ((r as { status: string }).status === 'ACTIVE' ? 'The business is active.' : 'The business is suspended.'),
   });
   const saveOffers = useAction((k: MerchantKind) => api.post(`/admin/merchants/${id}/kind`, { kind: k }), { onSuccess: () => { setOffers(null); done(); }, success: 'Saved.' });
+  const saveTrades = useAction((t: ServiceCategory[]) => api.post(`/admin/merchants/${id}/trades`, { trades: t }), { onSuccess: () => { setTrades(null); done(); }, success: 'Saved.' });
   const d = detail.data;
   const m = d?.merchant;
   const current = m ? kindOf(m) : 'RETAIL';
-  const close = () => { setOffers(null); setConfirm(null); onClose(); };
+  const currentTrades = m?.service_trades ?? [];
+  const pickedTrades = trades ?? currentTrades;
+  const tradesChanged = trades !== null && tradesDiffer(trades, currentTrades);
+  const close = () => { setOffers(null); setTrades(null); setConfirm(null); onClose(); };
 
   return (
     <Drawer open={id !== null} onClose={close} side="right" title={m?.name ?? ''} description={m ? `${m.category} · ${m.registration_no}` : undefined}>
@@ -341,6 +385,22 @@ function ShopPanel({ id, onClose, onDeposit, onChanged }: { id: string | null; o
             </form>
             <p className="mt-1.5 text-xs text-ink-500"><Text>A shop gives and accepts points at the counter. Home services take bookings. A change is refused while bookings or a Shop Offer are still open.</Text></p>
           </section>
+
+          {m.offers_services && (
+            <section>
+              <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-500"><Text>Home services</Text></h3>
+              {d.tradeRequests.length > 0 && (
+                <ul className="mt-2 space-y-2">
+                  {d.tradeRequests.map((r) => <TradeRequestItem key={r.id} request={r} onDone={() => { setTrades(null); done(); }} />)}
+                </ul>
+              )}
+              <form method="post" className="mt-2 space-y-2" onSubmit={(event: FormEvent) => { event.preventDefault(); if (tradesChanged) void saveTrades.run(pickedTrades); }}>
+                <TradePicker label="Home services" value={pickedTrades} onChange={setTrades} />
+                <Button type="submit" size="sm" variant="secondary" disabled={!tradesChanged} pending={saveTrades.pending}><Text>Save</Text></Button>
+              </form>
+              <p className="mt-1.5 text-xs text-ink-500"><Text>The company can list only these. It adds most itself; plumbing, electrical and air-conditioning work come to you as a licence check first. Untick any it should not offer: its listing is hidden, and bookings already made carry on.</Text></p>
+            </section>
+          )}
 
           <section>
             <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-500"><Text>Money</Text></h3>
