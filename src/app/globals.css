@@ -1084,7 +1084,9 @@ html[data-signed-in] .field:focus-within > label { color: var(--color-brand-700)
 @media (hover: hover) and (pointer: fine) {
   .around-link:hover { transform: translateY(-2px); border-color: var(--color-brand-300); background-color: var(--color-brand-50); box-shadow: 0 10px 26px rgb(79 28 8 / 0.10); }
   .around-link:hover .around-link-arrow { transform: translateX(3px); }
+  .around-link:hover .around-link-cta { border-color: var(--color-brand-500); background-color: var(--color-brand-50); }
 }
+.around-link-cta { transition: border-color 220ms var(--ease-soft), background-color 220ms var(--ease-soft); }
 .around-link:active { transform: scale(0.99); }
 .around-link:focus-visible { outline: 2px solid var(--color-brand-500); outline-offset: 3px; }
 /* Neighbours' reports are rows, not links: a quiet tint follows the pointer and focus, nothing moves. */
@@ -1106,7 +1108,7 @@ html[data-signed-in] .field:focus-within > label { color: var(--color-brand-700)
   .see-all:hover { background-color: rgb(255 247 237 / 0.6); }
   .see-all:hover .see-all-arrow { transform: translateX(3px); }
 }
-@media (prefers-reduced-motion: reduce) { .around-link, .around-link-arrow, .around-row, .around-rail, .see-all, .see-all-arrow, .around-photo, .around-photo img { transition: none; } .around-photo:hover img { transform: none; } .see-all:hover .see-all-arrow { transform: none; } .around-link:hover, .around-link:active, .around-link:hover .around-link-arrow { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .around-link, .around-link-arrow, .around-link-cta, .around-row, .around-rail, .see-all, .see-all-arrow, .around-photo, .around-photo img { transition: none; } .around-photo:hover img { transform: none; } .see-all:hover .see-all-arrow { transform: none; } .around-link:hover, .around-link:active, .around-link:hover .around-link-arrow { transform: none; } }
 @media print {
   .insights-hero { background: none !important; color: var(--color-ink-900) !important; box-shadow: none !important; border: 1px solid var(--color-ink-200); }
   .insights-hero::before { display: none; }
