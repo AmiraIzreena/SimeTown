@@ -71,12 +71,16 @@ export async function ensurePrivateDoors(db: Db, now: Date, log: (line: string) 
     }
     firstStation ??= station.id;
 
-    // A door holding a parcel goes to that parcel's home, if the home has none yet.
+    // A door holding a parcel goes to that parcel's home, if the home has none yet. A home with parcels in
+    // several doors (from the shared lockers) takes one of them; the others stay until collected.
     await db.query(
-      `UPDATE locker_compartments c SET home_id = p.home_id
-         FROM locker_parcels p
-        WHERE c.station_id = $1 AND c.home_id IS NULL AND p.id = c.parcel_id AND p.home_id IS NOT NULL
-          AND p.home_id = ANY($2::uuid[]) AND NOT EXISTS (SELECT 1 FROM locker_compartments x WHERE x.home_id = p.home_id)`,
+      `UPDATE locker_compartments c SET home_id = pick.home_id
+         FROM (SELECT DISTINCT ON (p.home_id) d.id, p.home_id
+                 FROM locker_compartments d JOIN locker_parcels p ON p.id = d.parcel_id
+                WHERE d.station_id = $1 AND d.home_id IS NULL AND p.home_id = ANY($2::uuid[])
+                  AND NOT EXISTS (SELECT 1 FROM locker_compartments x WHERE x.home_id = p.home_id)
+                ORDER BY p.home_id, d.label) pick
+        WHERE c.id = pick.id`,
       [station.id, homes.map((h) => h.id)],
     );
     // Every other home without a door takes the next free one, adding doors when there are too few.
