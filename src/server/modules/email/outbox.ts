@@ -3,6 +3,7 @@ import path from 'node:path';
 import type { Lang } from '@/lib/i18n-core';
 import type { Db, Queryable } from '../../db/client';
 import { getConfig } from '../../config';
+import { log } from '../../logger';
 import { LOGO_CID, renderEmail, type EmailContent } from './layout';
 
 /**
@@ -13,7 +14,10 @@ import { LOGO_CID, renderEmail, type EmailContent } from './layout';
  * sent to.
  */
 
-export type EmailKind = 'LOCKER_READY' | 'COUNTER_READY' | 'COUNTER_REMINDER' | 'DOOR_FORCED' | 'VISITOR_ARRIVED' | 'VISITOR_AT_GATE' | 'VISITOR_PASS';
+export type EmailKind =
+  | 'LOCKER_READY' | 'COUNTER_READY' | 'COUNTER_REMINDER' | 'DOOR_FORCED'
+  | 'ACCOUNT_CREATED' | 'PASSWORD_RESET'
+  | 'VISITOR_ARRIVED' | 'VISITOR_AT_GATE' | 'VISITOR_PASS';
 
 /** What the outbox needs from a mail service. Real sending uses nodemailer; tests pass their own. */
 export interface Mailer {
@@ -183,6 +187,16 @@ export async function sendQueuedEmails(db: Db, now: Date) {
   }
   counts.waiting = (await db.query<{ n: number }>(`SELECT count(*)::int AS n FROM email_outbox WHERE status = 'QUEUED'`))[0]!.n;
   return counts;
+}
+
+/**
+ * Starts sending now rather than at the next scheduled job, for an email someone is waiting for (a password reset
+ * link). Call it once the transaction that queued the email has committed. It does not wait for the mail server, so
+ * a request answers just as fast whether or not an email was queued. Does nothing while no mail account is set.
+ */
+export function sendSoon(db: Db) {
+  if (testMailer !== undefined || !configuredMailer()) return;
+  void sendQueuedEmails(db, new Date()).catch((error: unknown) => log.error('Sending queued emails failed', error));
 }
 
 /** Privacy: an email's words are kept 30 days, the record of it 180 days (30 days for an email to a visitor). */

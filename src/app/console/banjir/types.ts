@@ -43,6 +43,10 @@ export interface AgentZone {
   status: FloodStatus;
   level_pct: number;
   updated_at: string;
+  /** The open warning was raised on one signal and waits for a second check. */
+  unconfirmed: boolean;
+  raised_by_me: boolean;
+  raised_by_name: string | null;
   assessment: {
     readings: Reading[];
     agreed: FloodStatus;
@@ -182,6 +186,7 @@ export const STEP_WORDS: Record<string, string> = {
   ALL_CLEAR_SENT: 'All clear sent',
   OFFICER_CONFIRMED: 'Officer confirmed',
   OFFICER_CANCELLED: 'Officer cancelled',
+  SECOND_CHECK: 'Second check: warning confirmed',
   ESCALATED: 'Sent: no answer, water still rising',
   UNANSWERED: 'Unanswered: admins told',
   UPDATE_SENT: '15-minute update sent',

@@ -111,6 +111,14 @@ export function AlertTakeover({ href, canCheckIn = false }: { href: string; canC
           </div>
           <Link
             href={href}
+            onClick={(event) => {
+              // Already on the Banjir page: the link would go nowhere, so bring this person's zone into view instead.
+              const zone = document.getElementById('my-zone');
+              if (!zone) return;
+              event.preventDefault();
+              zone.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+              zone.focus({ preventScroll: true });
+            }}
             className={cn(
               'inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-md bg-white px-4 text-sm font-semibold shadow-sm transition-[transform,box-shadow] duration-200 ease-soft hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white motion-safe:hover:-translate-y-px',
               'text-accent-700',

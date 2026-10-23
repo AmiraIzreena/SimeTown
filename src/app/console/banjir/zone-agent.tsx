@@ -121,6 +121,7 @@ export function ZoneAgent({ zone, agent, onChange }: { zone: AgentZone; agent: A
       }),
     { onSuccess: onChange, success: 'Done. It is on the timeline.' },
   );
+  const second = useAction(() => api.post(`/admin/banjir/zones/${zone.id}/second-check`, {}), { onSuccess: onChange, success: 'Confirmed. Residents now see the warning in red.' });
   const [manual, setManual] = useState(String(zone.level_pct));
   const override = useAction(() => api.post<{ status: FloodStatus; changed: boolean }>(`/admin/banjir/zones/${zone.id}/level`, { levelPct: Number(manual) }), {
     onSuccess: onChange,
@@ -182,6 +183,22 @@ export function ZoneAgent({ zone, agent, onChange }: { zone: AgentZone; agent: A
             </p>
           )}
         </div>
+
+        {zone.status === 'WARNING' && zone.unconfirmed && (
+          <div className="space-y-3 rounded-lg border-2 border-warning-600/30 bg-warning-50 p-4">
+            <p className="font-display text-lg font-bold text-ink-900"><Text>Warning waiting for a second check</Text></p>
+            <p className="text-sm text-ink-700">
+              <Text>{zone.raised_by_name ? `Raised on one signal by ${zone.raised_by_name}.` : 'Raised on one signal.'}</Text>{' '}
+              <Text>Residents see it in amber until a second signal agrees or another staff member confirms it.</Text>
+            </p>
+            {zone.raised_by_me ? (
+              <p className="text-sm font-medium text-warning-700"><Text>You raised this warning. A different staff member must do the second check.</Text></p>
+            ) : (
+              <Button onClick={() => void second.run()} pending={second.pending}>
+                <ShieldCheck className="size-4" aria-hidden /><Text>Confirm the warning</Text></Button>
+            )}
+          </div>
+        )}
 
         {zone.draft && (
           <div className="animate-rise space-y-3 rounded-lg border-2 border-gold-300 bg-gold-50 p-4">

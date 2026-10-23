@@ -5,6 +5,7 @@ import { aksesTemplates } from './i18n-akses';
 import { shopsTemplates } from './i18n-shops';
 import { collectionsTemplates } from './i18n-collections';
 import { lockersTemplates } from './i18n-lockers';
+import { accountTemplates } from './i18n-account';
 import { walkthroughsTemplates } from './i18n-walkthroughs';
 import { tamuTemplates } from './i18n-tamu';
 import { campaignsTemplates } from './i18n-campaigns';
@@ -1370,6 +1371,7 @@ export const messageTemplates: readonly (readonly [string, string])[] = [
   ...shopsTemplates,
   ...collectionsTemplates,
   ...lockersTemplates,
+  ...accountTemplates,
   ...walkthroughsTemplates,
   ...tamuTemplates,
   ...campaignsTemplates,

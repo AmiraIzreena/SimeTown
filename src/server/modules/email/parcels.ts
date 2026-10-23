@@ -14,7 +14,7 @@ import { appLink, queueEmails } from './outbox';
 
 const TZ = 'Asia/Kuala_Lumpur';
 /** "Mon, 20 Oct 2026, 10:02 am" in English, the same shape in Malay. */
-const when = (date: Date, lang: Lang) =>
+export const when = (date: Date, lang: Lang) =>
   date.toLocaleString(lang === 'ms' ? 'ms-MY' : 'en-MY', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: TZ });
 const day = (date: Date, lang: Lang) => date.toLocaleDateString(lang === 'ms' ? 'ms-MY' : 'en-MY', { weekday: 'short', day: 'numeric', month: 'short', timeZone: TZ });
 const lockerLink = (parcelId: string) => appLink(`/app/parcels?tab=lockers&parcel=${parcelId}`);

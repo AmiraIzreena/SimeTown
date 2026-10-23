@@ -567,6 +567,85 @@ export const walkthroughsMalay: Record<string, string> = {
   '1. Main gate': '1. Pintu utama',
 };
 
+/** Akses+ and SimeTown Home: residents. */
+export const aksesHomeWalkthroughsMalay: Record<string, string> = {
+  // Akses+: residents.
+  'How Akses+ works': 'Cara Akses+ berfungsi',
+  'How the app adapts to you, and who sees what.': 'Cara aplikasi menyesuaikan diri dengan anda, dan siapa yang melihat apa.',
+  'Tell the app what helps you, once': 'Beritahu aplikasi apa yang membantu anda, sekali sahaja',
+  'Tick what applies to you, if anything. Every feature adapts from there, so you never have to ask again. It is optional, and private.':
+    'Tandakan apa yang berkaitan dengan anda, jika ada. Setiap ciri menyesuaikan diri dari situ, jadi anda tidak perlu meminta lagi. Ia pilihan, dan peribadi.',
+  'Private: seen only by you': 'Peribadi: hanya anda yang melihatnya',
+  'Simple Mode: four big buttons': 'Mod Mudah: empat butang besar',
+  'Turn on Simple Mode and your home screen becomes four big buttons: Help, Visitors, Flood and My points. Forms ask one question at a time.':
+    'Hidupkan Mod Mudah dan skrin utama anda menjadi empat butang besar: Bantuan, Pelawat, Banjir dan Mata saya. Borang bertanya satu soalan pada satu masa.',
+  'Hear alerts, or see them flash': 'Dengar amaran, atau lihat ia berkelip',
+  'Read alerts aloud uses your phone’s own voice for flood warnings and Simple Mode. Flash and vibrate is for deaf and hard-of-hearing residents: one flash a second, within the safe limit.':
+    'Baca amaran dengan kuat menggunakan suara telefon anda sendiri untuk amaran banjir dan Mod Mudah. Berkelip dan bergetar adalah untuk penduduk pekak dan kurang pendengaran: satu kelipan sesaat, dalam had selamat.',
+  'Alerts': 'Amaran',
+  'Join the list and, in a flood warning, staff phone your home first. Add a short note, such as “Uses a walking frame”. Only duty staff see it, only during an alert, and only with your consent.':
+    'Sertai senarai dan, semasa amaran banjir, kakitangan menelefon rumah anda dahulu. Tambah nota ringkas, seperti “Menggunakan alat bantu berjalan”. Hanya kakitangan bertugas yang melihatnya, hanya semasa amaran, dan hanya dengan persetujuan anda.',
+  'Phone first: No. 7, Jalan Frekuensi U16/115': 'Telefon dahulu: No. 7, Jalan Frekuensi U16/115',
+  'Note: Uses a walking frame; lives alone': 'Nota: Menggunakan alat bantu berjalan; tinggal seorang diri',
+  'Seen only during the alert': 'Dilihat hanya semasa amaran',
+  'A carer can keep an eye on you': 'Penjaga boleh memantau anda',
+  'Ask a family member who is also a resident, using their member code. They hear about flood alerts in your area and see whether you checked in safe. Never your access needs.':
+    'Minta ahli keluarga yang juga penduduk, menggunakan kod ahli mereka. Mereka dimaklumkan tentang amaran banjir di kawasan anda dan melihat sama ada anda telah melapor selamat. Tidak sekali-kali keperluan akses anda.',
+  'Aisyah checked in safe': 'Aisyah telah melapor selamat',
+  'Elmina Valley 1 & 2 · Flood warning': 'Elmina Valley 1 & 2 · Amaran banjir',
+  'Step-free places, kept honest': 'Tempat tanpa tangga, dikemas kini dengan jujur',
+  'Ramps, lifts, accessible toilets and OKU parking show two things: whether the place is verified, and whether it can be used today. Report a problem, and follow it until it is fixed.':
+    'Tanjakan, lif, tandas mesra OKU dan parkir OKU menunjukkan dua perkara: sama ada tempat itu telah disahkan, dan sama ada ia boleh digunakan hari ini. Laporkan masalah, dan ikutinya sehingga dibaiki.',
+  'Ramp · Community hall main entrance': 'Tanjakan · Pintu masuk utama dewan komuniti',
+  'Lift · Pangsapuri Harmoni Elmina Block A': 'Lif · Pangsapuri Harmoni Elmina Blok A',
+  'Yours to change or delete': 'Anda boleh ubah atau padam',
+  'Change your answers whenever you like, and you are told when a report you made changes. Delete your access needs at any time and they are gone.':
+    'Ubah jawapan anda bila-bila masa, dan anda dimaklumkan apabila laporan anda berubah. Padam keperluan akses anda pada bila-bila masa dan ia akan hilang.',
+  'Your report was fixed': 'Laporan anda telah dibaiki',
+  'Lift · Pangsapuri Harmoni Elmina Block A · Is it clear?': 'Lif · Pangsapuri Harmoni Elmina Blok A · Adakah ia sudah lapang?',
+
+  // SimeTown Home: residents.
+  'How SimeTown Home works': 'Cara SimeTown Home berfungsi',
+  'From choosing a company to the job being done.': 'Daripada memilih syarikat sehingga kerja selesai.',
+  'Choose what you need': 'Pilih apa yang anda perlukan',
+  'Pick a service. Plumbing, electrical, air-conditioning and renovation companies have their licence checked by the township team before they can take bookings.':
+    'Pilih perkhidmatan. Syarikat paip, elektrik, penyaman udara dan pengubahsuaian disemak lesennya oleh pasukan perbandaran sebelum boleh menerima tempahan.',
+  'Licence checked by the township': 'Lesen disemak oleh perbandaran',
+  'Compare the companies': 'Bandingkan syarikat',
+  'See every company serving the township, how it prices the work and reviews from residents who completed a booking. Only real, finished jobs can be reviewed.':
+    'Lihat setiap syarikat yang berkhidmat di perbandaran, cara ia menetapkan harga kerja dan ulasan daripada penduduk yang telah menyelesaikan tempahan. Hanya kerja sebenar yang telah selesai boleh diulas.',
+  'Price after inspection · 2 workers': 'Harga selepas pemeriksaan · 2 pekerja',
+  '“Came on time and fixed the leak.”': '“Datang tepat pada masanya dan membaiki kebocoran.”',
+  'Send your request': 'Hantar permintaan anda',
+  'Choose a day and a time of day, say what is wrong, and add a photo if it helps. The company is told at once and replies in the app.':
+    'Pilih hari dan waktu, nyatakan masalahnya, dan tambah foto jika membantu. Syarikat dimaklumkan serta-merta dan membalas dalam aplikasi.',
+  'Kitchen sink is leaking': 'Sinki dapur bocor',
+  'Tomorrow · Morning': 'Esok · Pagi',
+  'Your choice': 'Pilihan anda',
+  'Send request': 'Hantar permintaan',
+  'See who is coming': 'Lihat siapa yang datang',
+  'The company confirms the visit and assigns a registered worker. You see their name before they arrive, and can follow each step in My bookings.':
+    'Syarikat mengesahkan lawatan dan menugaskan pekerja berdaftar. Anda melihat nama mereka sebelum mereka tiba, dan boleh mengikuti setiap langkah dalam Tempahan saya.',
+  'Company': 'Syarikat',
+  'The gate pass is made for you': 'Pas pagar dibuat untuk anda',
+  'A gate pass for the worker is made automatically for the visit day. The worker shows the QR code at the main gate, so there is nothing for you to do.':
+    'Pas pagar untuk pekerja dibuat secara automatik untuk hari lawatan. Pekerja menunjukkan kod QR di pagar utama, jadi tiada apa yang perlu anda lakukan.',
+  'Valid on the visit day only': 'Sah pada hari lawatan sahaja',
+  'Scanned at the main gate': 'Diimbas di pagar utama',
+  'You and the company': 'Anda dan syarikat',
+  'Agree the price in person': 'Persetujui harga secara bersemuka',
+  'You agree the price with the company before any work starts, and you pay them directly. SimeTown takes no payment.':
+    'Anda bersetuju dengan harga bersama syarikat sebelum sebarang kerja bermula, dan anda membayar mereka secara terus. SimeTown tidak menerima sebarang bayaran.',
+  'On site': 'Di lokasi',
+  'Price agreed before work starts': 'Harga dipersetujui sebelum kerja bermula',
+  'You pay the company directly': 'Anda membayar syarikat secara terus',
+  'SimeTown takes no payment': 'SimeTown tidak menerima sebarang bayaran',
+  'Confirm the job, then review it': 'Sahkan kerja, kemudian ulas',
+  'When the company says the work is finished, confirm only if you are happy. It goes into your home logbook. Something wrong? Report it privately: only the township team sees it.':
+    'Apabila syarikat mengatakan kerja telah selesai, sahkan hanya jika anda berpuas hati. Ia dimasukkan ke dalam buku log rumah anda. Ada masalah? Laporkannya secara peribadi: hanya pasukan perbandaran yang melihatnya.',
+  'Added to your home logbook': 'Ditambah ke buku log rumah anda',
+};
+
 export const walkthroughsTemplates: readonly (readonly [string, string])[] = [
   ['Step {0}: {1}', 'Langkah {0}: {1}'],
 ];

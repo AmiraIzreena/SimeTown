@@ -437,6 +437,8 @@ export async function receiveAtCounter(db: Db, actor: Actor, parcelId: string, n
     const policy = await getPolicy(tx, p.township_id, null);
     const deadline = new Date(now.getTime() + policy.overflow_collect_days * 86_400_000);
     await transition(tx, p.id, 'RELOCATED_TO_STORAGE', userActor(actor.id), `Received from the courier at ${loc.name}`, now, { relocated_at: now, ready_at: now, deadline_at: deadline });
+    // Handed to the guard counts as delivered, for good: the same label can never open a door again.
+    await tx.query('UPDATE courier_shipments SET deposited_at = coalesce(deposited_at, $1), parcel_id = $2 WHERE id = (SELECT shipment_id FROM locker_parcels WHERE id = $2)', [now, p.id]);
     await custody(tx, p.id, { kind: 'COURIER', ref: p.courier_user_id }, { kind: 'OVERFLOW', ref: loc.name }, actor.id, now, 'Could not go into the home’s door; handed to the guard');
     await issueCredential(tx, p.id, 'OVERFLOW', loc.id, now);
     const reason = p.delivery_problem && (DELIVERY_PROBLEMS as readonly string[]).includes(p.delivery_problem) ? DELIVERY_PROBLEM_FOR_RESIDENT[p.delivery_problem as DeliveryProblem] : null;

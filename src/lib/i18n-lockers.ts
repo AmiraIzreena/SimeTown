@@ -412,6 +412,7 @@ export const lockersMalay: Record<string, string> = {
   'A home without a locker door had a parcel. Release doors of homes that moved out, or add doors.':
     'Sebuah rumah tanpa pintu lokar menerima bungkusan. Kosongkan pintu rumah yang telah berpindah, atau tambah pintu.',
   'Your pickup code has changed: see Parcels.': 'Kod tuntutan anda telah berubah: lihat Bungkusan.',
+  'This parcel has already been handed over. There is nothing more to do.': 'Bungkusan ini telah pun diserahkan. Tiada apa-apa lagi yang perlu dilakukan.',
 
   // --- Emails ---------------------------------------------------------------------------------------
   'Hi {name},': 'Hai {name},',

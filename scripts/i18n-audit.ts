@@ -63,6 +63,8 @@ export const ALLOWED = new Set([
   // Demo locker banks, courier and addresses in the walkthroughs, the same in Malay.
   'Elmina Valley Locker A', 'Elmina Gardens Locker B', 'Elmina West Locker C', 'J&T Express', 'No. 3, Jalan Frekuensi', 'No. 5, Jalan Metafasa', 'J&T Express · JT208F96D0E7', 'Main guardhouse', 'SHOW0003 · No. 5, Jalan Metafasa', 'Elmina Valley 1 & 2', 'Persiaran Metafasa', 'Gardens', 'Valley 1 & 2', 'Jalan Metafasa U16/171', 'Ravi Kumar', '+20 XP', 'Eco Lake Loop', 'Elmina Urban Park', 'Eco Lake, mall side', 'Loop Finisher Challenge', 'Community hall', 'Elmina Gardens back lane',
   'Encik Hafiz', 'Jalan Metafasa', 'No. 7, Jalan Frekuensi', 'SOS · No. 5, Jalan Metafasa', '2. Community hall', '3. Elmina Gardens back lane',
+  // Demo people and the service company in the Akses+ and SimeTown Home walkthroughs, the same in Malay.
+  'Daniel', 'Elmina Plumbing Co.', 'Ahmad Faizal · Elmina Plumbing Co.',
   // Already Malay, on purpose: the place name, a Malay suggestion and the Malay voice sample.
   'Tasik', 'Bila kutipan sampah?', 'Ini contoh suara SimeTown.',
   // The language switch always names the other language in that language.

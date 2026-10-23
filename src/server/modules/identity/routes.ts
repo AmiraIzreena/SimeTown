@@ -64,6 +64,25 @@ export const identityRoutes = [
     },
   }),
   route({
+    method: 'POST', path: '/auth/forgot-password', tag: 'SimeTown ID', summary: 'Email a single-use link to reset a forgotten password (same answer whether or not the account exists)', auth: 'public',
+    rateLimit: preSignIn(10, 3600),
+    body: z.object({ email: zEmail }),
+    handler: async (c) => {
+      // Per address too, so nobody can fill someone's inbox from many networks.
+      await c.limit(`forgot-password:${c.body.email.toLowerCase()}`, 5, 3600);
+      return identity.requestPasswordReset(c.db, c.body.email, c.now);
+    },
+  }),
+  route({
+    method: 'POST', path: '/auth/reset-password', tag: 'SimeTown ID', summary: 'Set a new password from the emailed link (signs out every device)', auth: 'public',
+    rateLimit: preSignIn(20, 900),
+    body: z.object({ token: z.string().min(20).max(100), password: zPassword }),
+    handler: async (c) => {
+      const { token, actor } = await identity.resetPassword(c.db, c.body, c.now);
+      return signedIn(actor, token);
+    },
+  }),
+  route({
     method: 'POST', path: '/auth/logout', tag: 'SimeTown ID', summary: 'Sign out', auth: 'session', body: emptyBody,
     handler: async (c) => {
       const token = readSessionToken(c.req.headers.get('cookie'));

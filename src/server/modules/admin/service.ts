@@ -164,6 +164,7 @@ export async function runJob(db: Db, name: JobName, now: Date): Promise<Record<s
       const sessions = await db.query('DELETE FROM sessions WHERE expires_at < $1 RETURNING id', [now]);
       await db.query(`DELETE FROM rate_limits WHERE window_start < $1::timestamptz - interval '1 day'`, [now]);
       await db.query(`DELETE FROM user_invites WHERE expires_at < $1 OR used_at IS NOT NULL`, [now]);
+      await db.query(`DELETE FROM password_resets WHERE expires_at < $1 OR used_at IS NOT NULL`, [now]);
       const sales = await db.query(`UPDATE sales SET status = 'EXPIRED' WHERE status = 'PENDING' AND expires_at < $1 RETURNING id`, [now]);
       return { sessionsRemoved: sessions.length, salesExpired: sales.length, ...(await retentionCleanup(db, now)), ...(await cleanupEmails(db, now)) };
     }
