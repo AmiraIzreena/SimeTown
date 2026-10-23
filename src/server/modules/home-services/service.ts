@@ -1028,8 +1028,8 @@ async function townshipStaffIds(q: Queryable, townshipId: string) {
 const labelList = (trades: readonly ServiceCategory[]) => trades.map((c) => SERVICE_CATEGORY_LABELS[c]).join(', ');
 
 /**
- * The company sets what it does. Most kinds of work are added at once. Licensed work (plumbing, electrical,
- * air-conditioning) is sent to township staff with the licence number, and added only when they approve it.
+ * The company sets what it does. Cleaning and repairs are added at once. Licensed work (plumbing, electrical,
+ * air-conditioning, renovation) is sent to township staff with the licence number, and added only when they approve it.
  */
 export async function setOwnTrades(db: Db, actor: Actor, input: { trades: ServiceCategory[]; licence?: string }, now: Date) {
   return db.tx(async (tx) => {

@@ -189,6 +189,7 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | POST | `/home-services/bookings/:bookingId/pass` | RESIDENT | Send the assigned worker a Tamu contractor pass for this visit |
 | GET | `/merchant/services` | MERCHANT | The company's description, listings and workers |
 | PATCH | `/merchant/services/about` | MERCHANT | What residents read about the company |
+| POST | `/merchant/services/trades` | MERCHANT | The kinds of home service the company does |
 | POST | `/merchant/services/listings` | MERCHANT | Add or update the listing for a category, with its pricing |
 | POST | `/merchant/services/listings/:listingId/active` | MERCHANT | Show or hide a listing |
 | POST | `/merchant/services/workers` | MERCHANT | Register a worker (name and phone; never an IC) |
@@ -205,6 +206,8 @@ The machine-readable version is [openapi.json](openapi.json), also served at `/a
 | GET | `/admin/home-services/reports/:reportId` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | One report with the booking, worker assignment history and records |
 | PATCH | `/admin/home-services/reports/:reportId` | TOWNSHIP_STAFF, TOWNSHIP_ADMIN, HQ_ADMIN | Update a report (the resident is told) |
 | POST | `/admin/merchants/:merchantId/kind` | TOWNSHIP_ADMIN, HQ_ADMIN | Set what a business offers: shop, home services or both |
+| POST | `/admin/merchants/:merchantId/trades` | TOWNSHIP_ADMIN, HQ_ADMIN | Set which kinds of home service a company may offer |
+| POST | `/admin/trade-requests/:requestId` | TOWNSHIP_ADMIN, HQ_ADMIN | Approve or decline a company’s request for licensed work (the company is told) |
 
 ## Parcels
 

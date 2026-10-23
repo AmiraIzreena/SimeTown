@@ -358,15 +358,15 @@ export const homeServicesMalay: Record<string, string> = {
   'The township team is looking into it. You will be notified of each update.': 'Pasukan perbandaran sedang menelitinya. Anda akan dimaklumkan setiap kemas kini.',
   // What a company does (its trades)
   'What we do': 'Apa yang kami buat',
-  'Tap every kind of work your company does. You can add a service only for these. Plumbing, electrical and air-conditioning work need a licence check by the township office first.':
-    'Ketik setiap jenis kerja yang syarikat anda buat. Anda hanya boleh menambah perkhidmatan untuk ini. Kerja paip, elektrik dan penghawa dingin perlu semakan lesen oleh pejabat perbandaran dahulu.',
+  'Tap every kind of work your company does. You can add a service only for these. Plumbing, electrical, air-conditioning and renovation work need a licence check by the township office first.':
+    'Ketik setiap jenis kerja yang syarikat anda buat. Anda hanya boleh menambah perkhidmatan untuk ini. Kerja paip, elektrik, penghawa dingin dan pengubahsuaian perlu semakan lesen oleh pejabat perbandaran dahulu.',
   'Not listed yet:': 'Belum disenaraikan:',
   'Every service you do is listed below. Tap another kind of work to offer more.': 'Setiap perkhidmatan yang anda buat disenaraikan di bawah. Ketik jenis kerja lain untuk menawarkan lebih banyak.',
   'Services you untick are hidden from residents.':'Perkhidmatan yang anda nyahtanda disembunyikan daripada penduduk.',
   'Tap what your company does above, then add a service.': 'Ketik apa yang syarikat anda buat di atas, kemudian tambah perkhidmatan.',
   'Hidden: not in What we do': 'Disembunyikan: tiada dalam Apa yang kami buat',
-  'The company can list only these. It adds most itself; plumbing, electrical and air-conditioning work come to you as a licence check first. Untick any it should not offer: its listing is hidden, and bookings already made carry on.':
-    'Syarikat hanya boleh menyenaraikan ini. Kebanyakannya ditambah sendiri; kerja paip, elektrik dan penghawa dingin datang kepada anda untuk semakan lesen dahulu. Nyahtanda mana-mana yang tidak sepatutnya ditawarkan: senaraiannya disembunyikan, dan tempahan yang sudah dibuat diteruskan.',
+  'The company can list only these. It adds cleaning and repairs itself; plumbing, electrical, air-conditioning and renovation work come to you as a licence check first. Untick any it should not offer: its listing is hidden, and bookings already made carry on.':
+    'Syarikat hanya boleh menyenaraikan ini. Pembersihan dan pembaikan ditambah sendiri; kerja paip, elektrik, penghawa dingin dan pengubahsuaian datang kepada anda untuk semakan lesen dahulu. Nyahtanda mana-mana yang tidak sepatutnya ditawarkan: senaraiannya disembunyikan, dan tempahan yang sudah dibuat diteruskan.',
   // Licence checks for licensed work
   'Licence to check': 'Lesen perlu disemak',
   'Licence or registration no.:': 'No. lesen atau pendaftaran:',
@@ -376,7 +376,7 @@ export const homeServicesMalay: Record<string, string> = {
   'Declined. The company has been told why.': 'Ditolak. Syarikat telah diberitahu sebabnya.',
   'Tap it above to ask again.': 'Ketik di atas untuk memohon semula.',
   'Licence or registration number': 'Nombor lesen atau pendaftaran',
-  'e.g. SPAN or Suruhanjaya Tenaga registration no.': 'cth. No. pendaftaran SPAN atau Suruhanjaya Tenaga',
+  'e.g. SPAN, Suruhanjaya Tenaga or CIDB registration no.': 'cth. No. pendaftaran SPAN, Suruhanjaya Tenaga atau CIDB',
   'Waiting': 'Menunggu',
   'Send for checking': 'Hantar untuk semakan',
   'Sent to the township office. We will tell you when they have checked it.': 'Dihantar ke pejabat perbandaran. Kami akan memberitahu anda apabila ia telah disemak.',

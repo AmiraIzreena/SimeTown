@@ -202,8 +202,11 @@ export const SERVICE_CATEGORY_LABELS: Record<ServiceCategory, string> = {
   REPAIRS: 'Repairs',
   RENOVATION: 'Renovation',
 };
-/** Work that needs a licence: a company asks for these, and township staff check the licence before approving. */
-export const SERVICE_LICENSED_TRADES: readonly ServiceCategory[] = ['PLUMBING', 'ELECTRICAL', 'AIRCON'];
+/**
+ * Work that needs a licence or can damage the home: a company asks for these, and township staff check its
+ * licence or registration (SPAN, Suruhanjaya Tenaga, CIDB) before approving. Cleaning and repairs are added at once.
+ */
+export const SERVICE_LICENSED_TRADES: readonly ServiceCategory[] = ['PLUMBING', 'ELECTRICAL', 'AIRCON', 'RENOVATION'];
 
 /** How a company prices a job. The price itself is agreed in person; SimeTown takes no payment. */
 /** Services that come round again: the home logbook reminds the home this many days after the last one. */
