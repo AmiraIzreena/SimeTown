@@ -1875,6 +1875,22 @@ html[data-signed-in] { scroll-behavior: smooth; scroll-padding-top: 5.5rem; scro
 @keyframes walk-drop {
   from { opacity: 0; transform: translateY(-14px) scale(0.9); }
 }
+/* Akses+ flashing alerts: one soft flash a second, as the app does (within the safe limit). */
+.walk-flash {
+  opacity: 0;
+  animation: walk-flash 1s ease-in-out 800ms infinite;
+}
+@keyframes walk-flash {
+  50% { opacity: 0.55; }
+}
+/* SimeTown Home: a booking moving along its steps, one after another. */
+.walk-step-on {
+  animation: walk-step-on 420ms var(--ease-soft) both;
+  animation-delay: calc(500ms + var(--i, 0) * 450ms);
+}
+@keyframes walk-step-on {
+  from { background-color: rgb(255 255 255 / 0.12); color: rgb(255 255 255 / 0.5); transform: scale(0.85); }
+}
 
 /* Flood dashboard: the simulation banner (console/banjir/page.tsx). SimeTown gold, so it is noticed but never read as an alert. */
 .sim-banner { background-image: linear-gradient(100deg, var(--color-gold-50) 0%, var(--color-gold-100) 100%); box-shadow: inset 4px 0 0 var(--color-gold-500); }
