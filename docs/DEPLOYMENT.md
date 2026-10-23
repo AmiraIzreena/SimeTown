@@ -112,7 +112,9 @@ npm start                 # listens on $PORT (3000 if unset)
    the new code starts.
 3. Start the new app version. The host should wait for `GET /api/v1/ready` (database reachable and
    migrated) before sending traffic, and use `GET /api/v1/health` to restart a stuck process.
-4. Never run `db:seed` in production. It refuses when `APP_ENV=production`.
+4. Never run `db:seed` in production. It refuses when `APP_ENV=production`. A public hackathon demo with demo
+   accounts runs as `APP_ENV=staging`: the hosted checks still apply (https, proxy, database SSL, real
+   `VISITOR_DATA_KEY` and `LOCKER_CREDENTIAL_SECRET`). `development` refuses to start on a public address.
 
 ### Continuous deployment (GitHub Actions)
 

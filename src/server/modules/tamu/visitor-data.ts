@@ -10,7 +10,8 @@ import { fieldErrors, ruleViolation } from '../../errors';
  * Visitor details (BR26, revised): checked the same way wherever they are given, and the identity number kept
  * encrypted. AES-256-GCM with a key from VISITOR_DATA_KEY, never stored in the database, so a copy of the database
  * alone does not reveal anyone's number. Only the last 4 characters are kept readable. Development and tests use a
- * fixed stand-in key; production refuses to store a number without the real key rather than store it weakly.
+ * fixed stand-in key; a hosted copy (staging or production) refuses to store a number without the real key rather
+ * than store it weakly.
  */
 
 const DEV_KEY = 'simetown-development-visitor-data-key-not-for-production';
@@ -18,7 +19,8 @@ const VERSION = 'v1';
 
 function key(): Buffer {
   const config = getConfig();
-  const secret = config.VISITOR_DATA_KEY ?? (config.APP_ENV === 'production' ? null : DEV_KEY);
+  // The fallback is public (it is in the code): only for development on your own computer, never when hosted.
+  const secret = config.VISITOR_DATA_KEY ?? (config.APP_ENV === 'development' ? DEV_KEY : null);
   if (!secret) throw ruleViolation('VISITOR_DATA_NOT_CONFIGURED', 'Visitor details cannot be saved yet: the township office must finish setting up SimeTown (VISITOR_DATA_KEY).');
   return createHash('sha256').update(secret).digest();
 }

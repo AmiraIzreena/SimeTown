@@ -130,7 +130,8 @@ const DEV_SECRET = 'simetown-development-locker-secret-not-for-production';
 function secret(): string {
   const config = getConfig();
   if (config.LOCKER_CREDENTIAL_SECRET) return config.LOCKER_CREDENTIAL_SECRET;
-  if (config.APP_ENV === 'production') {
+  // The fallback is public (it is in the code): only for development on your own computer, never when hosted.
+  if (config.APP_ENV !== 'development') {
     throw ruleViolation('LOCKER_NOT_CONFIGURED', 'Smart lockers are not set up yet: LOCKER_CREDENTIAL_SECRET is missing.');
   }
   return DEV_SECRET;

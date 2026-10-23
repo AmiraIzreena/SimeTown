@@ -53,6 +53,11 @@ const schema = z
   })
   .superRefine((env, ctx) => {
     const hosted = env.APP_ENV !== 'development';
+    // Development mode uses fallback keys that are written in the public code, so it may only run on your own
+    // computer or local network. A public deployment must say staging (a demo, with demo data) or production.
+    if (!hosted && !isLocalAddress(env.APP_URL)) {
+      ctx.addIssue({ code: 'custom', path: ['APP_ENV'], message: 'development runs only on localhost or a local network; set APP_ENV=staging for a hosted demo or production (see docs/DEPLOYMENT.md)' });
+    }
     if (hosted && env.DATABASE_URL.startsWith('pglite:')) {
       ctx.addIssue({ code: 'custom', path: ['DATABASE_URL'], message: 'pglite is for local development and tests only' });
     }
@@ -83,6 +88,21 @@ const schema = z
   });
 
 export type Config = z.infer<typeof schema> & { appOrigin: string; secureCookies: boolean; dbSsl: boolean };
+
+/** Your own computer, a local network, or a reserved test name: places development mode may run. */
+function isLocalAddress(url: string): boolean {
+  let host: string;
+  try {
+    host = new URL(url).hostname.toLowerCase().replace(/^\[|\]$/g, '');
+  } catch {
+    return false;
+  }
+  if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.test') || host === '::1') return true;
+  const ip = host.split('.').map(Number);
+  if (ip.length !== 4 || ip.some((n) => !Number.isInteger(n) || n < 0 || n > 255)) return false;
+  const [a, b] = ip as [number, number, number, number];
+  return a === 127 || a === 10 || (a === 192 && b === 168) || (a === 172 && b >= 16 && b <= 31);
+}
 
 let cached: Config | undefined;
 
