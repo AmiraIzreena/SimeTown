@@ -16,6 +16,8 @@ import { speak, useLang, useT } from '@/lib/i18n';
 interface ActiveAlert extends Verified {
   id: string;
   level: 'WARNING' | 'DANGER';
+  /** A warning raised on one signal, before its second check: the band shows amber, not red. */
+  unconfirmed: boolean;
   zone_name: string;
   level_pct: number;
   safe_route: string;
@@ -85,6 +87,7 @@ export function AlertTakeover({ href, canCheckIn = false }: { href: string; canC
     setUnderstood(false);
   }
   const danger = alert.level === 'DANGER';
+  const unconfirmed = !danger && alert.unconfirmed;
 
   return (
     <>
@@ -93,14 +96,14 @@ export function AlertTakeover({ href, canCheckIn = false }: { href: string; canC
         warm cream of the page. It names the level, says what the number means and what to do, shows it
         is live, and gives one clear button. The red full-screen danger alert below is unchanged.
       */}
-      <div role="status" className={cn('flood-banner relative overflow-hidden text-white shadow-[0_4px_14px_rgb(45_20_7/0.18)]', danger ? 'is-danger' : 'is-warning')}>
+      <div role="status" className={cn('flood-banner relative overflow-hidden text-white shadow-[0_4px_14px_rgb(45_20_7/0.18)]', danger ? 'is-danger' : unconfirmed ? 'is-unconfirmed' : 'is-warning')}>
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2.5 px-4 py-3 sm:px-6 lg:px-8">
           <span aria-hidden className="flood-icon relative grid size-9 shrink-0 place-items-center rounded-full bg-white/18 ring-1 ring-white/30">
             {danger ? <Siren className="size-[18px]" /> : <TriangleAlert className="size-[18px]" />}
           </span>
           <div className="min-w-0 flex-1">
             <p className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-              <span className={cn('rounded px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.12em]', 'bg-white text-accent-700')}>{t(danger ? 'Flood danger' : 'Flood warning')}</span>
+              <span className={cn('rounded px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.12em] bg-white', unconfirmed ? 'text-warning-700' : 'text-accent-700')}>{t(danger ? 'Flood danger' : unconfirmed ? 'Unconfirmed flood warning' : 'Flood warning')}</span>
               <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-white/85"><span aria-hidden className="flood-live-dot" />{t('Live')}</span>
               <span className="text-[15px] font-semibold"><Text>{alert.zone_name}</Text></span>
             </p>
@@ -121,7 +124,7 @@ export function AlertTakeover({ href, canCheckIn = false }: { href: string; canC
             }}
             className={cn(
               'inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-md bg-white px-4 text-sm font-semibold shadow-sm transition-[transform,box-shadow] duration-200 ease-soft hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white motion-safe:hover:-translate-y-px',
-              'text-accent-700',
+              unconfirmed ? 'text-warning-700' : 'text-accent-700',
             )}
           >
             <Text>{canCheckIn ? 'See safe route' : 'View details'}</Text>

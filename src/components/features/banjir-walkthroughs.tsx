@@ -2,7 +2,7 @@
 
 import { Text } from '@/components/ui/localized-text';
 import {
-  Accessibility, BarChart3, Bot, Camera, ClipboardList, CloudRain, Gauge, HeartPulse, History, Map, MapPin, Megaphone, PhoneCall, Radio, Route,
+  Accessibility, BarChart3, Bot, Camera, ClipboardList, CloudRain, Gauge, HeartPulse, History, Hourglass, Map, MapPin, Megaphone, PhoneCall, Radio, Route,
   Send, ShieldCheck, Siren, Timer, TriangleAlert, UserCheck, Users, Wrench, X,
 } from 'lucide-react';
 import type { CSSProperties } from 'react';
@@ -34,16 +34,17 @@ function Gauge3({ pct, label }: { pct: number; label: string }) {
   );
 }
 
-/** The red band residents see at the top of every page. */
-function FloodBand({ danger = false, i = 1 }: { danger?: boolean; i?: number }) {
+/** The band residents see at the top of every page: red once confirmed, amber while a one-signal warning waits for its second check. */
+function FloodBand({ danger = false, unconfirmed = false, i = 1 }: { danger?: boolean; unconfirmed?: boolean; i?: number }) {
+  const ink = unconfirmed ? 'text-warning-700' : 'text-accent-700';
   return (
-    <div className={cn('hiw-row rounded-2xl p-3 text-white shadow-xl', danger ? 'bg-[#800d1c]' : 'bg-accent-600')} style={{ '--i': i } as CSSProperties}>
+    <div className={cn('hiw-row rounded-2xl p-3 text-white shadow-xl', danger ? 'bg-[#800d1c]' : unconfirmed ? 'bg-warning-600' : 'bg-accent-600')} style={{ '--i': i } as CSSProperties}>
       <p className="flex items-center gap-2">
-        <span className="rounded bg-white px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-accent-700"><Text>{danger ? 'Flood danger' : 'Flood warning'}</Text></span>
+        <span className={cn('rounded bg-white px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em]', ink)}><Text>{danger ? 'Flood danger' : unconfirmed ? 'Unconfirmed flood warning' : 'Flood warning'}</Text></span>
         <span className="text-sm font-semibold"><Text>Elmina Valley 1 & 2</Text></span>
       </p>
       <p className="mt-1 text-xs text-white/90"><Text>{danger ? 'Water level is at 92%. Move to safety now.' : 'Water level is at 78%. Get ready to move and check your safe route.'}</Text></p>
-      <span className="mt-2 inline-block rounded-md bg-white px-2.5 py-1 text-xs font-semibold text-accent-700"><Text>See safe route</Text></span>
+      <span className={cn('mt-2 inline-block rounded-md bg-white px-2.5 py-1 text-xs font-semibold', ink)}><Text>See safe route</Text></span>
     </div>
   );
 }
@@ -67,8 +68,16 @@ const RESIDENT: WalkStep[] = [
     </div>,
   },
   {
+    key: 'amber', icon: Hourglass, who: 'Banjir agent', title: 'One check so far? It shows amber',
+    text: 'If a warning goes out on one signal, the band is amber and says Unconfirmed. Be ready and check your safe route. It turns red once a second signal agrees, or a second staff member confirms it.',
+    screen: <div className="space-y-3"><ScreenTitle>Unconfirmed flood warning</ScreenTitle><FloodBand unconfirmed i={0} />
+      <ScreenRow icon={Radio} label="Drain sensor" value="78%" i={2} tick />
+      <ScreenRow icon={Camera} label="Waiting for a second check" i={3} tone="gold" />
+    </div>,
+  },
+  {
     key: 'band', icon: TriangleAlert, who: 'You', title: 'A warning appears on every page',
-    text: 'A red band shows at the top of the app with your zone and the water level. Tap See safe route to see the way out and where to gather.',
+    text: 'A band shows at the top of the app with your zone and the water level: red once the warning is confirmed. Tap See safe route to see the way out and where to gather.',
     screen: <div className="space-y-3"><ScreenTitle>Flood warning</ScreenTitle><FloodBand i={0} />
       <ScreenRow icon={MapPin} label="Assembly point" value="Persiaran Metafasa" i={2} /></div>,
   },
@@ -167,6 +176,15 @@ const CONSOLE: WalkStep[] = [
       <ScreenRow icon={Timer} label="Time left to confirm" value="4:12" i={0} tone="gold" />
       <ScreenButton i={1}>Send now</ScreenButton>
       <ScreenRow icon={X} label="Cancel needs a reason" i={2} />
+    </div>,
+  },
+  {
+    key: 'second', icon: UserCheck, who: 'A second staff member', title: 'Second check: amber turns red',
+    text: 'A warning sent on one signal shows amber to residents. It turns red when a second signal agrees, or when a different staff member taps Confirm the warning. The person who raised it cannot confirm it.',
+    screen: <div className="space-y-3"><ScreenTitle>Warning waiting for a second check</ScreenTitle>
+      <ScreenRow icon={Hourglass} label="Raised on one signal by Ravi Kumar" i={0} tone="gold" />
+      <ScreenButton i={1}>Confirm the warning</ScreenButton>
+      <ScreenCard icon={TriangleAlert} title="Confirmed: residents now see red" note="Second check by Mei Chen" i={2} tone="alert" />
     </div>,
   },
   {
